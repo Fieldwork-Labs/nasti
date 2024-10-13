@@ -10,6 +10,7 @@ import useUserStore from "@/store/userStore"
 import { supabase } from "@/lib/supabase"
 import { User } from "@supabase/supabase-js"
 import logo from "@/assets/logo.svg"
+import "react-toastify/dist/ReactToastify.css"
 const queryClient = new QueryClient()
 
 const TanStackRouterDevtools = import.meta.env.DEV
@@ -44,7 +45,7 @@ const RootComponent = () => {
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col min-h-screen">
         {/* Navbar */}
-        <header className="bg-white shadow">
+        <header className="shadow bg-gradient-to-b from-green-900 to-green-700 bg-opacity-80">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <Link to="/" className="flex-shrink-0 flex items-center">

@@ -10,6 +10,7 @@ type UserState = {
   orgId: string | null
   role: Role | null
   setUser: (user: User) => void
+  setSession: (session: Session) => void
   setOrgId: (orgId: string) => void
   setRole: (role: Role) => void
   getUser: () => Promise<void>
@@ -23,6 +24,7 @@ const useUserStore = create<UserState>((set) => ({
   orgId: null,
   role: null,
   setUser: (user: User) => set({ user }),
+  setSession: (session: Session) => set({ session }),
   setOrgId: (orgId: string) => set({ orgId }),
   setRole: (role: Role) => set({ role }),
   getUser: async () => {
