@@ -15,6 +15,8 @@ import { Route as PrivateImport } from './routes/_private'
 import { Route as IndexImport } from './routes/index'
 import { Route as AuthLoginImport } from './routes/auth/login'
 import { Route as PrivateDashboardImport } from './routes/_private/dashboard'
+import { Route as PrivateTripsIndexImport } from './routes/_private/trips/index'
+import { Route as PrivateSpeciesIndexImport } from './routes/_private/species/index'
 import { Route as PrivateInvitationsIndexImport } from './routes/_private/invitations/index'
 
 // Create/Update Routes
@@ -36,6 +38,16 @@ const AuthLoginRoute = AuthLoginImport.update({
 
 const PrivateDashboardRoute = PrivateDashboardImport.update({
   path: '/dashboard',
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
+  path: '/trips/',
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateSpeciesIndexRoute = PrivateSpeciesIndexImport.update({
+  path: '/species/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
@@ -83,6 +95,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivateInvitationsIndexImport
       parentRoute: typeof PrivateImport
     }
+    '/_private/species/': {
+      id: '/_private/species/'
+      path: '/species'
+      fullPath: '/species'
+      preLoaderRoute: typeof PrivateSpeciesIndexImport
+      parentRoute: typeof PrivateImport
+    }
+    '/_private/trips/': {
+      id: '/_private/trips/'
+      path: '/trips'
+      fullPath: '/trips'
+      preLoaderRoute: typeof PrivateTripsIndexImport
+      parentRoute: typeof PrivateImport
+    }
   }
 }
 
@@ -91,11 +117,15 @@ declare module '@tanstack/react-router' {
 interface PrivateRouteChildren {
   PrivateDashboardRoute: typeof PrivateDashboardRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
+  PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
+  PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateDashboardRoute: PrivateDashboardRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
+  PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
+  PrivateTripsIndexRoute: PrivateTripsIndexRoute,
 }
 
 const PrivateRouteWithChildren =
@@ -107,6 +137,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof PrivateDashboardRoute
   '/auth/login': typeof AuthLoginRoute
   '/invitations': typeof PrivateInvitationsIndexRoute
+  '/species': typeof PrivateSpeciesIndexRoute
+  '/trips': typeof PrivateTripsIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -115,6 +147,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof PrivateDashboardRoute
   '/auth/login': typeof AuthLoginRoute
   '/invitations': typeof PrivateInvitationsIndexRoute
+  '/species': typeof PrivateSpeciesIndexRoute
+  '/trips': typeof PrivateTripsIndexRoute
 }
 
 export interface FileRoutesById {
@@ -124,13 +158,29 @@ export interface FileRoutesById {
   '/_private/dashboard': typeof PrivateDashboardRoute
   '/auth/login': typeof AuthLoginRoute
   '/_private/invitations/': typeof PrivateInvitationsIndexRoute
+  '/_private/species/': typeof PrivateSpeciesIndexRoute
+  '/_private/trips/': typeof PrivateTripsIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '' | '/dashboard' | '/auth/login' | '/invitations'
+  fullPaths:
+    | '/'
+    | ''
+    | '/dashboard'
+    | '/auth/login'
+    | '/invitations'
+    | '/species'
+    | '/trips'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/dashboard' | '/auth/login' | '/invitations'
+  to:
+    | '/'
+    | ''
+    | '/dashboard'
+    | '/auth/login'
+    | '/invitations'
+    | '/species'
+    | '/trips'
   id:
     | '__root__'
     | '/'
@@ -138,6 +188,8 @@ export interface FileRouteTypes {
     | '/_private/dashboard'
     | '/auth/login'
     | '/_private/invitations/'
+    | '/_private/species/'
+    | '/_private/trips/'
   fileRoutesById: FileRoutesById
 }
 
@@ -177,7 +229,9 @@ export const routeTree = rootRoute
       "filePath": "_private.tsx",
       "children": [
         "/_private/dashboard",
-        "/_private/invitations/"
+        "/_private/invitations/",
+        "/_private/species/",
+        "/_private/trips/"
       ]
     },
     "/_private/dashboard": {
@@ -189,6 +243,14 @@ export const routeTree = rootRoute
     },
     "/_private/invitations/": {
       "filePath": "_private/invitations/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/species/": {
+      "filePath": "_private/species/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/trips/": {
+      "filePath": "_private/trips/index.tsx",
       "parent": "/_private"
     }
   }

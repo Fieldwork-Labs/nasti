@@ -1,10 +1,15 @@
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
+import {
+  createRootRouteWithContext,
+  Link,
+  Outlet,
+} from "@tanstack/react-router"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ToastContainer } from "react-toastify"
 import React, { useEffect } from "react"
 import useUserStore from "@/store/userStore"
 import { supabase } from "@/lib/supabase"
 import { User } from "@supabase/supabase-js"
+import logo from "@/assets/logo.svg"
 const queryClient = new QueryClient()
 
 const TanStackRouterDevtools = import.meta.env.DEV
@@ -37,18 +42,44 @@ const RootComponent = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-gray-100">
+      <div className="flex flex-col min-h-screen">
+        {/* Navbar */}
         <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Organisation Management
-            </h1>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <Link to="/" className="flex-shrink-0 flex items-center">
+                <img src={logo} alt="NASTI Logo" />
+              </Link>
+              {/* Right side - User Menu */}
+              <div className="flex items-center">
+                <Link
+                  to="/auth/login"
+                  className="bg-indigo-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
+                >
+                  Login
+                </Link>
+              </div>
+            </div>
           </div>
         </header>
-        <main className="max-w-7xl mx-auto p-4">
-          <Outlet />
-          <TanStackRouterDevtools />
+
+        {/* Main Content */}
+        <main className="flex-grow bg-gray-100">
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <Outlet />
+            <TanStackRouterDevtools />
+          </div>
         </main>
+
+        {/* Footer */}
+        <footer className="bg-white shadow mt-auto">
+          <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <p className="text-center text-sm text-gray-500">
+              &copy; {new Date().getFullYear()} NASTI Project. All rights
+              reserved.
+            </p>
+          </div>
+        </footer>
         <ToastContainer />
       </div>
     </QueryClientProvider>

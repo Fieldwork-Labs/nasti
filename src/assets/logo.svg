@@ -1,0 +1,41 @@
+<!-- NASTI Logo SVG -->
+<svg
+  width="160"
+  height="50"
+  viewBox="0 0 160 50"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- Seed and Geospatial Icon -->
+  <g>
+    <!-- Seed Shape -->
+    <ellipse cx="30" cy="30" rx="10" ry="15" fill="#28a745" />
+    <!-- Geospatial Marker -->
+    <path
+      d="M30 15
+         C30 7, 40 7, 40 15
+         C40 25, 30 35, 30 35
+         C30 35, 20 25, 20 15
+         C20 7, 30 7, 30 15
+         Z"
+      fill="none"
+      stroke="#007bff"
+      stroke-width="2"
+    />
+    <!-- Data Points -->
+    <circle cx="25" cy="25" r="2" fill="#007bff" />
+    <circle cx="35" cy="25" r="2" fill="#007bff" />
+    <circle cx="30" cy="20" r="2" fill="#007bff" />
+  </g>
+
+  <!-- Text: NASTI -->
+  <text
+    x="50"
+    y="36"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="32"
+    font-weight="bold"
+    fill="#6c757d"
+  >
+    NASTI
+  </text>
+</svg>
