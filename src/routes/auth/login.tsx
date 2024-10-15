@@ -6,6 +6,8 @@ import useUserStore from "@/store/userStore"
 import { useForm } from "@tanstack/react-form"
 
 import { toast } from "react-toastify"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 const LoginForm = () => {
   const navigate = useNavigate()
@@ -64,15 +66,15 @@ const LoginForm = () => {
                 >
                   Email Address
                 </label>
-                <input
+                <Input
                   type="email"
                   id="email"
                   required
+                  autoComplete="email"
                   name={field.name}
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="you@example.com"
                 />
               </div>
@@ -90,15 +92,15 @@ const LoginForm = () => {
                 >
                   Password
                 </label>
-                <input
+                <Input
                   type="password"
                   id="password"
                   required
+                  autoComplete="current-password"
                   name={field.name}
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="••••••••"
                 />
               </div>
@@ -107,17 +109,13 @@ const LoginForm = () => {
 
           {/* Submit Button */}
           <div>
-            <button
+            <Button
               type="submit"
               disabled={form.state.isSubmitting || !form.state.isValid}
-              className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                form.state.isSubmitting
-                  ? "bg-indigo-300"
-                  : "bg-indigo-600 hover:bg-indigo-700"
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+              className="w-full"
             >
               {form.state.isSubmitting ? "Logging in..." : "Login"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

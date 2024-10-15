@@ -10,7 +10,8 @@ import useUserStore from "@/store/userStore"
 import { supabase } from "@/lib/supabase"
 import { User } from "@supabase/supabase-js"
 import logo from "@/assets/logo.svg"
-import "react-toastify/dist/ReactToastify.css"
+import { ButtonLink } from "@/components/ui/buttonLink"
+// import "react-toastify/dist/ReactToastify.css"
 const queryClient = new QueryClient()
 
 const TanStackRouterDevtools = import.meta.env.DEV
@@ -53,12 +54,7 @@ const RootComponent = () => {
               </Link>
               {/* Right side - User Menu */}
               <div className="flex items-center">
-                <Link
-                  to="/auth/login"
-                  className="bg-indigo-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-                >
-                  Login
-                </Link>
+                <ButtonLink to="/auth/login">Login</ButtonLink>
               </div>
             </div>
           </div>
