@@ -8,6 +8,7 @@ import { useForm } from "@tanstack/react-form"
 import { toast } from "react-toastify"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const LoginForm = () => {
   const navigate = useNavigate()
@@ -42,9 +43,9 @@ const LoginForm = () => {
   })
 
   return (
-    <div className="flex items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">
+    <div className="flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">
           Login to NASTI
         </h2>
         <form
@@ -60,12 +61,7 @@ const LoginForm = () => {
             name="email"
             children={(field) => (
               <div>
-                <label
-                  htmlFor={field.name}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Email Address
-                </label>
+                <Label htmlFor={field.name}>Email Address</Label>
                 <Input
                   type="email"
                   id="email"
@@ -86,12 +82,7 @@ const LoginForm = () => {
             name="password"
             children={(field) => (
               <div>
-                <label
-                  htmlFor={field.name}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Password
-                </label>
+                <Label htmlFor={field.name}>Password</Label>
                 <Input
                   type="password"
                   id="password"

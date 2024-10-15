@@ -5,6 +5,7 @@ import "./globals.css"
 import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 import useUserStore from "./store/userStore"
+import { ThemeProvider } from "./contexts/theme"
 
 // Create a new router instance
 const router = createRouter({
@@ -32,7 +33,11 @@ declare module "@tanstack/react-router" {
 
 const App = () => {
   const { user } = useUserStore()
-  return <RouterProvider router={router} context={{ user }} />
+  return (
+    <ThemeProvider>
+      <RouterProvider router={router} context={{ user }} />
+    </ThemeProvider>
+  )
 }
 
 const rootElement = document.getElementById("root")
