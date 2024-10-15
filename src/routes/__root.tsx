@@ -45,7 +45,7 @@ const RootComponent = () => {
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col min-h-screen">
         {/* Navbar */}
-        <header className="shadow bg-gradient-to-b from-green-900 to-green-700 bg-opacity-80">
+        <header className="shadow bg-green-900 bg-opacity-30 border-b-2 border-green-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <Link to="/" className="flex-shrink-0 flex items-center">
