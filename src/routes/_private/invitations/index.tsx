@@ -1,50 +1,50 @@
-import { useCallback } from "react";
-import { supabase } from "@/lib/supabase";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import useUserStore from "@/store/userStore";
-import { createFileRoute } from "@tanstack/react-router";
-import { useToast } from "@/hooks/use-toast";
+import { useCallback } from "react"
+import { supabase } from "@/lib/supabase"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import useUserStore from "@/store/userStore"
+import { createFileRoute } from "@tanstack/react-router"
+import { useToast } from "@/hooks/use-toast"
 
 const InvitationsList = () => {
-  const { orgId, role } = useUserStore();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { orgId, role } = useUserStore()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   // Fetch invitations
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["invitations", orgId],
     queryFn: async () => {
       if (!orgId) {
-        throw new Error("Organisation not found");
+        throw new Error("Organisation not found")
       }
       const { data, error } = await supabase
         .from("invitation")
         .select("*")
         .eq("organisation_id", orgId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
 
-      if (error) throw new Error(error.message);
-      return data;
+      if (error) throw new Error(error.message)
+      return data
     },
     enabled: Boolean(orgId), // Only run if org
-  });
+  })
 
   // Handle deletion of an invitation
   const handleDelete = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from("invitation").delete().eq("id", id);
+      const { error } = await supabase.from("invitation").delete().eq("id", id)
       if (error) {
         toast({
           variant: "destructive",
           description: `Failed to delete invitation: ${error.message}`,
-        });
+        })
       } else {
-        toast({ description: "Invitation deleted successfully." });
-        queryClient.invalidateQueries({ queryKey: ["invitations", orgId] });
+        toast({ description: "Invitation deleted successfully." })
+        queryClient.invalidateQueries({ queryKey: ["invitations", orgId] })
       }
     },
     [orgId, queryClient, toast],
-  );
+  )
 
   // Handle resending an invitation
   const handleResend = useCallback(
@@ -55,22 +55,22 @@ const InvitationsList = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ invitation_id: id }),
-      });
+      })
 
       if (response.ok) {
-        toast({ description: "Invitation resent successfully." });
+        toast({ description: "Invitation resent successfully." })
 
-        queryClient.invalidateQueries({ queryKey: ["invitations", orgId] });
+        queryClient.invalidateQueries({ queryKey: ["invitations", orgId] })
       } else {
-        const errorText = await response.text();
+        const errorText = await response.text()
         toast({
           description: `Failed to resend invitation: ${errorText}`,
           variant: "destructive",
-        });
+        })
       }
     },
     [orgId, queryClient, toast],
-  );
+  )
 
   // Ensure the user is an admin
   if (role !== "admin") {
@@ -80,7 +80,7 @@ const InvitationsList = () => {
           Access Denied: You do not have permission to view this page.
         </p>
       </div>
-    );
+    )
   }
 
   if (isLoading) {
@@ -88,7 +88,7 @@ const InvitationsList = () => {
       <div className="p-4 text-center">
         <p>Loading invitations...</p>
       </div>
-    );
+    )
   }
 
   if (isError) {
@@ -96,7 +96,7 @@ const InvitationsList = () => {
       <div className="p-4 text-center">
         <p className="text-red-500">Error: {error.message}</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -154,9 +154,9 @@ const InvitationsList = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
 export const Route = createFileRoute("/_private/invitations/")({
   component: InvitationsList,
-});
+})

@@ -3,7 +3,6 @@ import { supabase } from "../lib/supabase"
 import { Session, User } from "@supabase/supabase-js"
 import { Role } from "../types"
 
-
 type UserState = {
   user: User | null
   session: Session | null
@@ -64,9 +63,9 @@ const useUserStore = create<UserState>((set) => ({
       user: null,
       session: null,
       orgId: null,
-      role: null
+      role: null,
     })
-  }
+  },
 }))
 
 export default useUserStore

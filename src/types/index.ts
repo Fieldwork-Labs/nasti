@@ -1,7 +1,7 @@
-import { Database } from "./database";
+import { Database } from "./database"
 
-type Table<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row']
+type Table<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"]
 
 export type Organisation = Table<"organisation">
 

@@ -2,16 +2,16 @@ import {
   forwardRef,
   type DetailedHTMLProps,
   type InputHTMLAttributes,
-} from "react";
-import type { FieldError } from "react-hook-form";
-import { cn } from "@/lib/utils";
-import { Label } from "./label";
-import { Input } from "./input";
+} from "react"
+import type { FieldError } from "react-hook-form"
+import { cn } from "@/lib/utils"
+import { Label } from "./label"
+import { Input } from "./input"
 
 type FormFieldProps = {
-  label: string | JSX.Element;
-  error?: FieldError;
-} & DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
+  label: string | JSX.Element
+  error?: FieldError
+} & DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>
 
 export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
   ({ error, label, ...fieldProps }: FormFieldProps, ref) => (
@@ -35,4 +35,4 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
       </div>
     </div>
   ),
-);
+)

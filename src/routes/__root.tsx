@@ -1,29 +1,29 @@
-import logo from "@/assets/logo.svg";
-import { ButtonLink } from "@/components/ui/buttonLink";
-import { useTheme } from "@/contexts/theme";
-import { supabase } from "@/lib/supabase";
-import useUserStore from "@/store/userStore";
+import logo from "@/assets/logo.svg"
+import { ButtonLink } from "@/components/ui/buttonLink"
+import { useTheme } from "@/contexts/theme"
+import { supabase } from "@/lib/supabase"
+import useUserStore from "@/store/userStore"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { User } from "@supabase/supabase-js";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+} from "@/components/ui/dropdown-menu"
+import { User } from "@supabase/supabase-js"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   createRootRouteWithContext,
   Link,
   Outlet,
   useNavigate,
-} from "@tanstack/react-router";
-import { Moon, Sun, User as UserIcon } from "lucide-react";
-import React, { useCallback, useEffect } from "react";
+} from "@tanstack/react-router"
+import { Moon, Sun, User as UserIcon } from "lucide-react"
+import React, { useCallback, useEffect } from "react"
 
-import { Button } from "@/components/ui/button";
-import { Toaster } from "@/components/ui/toaster";
+import { Button } from "@/components/ui/button"
+import { Toaster } from "@/components/ui/toaster"
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient()
 
 const TanStackRouterDevtools = import.meta.env.DEV
   ? React.lazy(() =>
@@ -34,10 +34,10 @@ const TanStackRouterDevtools = import.meta.env.DEV
         // default: res.TanStackRouterDevtoolsPanel
       })),
     )
-  : () => null; // Render nothing in production
+  : () => null // Render nothing in production
 
 const ThemeToggle = () => {
-  const { setTheme, theme } = useTheme();
+  const { setTheme, theme } = useTheme()
 
   return (
     <Button
@@ -49,17 +49,17 @@ const ThemeToggle = () => {
       <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
       <span className="sr-only">Toggle theme</span>
     </Button>
-  );
-};
+  )
+}
 
 const UserMenu = () => {
-  const { logout } = useUserStore();
-  const navigate = useNavigate();
+  const { logout } = useUserStore()
+  const navigate = useNavigate()
 
   const handleSignout = useCallback(async () => {
-    await logout();
-    navigate({ to: "/auth/login" });
-  }, [logout, navigate]);
+    await logout()
+    navigate({ to: "/auth/login" })
+  }, [logout, navigate])
 
   return (
     <DropdownMenu>
@@ -72,25 +72,25 @@ const UserMenu = () => {
         <DropdownMenuItem onClick={handleSignout}>Logout</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-};
+  )
+}
 
 const RootComponent = () => {
-  const { getUser, getSession, session } = useUserStore();
+  const { getUser, getSession, session } = useUserStore()
 
   useEffect(() => {
     // Fetch user on app load
-    getUser();
+    getUser()
 
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      getSession();
-    });
+      getSession()
+    })
 
     return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [getUser, getSession]);
+      authListener.subscription.unsubscribe()
+    }
+  }, [getUser, getSession])
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -132,9 +132,9 @@ const RootComponent = () => {
         <Toaster />
       </div>
     </QueryClientProvider>
-  );
-};
+  )
+}
 
 export const Route = createRootRouteWithContext<{ user: User | null }>()({
   component: RootComponent,
-});
+})

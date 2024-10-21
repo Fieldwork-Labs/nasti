@@ -1,5 +1,5 @@
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export function InputWithLabel(
   props: JSX.IntrinsicElements["input"] & { title: string },
@@ -9,5 +9,5 @@ export function InputWithLabel(
       <Label htmlFor={props.name}>{props.title}</Label>
       <Input {...props} />
     </div>
-  );
+  )
 }
