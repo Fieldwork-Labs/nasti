@@ -48,12 +48,12 @@ const LoginForm = () => {
         navigate({ to: "/dashboard" })
       }
     },
-    [setSession, setUser, navigate, toast]
+    [setSession, setUser, navigate, toast],
   )
 
   return (
     <div className="flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-background-secondary p-8 rounded-lg shadow-md dark:shadow-background-secondary">
+      <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">
           Login to NASTI
         </h2>
