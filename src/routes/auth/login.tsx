@@ -1,55 +1,55 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router"
 
-import { useNavigate } from "@tanstack/react-router";
-import { supabase } from "@/lib/supabase";
-import useUserStore from "@/store/userStore";
-import { useForm } from "react-hook-form";
+import { useNavigate } from "@tanstack/react-router"
+import { supabase } from "@/lib/supabase"
+import useUserStore from "@/store/userStore"
+import { useForm } from "react-hook-form"
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useCallback } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 type FormData = {
-  email: string;
-  password: string;
-};
+  email: string
+  password: string
+}
 
 const LoginForm = () => {
-  const navigate = useNavigate();
-  const { setUser, setSession } = useUserStore();
-  const { toast } = useToast();
+  const navigate = useNavigate()
+  const { setUser, setSession } = useUserStore()
+  const { toast } = useToast()
 
   const {
     register,
     handleSubmit,
     formState: { isValid, isSubmitting },
-  } = useForm<FormData>({ mode: "all" });
+  } = useForm<FormData>({ mode: "all" })
 
   const onSubmit = useCallback(
     async (values: FormData) => {
       // Do something with form data
-      const { email, password } = values;
+      const { email, password } = values
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      });
+      })
 
       if (error) {
-        console.log({ error });
-        toast({ description: error.message, variant: "destructive" });
+        console.log({ error })
+        toast({ description: error.message, variant: "destructive" })
       } else {
-        setSession(data.session);
-        setUser(data.user);
+        setSession(data.session)
+        setUser(data.user)
 
-        toast({ description: "Logged in successfully!" });
-        navigate({ to: "/dashboard" });
+        toast({ description: "Logged in successfully!" })
+        navigate({ to: "/dashboard" })
       }
     },
-    [setSession, setUser, navigate, toast],
-  );
+    [setSession, setUser, navigate, toast]
+  )
 
   return (
     <div className="flex items-center justify-center px-4">
@@ -98,9 +98,9 @@ const LoginForm = () => {
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginForm,
-});
+})
