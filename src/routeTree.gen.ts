@@ -10,129 +10,155 @@
 
 // Import Routes
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as PrivateImport } from './routes/_private'
-import { Route as IndexImport } from './routes/index'
-import { Route as AuthLoginImport } from './routes/auth/login'
-import { Route as PrivateLayoutImport } from './routes/_private/layout'
-import { Route as PrivateDashboardImport } from './routes/_private/dashboard'
-import { Route as PrivateTripsIndexImport } from './routes/_private/trips/index'
-import { Route as PrivateSpeciesIndexImport } from './routes/_private/species/index'
-import { Route as PrivateInvitationsIndexImport } from './routes/_private/invitations/index'
+import { Route as rootRoute } from "./routes/__root";
+import { Route as PrivateImport } from "./routes/_private";
+import { Route as IndexImport } from "./routes/index";
+import { Route as AuthSetPasswordImport } from "./routes/auth/set-password";
+import { Route as AuthLoginImport } from "./routes/auth/login";
+import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup";
+import { Route as PrivateLayoutImport } from "./routes/_private/layout";
+import { Route as PrivateDashboardImport } from "./routes/_private/dashboard";
+import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index";
+import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index";
+import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index";
 
 // Create/Update Routes
 
 const PrivateRoute = PrivateImport.update({
-  id: '/_private',
+  id: "/_private",
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
 
 const IndexRoute = IndexImport.update({
-  path: '/',
+  path: "/",
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
+
+const AuthSetPasswordRoute = AuthSetPasswordImport.update({
+  path: "/auth/set-password",
+  getParentRoute: () => rootRoute,
+} as any);
 
 const AuthLoginRoute = AuthLoginImport.update({
-  path: '/auth/login',
+  path: "/auth/login",
   getParentRoute: () => rootRoute,
-} as any)
+} as any);
+
+const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
+  path: "/auth/confirm-signup",
+  getParentRoute: () => rootRoute,
+} as any);
 
 const PrivateLayoutRoute = PrivateLayoutImport.update({
-  path: '/layout',
+  path: "/layout",
   getParentRoute: () => PrivateRoute,
-} as any)
+} as any);
 
 const PrivateDashboardRoute = PrivateDashboardImport.update({
-  path: '/dashboard',
+  path: "/dashboard",
   getParentRoute: () => PrivateRoute,
-} as any)
+} as any);
 
 const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
-  path: '/trips/',
+  path: "/trips/",
   getParentRoute: () => PrivateRoute,
-} as any)
+} as any);
 
 const PrivateSpeciesIndexRoute = PrivateSpeciesIndexImport.update({
-  path: '/species/',
+  path: "/species/",
   getParentRoute: () => PrivateRoute,
-} as any)
+} as any);
 
 const PrivateInvitationsIndexRoute = PrivateInvitationsIndexImport.update({
-  path: '/invitations/',
+  path: "/invitations/",
   getParentRoute: () => PrivateRoute,
-} as any)
+} as any);
 
 // Populate the FileRoutesByPath interface
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/_private': {
-      id: '/_private'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof PrivateImport
-      parentRoute: typeof rootRoute
-    }
-    '/_private/dashboard': {
-      id: '/_private/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof PrivateDashboardImport
-      parentRoute: typeof PrivateImport
-    }
-    '/_private/layout': {
-      id: '/_private/layout'
-      path: '/layout'
-      fullPath: '/layout'
-      preLoaderRoute: typeof PrivateLayoutImport
-      parentRoute: typeof PrivateImport
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginImport
-      parentRoute: typeof rootRoute
-    }
-    '/_private/invitations/': {
-      id: '/_private/invitations/'
-      path: '/invitations'
-      fullPath: '/invitations'
-      preLoaderRoute: typeof PrivateInvitationsIndexImport
-      parentRoute: typeof PrivateImport
-    }
-    '/_private/species/': {
-      id: '/_private/species/'
-      path: '/species'
-      fullPath: '/species'
-      preLoaderRoute: typeof PrivateSpeciesIndexImport
-      parentRoute: typeof PrivateImport
-    }
-    '/_private/trips/': {
-      id: '/_private/trips/'
-      path: '/trips'
-      fullPath: '/trips'
-      preLoaderRoute: typeof PrivateTripsIndexImport
-      parentRoute: typeof PrivateImport
-    }
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/_private": {
+      id: "/_private";
+      path: "";
+      fullPath: "";
+      preLoaderRoute: typeof PrivateImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/_private/dashboard": {
+      id: "/_private/dashboard";
+      path: "/dashboard";
+      fullPath: "/dashboard";
+      preLoaderRoute: typeof PrivateDashboardImport;
+      parentRoute: typeof PrivateImport;
+    };
+    "/_private/layout": {
+      id: "/_private/layout";
+      path: "/layout";
+      fullPath: "/layout";
+      preLoaderRoute: typeof PrivateLayoutImport;
+      parentRoute: typeof PrivateImport;
+    };
+    "/auth/confirm-signup": {
+      id: "/auth/confirm-signup";
+      path: "/auth/confirm-signup";
+      fullPath: "/auth/confirm-signup";
+      preLoaderRoute: typeof AuthConfirmSignupImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/auth/login": {
+      id: "/auth/login";
+      path: "/auth/login";
+      fullPath: "/auth/login";
+      preLoaderRoute: typeof AuthLoginImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/auth/set-password": {
+      id: "/auth/set-password";
+      path: "/auth/set-password";
+      fullPath: "/auth/set-password";
+      preLoaderRoute: typeof AuthSetPasswordImport;
+      parentRoute: typeof rootRoute;
+    };
+    "/_private/invitations/": {
+      id: "/_private/invitations/";
+      path: "/invitations";
+      fullPath: "/invitations";
+      preLoaderRoute: typeof PrivateInvitationsIndexImport;
+      parentRoute: typeof PrivateImport;
+    };
+    "/_private/species/": {
+      id: "/_private/species/";
+      path: "/species";
+      fullPath: "/species";
+      preLoaderRoute: typeof PrivateSpeciesIndexImport;
+      parentRoute: typeof PrivateImport;
+    };
+    "/_private/trips/": {
+      id: "/_private/trips/";
+      path: "/trips";
+      fullPath: "/trips";
+      preLoaderRoute: typeof PrivateTripsIndexImport;
+      parentRoute: typeof PrivateImport;
+    };
   }
 }
 
 // Create and export the route tree
 
 interface PrivateRouteChildren {
-  PrivateDashboardRoute: typeof PrivateDashboardRoute
-  PrivateLayoutRoute: typeof PrivateLayoutRoute
-  PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
-  PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
-  PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
+  PrivateDashboardRoute: typeof PrivateDashboardRoute;
+  PrivateLayoutRoute: typeof PrivateLayoutRoute;
+  PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute;
+  PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute;
+  PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute;
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
@@ -141,94 +167,110 @@ const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
   PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
-}
+};
 
 const PrivateRouteWithChildren =
-  PrivateRoute._addFileChildren(PrivateRouteChildren)
+  PrivateRoute._addFileChildren(PrivateRouteChildren);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '': typeof PrivateRouteWithChildren
-  '/dashboard': typeof PrivateDashboardRoute
-  '/layout': typeof PrivateLayoutRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/invitations': typeof PrivateInvitationsIndexRoute
-  '/species': typeof PrivateSpeciesIndexRoute
-  '/trips': typeof PrivateTripsIndexRoute
+  "/": typeof IndexRoute;
+  "": typeof PrivateRouteWithChildren;
+  "/dashboard": typeof PrivateDashboardRoute;
+  "/layout": typeof PrivateLayoutRoute;
+  "/auth/confirm-signup": typeof AuthConfirmSignupRoute;
+  "/auth/login": typeof AuthLoginRoute;
+  "/auth/set-password": typeof AuthSetPasswordRoute;
+  "/invitations": typeof PrivateInvitationsIndexRoute;
+  "/species": typeof PrivateSpeciesIndexRoute;
+  "/trips": typeof PrivateTripsIndexRoute;
 }
 
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '': typeof PrivateRouteWithChildren
-  '/dashboard': typeof PrivateDashboardRoute
-  '/layout': typeof PrivateLayoutRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/invitations': typeof PrivateInvitationsIndexRoute
-  '/species': typeof PrivateSpeciesIndexRoute
-  '/trips': typeof PrivateTripsIndexRoute
+  "/": typeof IndexRoute;
+  "": typeof PrivateRouteWithChildren;
+  "/dashboard": typeof PrivateDashboardRoute;
+  "/layout": typeof PrivateLayoutRoute;
+  "/auth/confirm-signup": typeof AuthConfirmSignupRoute;
+  "/auth/login": typeof AuthLoginRoute;
+  "/auth/set-password": typeof AuthSetPasswordRoute;
+  "/invitations": typeof PrivateInvitationsIndexRoute;
+  "/species": typeof PrivateSpeciesIndexRoute;
+  "/trips": typeof PrivateTripsIndexRoute;
 }
 
 export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/_private': typeof PrivateRouteWithChildren
-  '/_private/dashboard': typeof PrivateDashboardRoute
-  '/_private/layout': typeof PrivateLayoutRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/_private/invitations/': typeof PrivateInvitationsIndexRoute
-  '/_private/species/': typeof PrivateSpeciesIndexRoute
-  '/_private/trips/': typeof PrivateTripsIndexRoute
+  __root__: typeof rootRoute;
+  "/": typeof IndexRoute;
+  "/_private": typeof PrivateRouteWithChildren;
+  "/_private/dashboard": typeof PrivateDashboardRoute;
+  "/_private/layout": typeof PrivateLayoutRoute;
+  "/auth/confirm-signup": typeof AuthConfirmSignupRoute;
+  "/auth/login": typeof AuthLoginRoute;
+  "/auth/set-password": typeof AuthSetPasswordRoute;
+  "/_private/invitations/": typeof PrivateInvitationsIndexRoute;
+  "/_private/species/": typeof PrivateSpeciesIndexRoute;
+  "/_private/trips/": typeof PrivateTripsIndexRoute;
 }
 
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
-    | '/'
-    | ''
-    | '/dashboard'
-    | '/layout'
-    | '/auth/login'
-    | '/invitations'
-    | '/species'
-    | '/trips'
-  fileRoutesByTo: FileRoutesByTo
+    | "/"
+    | ""
+    | "/dashboard"
+    | "/layout"
+    | "/auth/confirm-signup"
+    | "/auth/login"
+    | "/auth/set-password"
+    | "/invitations"
+    | "/species"
+    | "/trips";
+  fileRoutesByTo: FileRoutesByTo;
   to:
-    | '/'
-    | ''
-    | '/dashboard'
-    | '/layout'
-    | '/auth/login'
-    | '/invitations'
-    | '/species'
-    | '/trips'
+    | "/"
+    | ""
+    | "/dashboard"
+    | "/layout"
+    | "/auth/confirm-signup"
+    | "/auth/login"
+    | "/auth/set-password"
+    | "/invitations"
+    | "/species"
+    | "/trips";
   id:
-    | '__root__'
-    | '/'
-    | '/_private'
-    | '/_private/dashboard'
-    | '/_private/layout'
-    | '/auth/login'
-    | '/_private/invitations/'
-    | '/_private/species/'
-    | '/_private/trips/'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/"
+    | "/_private"
+    | "/_private/dashboard"
+    | "/_private/layout"
+    | "/auth/confirm-signup"
+    | "/auth/login"
+    | "/auth/set-password"
+    | "/_private/invitations/"
+    | "/_private/species/"
+    | "/_private/trips/";
+  fileRoutesById: FileRoutesById;
 }
 
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  PrivateRoute: typeof PrivateRouteWithChildren
-  AuthLoginRoute: typeof AuthLoginRoute
+  IndexRoute: typeof IndexRoute;
+  PrivateRoute: typeof PrivateRouteWithChildren;
+  AuthConfirmSignupRoute: typeof AuthConfirmSignupRoute;
+  AuthLoginRoute: typeof AuthLoginRoute;
+  AuthSetPasswordRoute: typeof AuthSetPasswordRoute;
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PrivateRoute: PrivateRouteWithChildren,
+  AuthConfirmSignupRoute: AuthConfirmSignupRoute,
   AuthLoginRoute: AuthLoginRoute,
-}
+  AuthSetPasswordRoute: AuthSetPasswordRoute,
+};
 
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
 /* prettier-ignore-end */
 
@@ -240,7 +282,9 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/_private",
-        "/auth/login"
+        "/auth/confirm-signup",
+        "/auth/login",
+        "/auth/set-password"
       ]
     },
     "/": {
@@ -264,8 +308,14 @@ export const routeTree = rootRoute
       "filePath": "_private/layout.tsx",
       "parent": "/_private"
     },
+    "/auth/confirm-signup": {
+      "filePath": "auth/confirm-signup.tsx"
+    },
     "/auth/login": {
       "filePath": "auth/login.tsx"
+    },
+    "/auth/set-password": {
+      "filePath": "auth/set-password.tsx"
     },
     "/_private/invitations/": {
       "filePath": "_private/invitations/index.tsx",

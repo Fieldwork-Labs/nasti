@@ -4,7 +4,7 @@
 
 :root {
   --background: 124 100% 95%;
-  --secondary-background: 124 60% 96%;
+  --background-secondary: 124 60% 96%;
   --foreground: 124 5% 10%;
   --card: 124 50% 90%;
   --card-foreground: 124 5% 15%;
@@ -27,7 +27,7 @@
 }
 .dark {
   --background: 124 50% 10%;
-  --secondary-background: 124 40% 15%;
+  --background-secondary: 124 40% 15%;
   --foreground: 124 5% 90%;
   --card: 124 50% 10%;
   --card-foreground: 124 5% 90%;

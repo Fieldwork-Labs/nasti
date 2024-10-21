@@ -1,119 +1,106 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router";
 
-import { useNavigate } from "@tanstack/react-router"
-import { supabase } from "@/lib/supabase"
-import useUserStore from "@/store/userStore"
-import { useForm } from "@tanstack/react-form"
+import { useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/lib/supabase";
+import useUserStore from "@/store/userStore";
+import { useForm } from "react-hook-form";
 
-import { toast } from "react-toastify"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
+
+type FormData = {
+  email: string;
+  password: string;
+};
 
 const LoginForm = () => {
-  const navigate = useNavigate()
-  const { setUser, setSession } = useUserStore()
+  const navigate = useNavigate();
+  const { setUser, setSession } = useUserStore();
+  const { toast } = useToast();
 
-  const form = useForm({
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+  const {
+    register,
+    handleSubmit,
+    formState: { isValid, isSubmitting },
+  } = useForm<FormData>({ mode: "all" });
 
-    onSubmit: async ({ value }) => {
+  const onSubmit = useCallback(
+    async (values: FormData) => {
       // Do something with form data
-      console.log(value)
-      const { email, password } = value
+      const { email, password } = values;
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
 
       if (error) {
-        toast.error(error.message)
+        console.log({ error });
+        toast({ description: error.message, variant: "destructive" });
       } else {
-        setSession(data.session)
-        setUser(data.user)
+        setSession(data.session);
+        setUser(data.user);
 
-        toast.success("Logged in successfully!")
-        navigate({ to: "/dashboard" })
+        toast({ description: "Logged in successfully!" });
+        navigate({ to: "/dashboard" });
       }
     },
-  })
+    [setSession, setUser, navigate, toast],
+  );
 
   return (
     <div className="flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
+      <div className="max-w-md w-full bg-background-secondary p-8 rounded-lg shadow-md dark:shadow-background-secondary">
         <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">
           Login to NASTI
         </h2>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            form.handleSubmit()
-          }}
-          className="space-y-6"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Email Input */}
-          <form.Field
-            name="email"
-            children={(field) => (
-              <div>
-                <Label htmlFor={field.name}>Email Address</Label>
-                <Input
-                  type="email"
-                  id="email"
-                  required
-                  autoComplete="email"
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="you@example.com"
-                />
-              </div>
-            )}
-          />
+          <div>
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              type="email"
+              id="email"
+              required
+              autoComplete="email"
+              {...register("email")}
+              placeholder="you@example.com"
+            />
+          </div>
 
           {/* Password Input */}
-          <form.Field
-            name="password"
-            children={(field) => (
-              <div>
-                <Label htmlFor={field.name}>Password</Label>
-                <Input
-                  type="password"
-                  id="password"
-                  required
-                  autoComplete="current-password"
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="••••••••"
-                />
-              </div>
-            )}
-          />
+
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input
+              type="password"
+              id="password"
+              required
+              autoComplete="current-password"
+              {...register("password")}
+              placeholder="••••••••"
+            />
+          </div>
 
           {/* Submit Button */}
           <div>
             <Button
               type="submit"
-              disabled={form.state.isSubmitting || !form.state.isValid}
+              disabled={isSubmitting || !isValid}
               className="w-full"
             >
-              {form.state.isSubmitting ? "Logging in..." : "Login"}
+              {isSubmitting ? "Logging in..." : "Login"}
             </Button>
           </div>
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export const Route = createFileRoute("/auth/login")({
   component: LoginForm,
-})
+});

@@ -1,0 +1,11 @@
+<h2>You have been invited to join NASTI</h2>
+
+<p>You have been invited to create a user on {{ .SiteURL }}.</p>
+<p>Follow this link to accept the invite:</p>
+<p>
+  <a
+    href="{{ .SiteURL }}/auth/confirm-signup?confirmation_url={{ .ConfirmationURL }}"
+  >
+    Accept the invitation
+  </a>
+</p>

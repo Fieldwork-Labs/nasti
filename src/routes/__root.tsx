@@ -1,22 +1,29 @@
-import logo from "@/assets/logo.svg"
-import { ButtonLink } from "@/components/ui/buttonLink"
-import { useTheme } from "@/contexts/theme"
-import { supabase } from "@/lib/supabase"
-import useUserStore from "@/store/userStore"
-import { User } from "@supabase/supabase-js"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import logo from "@/assets/logo.svg";
+import { ButtonLink } from "@/components/ui/buttonLink";
+import { useTheme } from "@/contexts/theme";
+import { supabase } from "@/lib/supabase";
+import useUserStore from "@/store/userStore";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User } from "@supabase/supabase-js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
   Link,
   Outlet,
-} from "@tanstack/react-router"
-import { Moon, Sun } from "lucide-react"
-import React, { useEffect } from "react"
-import { ToastContainer } from "react-toastify"
+  useNavigate,
+} from "@tanstack/react-router";
+import { Moon, Sun, User as UserIcon } from "lucide-react";
+import React, { useCallback, useEffect } from "react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/toaster";
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 const TanStackRouterDevtools = import.meta.env.DEV
   ? React.lazy(() =>
@@ -25,12 +32,12 @@ const TanStackRouterDevtools = import.meta.env.DEV
         default: res.TanStackRouterDevtools,
         // For Embedded Mode
         // default: res.TanStackRouterDevtoolsPanel
-      }))
+      })),
     )
-  : () => null // Render nothing in production
+  : () => null; // Render nothing in production
 
 const ThemeToggle = () => {
-  const { setTheme, theme } = useTheme()
+  const { setTheme, theme } = useTheme();
 
   return (
     <Button
@@ -42,25 +49,48 @@ const ThemeToggle = () => {
       <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
       <span className="sr-only">Toggle theme</span>
     </Button>
-  )
-}
+  );
+};
+
+const UserMenu = () => {
+  const { logout } = useUserStore();
+  const navigate = useNavigate();
+
+  const handleSignout = useCallback(async () => {
+    await logout();
+    navigate({ to: "/auth/login" });
+  }, [logout, navigate]);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button size="icon">
+          <UserIcon className="h-[1.2rem] w-[1.2rem]" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleSignout}>Logout</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 const RootComponent = () => {
-  const { getUser, getSession } = useUserStore()
+  const { getUser, getSession, session } = useUserStore();
 
   useEffect(() => {
     // Fetch user on app load
-    getUser()
+    getUser();
 
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      getSession()
-    })
+      getSession();
+    });
 
     return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, [getUser, getSession])
+      authListener.subscription.unsubscribe();
+    };
+  }, [getUser, getSession]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -75,7 +105,8 @@ const RootComponent = () => {
               {/* Right side - User Menu */}
               <div className="flex items-center gap-4">
                 <ThemeToggle />
-                <ButtonLink to="/auth/login">Login</ButtonLink>
+                {!session && <ButtonLink to="/auth/login">Login</ButtonLink>}
+                {session && <UserMenu />}
               </div>
             </div>
           </div>
@@ -98,12 +129,12 @@ const RootComponent = () => {
             </p>
           </div>
         </footer>
-        <ToastContainer />
+        <Toaster />
       </div>
     </QueryClientProvider>
-  )
-}
+  );
+};
 
 export const Route = createRootRouteWithContext<{ user: User | null }>()({
   component: RootComponent,
-})
+});
