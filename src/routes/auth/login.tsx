@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, Link } from "@tanstack/react-router"
 import { supabase } from "@/lib/supabase"
 import useUserStore from "@/store/userStore"
 import { useForm } from "react-hook-form"
@@ -18,7 +18,8 @@ type FormData = {
 
 const LoginForm = () => {
   const navigate = useNavigate()
-  const { setUser, setSession } = useUserStore()
+  const { setUser, setSession, session } = useUserStore()
+
   const { toast } = useToast()
 
   const {
@@ -51,7 +52,18 @@ const LoginForm = () => {
     [setSession, setUser, navigate, toast],
   )
 
-  return (
+  return session ? (
+    <div className="flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md  text-center">
+        <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700">
+          You're already logged in
+        </h2>
+        <Link className="underline" to="/dashboard">
+          Go to dashboard
+        </Link>
+      </div>
+    </div>
+  ) : (
     <div className="flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
         <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">

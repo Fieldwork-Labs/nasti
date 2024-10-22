@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User } from "@supabase/supabase-js"
+import { Session } from "@supabase/supabase-js"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   createRootRouteWithContext,
@@ -83,7 +83,8 @@ const RootComponent = () => {
     getUser()
 
     // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      console.log({ authChangeEvent: event })
       getSession()
     })
 
@@ -114,7 +115,7 @@ const RootComponent = () => {
 
         {/* Main Content */}
         <main className="flex-grow">
-          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <Outlet />
             <TanStackRouterDevtools />
           </div>
@@ -135,6 +136,9 @@ const RootComponent = () => {
   )
 }
 
-export const Route = createRootRouteWithContext<{ user: User | null }>()({
+export const Route = createRootRouteWithContext<{
+  session: Session | null
+  getSession: () => Promise<Session | null>
+}>()({
   component: RootComponent,
 })

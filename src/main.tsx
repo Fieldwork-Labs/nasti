@@ -20,7 +20,8 @@ const router = createRouter({
     </div>
   ),
   context: {
-    user: null,
+    session: null,
+    getSession: () => Promise.resolve(null),
   },
 })
 
@@ -32,10 +33,10 @@ declare module "@tanstack/react-router" {
 }
 
 const App = () => {
-  const { user } = useUserStore()
+  const { session, getSession } = useUserStore()
   return (
     <ThemeProvider>
-      <RouterProvider router={router} context={{ user }} />
+      <RouterProvider router={router} context={{ session, getSession }} />
     </ThemeProvider>
   )
 }

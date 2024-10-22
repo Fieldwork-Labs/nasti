@@ -5,4 +5,4 @@ type Table<T extends keyof Database["public"]["Tables"]> =
 
 export type Organisation = Table<"organisation">
 
-export type Role = "admin" | "member"
+export type Role = "Admin" | "Member" | "Owner"

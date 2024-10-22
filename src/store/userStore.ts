@@ -13,7 +13,7 @@ type UserState = {
   setOrgId: (orgId: string) => void
   setRole: (role: Role) => void
   getUser: () => Promise<void>
-  getSession: () => Promise<void>
+  getSession: () => Promise<Session | null>
   logout: () => Promise<void>
 }
 
@@ -56,6 +56,7 @@ const useUserStore = create<UserState>((set) => ({
     if (session) {
       set({ session })
     }
+    return session
   },
   logout: async () => {
     await supabase.auth.signOut()

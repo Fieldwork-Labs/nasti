@@ -73,7 +73,7 @@ const InvitationsList = () => {
   )
 
   // Ensure the user is an admin
-  if (role !== "admin") {
+  if (role !== "Admin" && role !== "Owner") {
     return (
       <div className="p-4 text-center">
         <p className="text-red-500">
@@ -100,7 +100,7 @@ const InvitationsList = () => {
   }
 
   return (
-    <div className="p-4">
+    <div>
       <h2 className="text-2xl font-semibold mb-4">Invitations</h2>
       {!data || data.length === 0 ? (
         <p>No invitations found.</p>
