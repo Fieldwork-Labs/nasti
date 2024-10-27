@@ -52,63 +52,63 @@ const LoginForm = () => {
     [setSession, setUser, navigate, toast],
   )
 
-  return session ? (
-    <div className="flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md  text-center">
-        <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700">
-          You're already logged in
-        </h2>
-        <Link className="underline" to="/dashboard">
-          Go to dashboard
-        </Link>
-      </div>
-    </div>
-  ) : (
-    <div className="flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">
-          Login to NASTI
-        </h2>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Email Input */}
-          <div>
-            <Label htmlFor="email">Email Address</Label>
-            <Input
-              type="email"
-              id="email"
-              required
-              autoComplete="email"
-              {...register("email")}
-              placeholder="you@example.com"
-            />
-          </div>
+  return (
+    <div className="flex items-center justify-center px-4 mt-6">
+      {session ? (
+        <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md  text-center">
+          <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700">
+            You're already logged in
+          </h2>
+          <Link className="underline" to="/dashboard">
+            Go to dashboard
+          </Link>
+        </div>
+      ) : (
+        <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">
+            Login to NASTI
+          </h2>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Email Input */}
+            <div>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                type="email"
+                id="email"
+                required
+                autoComplete="email"
+                {...register("email")}
+                placeholder="you@example.com"
+              />
+            </div>
 
-          {/* Password Input */}
+            {/* Password Input */}
 
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              type="password"
-              id="password"
-              required
-              autoComplete="current-password"
-              {...register("password")}
-              placeholder="••••••••"
-            />
-          </div>
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                type="password"
+                id="password"
+                required
+                autoComplete="current-password"
+                {...register("password")}
+                placeholder="••••••••"
+              />
+            </div>
 
-          {/* Submit Button */}
-          <div>
-            <Button
-              type="submit"
-              disabled={isSubmitting || !isValid}
-              className="w-full"
-            >
-              {isSubmitting ? "Logging in..." : "Login"}
-            </Button>
-          </div>
-        </form>
-      </div>
+            {/* Submit Button */}
+            <div>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !isValid}
+                className="w-full"
+              >
+                {isSubmitting ? "Logging in..." : "Login"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

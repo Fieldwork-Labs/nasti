@@ -126,6 +126,7 @@ export type Database = {
           expires_at: string | null
           id: string
           invited_by: string
+          name: string | null
           organisation_id: string
           token: string
         }
@@ -136,6 +137,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           invited_by: string
+          name?: string | null
           organisation_id: string
           token?: string
         }
@@ -146,6 +148,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           invited_by?: string
+          name?: string | null
           organisation_id?: string
           token?: string
         }
@@ -171,21 +174,21 @@ export type Database = {
           id: string
           joined_at: string | null
           organisation_id: string
-          role: string | null
+          role: Database["public"]["Enums"]["Organisation User Types"]
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
           organisation_id: string
-          role?: string | null
+          role?: Database["public"]["Enums"]["Organisation User Types"]
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
           organisation_id?: string
-          role?: string | null
+          role?: Database["public"]["Enums"]["Organisation User Types"]
           user_id?: string
         }
         Relationships: [
@@ -1231,6 +1234,10 @@ export type Database = {
         Args: {
           "": number
         }
+        Returns: string
+      }
+      get_user_organisation_id: {
+        Args: Record<PropertyKey, never>
         Returns: string
       }
       gettransactionid: {
@@ -3462,7 +3469,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      "Organisation User Types": "Owner" | "Admin" | "Member"
     }
     CompositeTypes: {
       geometry_dump: {

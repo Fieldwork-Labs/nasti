@@ -42,6 +42,7 @@ const useUserStore = create<UserState>((set) => ({
       if (orgError) {
         console.error("Error fetching organization:", orgError)
       } else {
+        console.log({ orgData })
         set({
           orgId: orgData.organisation_id,
           role: orgData.role as Role | null,

@@ -1,27 +1,50 @@
-import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router"
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router"
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu"
+
+const Nav = () => {
+  const router = useRouterState()
+  return (
+    <NavigationMenu className="h-10">
+      <NavigationMenuList>
+        <NavigationMenuItem>
+          <NavigationMenuLink
+            asChild
+            className={navigationMenuTriggerStyle()}
+            active={router.location.pathname === "/dashboard"}
+          >
+            <Link href="/dashboard">Dashboard</Link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuLink
+            asChild
+            className={navigationMenuTriggerStyle()}
+            active={router.location.pathname === "/invitations"}
+          >
+            <Link href="/invitations">Invitations</Link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+      </NavigationMenuList>
+    </NavigationMenu>
+  )
+}
 
 function AuthLayout() {
   return (
-    <div className="p-2 h-full">
-      <ul className="py-2 flex gap-2">
-        <li>
-          <Link
-            to="/dashboard"
-            className="hover:underline data-[status='active']:text-secondary-foreground text-muted-foreground"
-          >
-            Dashboard
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/invitations"
-            className="hover:underline data-[status='active']:text-secondary-foreground text-muted-foreground"
-          >
-            Invitations
-          </Link>
-        </li>
-      </ul>
-      <hr />
+    <div className="p-2 h-full flex flex-col gap-2">
+      <Nav />
       <Outlet />
     </div>
   )

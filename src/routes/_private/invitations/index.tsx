@@ -4,6 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { createFileRoute } from "@tanstack/react-router"
 import { useToast } from "@/hooks/use-toast"
+import { Button } from "@/components/ui/button"
+import { PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { ButtonLink } from "@/components/ui/buttonLink"
 
 const InvitationsList = () => {
   const { orgId, role } = useUserStore()
@@ -17,14 +21,14 @@ const InvitationsList = () => {
       if (!orgId) {
         throw new Error("Organisation not found")
       }
-      const { data, error } = await supabase
+      const { data: invitations, error } = await supabase
         .from("invitation")
         .select("*")
         .eq("organisation_id", orgId)
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
-      return data
+      return invitations
     },
     enabled: Boolean(orgId), // Only run if org
   })
@@ -73,7 +77,8 @@ const InvitationsList = () => {
   )
 
   // Ensure the user is an admin
-  if (role !== "Admin" && role !== "Owner") {
+  if (role !== "Admin") {
+    console.log("not admin", { role })
     return (
       <div className="p-4 text-center">
         <p className="text-red-500">
@@ -101,16 +106,20 @@ const InvitationsList = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold mb-4">Invitations</h2>
+      <div className="flex justify-between">
+        <h2 className="text-2xl font-semibold mb-4">Invitations</h2>
+        <ButtonLink to="/invitations/new" className="flex gap-1">
+          <PlusIcon aria-label="New Invitation" size={16} /> <span>New</span>
+        </ButtonLink>
+      </div>
       {!data || data.length === 0 ? (
         <p>No invitations found.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-            <thead className="bg-gray-200">
+          <table className="min-w-full rounded-lg overflow-hidden">
+            <thead className="">
               <tr>
                 <th className="py-2 px-4 text-left">Email</th>
-                <th className="py-2 px-4 text-left">Invited By</th>
                 <th className="py-2 px-4 text-left">Created At</th>
                 <th className="py-2 px-4 text-left">Expires At</th>
                 <th className="py-2 px-4 text-left">Actions</th>
@@ -121,31 +130,36 @@ const InvitationsList = () => {
                 <tr key={invitation.id} className="border-t">
                   <td className="py-2 px-4">{invitation.email}</td>
                   <td className="py-2 px-4">
-                    {invitation.invited_by
-                      ? invitation.invited_by // You might want to join with users table to get the inviter's name
-                      : "N/A"}
-                  </td>
-                  <td className="py-2 px-4">
                     {new Date(invitation.created_at).toLocaleDateString()}
                   </td>
-                  <td className="py-2 px-4">
+                  <td
+                    className={cn(
+                      "py-2 px-4",
+                      invitation.expires_at &&
+                        new Date(invitation.expires_at) < new Date()
+                        ? "text-red-500"
+                        : "",
+                    )}
+                  >
                     {invitation.expires_at
                       ? new Date(invitation.expires_at).toLocaleDateString()
                       : "Never"}
                   </td>
-                  <td className="py-2 px-4">
-                    <button
+                  <td className="py-2 px-4 flex gap-2">
+                    <Button
+                      size="icon"
                       onClick={() => handleResend(invitation.id)}
-                      className="text-blue-500 hover:underline mr-2"
+                      title="Resend"
                     >
-                      Resend
-                    </button>
-                    <button
+                      <RefreshCwIcon aria-label="Resend" size={16} />
+                    </Button>
+                    <Button
+                      size="icon"
                       onClick={() => handleDelete(invitation.id)}
-                      className="text-red-500 hover:underline"
+                      title="Delete"
                     >
-                      Delete
-                    </button>
+                      <TrashIcon aria-label="Delete" size={16} />
+                    </Button>
                   </td>
                 </tr>
               ))}
