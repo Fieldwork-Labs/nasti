@@ -12,6 +12,7 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
+import { Suspense } from "react"
 
 const Nav = () => {
   const router = useRouterState()
@@ -52,7 +53,6 @@ function AuthLayout() {
 
 export const Route = createFileRoute("/_private")({
   beforeLoad: async ({ context, location }) => {
-    console.log({ context })
     if (!context.session) {
       const session = await context.getSession()
       if (!session)
@@ -64,5 +64,9 @@ export const Route = createFileRoute("/_private")({
         })
     }
   },
-  component: AuthLayout,
+  component: () => (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthLayout />
+    </Suspense>
+  ),
 })

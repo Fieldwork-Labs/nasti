@@ -18,7 +18,7 @@ type FormData = {
 
 const LoginForm = () => {
   const navigate = useNavigate()
-  const { setUser, setSession, session } = useUserStore()
+  const { getUser, setSession, session } = useUserStore()
 
   const { toast } = useToast()
 
@@ -43,17 +43,17 @@ const LoginForm = () => {
         toast({ description: error.message, variant: "destructive" })
       } else {
         setSession(data.session)
-        setUser(data.user)
+        getUser()
 
         toast({ description: "Logged in successfully!" })
         navigate({ to: "/dashboard" })
       }
     },
-    [setSession, setUser, navigate, toast],
+    [setSession, getUser, navigate, toast],
   )
 
   return (
-    <div className="flex items-center justify-center px-4 mt-6">
+    <div className="flex items-center justify-center px-4 mt-2">
       {session ? (
         <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md  text-center">
           <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700">

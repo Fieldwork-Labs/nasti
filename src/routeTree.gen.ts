@@ -13,6 +13,7 @@
 import { Route as rootRoute } from "./routes/__root"
 import { Route as PrivateImport } from "./routes/_private"
 import { Route as IndexImport } from "./routes/index"
+import { Route as InvitationsAcceptImport } from "./routes/invitations.accept"
 import { Route as AuthSetPasswordImport } from "./routes/auth/set-password"
 import { Route as AuthLoginImport } from "./routes/auth/login"
 import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
@@ -32,6 +33,11 @@ const PrivateRoute = PrivateImport.update({
 
 const IndexRoute = IndexImport.update({
   path: "/",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const InvitationsAcceptRoute = InvitationsAcceptImport.update({
+  path: "/invitations/accept",
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -133,6 +139,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AuthSetPasswordImport
       parentRoute: typeof rootRoute
     }
+    "/invitations/accept": {
+      id: "/invitations/accept"
+      path: "/invitations/accept"
+      fullPath: "/invitations/accept"
+      preLoaderRoute: typeof InvitationsAcceptImport
+      parentRoute: typeof rootRoute
+    }
     "/_private/invitations/new": {
       id: "/_private/invitations/new"
       path: "/invitations/new"
@@ -195,6 +208,7 @@ export interface FileRoutesByFullPath {
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/set-password": typeof AuthSetPasswordRoute
+  "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
@@ -209,6 +223,7 @@ export interface FileRoutesByTo {
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/set-password": typeof AuthSetPasswordRoute
+  "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
@@ -224,6 +239,7 @@ export interface FileRoutesById {
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/set-password": typeof AuthSetPasswordRoute
+  "/invitations/accept": typeof InvitationsAcceptRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
   "/_private/invitations/": typeof PrivateInvitationsIndexRoute
   "/_private/species/": typeof PrivateSpeciesIndexRoute
@@ -240,6 +256,7 @@ export interface FileRouteTypes {
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/set-password"
+    | "/invitations/accept"
     | "/invitations/new"
     | "/invitations"
     | "/species"
@@ -253,6 +270,7 @@ export interface FileRouteTypes {
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/set-password"
+    | "/invitations/accept"
     | "/invitations/new"
     | "/invitations"
     | "/species"
@@ -266,6 +284,7 @@ export interface FileRouteTypes {
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/set-password"
+    | "/invitations/accept"
     | "/_private/invitations/new"
     | "/_private/invitations/"
     | "/_private/species/"
@@ -279,6 +298,7 @@ export interface RootRouteChildren {
   AuthConfirmSignupRoute: typeof AuthConfirmSignupRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSetPasswordRoute: typeof AuthSetPasswordRoute
+  InvitationsAcceptRoute: typeof InvitationsAcceptRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthConfirmSignupRoute: AuthConfirmSignupRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSetPasswordRoute: AuthSetPasswordRoute,
+  InvitationsAcceptRoute: InvitationsAcceptRoute,
 }
 
 export const routeTree = rootRoute
@@ -305,7 +326,8 @@ export const routeTree = rootRoute
         "/_private",
         "/auth/confirm-signup",
         "/auth/login",
-        "/auth/set-password"
+        "/auth/set-password",
+        "/invitations/accept"
       ]
     },
     "/": {
@@ -338,6 +360,9 @@ export const routeTree = rootRoute
     },
     "/auth/set-password": {
       "filePath": "auth/set-password.tsx"
+    },
+    "/invitations/accept": {
+      "filePath": "invitations.accept.tsx"
     },
     "/_private/invitations/new": {
       "filePath": "_private/invitations/new.tsx",

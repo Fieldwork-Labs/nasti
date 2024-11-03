@@ -23,7 +23,7 @@ export const InvitationForm = () => {
   const handleSend = useCallback(
     async ({ email, name }: InvitationFormData) => {
       const response = await fetch(
-        "http://127.0.0.1:57321/functions/v1/send_invitation",
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send_invitation`,
         {
           method: "POST",
           headers: {

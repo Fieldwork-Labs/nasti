@@ -20,7 +20,7 @@ export type Database = {
           location: unknown | null
           plants_sampled_estimate: number | null
           species_id: string | null
-          species_id_uncertain: boolean | null
+          species_uncertain: boolean | null
           specimen_collected: boolean | null
           trip_id: string | null
           weight_estimate_kg: number | null
@@ -35,7 +35,7 @@ export type Database = {
           location?: unknown | null
           plants_sampled_estimate?: number | null
           species_id?: string | null
-          species_id_uncertain?: boolean | null
+          species_uncertain?: boolean | null
           specimen_collected?: boolean | null
           trip_id?: string | null
           weight_estimate_kg?: number | null
@@ -50,7 +50,7 @@ export type Database = {
           location?: unknown | null
           plants_sampled_estimate?: number | null
           species_id?: string | null
-          species_id_uncertain?: boolean | null
+          species_uncertain?: boolean | null
           specimen_collected?: boolean | null
           trip_id?: string | null
           weight_estimate_kg?: number | null
@@ -123,33 +123,36 @@ export type Database = {
           accepted_at: string | null
           created_at: string
           email: string
-          expires_at: string | null
+          expires_at: string
           id: string
           invited_by: string
           name: string | null
           organisation_id: string
+          organisation_name: string | null
           token: string
         }
         Insert: {
           accepted_at?: string | null
           created_at?: string
           email: string
-          expires_at?: string | null
+          expires_at?: string
           id?: string
           invited_by: string
           name?: string | null
           organisation_id: string
+          organisation_name?: string | null
           token?: string
         }
         Update: {
           accepted_at?: string | null
           created_at?: string
           email?: string
-          expires_at?: string | null
+          expires_at?: string
           id?: string
           invited_by?: string
           name?: string | null
           organisation_id?: string
+          organisation_name?: string | null
           token?: string
         }
         Relationships: [
@@ -174,21 +177,21 @@ export type Database = {
           id: string
           joined_at: string | null
           organisation_id: string
-          role: Database["public"]["Enums"]["Organisation User Types"]
+          role: Database["public"]["Enums"]["org_user_types"]
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
           organisation_id: string
-          role?: Database["public"]["Enums"]["Organisation User Types"]
+          role: Database["public"]["Enums"]["org_user_types"]
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
           organisation_id?: string
-          role?: Database["public"]["Enums"]["Organisation User Types"]
+          role?: Database["public"]["Enums"]["org_user_types"]
           user_id?: string
         }
         Relationships: [
@@ -213,18 +216,29 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          owner_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          owner_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          owner_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organisation_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       spatial_ref_sys: {
         Row: {
@@ -824,6 +838,10 @@ export type Database = {
           geom2: unknown
         }
         Returns: boolean
+      }
+      expire_old_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       geography:
         | {
@@ -3469,6 +3487,7 @@ export type Database = {
       }
     }
     Enums: {
+      org_user_types: "Owner" | "Admin"
       "Organisation User Types": "Owner" | "Admin" | "Member"
     }
     CompositeTypes: {

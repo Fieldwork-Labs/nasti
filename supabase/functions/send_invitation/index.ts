@@ -85,8 +85,16 @@ Deno.serve(async (req) => {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7) // 7 days
 
-    // TODO - check if the email address has already been invited
-    // TODO - check if the email address is already an active user
+    // Check if the email address has already been invited
+    const { data: existingInvitation } = await supabase
+      .from("invitation")
+      .select("id")
+      .eq("email", email)
+      .single()
+
+    if (existingInvitation) {
+      return new Response("Email address already invited", { status: 400 })
+    }
 
     // Insert the invitation into the database
     const { error: insertError } = await supabase.from("invitation").insert([
