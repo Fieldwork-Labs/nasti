@@ -28,7 +28,7 @@ const InvitationsList = () => {
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
-      console.log({ invitations })
+
       return invitations
     },
     enabled: Boolean(orgId), // Only run if org
@@ -37,7 +37,11 @@ const InvitationsList = () => {
   // Handle deletion of an invitation
   const handleDelete = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from("invitation").delete().eq("id", id)
+      const { error, status } = await supabase
+        .from("invitation")
+        .delete()
+        .eq("id", id)
+      console.log({ status, orgId })
       if (error) {
         toast({
           variant: "destructive",

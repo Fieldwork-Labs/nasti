@@ -5,5 +5,12 @@ type Table<T extends keyof Database["public"]["Tables"]> =
 
 export type Organisation = Table<"organisation">
 export type Invitation = Table<"invitation">
+export type Trip = Table<"trip">
 
 export type Role = "Admin" | "Member" | "Owner"
+
+export enum ROLE {
+  ADMIN = "Admin",
+  MEMBER = "Member",
+  OWNER = "Owner",
+}

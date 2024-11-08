@@ -13,9 +13,11 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { Suspense } from "react"
+import useUserStore from "@/store/userStore"
 
 const Nav = () => {
   const router = useRouterState()
+  const { isAdmin } = useUserStore()
   return (
     <NavigationMenu className="h-10">
       <NavigationMenuList>
@@ -28,13 +30,24 @@ const Nav = () => {
             <Link href="/dashboard">Dashboard</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
+        {isAdmin && (
+          <NavigationMenuItem>
+            <NavigationMenuLink
+              asChild
+              className={navigationMenuTriggerStyle()}
+              active={router.location.pathname.startsWith("/invitations")}
+            >
+              <Link href="/invitations">Invitations</Link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+        )}
         <NavigationMenuItem>
           <NavigationMenuLink
             asChild
             className={navigationMenuTriggerStyle()}
-            active={router.location.pathname === "/invitations"}
+            active={router.location.pathname.startsWith("/trips")}
           >
-            <Link href="/invitations">Invitations</Link>
+            <Link href="/trips">Trips</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
       </NavigationMenuList>

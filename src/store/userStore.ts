@@ -1,19 +1,20 @@
 import { create } from "zustand"
 import { supabase } from "../lib/supabase"
 import { Session, User } from "@supabase/supabase-js"
-import { Role } from "../types"
+import { Role, ROLE } from "../types"
 
 type UserState = {
   user: User | null
   session: Session | null
   orgId: string | null
   role: Role | null
+  isAdmin: boolean
   setUser: (user: User) => void
   setSession: (session: Session) => void
   setOrgId: (orgId: string) => void
   setRole: (role: Role) => void
   getUser: () => Promise<void>
-  getSession: (arg: string) => Promise<Session | null>
+  getSession: () => Promise<Session | null>
   logout: () => Promise<void>
 }
 
@@ -22,10 +23,14 @@ const useUserStore = create<UserState>((set) => ({
   session: null,
   orgId: null,
   role: null,
+  isAdmin: false,
   setUser: (user: User) => set({ user }),
   setSession: (session: Session) => set({ session }),
   setOrgId: (orgId: string) => set({ orgId }),
-  setRole: (role: Role) => set({ role }),
+  setRole: (role: Role) => {
+    set({ role })
+    if (role === ROLE.ADMIN || role === ROLE.OWNER) set({ isAdmin: true })
+  },
   getUser: async () => {
     const {
       data: { user },
@@ -42,15 +47,17 @@ const useUserStore = create<UserState>((set) => ({
       if (orgError) {
         console.error("Error fetching organization:", orgError)
       } else {
-        console.log({ orgData })
+        const { role, organisation_id: orgId } = orgData
+
         set({
-          orgId: orgData.organisation_id,
-          role: orgData.role as Role | null,
+          orgId,
+          role,
+          isAdmin: role === ROLE.ADMIN || role === ROLE.OWNER,
         })
       }
     }
   },
-  getSession: async (_: string) => {
+  getSession: async () => {
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -66,6 +73,7 @@ const useUserStore = create<UserState>((set) => ({
       session: null,
       orgId: null,
       role: null,
+      isAdmin: false,
     })
   },
 }))

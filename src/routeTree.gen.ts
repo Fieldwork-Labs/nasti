@@ -22,7 +22,9 @@ import { Route as PrivateDashboardImport } from "./routes/_private/dashboard"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
 import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
+import { Route as PrivateTripsNewImport } from "./routes/_private/trips/new"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
+import { Route as PrivateTripsIdEditImport } from "./routes/_private/trips/$id/edit"
 
 // Create/Update Routes
 
@@ -81,8 +83,18 @@ const PrivateInvitationsIndexRoute = PrivateInvitationsIndexImport.update({
   getParentRoute: () => PrivateRoute,
 } as any)
 
+const PrivateTripsNewRoute = PrivateTripsNewImport.update({
+  path: "/trips/new",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
 const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
   path: "/invitations/new",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateTripsIdEditRoute = PrivateTripsIdEditImport.update({
+  path: "/trips/$id/edit",
   getParentRoute: () => PrivateRoute,
 } as any)
 
@@ -153,6 +165,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateInvitationsNewImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/trips/new": {
+      id: "/_private/trips/new"
+      path: "/trips/new"
+      fullPath: "/trips/new"
+      preLoaderRoute: typeof PrivateTripsNewImport
+      parentRoute: typeof PrivateImport
+    }
     "/_private/invitations/": {
       id: "/_private/invitations/"
       path: "/invitations"
@@ -174,6 +193,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateTripsIndexImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/trips/$id/edit": {
+      id: "/_private/trips/$id/edit"
+      path: "/trips/$id/edit"
+      fullPath: "/trips/$id/edit"
+      preLoaderRoute: typeof PrivateTripsIdEditImport
+      parentRoute: typeof PrivateImport
+    }
   }
 }
 
@@ -183,18 +209,22 @@ interface PrivateRouteChildren {
   PrivateDashboardRoute: typeof PrivateDashboardRoute
   PrivateLayoutRoute: typeof PrivateLayoutRoute
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
+  PrivateTripsNewRoute: typeof PrivateTripsNewRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
   PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
   PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
+  PrivateTripsIdEditRoute: typeof PrivateTripsIdEditRoute
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateDashboardRoute: PrivateDashboardRoute,
   PrivateLayoutRoute: PrivateLayoutRoute,
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
+  PrivateTripsNewRoute: PrivateTripsNewRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
   PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
+  PrivateTripsIdEditRoute: PrivateTripsIdEditRoute,
 }
 
 const PrivateRouteWithChildren =
@@ -210,9 +240,11 @@ export interface FileRoutesByFullPath {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
+  "/trips/new": typeof PrivateTripsNewRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
+  "/trips/$id/edit": typeof PrivateTripsIdEditRoute
 }
 
 export interface FileRoutesByTo {
@@ -225,9 +257,11 @@ export interface FileRoutesByTo {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
+  "/trips/new": typeof PrivateTripsNewRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
+  "/trips/$id/edit": typeof PrivateTripsIdEditRoute
 }
 
 export interface FileRoutesById {
@@ -241,9 +275,11 @@ export interface FileRoutesById {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
+  "/_private/trips/new": typeof PrivateTripsNewRoute
   "/_private/invitations/": typeof PrivateInvitationsIndexRoute
   "/_private/species/": typeof PrivateSpeciesIndexRoute
   "/_private/trips/": typeof PrivateTripsIndexRoute
+  "/_private/trips/$id/edit": typeof PrivateTripsIdEditRoute
 }
 
 export interface FileRouteTypes {
@@ -258,9 +294,11 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/invitations/new"
+    | "/trips/new"
     | "/invitations"
     | "/species"
     | "/trips"
+    | "/trips/$id/edit"
   fileRoutesByTo: FileRoutesByTo
   to:
     | "/"
@@ -272,9 +310,11 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/invitations/new"
+    | "/trips/new"
     | "/invitations"
     | "/species"
     | "/trips"
+    | "/trips/$id/edit"
   id:
     | "__root__"
     | "/"
@@ -286,9 +326,11 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/_private/invitations/new"
+    | "/_private/trips/new"
     | "/_private/invitations/"
     | "/_private/species/"
     | "/_private/trips/"
+    | "/_private/trips/$id/edit"
   fileRoutesById: FileRoutesById
 }
 
@@ -339,9 +381,11 @@ export const routeTree = rootRoute
         "/_private/dashboard",
         "/_private/layout",
         "/_private/invitations/new",
+        "/_private/trips/new",
         "/_private/invitations/",
         "/_private/species/",
-        "/_private/trips/"
+        "/_private/trips/",
+        "/_private/trips/$id/edit"
       ]
     },
     "/_private/dashboard": {
@@ -368,6 +412,10 @@ export const routeTree = rootRoute
       "filePath": "_private/invitations/new.tsx",
       "parent": "/_private"
     },
+    "/_private/trips/new": {
+      "filePath": "_private/trips/new.tsx",
+      "parent": "/_private"
+    },
     "/_private/invitations/": {
       "filePath": "_private/invitations/index.tsx",
       "parent": "/_private"
@@ -378,6 +426,10 @@ export const routeTree = rootRoute
     },
     "/_private/trips/": {
       "filePath": "_private/trips/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/trips/$id/edit": {
+      "filePath": "_private/trips/$id/edit.tsx",
       "parent": "/_private"
     }
   }
