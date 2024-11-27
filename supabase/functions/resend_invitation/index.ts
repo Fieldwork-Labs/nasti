@@ -4,7 +4,6 @@
 
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { serve } from "https://deno.land/x/sift@0.6.0/mod.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!
@@ -12,41 +11,115 @@ const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
-serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 })
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*", // Allow any origin
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Allowed methods
+  "Access-Control-Allow-Headers": "Content-Type, Authorization", // Allowed headers
+  "Access-Control-Max-Age": "86400", // Cache preflight response for 1 day
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    })
   }
 
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: corsHeaders,
+    })
+  }
   const { invitation_id } = await req.json()
 
   if (!invitation_id) {
-    return new Response("Missing invitation_id", { status: 400 })
+    return new Response("Missing invitation_id", {
+      status: 400,
+      headers: corsHeaders,
+    })
   }
 
   // Fetch the invitation
-  const { data: invitation, error } = await supabase
+  const { data: invitations, error } = await supabase
     .from("invitation")
-    .select("*")
+    .select("*, organisation(name)")
     .eq("id", invitation_id)
-    .single()
+    .limit(1)
 
-  if (error || !invitation) {
-    return new Response("Invitation not found", { status: 404 })
+  if (error || !invitations || invitations.length === 0) {
+    console.log({ error, invitation })
+    return new Response("Invitation not found", {
+      status: 404,
+      headers: corsHeaders,
+    })
   }
+  const invitation = invitations[0]
 
-  // Implement your resend logic here, e.g., send an email
-  // For demonstration, we'll just update the `created_at` to extend expiration
+  const newToken = crypto.randomUUID()
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
   const { error: updateError } = await supabase
     .from("invitation")
     .update({
+      token: newToken,
       created_at: new Date(),
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expires_at: expiresAt,
     }) // Extend by 7 days
     .eq("id", invitation_id)
 
   if (updateError) {
-    return new Response("Failed to resend invitation", { status: 500 })
+    console.log({ updateError })
+    return new Response(`Failed to resend invitation: ${updateError}`, {
+      status: 500,
+      headers: corsHeaders,
+    })
   }
 
-  return new Response("Invitation resent successfully", { status: 200 })
+  // Send the invitation email via Mailgun
+  const mailgunDomain = Deno.env.get("MAILGUN_DOMAIN")
+  const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY")
+
+  const invitationLink = `${Deno.env.get("FRONTEND_URL")}/invitations/accept?token=${newToken}`
+
+  const emailBody = `
+    <html>
+      <body>
+        <p>Hi ${invitation.name},</p>
+        <p>You have been invited to join ${invitation.organisation.name} on NASTI. Please click the link below to accept the invitation:</p>
+        <p><a href="${invitationLink}">Accept Invitation</a></p>
+        <p>This link will expire on ${expiresAt.toDateString()}.</p>
+        <p>Regards,<br/>NASTI Team</p>
+      </body>
+    </html>
+  `
+
+  const mailgunResponse = await fetch(
+    `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        from: `NASTI <no-reply@${mailgunDomain}>`,
+        to: invitation.email,
+        subject: "You're Invited to Join NASTI",
+        html: emailBody,
+      }),
+    },
+  )
+
+  if (!mailgunResponse.ok) {
+    console.error("Mailgun error:", await mailgunResponse.text())
+    return new Response("Failed to send invitation email", {
+      status: 500,
+    })
+  }
+
+  return new Response("Invitation resent successfully", {
+    status: 200,
+    headers: corsHeaders,
+  })
 })

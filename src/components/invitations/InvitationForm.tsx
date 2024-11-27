@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { FormField } from "../ui/formField"
 import { Button } from "../ui/button"
 import useUserStore from "@/store/userStore"
+import { useNavigate } from "@tanstack/react-router"
 
 type InvitationFormData = {
   name: Invitation["name"]
@@ -18,6 +19,7 @@ export const InvitationForm = () => {
     formState: { isValid, isSubmitting, errors },
   } = useForm<InvitationFormData>({ mode: "all" })
   const { session } = useUserStore()
+  const navigate = useNavigate()
 
   const { toast } = useToast()
   const handleSend = useCallback(
@@ -35,14 +37,19 @@ export const InvitationForm = () => {
       )
       console.log({ response })
       if (!response.ok) {
-        console.log(await response.text())
+        const text = await response.text()
         toast({
           variant: "destructive",
-          description: "Failed to send invitation",
+          description: `Failed to send invitation: ${text}`,
         })
+      } else {
+        toast({
+          description: "Successfully sent invitation",
+        })
+        navigate({ to: "/invitations" })
       }
     },
-    [session?.access_token, toast],
+    [session?.access_token, toast, navigate],
   )
 
   return (

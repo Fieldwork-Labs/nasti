@@ -41,7 +41,7 @@ const InvitationsList = () => {
         .from("invitation")
         .delete()
         .eq("id", id)
-      console.log({ status, orgId })
+      console.log({ status, orgId, id, error })
       if (error) {
         toast({
           variant: "destructive",
@@ -58,13 +58,16 @@ const InvitationsList = () => {
   // Handle resending an invitation
   const handleResend = useCallback(
     async (id: string) => {
-      const response = await fetch("/api/resend_invitation", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resend_invitation`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ invitation_id: id }),
         },
-        body: JSON.stringify({ invitation_id: id }),
-      })
+      )
 
       if (response.ok) {
         toast({ description: "Invitation resent successfully." })

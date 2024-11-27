@@ -18,29 +18,37 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 */
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*", // Allow any origin
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Allowed methods
+  "Access-Control-Allow-Headers": "Content-Type, Authorization", // Allowed headers
+  "Access-Control-Max-Age": "86400", // Cache preflight response for 1 day
+}
+
 // Define the request handler
 Deno.serve(async (req) => {
   try {
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: {
-          "Access-Control-Allow-Origin": "*", // Allow any origin
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Allowed methods
-          "Access-Control-Allow-Headers": "Content-Type, Authorization", // Allowed headers
-          "Access-Control-Max-Age": "86400", // Cache preflight response for 1 day
-        },
+        headers: corsHeaders,
       })
     }
 
     if (req.method !== "POST") {
-      return new Response("Method Not Allowed", { status: 405 })
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: corsHeaders,
+      })
     }
     // Parse the JSON body
     const { email, name } = await req.json()
 
     if (!email || !name) {
-      return new Response("Missing email or name", { status: 400 })
+      return new Response("Missing email or name", {
+        status: 400,
+        headers: corsHeaders,
+      })
     }
 
     // Initialize Supabase client with service role key
@@ -52,7 +60,7 @@ Deno.serve(async (req) => {
     // Check if the requester is an admin of the organisation
     const authHeader = req.headers.get("Authorization")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response("Unauthorized", { status: 401 })
+      return new Response("Unauthorized", { status: 401, headers: corsHeaders })
     }
 
     const token = authHeader.split("Bearer ")[1]
@@ -62,7 +70,10 @@ Deno.serve(async (req) => {
       await supabase.auth.getUser(token)
 
     if (userError || !userData.user) {
-      return new Response("Invalid or expired token", { status: 401 })
+      return new Response("Invalid or expired token", {
+        status: 401,
+        headers: corsHeaders,
+      })
     }
 
     const userId = userData.user.id
@@ -75,7 +86,10 @@ Deno.serve(async (req) => {
       .single()
 
     if (orgUserError || !orgUser || orgUser.role !== "Admin") {
-      return new Response("Forbidden: Requires admin role", { status: 403 })
+      return new Response("Forbidden: Requires admin role", {
+        status: 403,
+        headers: corsHeaders,
+      })
     }
 
     // Generate a unique invitation token
@@ -88,12 +102,16 @@ Deno.serve(async (req) => {
     // Check if the email address has already been invited
     const { data: existingInvitation } = await supabase
       .from("invitation")
-      .select("id")
+      .select()
       .eq("email", email)
-      .single()
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
 
-    if (existingInvitation) {
-      return new Response("Email address already invited", { status: 400 })
+    if (existingInvitation && existingInvitation.length > 0) {
+      return new Response("Email address already invited", {
+        status: 400,
+        headers: corsHeaders,
+      })
     }
 
     // Insert the invitation into the database
@@ -112,7 +130,10 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error("Database insert error:", insertError)
-      return new Response("Failed to create invitation", { status: 500 })
+      return new Response("Failed to create invitation", {
+        status: 500,
+        headers: corsHeaders,
+      })
     }
 
     // Send the invitation email via Mailgun
@@ -152,12 +173,21 @@ Deno.serve(async (req) => {
 
     if (!mailgunResponse.ok) {
       console.error("Mailgun error:", await mailgunResponse.text())
-      return new Response("Failed to send invitation email", { status: 500 })
+      return new Response("Failed to send invitation email", {
+        status: 500,
+        headers: corsHeaders,
+      })
     }
 
-    return new Response("Invitation sent successfully", { status: 200 })
+    return new Response("Invitation sent successfully", {
+      status: 200,
+      headers: corsHeaders,
+    })
   } catch (error) {
     console.error("Unexpected error:", error)
-    return new Response("Internal Server Error", { status: 500 })
+    return new Response("Internal Server Error", {
+      status: 500,
+      headers: corsHeaders,
+    })
   }
 })

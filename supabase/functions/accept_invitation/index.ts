@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
         email,
         password,
         email_confirm: true,
+        user_metadata: { name: invitation.name },
       })
 
     if (authError) {
@@ -118,6 +119,24 @@ Deno.serve(async (req) => {
         },
       )
     }
+
+    // // create user profile for new user
+    // const { error: profileError } = await supabaseClient
+    //   .from("profile")
+    //   .insert({
+    //     user_id: authData.user.id,
+    //     name: invitation.name,
+    //   })
+    // if (profileError) {
+    //   return new Response(
+    //     JSON.stringify({ error: "Failed to create profile" }),
+    //     {
+    //       status: 500,
+    //       headers: { ...corsHeaders, "Content-Type": "application/json" },
+    //     }
+    //   )
+    // }
+
     // Mark invitation as accepted
     const { error: updateError } = await supabaseClient
       .from("invitation")
