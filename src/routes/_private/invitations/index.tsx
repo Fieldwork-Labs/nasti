@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
@@ -8,6 +8,16 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ButtonLink } from "@/components/ui/buttonLink"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const InvitationsList = () => {
   const { orgId, role } = useUserStore()
@@ -34,14 +44,20 @@ const InvitationsList = () => {
     enabled: Boolean(orgId), // Only run if org
   })
 
-  // Handle deletion of an invitation
+  const [invitationToDelete, setInvitationToDelete] = useState<string>()
+
+  // Modify handleDelete to be the actual deletion logic
   const handleDelete = useCallback(
     async (id: string) => {
-      const { error, status } = await supabase
-        .from("invitation")
-        .delete()
-        .eq("id", id)
-      console.log({ status, orgId, id, error })
+      const invitation = data?.find((inv) => inv.id === id)
+      if (invitation?.accepted_at) {
+        toast({
+          variant: "destructive",
+          description: "Cannot delete accepted invitation.",
+        })
+        return
+      }
+      const { error } = await supabase.from("invitation").delete().eq("id", id)
       if (error) {
         toast({
           variant: "destructive",
@@ -51,10 +67,10 @@ const InvitationsList = () => {
         toast({ description: "Invitation deleted successfully." })
         queryClient.invalidateQueries({ queryKey: ["invitations", orgId] })
       }
+      setInvitationToDelete(undefined) // Close modal after deletion
     },
-    [orgId, queryClient, toast],
+    [data, orgId, queryClient, toast],
   )
-
   // Handle resending an invitation
   const handleResend = useCallback(
     async (id: string) => {
@@ -127,15 +143,18 @@ const InvitationsList = () => {
           <table className="min-w-full rounded-lg overflow-hidden">
             <thead className="">
               <tr>
+                <th className="py-2 px-4 text-left">Name</th>
                 <th className="py-2 px-4 text-left">Email</th>
-                <th className="py-2 px-4 text-left">Created At</th>
-                <th className="py-2 px-4 text-left">Expires At</th>
+                <th className="py-2 px-4 text-left">Created</th>
+                <th className="py-2 px-4 text-left">Expires</th>
+                <th className="py-2 px-4 text-left">Accepted</th>
                 <th className="py-2 px-4 ">Actions</th>
               </tr>
             </thead>
             <tbody>
               {data.map((invitation) => (
                 <tr key={invitation.id} className="border-t">
+                  <td className="py-2 px-4">{invitation.name}</td>
                   <td className="py-2 px-4">{invitation.email}</td>
                   <td className="py-2 px-4">
                     {new Date(invitation.created_at).toLocaleDateString()}
@@ -153,18 +172,25 @@ const InvitationsList = () => {
                       ? new Date(invitation.expires_at).toLocaleDateString()
                       : "Never"}
                   </td>
+                  <td className={"py-2 px-4"}>
+                    {invitation.accepted_at
+                      ? new Date(invitation.accepted_at).toLocaleDateString()
+                      : ""}
+                  </td>
                   <td className="py-2 px-4 flex gap-2 justify-center">
                     <Button
                       size="icon"
                       onClick={() => handleResend(invitation.id)}
                       title="Resend"
+                      disabled={Boolean(invitation.accepted_at)}
                     >
                       <RefreshCwIcon aria-label="Resend" size={16} />
                     </Button>
                     <Button
                       size="icon"
-                      onClick={() => handleDelete(invitation.id)}
+                      onClick={() => setInvitationToDelete(invitation.id)}
                       title="Delete"
+                      disabled={Boolean(invitation.accepted_at)}
                     >
                       <TrashIcon aria-label="Delete" size={16} />
                     </Button>
@@ -175,6 +201,33 @@ const InvitationsList = () => {
           </table>
         </div>
       )}
+      <AlertDialog
+        open={Boolean(invitationToDelete)}
+        onOpenChange={() => setInvitationToDelete(undefined)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete Invitation to{" "}
+              {data?.find((inv) => inv.id === invitationToDelete)?.email}
+            </AlertDialogTitle>{" "}
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              invitation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                invitationToDelete && handleDelete(invitationToDelete)
+              }
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

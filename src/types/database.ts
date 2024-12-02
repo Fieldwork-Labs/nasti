@@ -1248,6 +1248,19 @@ export type Database = {
         }
         Returns: unknown
       }
+      get_organisation_users: {
+        Args: {
+          current_user_id: string
+        }
+        Returns: {
+          id: string
+          email: string
+          name: string
+          organisation_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["org_user_types"]
+        }[]
+      }
       get_proj4_from_srid: {
         Args: {
           "": number
@@ -1273,6 +1286,12 @@ export type Database = {
           "": unknown
         }
         Returns: unknown
+      }
+      is_in_same_organisation: {
+        Args: {
+          check_user_id: string
+        }
+        Returns: boolean
       }
       json: {
         Args: {
@@ -3487,7 +3506,7 @@ export type Database = {
       }
     }
     Enums: {
-      org_user_types: "Owner" | "Admin"
+      org_user_types: "Owner" | "Admin" | "Member"
       "Organisation User Types": "Owner" | "Admin" | "Member"
     }
     CompositeTypes: {

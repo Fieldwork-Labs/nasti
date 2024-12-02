@@ -21,6 +21,7 @@ import { Route as PrivateLayoutImport } from "./routes/_private/layout"
 import { Route as PrivateDashboardImport } from "./routes/_private/dashboard"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
+import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/index"
 import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
 import { Route as PrivateTripsNewImport } from "./routes/_private/trips/new"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
@@ -75,6 +76,11 @@ const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
 
 const PrivateSpeciesIndexRoute = PrivateSpeciesIndexImport.update({
   path: "/species/",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivatePeopleIndexRoute = PrivatePeopleIndexImport.update({
+  path: "/people/",
   getParentRoute: () => PrivateRoute,
 } as any)
 
@@ -179,6 +185,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateInvitationsIndexImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/people/": {
+      id: "/_private/people/"
+      path: "/people"
+      fullPath: "/people"
+      preLoaderRoute: typeof PrivatePeopleIndexImport
+      parentRoute: typeof PrivateImport
+    }
     "/_private/species/": {
       id: "/_private/species/"
       path: "/species"
@@ -211,6 +224,7 @@ interface PrivateRouteChildren {
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
   PrivateTripsNewRoute: typeof PrivateTripsNewRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
+  PrivatePeopleIndexRoute: typeof PrivatePeopleIndexRoute
   PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
   PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
   PrivateTripsIdEditRoute: typeof PrivateTripsIdEditRoute
@@ -222,6 +236,7 @@ const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
   PrivateTripsNewRoute: PrivateTripsNewRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
+  PrivatePeopleIndexRoute: PrivatePeopleIndexRoute,
   PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
   PrivateTripsIdEditRoute: PrivateTripsIdEditRoute,
@@ -242,6 +257,7 @@ export interface FileRoutesByFullPath {
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/trips/new": typeof PrivateTripsNewRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
+  "/people": typeof PrivatePeopleIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
@@ -259,6 +275,7 @@ export interface FileRoutesByTo {
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/trips/new": typeof PrivateTripsNewRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
+  "/people": typeof PrivatePeopleIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
@@ -277,6 +294,7 @@ export interface FileRoutesById {
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
   "/_private/trips/new": typeof PrivateTripsNewRoute
   "/_private/invitations/": typeof PrivateInvitationsIndexRoute
+  "/_private/people/": typeof PrivatePeopleIndexRoute
   "/_private/species/": typeof PrivateSpeciesIndexRoute
   "/_private/trips/": typeof PrivateTripsIndexRoute
   "/_private/trips/$id/edit": typeof PrivateTripsIdEditRoute
@@ -296,6 +314,7 @@ export interface FileRouteTypes {
     | "/invitations/new"
     | "/trips/new"
     | "/invitations"
+    | "/people"
     | "/species"
     | "/trips"
     | "/trips/$id/edit"
@@ -312,6 +331,7 @@ export interface FileRouteTypes {
     | "/invitations/new"
     | "/trips/new"
     | "/invitations"
+    | "/people"
     | "/species"
     | "/trips"
     | "/trips/$id/edit"
@@ -328,6 +348,7 @@ export interface FileRouteTypes {
     | "/_private/invitations/new"
     | "/_private/trips/new"
     | "/_private/invitations/"
+    | "/_private/people/"
     | "/_private/species/"
     | "/_private/trips/"
     | "/_private/trips/$id/edit"
@@ -383,6 +404,7 @@ export const routeTree = rootRoute
         "/_private/invitations/new",
         "/_private/trips/new",
         "/_private/invitations/",
+        "/_private/people/",
         "/_private/species/",
         "/_private/trips/",
         "/_private/trips/$id/edit"
@@ -418,6 +440,10 @@ export const routeTree = rootRoute
     },
     "/_private/invitations/": {
       "filePath": "_private/invitations/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/people/": {
+      "filePath": "_private/people/index.tsx",
       "parent": "/_private"
     },
     "/_private/species/": {

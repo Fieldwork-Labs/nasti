@@ -41,6 +41,17 @@ const Nav = () => {
             </NavigationMenuLink>
           </NavigationMenuItem>
         )}
+        {isAdmin && (
+          <NavigationMenuItem>
+            <NavigationMenuLink
+              asChild
+              className={navigationMenuTriggerStyle()}
+              active={router.location.pathname.startsWith("/people")}
+            >
+              <Link href="/people">People</Link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
+        )}
         <NavigationMenuItem>
           <NavigationMenuLink
             asChild
