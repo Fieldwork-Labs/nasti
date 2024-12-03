@@ -8,16 +8,7 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ButtonLink } from "@/components/ui/buttonLink"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { Modal } from "@/components/ui/modal"
 
 const InvitationsList = () => {
   const { orgId, role } = useUserStore()
@@ -201,33 +192,14 @@ const InvitationsList = () => {
           </table>
         </div>
       )}
-      <AlertDialog
+      <Modal
         open={Boolean(invitationToDelete)}
         onOpenChange={() => setInvitationToDelete(undefined)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete Invitation to{" "}
-              {data?.find((inv) => inv.id === invitationToDelete)?.email}
-            </AlertDialogTitle>{" "}
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              invitation.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                invitationToDelete && handleDelete(invitationToDelete)
-              }
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title={`Delete Invitation to ${data?.find((inv) => inv.id === invitationToDelete)?.email}`}
+        description="This action cannot be undone. This will permanently delete the invitation."
+        onCancel={() => setInvitationToDelete(undefined)}
+        onSubmit={() => invitationToDelete && handleDelete(invitationToDelete)}
+      />
     </div>
   )
 }

@@ -114,10 +114,33 @@ Deno.serve(async (req) => {
       })
     }
 
+    // check if the person is already a user
+    const { data: users, error } = await supabase.rpc(
+      "get_organisation_users",
+      {
+        current_user_id: userId,
+      },
+    )
+
+    if (error) {
+      return new Response("Failed to get users", {
+        status: 500,
+        headers: corsHeaders,
+      })
+    }
+
+    if (users.find((user) => user.email === email)) {
+      return new Response("Email address already a user", {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    const invitationId = crypto.randomUUID()
     // Insert the invitation into the database
     const { error: insertError } = await supabase.from("invitation").insert([
       {
-        id: crypto.randomUUID(),
+        id: invitationId,
         email,
         name,
         organisation_id: orgUser.organisation_id,
@@ -172,6 +195,9 @@ Deno.serve(async (req) => {
     )
 
     if (!mailgunResponse.ok) {
+      // delete the invitation if the email fails to send
+      await supabase.from("invitation").delete().eq("id", invitationId)
+
       console.error("Mailgun error:", await mailgunResponse.text())
       return new Response("Failed to send invitation email", {
         status: 500,
