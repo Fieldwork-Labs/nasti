@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { PencilIcon, PlusIcon, TrashIcon } from "lucide-react"
 import { ButtonLink } from "@/components/ui/buttonLink"
 import { getTrips } from "@/queries/trips"
+import Map from "react-map-gl"
+import mapboxgl from "mapbox-gl"
+import "mapbox-gl/dist/mapbox-gl.css"
 
 const TripsList = () => {
   // TODO pagination
@@ -75,52 +78,66 @@ const TripsList = () => {
       {!data || data.length === 0 ? (
         <p>No trips found.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full rounded-lg overflow-hidden">
-            <thead className="">
-              <tr>
-                <th className="py-2 px-4 text-left">Name</th>
-                <th className="py-2 px-4 text-left">Start Date</th>
-                <th className="py-2 px-4 text-left">End Date</th>
-                {isAdmin && <th className="py-2 px-4 ">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((trip) => (
-                <tr key={trip.id} className="border-t">
-                  <td className="py-2 px-4">{trip.name}</td>
-                  <td className="py-2 px-4">
-                    {trip.start_date &&
-                      new Date(trip.start_date).toLocaleDateString()}
-                  </td>
-                  <td className="py-2 px-4">
-                    {trip.end_date &&
-                      new Date(trip.end_date).toLocaleDateString()}
-                  </td>
-                  {isAdmin && (
-                    <td className="py-2 px-4 flex gap-2 justify-center">
-                      <ButtonLink
-                        size="icon"
-                        to={`/trips/$id/edit`}
-                        params={{ id: trip.id }}
-                        title="Edit"
-                      >
-                        <PencilIcon aria-label="Edit" size={16} />
-                      </ButtonLink>
-                      <Button
-                        size="icon"
-                        onClick={() => handleDelete(trip.id)}
-                        title="Delete"
-                      >
-                        <TrashIcon aria-label="Delete" size={16} />
-                      </Button>
-                    </td>
-                  )}
+        <>
+          <Map
+            mapLib={mapboxgl as never}
+            mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+            initialViewState={{
+              longitude: 124,
+              latitude: -28,
+              zoom: 4.2,
+            }}
+            style={{ height: 540 }}
+            mapStyle="mapbox://styles/mapbox/satellite-v9"
+          />
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full rounded-lg overflow-hidden">
+              <thead className="">
+                <tr>
+                  <th className="py-2 px-4 text-left">Name</th>
+                  <th className="py-2 px-4 text-left">Start Date</th>
+                  <th className="py-2 px-4 text-left">End Date</th>
+                  {isAdmin && <th className="py-2 px-4 ">Actions</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.map((trip) => (
+                  <tr key={trip.id} className="border-t">
+                    <td className="py-2 px-4">{trip.name}</td>
+                    <td className="py-2 px-4">
+                      {trip.start_date &&
+                        new Date(trip.start_date).toLocaleDateString()}
+                    </td>
+                    <td className="py-2 px-4">
+                      {trip.end_date &&
+                        new Date(trip.end_date).toLocaleDateString()}
+                    </td>
+                    {isAdmin && (
+                      <td className="py-2 px-4 flex gap-2 justify-center">
+                        <ButtonLink
+                          size="icon"
+                          to={`/trips/$id/edit`}
+                          params={{ id: trip.id }}
+                          title="Edit"
+                        >
+                          <PencilIcon aria-label="Edit" size={16} />
+                        </ButtonLink>
+                        <Button
+                          size="icon"
+                          onClick={() => handleDelete(trip.id)}
+                          title="Delete"
+                        >
+                          <TrashIcon aria-label="Delete" size={16} />
+                        </Button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )
