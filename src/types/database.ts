@@ -291,6 +291,8 @@ export type Database = {
           created_by: string | null
           end_date: string | null
           id: string
+          location_coordinate: unknown | null
+          location_name: string | null
           metadata: Json | null
           name: string
           organisation_id: string
@@ -301,6 +303,8 @@ export type Database = {
           created_by?: string | null
           end_date?: string | null
           id?: string
+          location_coordinate?: unknown | null
+          location_name?: string | null
           metadata?: Json | null
           name: string
           organisation_id: string
@@ -311,6 +315,8 @@ export type Database = {
           created_by?: string | null
           end_date?: string | null
           id?: string
+          location_coordinate?: unknown | null
+          location_name?: string | null
           metadata?: Json | null
           name?: string
           organisation_id?: string
@@ -1266,6 +1272,16 @@ export type Database = {
           "": number
         }
         Returns: string
+      }
+      get_trips: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          location_coordinate: string
+          longitude: number
+          latitude: number
+        }[]
       }
       get_user_organisation_id: {
         Args: Record<PropertyKey, never>
@@ -3487,6 +3503,12 @@ export type Database = {
           "": unknown
         }
         Returns: string
+      }
+      transform_coordinates: {
+        Args: {
+          input_geog: unknown
+        }
+        Returns: Json
       }
       unlockrows: {
         Args: {
