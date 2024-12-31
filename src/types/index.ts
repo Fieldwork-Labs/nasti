@@ -7,7 +7,19 @@ type Function<T extends keyof Database["public"]["Functions"]> =
 
 export type Organisation = Table<"organisation">
 export type Invitation = Table<"invitation">
-export type Trip = Table<"trip">
+export type Trip = Table<"trip"> & { location_coordinate: string | null }
+export type TripWithCoordinates = Trip & {
+  longitude: number
+  latitude: number
+}
+
+export const isTripWithCoordinates = (
+  trip: Trip | TripWithCoordinates,
+): trip is TripWithCoordinates => {
+  return "longitude" in trip && "latitude" in trip
+}
+
+export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">
 
 export type Role = "Admin" | "Member" | "Owner"

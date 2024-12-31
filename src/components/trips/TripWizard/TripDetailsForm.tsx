@@ -1,20 +1,20 @@
 import { FormField } from "@/components/ui/formField"
-import { useTripForm, useTripFormWizard } from "@/contexts/trip-form"
-import { useNavigate } from "@tanstack/react-router"
+import { useTripForm } from "@/contexts/trip-form"
+import { useTripFormWizard } from "./useTripFormWizard"
 import { TripWizardStage } from "./lib"
 
 export const TripDetailsForm = () => {
-  const { setCurrentStep, setTrip } = useTripFormWizard()
+  const { setCurrentStep, setTrip, close, trip } = useTripFormWizard()
 
   const { register, handleSubmit, isValid, isSubmitting, errors } = useTripForm(
     {
+      instance: trip,
       onSuccess: (trip) => {
         setTrip(trip)
         setCurrentStep(1)
       },
     },
   )
-  const navigate = useNavigate()
 
   return (
     <TripWizardStage
@@ -23,7 +23,7 @@ export const TripDetailsForm = () => {
       allowSubmit={isValid}
       isSubmitting={isSubmitting}
       onSubmit={handleSubmit}
-      onCancel={() => navigate({ to: "/trips" })}
+      onCancel={close}
     >
       <div className="flex flex-col gap-2">
         <FormField

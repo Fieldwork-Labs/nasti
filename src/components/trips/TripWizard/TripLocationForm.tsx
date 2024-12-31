@@ -1,4 +1,4 @@
-import { useTripFormWizard } from "@/contexts/trip-form"
+import { useTripFormWizard } from "./useTripFormWizard"
 import { TripWizardStage } from "./lib"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
@@ -7,9 +7,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useMapboxSession } from "@/hooks/useMapboxSessionToken"
 import CreatableSelect from "react-select/creatable"
-import { MapPin } from "lucide-react"
+import { MapPin, XIcon } from "lucide-react"
 import { Trip } from "@/types"
 import debounce from "lodash/debounce"
+import { parsePostGISPoint } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 
 // Types for the suggest endpoint
 interface MapboxSearchResponse {
@@ -190,12 +192,21 @@ function useLocationSearch(searchQuery: string) {
 }
 
 export const TripLocationForm = () => {
-  const { setCurrentStep, saveTrip } = useTripFormWizard()
+  const { setCurrentStep, saveTrip, trip } = useTripFormWizard()
+
   const [inputValue, setInputValue] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const handleSearchDebounced = useRef(
     debounce((input) => setSearchQuery(input), 300),
   ).current
+  const isDirty = useRef(false)
+
+  // state variables for handling the case where a location is already savedd
+  const [showSearch, setShowSearch] = useState(!trip?.location_name)
+  const [existingLocation, setExistingLocation] = useState<{
+    latitude: number
+    longitude: number
+  }>()
 
   const {
     results,
@@ -225,7 +236,6 @@ export const TripLocationForm = () => {
       const result = id && results?.find((result) => result.id === id)
       if (!result) return
       selectLocation(result.id)
-      console.log("selected ", result)
     },
     [results, selectLocation],
   )
@@ -233,8 +243,9 @@ export const TripLocationForm = () => {
   // Handle input changes
   const handleInputChange = useCallback(
     (inputText: string) => {
+      isDirty.current = true
       setInputValue(inputText)
-      handleSearchDebounced(inputText)
+      handleSearchDebounced(inputText.trim())
     },
     [handleSearchDebounced],
   )
@@ -250,6 +261,24 @@ export const TripLocationForm = () => {
     }
   }, [selectedLocation])
 
+  // Set if a trip instance exists
+  useEffect(() => {
+    if (!trip || showSearch) return
+    if (trip.location_coordinate && !("latitude" in trip)) {
+      // if the trip has just been added, the location_coordinate will be set
+      // but latitude and longitude will be null, so we have to parse the wkt string
+      const { longitude, latitude } = parsePostGISPoint(
+        trip.location_coordinate,
+      )
+      setViewState({
+        longitude,
+        latitude,
+        zoom: 12,
+      })
+      setExistingLocation({ longitude, latitude })
+    }
+  }, [selectedLocation, trip, showSearch])
+
   const handleSubmit = useCallback(async () => {
     const newTripDetails: Partial<
       Pick<Trip, "location_coordinate" | "location_name">
@@ -260,7 +289,7 @@ export const TripLocationForm = () => {
         }
       : { location_name: searchQuery }
     try {
-      await saveTrip(newTripDetails)
+      if (isDirty.current) await saveTrip(newTripDetails)
       setCurrentStep(2)
     } catch (error) {
       setError((error as Error).message)
@@ -271,10 +300,14 @@ export const TripLocationForm = () => {
     setCurrentStep(2)
   }, [setCurrentStep])
 
+  const markerLocation = existingLocation || selectedLocation?.coordinates
+  console.log({ markerLocation, selectedLocation })
+
   return (
     <TripWizardStage
       title="Select Location"
       submitLabel="Next"
+      cancelLabel="Back"
       allowSubmit={true}
       isSubmitting={false}
       onSubmit={handleSubmit}
@@ -282,48 +315,51 @@ export const TripLocationForm = () => {
       onCancel={() => setCurrentStep(0)}
     >
       <div className="relative flex flex-col gap-4">
-        <CreatableSelect
-          isClearable
-          escapeClearsValue
-          inputValue={inputValue}
-          onInputChange={(newValue, { action }) => {
-            console.log({ inputChange: newValue, action })
-            // Only update on user input
-            if (action === "input-change") handleInputChange(newValue)
-            return newValue
-          }}
-          value={{ value: selectedLocation?.id }}
-          onChange={handleResultClick}
-          options={results.map(({ id, name }) => ({
-            value: id,
-            label: name,
-          }))}
-          isLoading={isLoading}
-          placeholder="Search location"
-          allowCreateWhileLoading
-          formatCreateLabel={(inputValue) =>
-            `Use ${inputValue} as a custom location`
-          }
-          onCreateOption={(inputValue) => {
-            console.log({ inputValue })
-            // setSelectedOption({ value: inputValue, label: inputValue })
-            handleSubmit()
-          }}
-        />
-
-        {/* <AutoComplete
-          placeholder="Search location"
-          searchValue={searchQuery}
-          onSearchValueChange={setSearchQuery}
-          onSelectedValueChange={handleResultClick}
-          onSelectEmpty={handleSubmit}
-          items={results.map(({ id, name }) => ({
-            value: id,
-            label: name,
-          }))}
-          isLoading={isSearching}
-          selectedValue=""
-        /> */}
+        {!showSearch && (
+          <div className="flex justify-between rounded-md border p-2">
+            <div className="flex flex-col justify-around">
+              <span className="text-sm font-medium leading-none">
+                Selected Location
+              </span>
+              <span className="font-bold">{trip?.location_name}</span>
+            </div>
+            <Button
+              variant="secondary"
+              size="icon"
+              title="Clear"
+              onClick={() => setShowSearch(true)}
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {showSearch && (
+          <CreatableSelect
+            isClearable
+            escapeClearsValue
+            inputValue={inputValue}
+            onInputChange={(newValue, { action }) => {
+              // Only update on user input
+              if (action === "input-change") handleInputChange(newValue)
+              return newValue
+            }}
+            value={{ value: selectedLocation?.id }}
+            onChange={handleResultClick}
+            options={results.map(({ id, name }) => ({
+              value: id,
+              label: name,
+            }))}
+            isLoading={isLoading}
+            placeholder="Search location"
+            allowCreateWhileLoading
+            formatCreateLabel={(inputValue) =>
+              `Use ${inputValue} as a custom location`
+            }
+            onCreateOption={() => {
+              handleSubmit()
+            }}
+          />
+        )}
 
         {error && <div className="text-red-500">{error}</div>}
 
@@ -335,10 +371,10 @@ export const TripLocationForm = () => {
           style={{ height: 540 }}
           mapStyle="mapbox://styles/mapbox/satellite-v9"
         >
-          {selectedLocation && (
+          {markerLocation && (
             <Marker
-              latitude={selectedLocation.coordinates.latitude}
-              longitude={selectedLocation.coordinates.longitude}
+              latitude={markerLocation.latitude}
+              longitude={markerLocation.longitude}
             >
               <div className="rounded-full bg-white bg-opacity-50 p-2">
                 <MapPin className="h-5 w-5 text-primary" />

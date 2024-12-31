@@ -1,12 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import { Trip } from "@/types"
-import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useState,
-} from "react"
+import { useCallback } from "react"
 
 import useUserStore from "@/store/userStore"
 
@@ -64,7 +58,8 @@ export const useTripForm = ({
 
       if (sbresponse.error) onError?.(sbresponse.error.message)
       else {
-        onSuccess?.(sbresponse.data)
+        // type assertion required because of bad typing in supabase for postgis geometry columns
+        onSuccess?.(sbresponse.data as Trip)
       }
     },
     [orgId, instance, onSuccess, onError],
@@ -78,67 +73,3 @@ export const useTripForm = ({
     errors,
   }
 }
-
-type TripFormWizardContext = {
-  trip: Trip | undefined
-  setTrip: (trip: Trip) => void
-  currentStep: number
-  setCurrentStep: (step: number) => void
-  saveTrip: (newTripDetails: Partial<Trip>) => Promise<Trip>
-}
-
-const tripFormDefault = {
-  trip: undefined,
-  setTrip: (_: Trip) => {},
-  saveTrip: () => {},
-  currentStep: 0,
-  setCurrentStep: () => {},
-}
-
-const TripFormProviderContext = createContext<TripFormWizardContext>(
-  {} as TripFormWizardContext,
-)
-
-export const TripFormProvider = ({ children }: { children: ReactNode }) => {
-  const [currentStep, setCurrentStep] = useState(0)
-  const [trip, setTrip] = useState<Trip | undefined>(undefined)
-  const { orgId } = useUserStore()
-
-  const saveTrip = useCallback(
-    async (newTripDetails: Partial<Trip>) => {
-      if (!orgId) throw new Error("No organisation available")
-      if (!trip) throw new Error("No trip available")
-
-      const sbresponse = await supabase
-        .from("trip")
-        .upsert({
-          ...trip,
-          ...newTripDetails,
-        })
-        .select("*")
-        .single()
-
-      if (sbresponse.error) throw new Error(sbresponse.error.message)
-      setTrip(sbresponse.data)
-      return sbresponse.data
-    },
-    [orgId, trip],
-  )
-
-  return (
-    <TripFormProviderContext.Provider
-      value={{
-        ...tripFormDefault,
-        currentStep,
-        setCurrentStep,
-        trip,
-        setTrip,
-        saveTrip,
-      }}
-    >
-      {children}
-    </TripFormProviderContext.Provider>
-  )
-}
-
-export const useTripFormWizard = () => useContext(TripFormProviderContext)

@@ -1,10 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { Trip } from "@/types"
-
-export type TripWithCoordinates = Trip & {
-  longitude: number
-  latitude: number
-}
+import { TripWithCoordinates } from "@/types"
 
 export const getTrips = async (
   orgId: string,

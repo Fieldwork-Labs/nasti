@@ -13,6 +13,7 @@ import { ReactNode } from "react"
 type TripWizardStageProps = {
   title: string
   submitLabel?: string
+  cancelLabel?: string
   children?: ReactNode
   allowSubmit?: boolean
   isSubmitting?: boolean
@@ -24,6 +25,7 @@ type TripWizardStageProps = {
 export const TripWizardStage = ({
   title,
   submitLabel = "Submit",
+  cancelLabel = "Cancel",
   onSubmit,
   onCancel,
   onSkip,
@@ -41,7 +43,7 @@ export const TripWizardStage = ({
       </AlertDialogHeader>
       <AlertDialogFooter className="sm:justify-between">
         <AlertDialogCancel className="w-full" onClick={onCancel}>
-          Cancel
+          {cancelLabel}
         </AlertDialogCancel>
         <AlertDialogAction
           className="w-full"

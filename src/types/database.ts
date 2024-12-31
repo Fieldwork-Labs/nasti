@@ -1273,14 +1273,41 @@ export type Database = {
         }
         Returns: string
       }
+      get_trip: {
+        Args: {
+          trip_id: string
+        }
+        Returns: {
+          id: string
+          name: string
+          location_name: string
+          location_coordinate: string
+          longitude: number
+          latitude: number
+          organisation_id: string
+          metadata: Json
+          start_date: string
+          end_date: string
+          created_at: string
+          created_by: string
+          members: string[]
+        }[]
+      }
       get_trips: {
         Args: Record<PropertyKey, never>
         Returns: {
           id: string
           name: string
+          location_name: string
           location_coordinate: string
           longitude: number
           latitude: number
+          organisation_id: string
+          metadata: Json
+          start_date: string
+          end_date: string
+          created_at: string
+          created_by: string
         }[]
       }
       get_user_organisation_id: {

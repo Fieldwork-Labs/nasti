@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react"
 
-interface UseOpenClose {
+export interface UseOpenClose {
   isOpen: boolean
   open: () => void
   close: () => void
