@@ -14,7 +14,7 @@ export type TripFormData = {
 
 type TripFormOptions = {
   instance?: Trip
-  onSuccess?: (trip: Trip) => void
+  onSuccess?: (trip?: Trip) => void
   onError?: (message: string) => void
 }
 
@@ -23,12 +23,12 @@ export const useTripForm = ({
   onSuccess,
   onError,
 }: TripFormOptions) => {
-  const { orgId } = useUserStore()
+  const { orgId, user } = useUserStore()
 
   const {
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting, errors },
+    formState: { isValid, isSubmitting, errors, isDirty },
   } = useForm<TripFormData>({
     mode: "all",
     values: instance
@@ -43,6 +43,11 @@ export const useTripForm = ({
   const onSubmit = useCallback(
     async ({ name, startDate, endDate }: TripFormData) => {
       if (!orgId) throw new Error("No organisation available")
+      console.log({ isDirty })
+      if (!isDirty) {
+        onSuccess?.()
+        return
+      }
 
       const sbresponse = await supabase
         .from("trip")
@@ -52,6 +57,7 @@ export const useTripForm = ({
           start_date: startDate,
           end_date: endDate,
           organisation_id: orgId,
+          created_by: user?.id,
         })
         .select("*")
         .single()
@@ -62,7 +68,7 @@ export const useTripForm = ({
         onSuccess?.(sbresponse.data as Trip)
       }
     },
-    [orgId, instance, onSuccess, onError],
+    [orgId, isDirty, instance, user?.id, onError, onSuccess],
   )
 
   return {

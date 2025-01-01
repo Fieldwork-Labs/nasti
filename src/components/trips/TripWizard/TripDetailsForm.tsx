@@ -10,7 +10,7 @@ export const TripDetailsForm = () => {
     {
       instance: trip,
       onSuccess: (trip) => {
-        setTrip(trip)
+        if (trip) setTrip(trip)
         setCurrentStep(1)
       },
     },

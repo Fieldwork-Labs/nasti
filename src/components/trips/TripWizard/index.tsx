@@ -6,24 +6,40 @@ import { TripPeopleForm } from "./TripPeopleForm"
 import { TripSpeciesForm } from "./TripSpeciesForm"
 export { TripFormProvider } from "./useTripFormWizard"
 
-export const TripFormWizard = () => {
-  const { currentStep, isOpen } = useTripFormWizard()
-  const Component = () => {
-    switch (currentStep) {
-      case 0:
-        return <TripDetailsForm />
-      case 1:
-        return <TripLocationForm />
-      case 2:
-        return <TripPeopleForm />
-      case 3:
-        return <TripSpeciesForm />
-    }
+// Separate component that only depends on currentStep, props used instead of context to prevent re-renders
+const WizardContent = ({ currentStep }: { currentStep: number }) => {
+  switch (currentStep) {
+    case 0:
+      return <TripDetailsForm />
+    case 1:
+      return <TripLocationForm />
+    case 2:
+      return <TripPeopleForm />
+    case 3:
+      return <TripSpeciesForm />
+    default:
+      return null
   }
+}
+
+// Modal component that only depends on isOpen
+const WizardModal = ({
+  isOpen,
+  children,
+}: {
+  isOpen: boolean
+  children: React.ReactNode
+}) => {
+  return <AlertDialog open={isOpen}>{children}</AlertDialog>
+}
+
+// Main component that composes the parts
+export const TripFormWizard = () => {
+  const { isOpen, currentStep } = useTripFormWizard()
 
   return (
-    <AlertDialog open={isOpen}>
-      <Component />
-    </AlertDialog>
+    <WizardModal isOpen={isOpen}>
+      <WizardContent currentStep={currentStep} />
+    </WizardModal>
   )
 }

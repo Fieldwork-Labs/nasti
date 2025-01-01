@@ -3,7 +3,7 @@ import { TripWizardStage } from "./lib"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useMapboxSession } from "@/hooks/useMapboxSessionToken"
 import CreatableSelect from "react-select/creatable"
@@ -110,7 +110,7 @@ async function searchLocations(
   )
 
   const data = (await response.json()) as MapboxSearchResponse
-  console.log({ data, query })
+
   return data.suggestions.map(
     (suggestion): LocationResult => ({
       id: suggestion.mapbox_id,
@@ -201,12 +201,26 @@ export const TripLocationForm = () => {
   ).current
   const isDirty = useRef(false)
 
-  // state variables for handling the case where a location is already savedd
   const [showSearch, setShowSearch] = useState(!trip?.location_name)
-  const [existingLocation, setExistingLocation] = useState<{
-    latitude: number
-    longitude: number
-  }>()
+
+  const existingCoords = useMemo(() => {
+    if (!trip?.location_coordinate) return
+    return parsePostGISPoint(trip.location_coordinate)
+  }, [trip])
+
+  // actual state variables
+  const [locationCoords, setLocationCoords] = useState<
+    | {
+        latitude: number
+        longitude: number
+      }
+    | undefined
+  >(existingCoords)
+  const [locationName, setLocationName] = useState<string | undefined>(
+    trip?.location_name ?? undefined,
+  )
+
+  const [useCustomName, setUseCustomName] = useState(false)
 
   const {
     results,
@@ -225,10 +239,19 @@ export const TripLocationForm = () => {
   }, [searchError, retrieveError])
 
   const [viewState, setViewState] = useState({
-    longitude: 124,
-    latitude: -28,
+    longitude: locationCoords?.longitude || 124,
+    latitude: locationCoords?.latitude || -28,
     zoom: 4.2,
   })
+
+  // update viewState when locationCoords change
+  useEffect(() => {
+    if (locationCoords)
+      setViewState({
+        ...locationCoords,
+        zoom: 4.2,
+      })
+  }, [locationCoords])
 
   const handleResultClick = useCallback(
     (newValue: { value: string | undefined } | null) => {
@@ -250,58 +273,47 @@ export const TripLocationForm = () => {
     [handleSearchDebounced],
   )
 
-  // Update map when location is retrieved
+  // Update map and hide search input when location is retrieved
   useEffect(() => {
     if (selectedLocation) {
-      setViewState({
-        longitude: selectedLocation.coordinates.longitude,
-        latitude: selectedLocation.coordinates.latitude,
-        zoom: 12,
-      })
+      setLocationCoords(selectedLocation.coordinates)
+      setLocationName(selectedLocation.name)
+      setShowSearch(false)
     }
   }, [selectedLocation])
 
-  // Set if a trip instance exists
-  useEffect(() => {
-    if (!trip || showSearch) return
-    if (trip.location_coordinate && !("latitude" in trip)) {
-      // if the trip has just been added, the location_coordinate will be set
-      // but latitude and longitude will be null, so we have to parse the wkt string
-      const { longitude, latitude } = parsePostGISPoint(
-        trip.location_coordinate,
-      )
-      setViewState({
-        longitude,
-        latitude,
-        zoom: 12,
-      })
-      setExistingLocation({ longitude, latitude })
-    }
-  }, [selectedLocation, trip, showSearch])
-
   const handleSubmit = useCallback(async () => {
-    const newTripDetails: Partial<
-      Pick<Trip, "location_coordinate" | "location_name">
-    > = selectedLocation
-      ? {
-          location_coordinate: `POINT(${selectedLocation?.coordinates.longitude} ${selectedLocation?.coordinates.latitude})`,
-          location_name: selectedLocation?.name || null,
-        }
-      : { location_name: searchQuery }
     try {
-      if (isDirty.current) await saveTrip(newTripDetails)
+      if (isDirty.current) {
+        const newTripDetails: Partial<
+          Pick<Trip, "location_coordinate" | "location_name">
+        > = useCustomName
+          ? { location_name: searchQuery }
+          : {
+              location_coordinate: locationCoords
+                ? `POINT(${locationCoords.longitude} ${locationCoords.latitude})`
+                : null,
+              location_name: locationName ?? null,
+            }
+        await saveTrip(newTripDetails)
+      }
+
       setCurrentStep(2)
     } catch (error) {
       setError((error as Error).message)
     }
-  }, [selectedLocation, searchQuery, saveTrip, setCurrentStep])
+  }, [
+    setCurrentStep,
+    useCustomName,
+    searchQuery,
+    locationCoords,
+    locationName,
+    saveTrip,
+  ])
 
   const handleSkip = useCallback(() => {
     setCurrentStep(2)
   }, [setCurrentStep])
-
-  const markerLocation = existingLocation || selectedLocation?.coordinates
-  console.log({ markerLocation, selectedLocation })
 
   return (
     <TripWizardStage
@@ -321,7 +333,7 @@ export const TripLocationForm = () => {
               <span className="text-sm font-medium leading-none">
                 Selected Location
               </span>
-              <span className="font-bold">{trip?.location_name}</span>
+              <span className="font-bold">{locationName}</span>
             </div>
             <Button
               variant="secondary"
@@ -356,6 +368,7 @@ export const TripLocationForm = () => {
               `Use ${inputValue} as a custom location`
             }
             onCreateOption={() => {
+              setUseCustomName(true)
               handleSubmit()
             }}
           />
@@ -368,13 +381,13 @@ export const TripLocationForm = () => {
           mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
           {...viewState}
           onMove={(evt) => setViewState(evt.viewState)}
-          style={{ height: 540 }}
+          style={{ height: 460 }}
           mapStyle="mapbox://styles/mapbox/satellite-v9"
         >
-          {markerLocation && (
+          {locationCoords && (
             <Marker
-              latitude={markerLocation.latitude}
-              longitude={markerLocation.longitude}
+              latitude={locationCoords.latitude}
+              longitude={locationCoords.longitude}
             >
               <div className="rounded-full bg-white bg-opacity-50 p-2">
                 <MapPin className="h-5 w-5 text-primary" />
