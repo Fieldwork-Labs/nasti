@@ -113,6 +113,12 @@ interface MultiSelectProps
    * Optional, can be used to add custom styles.
    */
   className?: string
+
+  /**
+   * Callback function triggered when the search input value changes.
+   * Receives the new search input value as a parameter.
+   */
+  onSearchInputChange?: (value: string) => void
 }
 
 export const MultiSelect = React.forwardRef<
@@ -123,6 +129,7 @@ export const MultiSelect = React.forwardRef<
     {
       options,
       onValueChange,
+      onSearchInputChange,
       variant,
       defaultValue = [],
       placeholder = "Select options",
@@ -274,6 +281,7 @@ export const MultiSelect = React.forwardRef<
         >
           <Command>
             <CommandInput
+              onValueChange={onSearchInputChange}
               placeholder="Search..."
               onKeyDown={handleInputKeyDown}
             />

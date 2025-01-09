@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MapPin, PencilIcon, PlusIcon, TrashIcon } from "lucide-react"
@@ -193,7 +193,9 @@ const TripsList = () => {
                 <tbody>
                   {data.map((trip) => (
                     <tr key={trip.id} className="border-t">
-                      <td className="px-4 py-2">{trip.name}</td>
+                      <td className="px-4 py-2">
+                        <Link to={`/trips/${trip.id}`}>{trip.name}</Link>
+                      </td>
                       <td className="px-4 py-2">
                         {trip.start_date &&
                           new Date(trip.start_date).toLocaleDateString()}

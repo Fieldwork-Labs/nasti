@@ -7,6 +7,8 @@ type Function<T extends keyof Database["public"]["Functions"]> =
 
 export type Organisation = Table<"organisation">
 export type Invitation = Table<"invitation">
+export type Species = Table<"species">
+export type TripSpecies = Table<"trip_species">
 export type Trip = Table<"trip"> & { location_coordinate: string | null }
 export type TripWithCoordinates = Trip & {
   longitude: number

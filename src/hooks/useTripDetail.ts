@@ -11,14 +11,14 @@ export type TripWithDetails = Trip & {
 
 export const getTripDetail = async (
   tripId: string,
-): Promise<TripWithDetails[]> => {
+): Promise<TripWithDetails> => {
   const { data: trip, error } = await supabase
     .rpc("get_trip", { trip_id: tripId })
     .order("created_at", { ascending: false })
 
   if (error) throw new Error(error.message)
 
-  return trip as TripWithDetails[]
+  return trip[0] as TripWithDetails
 }
 
 export const useTripDetail = (tripId: string) => {

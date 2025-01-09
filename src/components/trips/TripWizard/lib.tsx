@@ -34,11 +34,11 @@ export const TripWizardStage = ({
   children,
 }: TripWizardStageProps) => {
   return (
-    <AlertDialogContent>
+    <AlertDialogContent className="pointer-events-auto">
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription asChild>
-          <div>{children}</div>
+          <div className="pointer-events-auto relative">{children}</div>
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter className="sm:justify-between">

@@ -266,24 +266,41 @@ export type Database = {
       }
       species: {
         Row: {
+          ala_guid: string | null
           created_at: string
           description: string | null
           id: string
+          indigenous_name: string | null
           name: string
+          organisation_id: string
         }
         Insert: {
+          ala_guid?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          indigenous_name?: string | null
           name: string
+          organisation_id: string
         }
         Update: {
+          ala_guid?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          indigenous_name?: string | null
           name?: string
+          organisation_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_species_organisation"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trip: {
         Row: {
