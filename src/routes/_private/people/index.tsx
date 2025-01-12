@@ -2,13 +2,13 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { useCallback } from "react"
 import { supabase } from "@/lib/supabase"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { PlusIcon, TrashIcon } from "lucide-react"
 import { ButtonLink } from "@/components/ui/buttonLink"
-import { getUsers } from "@/queries/users"
+import { usePeople } from "@/hooks/usePeople"
 
 const PeopleList = () => {
   // TODO pagination
@@ -18,17 +18,7 @@ const PeopleList = () => {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  // Fetch people
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["users", orgId],
-    queryFn: async () => {
-      if (!orgId) {
-        throw new Error("Organisation not found")
-      }
-      return getUsers()
-    },
-    enabled: Boolean(orgId),
-  })
+  const { data, isLoading, isError, error } = usePeople()
 
   // Handle deletion of an trip
   const handleDelete = useCallback(
@@ -55,7 +45,7 @@ const PeopleList = () => {
     )
   }
 
-  if (isError) {
+  if (isError && error) {
     return (
       <div className="p-4 text-center">
         <p className="text-red-500">Error: {error.message}</p>
@@ -66,7 +56,7 @@ const PeopleList = () => {
   return (
     <div>
       <div className="flex justify-between">
-        <h2 className="text-2xl font-semibold mb-4">Trips</h2>
+        <h2 className="mb-4 text-2xl font-semibold">Trips</h2>
         {isAdmin && (
           <ButtonLink to="/invitations/new" className="flex gap-1">
             <PlusIcon aria-label="New Trip" size={16} /> <span>Invite new</span>
@@ -77,25 +67,25 @@ const PeopleList = () => {
         <p>No people found.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full rounded-lg overflow-hidden">
+          <table className="min-w-full overflow-hidden rounded-lg">
             <thead className="">
               <tr>
-                <th className="py-2 px-4 text-left">Name</th>
-                <th className="py-2 px-4 text-left">Email</th>
-                <th className="py-2 px-4 text-left">Member Since</th>
-                {isAdmin && <th className="py-2 px-4 ">Actions</th>}
+                <th className="px-4 py-2 text-left">Name</th>
+                <th className="px-4 py-2 text-left">Email</th>
+                <th className="px-4 py-2 text-left">Member Since</th>
+                {isAdmin && <th className="px-4 py-2">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {data.map((user) => (
                 <tr key={user.id} className="border-t">
-                  <td className="py-2 px-4">{user.name}</td>
-                  <td className="py-2 px-4">{user.email}</td>
-                  <td className="py-2 px-4">
+                  <td className="px-4 py-2">{user.name}</td>
+                  <td className="px-4 py-2">{user.email}</td>
+                  <td className="px-4 py-2">
                     {Date.parse(user.joined_at).toLocaleString()}
                   </td>
                   {isAdmin && (
-                    <td className="py-2 px-4 flex gap-2 justify-center">
+                    <td className="flex justify-center gap-2 px-4 py-2">
                       <Button
                         size="icon"
                         onClick={() => handleDelete(user.id)}

@@ -266,24 +266,41 @@ export type Database = {
       }
       species: {
         Row: {
+          ala_guid: string | null
           created_at: string
           description: string | null
           id: string
+          indigenous_name: string | null
           name: string
+          organisation_id: string
         }
         Insert: {
+          ala_guid?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          indigenous_name?: string | null
           name: string
+          organisation_id: string
         }
         Update: {
+          ala_guid?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          indigenous_name?: string | null
           name?: string
+          organisation_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_species_organisation"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trip: {
         Row: {
@@ -291,6 +308,8 @@ export type Database = {
           created_by: string | null
           end_date: string | null
           id: string
+          location_coordinate: unknown | null
+          location_name: string | null
           metadata: Json | null
           name: string
           organisation_id: string
@@ -301,6 +320,8 @@ export type Database = {
           created_by?: string | null
           end_date?: string | null
           id?: string
+          location_coordinate?: unknown | null
+          location_name?: string | null
           metadata?: Json | null
           name: string
           organisation_id: string
@@ -311,6 +332,8 @@ export type Database = {
           created_by?: string | null
           end_date?: string | null
           id?: string
+          location_coordinate?: unknown | null
+          location_name?: string | null
           metadata?: Json | null
           name?: string
           organisation_id?: string
@@ -1266,6 +1289,43 @@ export type Database = {
           "": number
         }
         Returns: string
+      }
+      get_trip: {
+        Args: {
+          trip_id: string
+        }
+        Returns: {
+          id: string
+          name: string
+          location_name: string
+          location_coordinate: string
+          longitude: number
+          latitude: number
+          organisation_id: string
+          metadata: Json
+          start_date: string
+          end_date: string
+          created_at: string
+          created_by: string
+          members: string[]
+        }[]
+      }
+      get_trips: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          location_name: string
+          location_coordinate: string
+          longitude: number
+          latitude: number
+          organisation_id: string
+          metadata: Json
+          start_date: string
+          end_date: string
+          created_at: string
+          created_by: string
+        }[]
       }
       get_user_organisation_id: {
         Args: Record<PropertyKey, never>
@@ -3487,6 +3547,12 @@ export type Database = {
           "": unknown
         }
         Returns: string
+      }
+      transform_coordinates: {
+        Args: {
+          input_geog: unknown
+        }
+        Returns: Json
       }
       unlockrows: {
         Args: {
