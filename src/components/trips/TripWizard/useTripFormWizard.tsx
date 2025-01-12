@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { Trip, TripWithCoordinates } from "@/types"
+import { Trip } from "@/types"
 import {
   createContext,
   ReactNode,
@@ -12,7 +12,7 @@ import useUserStore from "@/store/userStore"
 import useOpenClose, { UseOpenClose } from "@/hooks/useOpenClose"
 
 type TripFormWizardContext = UseOpenClose & {
-  trip: Trip | TripWithCoordinates | undefined
+  trip: Trip | undefined
   setTrip: (trip: Trip) => void
   currentStep: number
   setCurrentStep: (step: number) => void

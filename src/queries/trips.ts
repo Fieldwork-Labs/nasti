@@ -1,9 +1,7 @@
 import { supabase } from "@/lib/supabase"
-import { TripWithCoordinates } from "@/types"
+import { Trip } from "@/types"
 
-export const getTrips = async (
-  orgId: string,
-): Promise<TripWithCoordinates[]> => {
+export const getTrips = async (orgId: string): Promise<Trip[]> => {
   const { data: trips, error } = await supabase
     .rpc("get_trips")
     .eq("organisation_id", orgId)
@@ -11,5 +9,5 @@ export const getTrips = async (
 
   if (error) throw new Error(error.message)
 
-  return trips as TripWithCoordinates[]
+  return trips as Trip[]
 }

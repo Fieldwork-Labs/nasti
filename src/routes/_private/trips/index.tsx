@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MapPin, PencilIcon, PlusIcon, TrashIcon } from "lucide-react"
 import { ButtonLink } from "@/components/ui/buttonLink"
-import { TripWithCoordinates } from "@/types"
+import { Trip } from "@/types"
 import Map, { Marker, Popup } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
@@ -16,17 +16,18 @@ import { TripFormWizard, TripFormProvider } from "@/components/trips/TripWizard"
 
 import { useTrips } from "@/hooks/useTrips"
 import { useTripFormWizard } from "@/components/trips/TripWizard/useTripFormWizard"
+import { getTripCoordinates } from "@/lib/utils"
 
 interface TripsMapProps {
-  trips: TripWithCoordinates[]
+  trips: Trip[]
 }
 
 const TripsMap = ({ trips }: TripsMapProps) => {
-  const [showPopup, setShowPopup] = useState<TripWithCoordinates | null>(null)
+  const [showPopup, setShowPopup] = useState<Trip | null>(null)
 
   // Calculate bounds based on all trip coordinates
   const initialViewState = useMemo(() => {
-    const validTrips = trips.filter((trip) => trip.latitude && trip.longitude)
+    const validTrips = trips.filter((trip) => trip.location_coordinate)
 
     if (validTrips.length === 0) {
       // Default view for Australia if no valid coordinates
@@ -38,20 +39,25 @@ const TripsMap = ({ trips }: TripsMapProps) => {
     }
 
     // Find min and max coordinates
+    const { latitude: initLat, longitude: initLng } = getTripCoordinates(
+      validTrips[0],
+    )
+
     const bounds = validTrips.reduce(
       (acc, trip) => {
+        const { longitude, latitude } = getTripCoordinates(trip)
         return {
-          minLng: Math.min(acc.minLng, trip.longitude),
-          maxLng: Math.max(acc.maxLng, trip.longitude),
-          minLat: Math.min(acc.minLat, trip.latitude),
-          maxLat: Math.max(acc.maxLat, trip.latitude),
+          minLng: Math.min(acc.minLng, longitude),
+          maxLng: Math.max(acc.maxLng, longitude),
+          minLat: Math.min(acc.minLat, latitude),
+          maxLat: Math.max(acc.maxLat, latitude),
         }
       },
       {
-        minLng: validTrips[0].longitude,
-        maxLng: validTrips[0].longitude,
-        minLat: validTrips[0].latitude,
-        maxLat: validTrips[0].latitude,
+        minLng: initLng,
+        maxLng: initLng,
+        minLat: initLat,
+        maxLat: initLat,
       },
     )
 
@@ -82,13 +88,9 @@ const TripsMap = ({ trips }: TripsMapProps) => {
       mapStyle="mapbox://styles/mapbox/satellite-v9"
     >
       {trips
-        .filter((trip) => trip.latitude && trip.longitude)
+        .filter((trip) => trip.location_coordinate)
         .map((trip) => (
-          <Marker
-            latitude={trip.latitude}
-            longitude={trip.longitude}
-            key={trip.id}
-          >
+          <Marker {...getTripCoordinates(trip)} key={trip.id}>
             <div className="rounded-full bg-white bg-opacity-50 p-2">
               <MapPin
                 className="h-5 w-5 cursor-pointer text-primary"
@@ -103,8 +105,7 @@ const TripsMap = ({ trips }: TripsMapProps) => {
       {showPopup && (
         <Popup
           onClose={() => setShowPopup(null)}
-          longitude={showPopup.longitude}
-          latitude={showPopup.latitude}
+          {...getTripCoordinates(showPopup)}
         >
           <span className="text-primary">{showPopup.name}</span>
         </Popup>
