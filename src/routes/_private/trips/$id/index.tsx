@@ -1,11 +1,22 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
+import { useTripMembers } from "@/hooks/useTripMembers"
+import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { getTripCoordinates, queryClient } from "@/lib/utils"
 import { createFileRoute, useLoaderData } from "@tanstack/react-router"
 import { MapPin } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useState } from "react"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 const TripDetail = () => {
   useAdminOnly()
@@ -19,6 +30,10 @@ const TripDetail = () => {
         }
       : { longitude: 133.7751, latitude: -25.2744, zoom: 3 },
   )
+
+  const { data: memberData } = useTripMembers(instance?.id)
+  const { data: speciesData } = useTripSpecies(instance?.id)
+  console.log(memberData)
 
   if (!instance) return <div>No trip found</div>
   return (
@@ -53,6 +68,46 @@ const TripDetail = () => {
               </div>
             </Marker>
           </Map>
+        </div>
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Trip Members</h4>
+          <Table>
+            <TableCaption>A list of all the trip members.</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Role</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {memberData?.map((member) => (
+                <TableRow key={member.id}>
+                  <TableCell>{member.id}</TableCell>
+                  <TableCell>{member.role}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Species</h4>
+          <Table>
+            <TableCaption>A list of all the target species.</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Species Name</TableHead>
+                <TableHead>Link</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {speciesData?.map((species) => (
+                <TableRow key={species.id}>
+                  <TableCell>{species.species.name}</TableCell>
+                  <TableCell>{species.species.ala_guid}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>
