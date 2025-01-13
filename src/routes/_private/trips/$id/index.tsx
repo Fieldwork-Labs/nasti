@@ -1,6 +1,6 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
-import { queryClient } from "@/lib/utils"
+import { getTripCoordinates, queryClient } from "@/lib/utils"
 import { createFileRoute, useLoaderData } from "@tanstack/react-router"
 import { MapPin } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
@@ -11,11 +11,14 @@ const TripDetail = () => {
   useAdminOnly()
   const { instance } = useLoaderData({ from: "/_private/trips/$id/" })
 
-  const [viewState, setViewState] = useState({
-    longitude: instance?.longitude,
-    latitude: instance?.latitude,
-    zoom: 4.2,
-  })
+  const [viewState, setViewState] = useState(
+    instance
+      ? {
+          ...getTripCoordinates(instance),
+          zoom: 6.5,
+        }
+      : { longitude: 133.7751, latitude: -25.2744, zoom: 3 },
+  )
 
   if (!instance) return <div>No trip found</div>
   return (
@@ -44,7 +47,7 @@ const TripDetail = () => {
             style={{ height: 460 }}
             mapStyle="mapbox://styles/mapbox/satellite-v9"
           >
-            <Marker latitude={instance.latitude} longitude={instance.longitude}>
+            <Marker {...getTripCoordinates(instance)}>
               <div className="rounded-full bg-white bg-opacity-50 p-2">
                 <MapPin className="h-5 w-5 text-primary" />
               </div>

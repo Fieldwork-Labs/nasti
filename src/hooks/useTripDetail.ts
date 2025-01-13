@@ -4,16 +4,15 @@ import { supabase } from "@/lib/supabase"
 import { Trip } from "@/types"
 
 export type TripWithDetails = Trip & {
-  longitude: number
-  latitude: number
   members: string[]
+  species: string[]
 }
 
 export const getTripDetail = async (
   tripId: string,
 ): Promise<TripWithDetails> => {
   const { data: trip, error } = await supabase
-    .rpc("get_trip", { trip_id: tripId })
+    .rpc("get_trip", { p_trip_id: tripId })
     .order("created_at", { ascending: false })
 
   if (error) throw new Error(error.message)

@@ -64,13 +64,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "collection_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "collection_species_id_fkey"
             columns: ["species_id"]
             isOneToOne: false
@@ -123,46 +116,36 @@ export type Database = {
           accepted_at: string | null
           created_at: string
           email: string
-          expires_at: string
+          expires_at: string | null
           id: string
           invited_by: string
           name: string | null
           organisation_id: string
-          organisation_name: string | null
           token: string
         }
         Insert: {
           accepted_at?: string | null
           created_at?: string
           email: string
-          expires_at?: string
+          expires_at?: string | null
           id?: string
           invited_by: string
           name?: string | null
           organisation_id: string
-          organisation_name?: string | null
           token?: string
         }
         Update: {
           accepted_at?: string | null
           created_at?: string
           email?: string
-          expires_at?: string
+          expires_at?: string | null
           id?: string
           invited_by?: string
           name?: string | null
           organisation_id?: string
-          organisation_name?: string | null
           token?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "invitation_invited_by_fkey"
-            columns: ["invited_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "invitation_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -202,13 +185,6 @@ export type Database = {
             referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "org_user_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
       }
       organisation: {
@@ -230,15 +206,7 @@ export type Database = {
           name?: string
           owner_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "organisation_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       spatial_ref_sys: {
         Row: {
@@ -341,13 +309,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "trip_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "trip_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
@@ -384,13 +345,6 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trip"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trip_member_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -862,10 +816,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      expire_old_invitations: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       geography:
         | {
             Args: {
@@ -1271,19 +1221,6 @@ export type Database = {
         }
         Returns: unknown
       }
-      get_organisation_users: {
-        Args: {
-          current_user_id: string
-        }
-        Returns: {
-          id: string
-          email: string
-          name: string
-          organisation_id: string
-          joined_at: string
-          role: Database["public"]["Enums"]["org_user_types"]
-        }[]
-      }
       get_proj4_from_srid: {
         Args: {
           "": number
@@ -1292,15 +1229,13 @@ export type Database = {
       }
       get_trip: {
         Args: {
-          trip_id: string
+          p_trip_id: string
         }
         Returns: {
           id: string
           name: string
           location_name: string
           location_coordinate: string
-          longitude: number
-          latitude: number
           organisation_id: string
           metadata: Json
           start_date: string
@@ -1308,23 +1243,7 @@ export type Database = {
           created_at: string
           created_by: string
           members: string[]
-        }[]
-      }
-      get_trips: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          location_name: string
-          location_coordinate: string
-          longitude: number
-          latitude: number
-          organisation_id: string
-          metadata: Json
-          start_date: string
-          end_date: string
-          created_at: string
-          created_by: string
+          species: string[]
         }[]
       }
       get_user_organisation_id: {
@@ -1346,12 +1265,6 @@ export type Database = {
           "": unknown
         }
         Returns: unknown
-      }
-      is_in_same_organisation: {
-        Args: {
-          check_user_id: string
-        }
-        Returns: boolean
       }
       json: {
         Args: {
@@ -3548,12 +3461,6 @@ export type Database = {
         }
         Returns: string
       }
-      transform_coordinates: {
-        Args: {
-          input_geog: unknown
-        }
-        Returns: Json
-      }
       unlockrows: {
         Args: {
           "": string
@@ -3572,8 +3479,7 @@ export type Database = {
       }
     }
     Enums: {
-      org_user_types: "Owner" | "Admin" | "Member"
-      "Organisation User Types": "Owner" | "Admin" | "Member"
+      org_user_types: "Owner" | "Admin"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3669,4 +3575,19 @@ export type Enums<
   ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof PublicSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
+    ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
