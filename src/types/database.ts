@@ -1221,6 +1221,31 @@ export type Database = {
         }
         Returns: unknown
       }
+      get_organisation_users:
+        | {
+            Args: Record<PropertyKey, never>
+            Returns: {
+              id: string
+              email: string
+              name: string
+              organisation_id: string
+              joined_at: string
+              role: Database["public"]["Enums"]["org_user_types"]
+            }[]
+          }
+        | {
+            Args: {
+              current_user_id: string
+            }
+            Returns: {
+              id: string
+              email: string
+              name: string
+              organisation_id: string
+              joined_at: string
+              role: Database["public"]["Enums"]["org_user_types"]
+            }[]
+          }
       get_proj4_from_srid: {
         Args: {
           "": number

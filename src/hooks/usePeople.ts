@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { getUsers } from "@/queries/users"
+import { queryClient } from "@/lib/utils"
+import { useCallback } from "react"
 
 export const usePeople = () => {
   const { orgId } = useUserStore()
@@ -16,5 +18,11 @@ export const usePeople = () => {
     },
     enabled: Boolean(orgId),
   })
-  return { data, isLoading, isError, error }
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["users", orgId],
+    })
+  }, [orgId])
+
+  return { data, isLoading, isError, error, invalidate }
 }
