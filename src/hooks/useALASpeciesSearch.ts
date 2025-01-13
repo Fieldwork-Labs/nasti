@@ -1,6 +1,6 @@
 import { queryClient } from "@/lib/utils"
 import { useQuery } from "@tanstack/react-query"
-import { useDebounce } from "@uidotdev/usehooks"
+
 import { useCallback } from "react"
 
 const BASE_URL = "https://api.ala.org.au/species/search/auto"
@@ -90,23 +90,22 @@ export const useALASpeciesSearch = (
     ...queryOptions
   } = options
 
-  const debouncedSearch = useDebounce(searchTerm, 300)
-
   const queryResults = useQuery({
-    queryKey: ["speciesSearch", debouncedSearch, limit],
-    queryFn: () => fetchSpecies(debouncedSearch, { limit }),
-    enabled: enabled && Boolean(debouncedSearch),
+    queryKey: ["speciesSearch", searchTerm, limit],
+    queryFn: () => fetchSpecies(searchTerm, { limit }),
+    enabled: enabled && Boolean(searchTerm),
     staleTime,
     retry,
     retryDelay,
+    placeholderData: (prev) => prev,
     ...queryOptions,
   })
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({
-      queryKey: ["speciesSearch", debouncedSearch, limit],
+      queryKey: ["speciesSearch", searchTerm, limit],
     })
-  }, [debouncedSearch, limit])
+  }, [searchTerm, limit])
 
   return {
     ...queryResults,

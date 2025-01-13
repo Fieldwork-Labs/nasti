@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TripSpeciesWithDetails, useTripSpecies } from "@/hooks/useTripSpecies"
 import { supabase } from "@/lib/supabase"
+import { useDebounce } from "@uidotdev/usehooks"
 
 type GUID = string
 type SpeciesName = string
@@ -34,11 +35,12 @@ export const TripSpeciesForm = () => {
   const [error, setError] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState("")
 
+  const debouncedSearch = useDebounce(searchValue, 300)
   const {
     data: species,
     isLoading: isLoadingSpeciesSearch,
     error: searchError,
-  } = useALASpeciesSearch(searchValue)
+  } = useALASpeciesSearch(debouncedSearch)
 
   useEffect(() => {
     if (searchError) setError(searchError.message)
@@ -108,56 +110,70 @@ export const TripSpeciesForm = () => {
       // use currentTripSpecies variable to prevent race condition if tripMembers changes throughout this function
       const currentTripSpecies = tripSpecies
 
-      // first create the species objects themselves based on the selected species
-      const currentTripAlaGuids = currentTripSpecies?.map(
-        ({ species }) => species.ala_guid,
+      // First, get all existing species for this organisation that match our selected species
+      const { data: existingSpecies, error: existingSpeciesError } =
+        await supabase
+          .from("species")
+          .select("id, ala_guid, name")
+          .eq("organisation_id", trip.organisation_id)
+          .in("ala_guid", Object.keys(selectedSpecies))
+
+      if (existingSpeciesError) throw new Error(existingSpeciesError.message)
+
+      // Create a map of ala_guid to existing species for easy lookup
+      const existingSpeciesMap = new Map(
+        existingSpecies?.map((species) => [species.ala_guid, species]),
       )
+
+      // Determine which species need to be created (those not in existingSpeciesMap)
       const speciesToCreate = Object.entries(selectedSpecies)
-        .filter(
-          ([ala_guid]) =>
-            // find selected species which are not already in the trip based on ALA guid
-            !currentTripAlaGuids?.includes(ala_guid),
-        )
+        .filter(([ala_guid]) => !existingSpeciesMap.has(ala_guid))
         .map(([ala_guid, name]) => ({
           ala_guid,
           name,
           organisation_id: trip.organisation_id,
         }))
-      const { error: createSpeciesError, data: createdSpecies } = await supabase
-        .from("species")
-        .upsert(speciesToCreate)
-        .select("id, ala_guid")
-      if (createSpeciesError) throw new Error(createSpeciesError.message)
 
-      // then create the trip_species objects based on the newly created species objects
-      // TODO ensure previously existing species objects are included
-      const tripSpeciesToCreate = Object.keys(selectedSpecies)
-        .map((alaGuid) => createdSpecies.find((s) => s.ala_guid === alaGuid))
-        .filter(Boolean)
-        .map((species) => ({
-          trip_id: trip.id,
-          species_id: species!.id,
-        }))
+      // Create any new species that don't exist yet
+      let newlyCreatedSpecies: Array<{ id: string; ala_guid: string | null }> =
+        []
+      if (speciesToCreate.length > 0) {
+        const { data: createdSpecies, error: createSpeciesError } =
+          await supabase
+            .from("species")
+            .insert(speciesToCreate)
+            .select("id, ala_guid")
 
-      console.log({ speciesToCreate, createdSpecies, tripSpeciesToCreate })
+        if (createSpeciesError) throw new Error(createSpeciesError.message)
+        newlyCreatedSpecies = createdSpecies
+      }
 
-      const { error } = await supabase
-        .from("trip_species")
-        .upsert(tripSpeciesToCreate)
+      // Combine existing and newly created species
+      const allSpecies = [...(existingSpecies || []), ...newlyCreatedSpecies]
 
-      // handle case where trip member is removed
+      // Create trip_species associations for all selected species
+      const tripSpeciesToCreate = Object.keys(selectedSpecies).map(
+        (alaGuid) => {
+          const species = allSpecies.find((s) => s.ala_guid === alaGuid)
+          if (!species)
+            throw new Error(`Species with GUID ${alaGuid} not found`)
+          return {
+            trip_id: trip.id,
+            species_id: species.id,
+          }
+        },
+      )
+
+      // Delete removed species
       if (currentTripSpecies) {
         const removedSpecies = currentTripSpecies
           .filter(
             ({ species }) =>
-              !Object.keys(selectedSpecies).find(
-                (guid) => guid === species.ala_guid,
-              ),
+              !Object.keys(selectedSpecies).includes(species.ala_guid),
           )
           .map((tripSpecies) => tripSpecies.id)
 
         if (removedSpecies.length > 0) {
-          console.log({ removedSpecies })
           const { error: deleteError } = await supabase
             .from("trip_species")
             .delete()
@@ -165,8 +181,14 @@ export const TripSpeciesForm = () => {
           if (deleteError) throw new Error(deleteError.message)
         }
       }
-      if (error) {
-        throw new Error(error.message)
+
+      // Create new trip_species associations
+      const { error: createTripSpeciesError } = await supabase
+        .from("trip_species")
+        .upsert(tripSpeciesToCreate)
+
+      if (createTripSpeciesError) {
+        throw new Error(createTripSpeciesError.message)
       }
 
       setIsSubmitting(false)

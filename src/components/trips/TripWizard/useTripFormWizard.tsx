@@ -10,6 +10,7 @@ import {
 
 import useUserStore from "@/store/userStore"
 import useOpenClose, { UseOpenClose } from "@/hooks/useOpenClose"
+import { useTrips } from "@/hooks/useTrips"
 
 type TripFormWizardContext = UseOpenClose & {
   trip: Trip | undefined
@@ -36,6 +37,7 @@ export const TripFormProvider = ({ children }: { children: ReactNode }) => {
   const [trip, setTrip] = useState<Trip | undefined>(undefined)
   const { orgId } = useUserStore()
   const { close, ...openClose } = useOpenClose()
+  const { invalidate } = useTrips()
 
   const handleClose = useCallback(() => {
     setCurrentStep(0)
@@ -61,9 +63,10 @@ export const TripFormProvider = ({ children }: { children: ReactNode }) => {
       // type assertion required because of bad typing in supabase for postgis geometry columns
       const newTrip = sbresponse.data as Trip
       setTrip(newTrip)
+      invalidate()
       return newTrip
     },
-    [orgId, trip],
+    [orgId, trip, invalidate],
   )
 
   return (

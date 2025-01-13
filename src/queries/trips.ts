@@ -3,7 +3,8 @@ import { Trip } from "@/types"
 
 export const getTrips = async (orgId: string): Promise<Trip[]> => {
   const { data: trips, error } = await supabase
-    .rpc("get_trips")
+    .from("trip")
+    .select("*")
     .eq("organisation_id", orgId)
     .order("created_at", { ascending: false })
 
