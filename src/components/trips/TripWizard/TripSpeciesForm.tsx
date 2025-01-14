@@ -204,7 +204,7 @@ export const TripSpeciesForm = () => {
   return (
     <TripWizardStage
       title="Select Target Species"
-      submitLabel="Next"
+      submitLabel="Save"
       allowSubmit={true}
       isSubmitting={isSubmitting}
       onSubmit={handleSubmit}
