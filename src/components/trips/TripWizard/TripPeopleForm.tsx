@@ -113,7 +113,6 @@ export const TripPeopleForm = () => {
     invalidate,
   ])
 
-  console.log({ tripMembers })
   return (
     <TripWizardStage
       title="Select People"
