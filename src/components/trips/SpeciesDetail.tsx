@@ -15,7 +15,7 @@ export const SpeciesDetail = ({ speciesId }: SpeciesDetailProps) => {
 
   return (
     <div>
-      <p>Name: {data.name}</p>
+      <h5 className="mt-2 font-bold">Name: {data.name}</h5>
       <p>Common Name: {data.commonNames.map((name) => name.nameString)}</p>
       <p>Photo: {data.images.map((image) => image as string)}</p>
       {species && species.length > 0 && (
