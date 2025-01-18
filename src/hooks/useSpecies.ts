@@ -1,32 +1,16 @@
+import { getSpecies } from "@/queries/species"
 import { useQuery } from "@tanstack/react-query"
-import useUserStore from "@/store/userStore"
 
-import { supabase } from "@/lib/supabase"
-import { Species } from "@/types"
-
-export const getSpecies = async (orgId: string) => {
-  const { data, error } = await supabase
-    .from("species")
-    .select("*")
-    .eq("organisation_id", orgId)
-
-  if (error) throw new Error(error.message)
-
-  return data as Species[]
-}
-
-export const useSpecies = () => {
-  const { orgId } = useUserStore()
-
+export const useSpecies = (tripSpeciesId: string) => {
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["species", orgId],
+    queryKey: ["tripSpecies", tripSpeciesId],
     queryFn: async () => {
-      if (!orgId) {
-        throw new Error("Organisation not found")
+      if (!tripSpeciesId) {
+        throw new Error("Species not found")
       }
-      return getSpecies(orgId)
+      return getSpecies(tripSpeciesId)
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(tripSpeciesId),
   })
   return { data, isLoading, isError, error }
 }

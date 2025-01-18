@@ -128,6 +128,7 @@ interface Variant {
 }
 
 export interface SpeciesDetail {
+  name: string
   taxonConcept: TaxonConcept
   taxonName: unknown[]
   classification: Classification
@@ -144,6 +145,8 @@ export interface SpeciesDetail {
   identifiers: Identifier[]
   variants: Variant[]
   linkIdentifier: string
+  error: string | null
+  status: number | null
 }
 
 interface QueryOptions {
