@@ -1,18 +1,20 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
+import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { getTripCoordinates, queryClient } from "@/lib/utils"
 import { createFileRoute, useLoaderData } from "@tanstack/react-router"
 import { MapPin } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useMemo, useState } from "react"
-import { SpeciesDetail } from "@/components/trips/SpeciesDetail"
+import { TripSpeciesDetail } from "@/components/trips/TripSpeciesDetail"
 
 const TripDetail = () => {
   useAdminOnly()
   const { instance } = useLoaderData({ from: "/_private/trips/$id/" })
   const { data: people } = usePeople()
+  const { data: tripSpecies } = useTripSpecies(instance?.id)
 
   const [viewState, setViewState] = useState(
     instance
@@ -37,7 +39,7 @@ const TripDetail = () => {
       <div>
         <h4 className="mb-2 text-xl font-bold">{instance.name}</h4>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-foreground/50 p-2">
           <h4 className="mb-2 text-xl font-bold">Trip Details</h4>
           <p>Trip ID: {instance.id}</p>
@@ -75,11 +77,16 @@ const TripDetail = () => {
         </div>
         <div className="rounded-lg border border-foreground/50 p-2">
           <h4 className="mb-2 text-xl font-bold">Species</h4>
-          {!instance.species || instance.species.length === 0 ? (
+          {!instance.species ||
+          instance.species.length === 0 ||
+          !tripSpecies ? (
             <p>No species found.</p>
           ) : (
-            instance.species.map((one) => (
-              <SpeciesDetail key={one} speciesId={one} />
+            tripSpecies.map((species) => (
+              <div key={species.id}>
+                <h5 className="mt-2 font-bold">Name: {species.species.name}</h5>
+                <TripSpeciesDetail speciesId={species.species.ala_guid} />
+              </div>
             ))
           )}
         </div>
