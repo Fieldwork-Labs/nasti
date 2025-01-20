@@ -1,16 +1,20 @@
-import { useTripFormWizard } from "./useTripFormWizard"
-import { TripWizardStage } from "./lib"
-import { usePeople } from "@/hooks/usePeople"
-import { MultiSelect, Option } from "@/components/ui/multi-select"
+// useTripPeopleForm.ts
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useTripMembers } from "@/hooks/useTripMembers"
+import { usePeople } from "@/hooks/usePeople"
+import { Option } from "@/components/ui/multi-select"
+import { MultiSelect } from "@/components/ui/multi-select"
+import { Trip } from "@/types"
 
 type UserId = string
 
-export const TripPeopleForm = () => {
-  const { setCurrentStep, trip } = useTripFormWizard()
+type TripPeopleFormArgs = {
+  trip?: Trip
+  onSave: () => void
+}
 
+export const useTripPeopleForm = ({ trip, onSave }: TripPeopleFormArgs) => {
   const { data: tripMembers, invalidate } = useTripMembers(trip?.id)
   const [selectedPeople, setSelectedPeople] = useState<UserId[]>(
     tripMembers?.map(({ user_id }) => user_id) ?? [],
@@ -29,7 +33,6 @@ export const TripPeopleForm = () => {
     [tripMembers],
   )
 
-  // Use useEffect to sync state when tripMembers changes
   useEffect(() => {
     if (tripMembers) {
       setSelectedPeople(tripMembers.map((member) => member.user_id))
@@ -42,7 +45,7 @@ export const TripPeopleForm = () => {
 
   useEffect(() => {
     if (peopleError) setError(peopleError.message)
-  }, [peopleError, setError])
+  }, [peopleError])
 
   const options: Option[] =
     people?.map((person) => ({
@@ -53,14 +56,12 @@ export const TripPeopleForm = () => {
   const handleSubmit = useCallback(async () => {
     try {
       if (!trip) throw new Error("No trip available")
-      // handle no net change
       if (!hasMemberChanges) {
-        setCurrentStep(3)
+        onSave()
         return
       }
 
       setIsSubmitting(true)
-      // use currentTripMembers variable to prevent race condition if tripMembers changes throughout this function
       const currentTripMembers = tripMembers
 
       const { error } = await supabase.from("trip_member").upsert(
@@ -76,7 +77,7 @@ export const TripPeopleForm = () => {
             joined_at: new Date().toUTCString(),
           })),
       )
-      // handle case where trip member is removed
+
       if (currentTripMembers) {
         const removedMembers = currentTripMembers
           .filter(
@@ -97,43 +98,49 @@ export const TripPeopleForm = () => {
       }
 
       setIsSubmitting(false)
-      setCurrentStep(3)
+      onSave()
       invalidate()
     } catch (err) {
-      invalidate() // Invalidate on error to ensure consistency
+      invalidate()
       setIsSubmitting(false)
       setError((err as Error).message)
     }
-  }, [
-    trip,
-    hasMemberChanges,
-    selectedPeople,
-    tripMembers,
-    setCurrentStep,
-    invalidate,
-  ])
+  }, [trip, hasMemberChanges, selectedPeople, tripMembers, onSave, invalidate])
 
+  return {
+    selectedPeople,
+    options,
+    isSubmitting,
+    error,
+    onPeopleChange: setSelectedPeople,
+    handleSubmit,
+    defaultValue: tripMembers?.map((member) => member.user_id),
+  }
+}
+
+export interface TripPeopleFormProps {
+  options: Option[]
+  error: string | null
+  onPeopleChange: (ids: UserId[]) => void
+  defaultValue?: UserId[]
+}
+
+export const TripPeopleForm = ({
+  options,
+  error,
+  onPeopleChange,
+  defaultValue,
+}: TripPeopleFormProps) => {
   return (
-    <TripWizardStage
-      title="Select People"
-      submitLabel="Next"
-      cancelLabel="Back"
-      allowSubmit={true}
-      isSubmitting={isSubmitting}
-      onSubmit={handleSubmit}
-      onCancel={() => setCurrentStep(1)}
-      onSkip={() => setCurrentStep(3)}
-    >
+    <>
       <MultiSelect
         options={options}
-        onValueChange={(ids) => {
-          setSelectedPeople(ids)
-        }}
-        defaultValue={tripMembers?.map((member) => member.user_id)}
+        onValueChange={onPeopleChange}
+        defaultValue={defaultValue}
         placeholder="Select people"
         animation={2}
       />
       {error && <div className="text-red-500">{error}</div>}
-    </TripWizardStage>
+    </>
   )
 }

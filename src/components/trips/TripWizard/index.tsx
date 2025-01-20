@@ -2,7 +2,7 @@ import { AlertDialog } from "@/components/ui/alert-dialog"
 import { useTripFormWizard } from "./useTripFormWizard"
 import { TripDetailsStage } from "./TripDetailsStage"
 import { TripLocationStage } from "./TripLocationStage"
-import { TripPeopleForm } from "./TripPeopleForm"
+import { TripPeopleStage } from "./TripPeopleStage"
 import { TripSpeciesForm } from "./TripSpeciesForm"
 export { TripFormProvider } from "./useTripFormWizard"
 
@@ -14,7 +14,7 @@ const WizardContent = ({ currentStep }: { currentStep: number }) => {
     case 1:
       return <TripLocationStage />
     case 2:
-      return <TripPeopleForm />
+      return <TripPeopleStage />
     case 3:
       return <TripSpeciesForm />
     default:
