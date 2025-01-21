@@ -82,12 +82,14 @@ const TripDetail = () => {
           !tripSpecies ? (
             <p>No species found.</p>
           ) : (
-            tripSpecies.map((species) => (
-              <TripSpeciesDetail
-                key={species.species.ala_guid}
-                species={species.species}
-              />
-            ))
+            <div className="flex flex-col gap-2">
+              {tripSpecies.map((species) => (
+                <TripSpeciesDetail
+                  key={species.species.ala_guid}
+                  species={species.species}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
