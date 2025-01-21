@@ -83,13 +83,10 @@ const TripDetail = () => {
             <p>No species found.</p>
           ) : (
             tripSpecies.map((species) => (
-              <div key={species.id}>
-                <h5 className="mt-2 font-bold">Name: {species.species.name}</h5>
-                <TripSpeciesDetail speciesId={species.species.ala_guid} />
-                {species.species.indigenous_name && (
-                  <p>Indigenous Name: {species.species.indigenous_name}</p>
-                )}
-              </div>
+              <TripSpeciesDetail
+                key={species.species.ala_guid}
+                species={species.species}
+              />
             ))
           )}
         </div>
