@@ -6,13 +6,17 @@ import { queryClient } from "@/lib/utils"
 import { useCallback } from "react"
 
 export type TripSpeciesWithDetails = TripSpecies & {
-  species: { name: string; ala_guid: string }
+  species: {
+    name: string
+    ala_guid: string
+    indigenous_name: string
+  }
 }
 
 export const getTripSpecies = async (tripId: string) => {
   const { data, error } = await supabase
     .from("trip_species")
-    .select("*, species(name, ala_guid)")
+    .select("*, species(name, ala_guid, indigenous_name)")
     .eq("trip_id", tripId)
 
   if (error) throw new Error(error.message)

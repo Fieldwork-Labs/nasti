@@ -1,15 +1,20 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
+import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
+import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { getTripCoordinates, queryClient } from "@/lib/utils"
 import { createFileRoute, useLoaderData } from "@tanstack/react-router"
 import { MapPin } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { TripSpeciesDetail } from "@/components/trips/TripSpeciesDetail"
 
 const TripDetail = () => {
   useAdminOnly()
   const { instance } = useLoaderData({ from: "/_private/trips/$id/" })
+  const { data: people } = usePeople()
+  const { data: tripSpecies } = useTripSpecies(instance?.id)
 
   const [viewState, setViewState] = useState(
     instance
@@ -19,6 +24,14 @@ const TripDetail = () => {
         }
       : { longitude: 133.7751, latitude: -25.2744, zoom: 3 },
   )
+
+  const members = useMemo(() => {
+    if (instance && people && people.length > 0) {
+      return instance.members.map((member) =>
+        people.find((person) => person.id === member),
+      )
+    }
+  }, [instance, people])
 
   if (!instance) return <div>No trip found</div>
   return (
@@ -53,6 +66,29 @@ const TripDetail = () => {
               </div>
             </Marker>
           </Map>
+        </div>
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Members</h4>
+          {!members || members.length === 0 ? (
+            <p>No members found.</p>
+          ) : (
+            members.map((member) => <p>{member?.name}</p>)
+          )}
+        </div>
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Species</h4>
+          {!instance.species ||
+          instance.species.length === 0 ||
+          !tripSpecies ? (
+            <p>No species found.</p>
+          ) : (
+            tripSpecies.map((species) => (
+              <TripSpeciesDetail
+                key={species.species.ala_guid}
+                species={species.species}
+              />
+            ))
+          )}
         </div>
       </div>
     </div>
