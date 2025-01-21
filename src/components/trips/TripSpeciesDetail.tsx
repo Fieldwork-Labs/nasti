@@ -14,7 +14,6 @@ export const TripSpeciesDetail = ({ species }: SpeciesDetailProps) => {
   if (!data || error || data.error) {
     return <></>
   }
-  console.log(data)
 
   return (
     <div className="grid grid-cols-2 gap-4">
