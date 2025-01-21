@@ -1,26 +1,26 @@
+import { XIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Combobox,
   ComboboxInput,
   ComboboxOption,
   ComboboxOptions,
 } from "@/components/ui/combobox"
-import { useTripFormWizard } from "./useTripFormWizard"
-import { TripWizardStage } from "./lib"
+import { TripSpeciesWithDetails } from "@/hooks/useTripSpecies"
+
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useALASpeciesSearch, SearchResult } from "@/hooks/useALASpeciesSearch"
-import { XIcon } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { TripSpeciesWithDetails, useTripSpecies } from "@/hooks/useTripSpecies"
-import { supabase } from "@/lib/supabase"
 import { useDebounce } from "@uidotdev/usehooks"
+import { supabase } from "@/lib/supabase"
+import { SearchResult, useALASpeciesSearch } from "@/hooks/useALASpeciesSearch"
+import { useTripSpecies } from "@/hooks/useTripSpecies"
+import { Trip } from "@/types"
 
-type GUID = string
-type SpeciesName = string
+export type GUID = string
+export type SpeciesName = string
+export type SelectedSpecies = Record<GUID, SpeciesName>
 
-type SelectedSpecies = Record<GUID, SpeciesName>
-
-const reduceTripSpecies = (
+export const reduceTripSpecies = (
   tripSpecies: TripSpeciesWithDetails[] = [],
 ): SelectedSpecies => {
   return tripSpecies.reduce((result, { species }) => {
@@ -29,8 +29,12 @@ const reduceTripSpecies = (
   }, {} as SelectedSpecies)
 }
 
-export const TripSpeciesForm = () => {
-  const { setCurrentStep, close, trip } = useTripFormWizard()
+type TripSpeciesFormArgs = {
+  trip?: Trip
+  close: () => void
+}
+
+export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState("")
@@ -70,7 +74,6 @@ export const TripSpeciesForm = () => {
     return originalSpeciesIds !== Object.keys(selectedSpecies).sort().join(",")
   }, [originalSpeciesIds, selectedSpecies])
 
-  // Use useEffect to sync state when tripSpecies changes
   useEffect(() => {
     if (tripSpecies) {
       setSelectedSpecies(reduceTripSpecies(tripSpecies))
@@ -84,33 +87,27 @@ export const TripSpeciesForm = () => {
         thisSpecies ? { ...selected, [guid]: thisSpecies.name } : selected,
       )
     },
-    [species, setSelectedSpecies],
+    [species],
   )
 
-  const handleRemoveSpecies = useCallback(
-    (guid: string) => {
-      setSelectedSpecies((selected) => {
-        const { [guid]: _, ...rest } = selected
-        return rest
-      })
-    },
-    [setSelectedSpecies],
-  )
+  const handleRemoveSpecies = useCallback((guid: string) => {
+    setSelectedSpecies((selected) => {
+      const { [guid]: _, ...rest } = selected
+      return rest
+    })
+  }, [])
 
   const handleSubmit = useCallback(async () => {
     try {
       if (!trip) throw new Error("No trip available")
-      // handle no net change
       if (!hasSpeciesChanges) {
         close()
         return
       }
 
       setIsSubmitting(true)
-      // use currentTripSpecies variable to prevent race condition if tripMembers changes throughout this function
       const currentTripSpecies = tripSpecies
 
-      // First, get all existing species for this organisation that match our selected species
       const { data: existingSpecies, error: existingSpeciesError } =
         await supabase
           .from("species")
@@ -120,12 +117,10 @@ export const TripSpeciesForm = () => {
 
       if (existingSpeciesError) throw new Error(existingSpeciesError.message)
 
-      // Create a map of ala_guid to existing species for easy lookup
       const existingSpeciesMap = new Map(
         existingSpecies?.map((species) => [species.ala_guid, species]),
       )
 
-      // Determine which species need to be created (those not in existingSpeciesMap)
       const speciesToCreate = Object.entries(selectedSpecies)
         .filter(([ala_guid]) => !existingSpeciesMap.has(ala_guid))
         .map(([ala_guid, name]) => ({
@@ -134,7 +129,6 @@ export const TripSpeciesForm = () => {
           organisation_id: trip.organisation_id,
         }))
 
-      // Create any new species that don't exist yet
       let newlyCreatedSpecies: Array<{ id: string; ala_guid: string | null }> =
         []
       if (speciesToCreate.length > 0) {
@@ -148,10 +142,8 @@ export const TripSpeciesForm = () => {
         newlyCreatedSpecies = createdSpecies
       }
 
-      // Combine existing and newly created species
       const allSpecies = [...(existingSpecies || []), ...newlyCreatedSpecies]
 
-      // Create trip_species associations for all selected species
       const tripSpeciesToCreate = Object.keys(selectedSpecies).map(
         (alaGuid) => {
           const species = allSpecies.find((s) => s.ala_guid === alaGuid)
@@ -164,7 +156,6 @@ export const TripSpeciesForm = () => {
         },
       )
 
-      // Delete removed species
       if (currentTripSpecies) {
         const removedSpecies = currentTripSpecies
           .filter(
@@ -182,7 +173,6 @@ export const TripSpeciesForm = () => {
         }
       }
 
-      // Create new trip_species associations
       const { error: createTripSpeciesError } = await supabase
         .from("trip_species")
         .upsert(tripSpeciesToCreate)
@@ -195,68 +185,95 @@ export const TripSpeciesForm = () => {
       close()
       invalidate()
     } catch (err) {
-      invalidate() // Invalidate on error to ensure consistency
+      invalidate()
       setIsSubmitting(false)
       setError((err as Error).message)
     }
   }, [trip, hasSpeciesChanges, tripSpecies, selectedSpecies, close, invalidate])
 
-  return (
-    <TripWizardStage
-      title="Select Target Species"
-      submitLabel="Save"
-      allowSubmit={true}
-      isSubmitting={isSubmitting}
-      onSubmit={handleSubmit}
-      onCancel={() => setCurrentStep(2)}
-    >
-      <div className="flex w-full flex-col gap-4">
-        <div className="flex max-h-96 flex-wrap gap-2 overflow-scroll">
-          {Object.entries(selectedSpecies).map(([guid, name]) => (
-            <Badge
-              key={guid}
-              className="flex items-center gap-2"
-              variant={"outline"}
-            >
-              <span>{name}</span>
-              <Button
-                title="Remove"
-                onClick={() => handleRemoveSpecies(guid)}
-                variant={"ghost"}
-                size={"sm"}
-                className="p-0 hover:bg-transparent"
-              >
-                <XIcon className="h-4 w-4 cursor-pointer text-white" />
-              </Button>
-            </Badge>
-          ))}
-        </div>
-        <Combobox
-          onChange={handleSelectSpecies}
-          onClose={() => setSearchValue("")}
-          disabled={isLoading}
-        >
-          <ComboboxInput
-            aria-label="Species Search"
-            displayValue={(species: SearchResult) => species?.name}
-            onChange={(event) => setSearchValue(event.target.value)}
-          />
-          <ComboboxOptions anchor="bottom" className="z-[100]">
-            {species?.map((species) => (
-              <ComboboxOption
-                key={species.guid}
-                value={species.guid}
-                className="z-[100] flex justify-between"
-              >
-                <span className="italic">{species.name}</span>
-                {species.commonName && <span>{species.commonName}</span>}
-              </ComboboxOption>
-            ))}
-          </ComboboxOptions>
-        </Combobox>
+  return {
+    selectedSpecies,
+    searchValue,
+    isSubmitting,
+    isLoading,
+    error,
+    searchResults: species,
+    onSearchChange: setSearchValue,
+    onSelectSpecies: handleSelectSpecies,
+    onRemoveSpecies: handleRemoveSpecies,
+    onSubmit: handleSubmit,
+    onSearchClose: () => setSearchValue(""),
+  }
+}
 
-        {error && <div className="text-red-500">{error}</div>}
+export interface TripSpeciesFormProps {
+  selectedSpecies: SelectedSpecies
+  isLoading: boolean
+  error: string | null
+  searchResults: SearchResult[] | undefined
+  onSearchChange: (value: string) => void
+  onSelectSpecies: (guid: string) => void
+  onRemoveSpecies: (guid: string) => void
+  onSearchClose: () => void
+}
+
+export const TripSpeciesForm = ({
+  selectedSpecies,
+  isLoading,
+  error,
+  searchResults,
+  onSearchChange,
+  onSelectSpecies,
+  onRemoveSpecies,
+  onSearchClose,
+}: TripSpeciesFormProps) => {
+  return (
+    <div className="flex w-full flex-col gap-4">
+      <div className="flex max-h-96 flex-wrap gap-2 overflow-scroll">
+        {Object.entries(selectedSpecies).map(([guid, name]) => (
+          <Badge
+            key={guid}
+            className="flex items-center gap-2"
+            variant="outline"
+          >
+            <span>{name}</span>
+            <Button
+              title="Remove"
+              onClick={() => onRemoveSpecies(guid)}
+              variant="ghost"
+              size="sm"
+              className="p-0 hover:bg-transparent"
+            >
+              <XIcon className="h-4 w-4 cursor-pointer text-white" />
+            </Button>
+          </Badge>
+        ))}
       </div>
-    </TripWizardStage>
+      <Combobox
+        onChange={onSelectSpecies}
+        onClose={onSearchClose}
+        disabled={isLoading}
+      >
+        <ComboboxInput
+          aria-label="Species Search"
+          displayValue={(species: SearchResult) => species?.name}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        <ComboboxOptions anchor="bottom" className="z-[100]">
+          {searchResults?.map((species) => (
+            <ComboboxOption
+              key={species.guid}
+              value={species.guid}
+              className="z-[100] flex justify-between"
+            >
+              <span className="italic">{species.name}</span>
+              {species.commonName && <span>{species.commonName}</span>}
+            </ComboboxOption>
+          ))}
+        </ComboboxOptions>
+      </Combobox>
+
+      {error && <div className="text-red-500">{error}</div>}
+    </div>
   )
 }

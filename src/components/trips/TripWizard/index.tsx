@@ -3,7 +3,7 @@ import { useTripFormWizard } from "./useTripFormWizard"
 import { TripDetailsStage } from "./TripDetailsStage"
 import { TripLocationStage } from "./TripLocationStage"
 import { TripPeopleStage } from "./TripPeopleStage"
-import { TripSpeciesForm } from "./TripSpeciesForm"
+import { TripSpeciesStage } from "./TripSpeciesStage"
 export { TripFormProvider } from "./useTripFormWizard"
 
 // Separate component that only depends on currentStep, props used instead of context to prevent re-renders
@@ -16,7 +16,7 @@ const WizardContent = ({ currentStep }: { currentStep: number }) => {
     case 2:
       return <TripPeopleStage />
     case 3:
-      return <TripSpeciesForm />
+      return <TripSpeciesStage />
     default:
       return null
   }
