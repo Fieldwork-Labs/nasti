@@ -1,11 +1,8 @@
-import { useTripForm } from "@/contexts/trip-form"
-
-import { TripDetailsForm } from "../forms/TripDetailsForm"
+import { TripPeopleForm, useTripPeopleForm } from "../forms/TripPeopleForm"
 import { Modal } from "@/components/ui/modal"
 import { Trip } from "@/types"
-import { useTripDetail } from "@/hooks/useTripDetail"
 
-export const TripDetailsModal = ({
+export const TripPeopleModal = ({
   isOpen,
   trip,
   close,
@@ -14,25 +11,18 @@ export const TripDetailsModal = ({
   close: () => void
   trip: Trip
 }) => {
-  const { invalidate } = useTripDetail(trip?.id)
-
-  const { register, handleSubmit, isValid, errors } = useTripForm({
-    instance: trip,
-    onSuccess: () => {
-      invalidate()
-      close()
-    },
-  })
+  const { isSubmitting, handleSubmit, ...tripPeopleFormProps } =
+    useTripPeopleForm({ trip, onSave: close })
 
   return (
     <Modal
       open={isOpen}
-      allowSubmit={isValid}
+      allowSubmit={!isSubmitting}
       onSubmit={handleSubmit}
       onCancel={close}
-      title="Edit Trip"
+      title="Edit Trip People"
     >
-      <TripDetailsForm register={register} errors={errors} />
+      <TripPeopleForm {...tripPeopleFormProps} />
     </Modal>
   )
 }
