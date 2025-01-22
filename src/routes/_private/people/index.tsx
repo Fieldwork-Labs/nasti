@@ -82,7 +82,7 @@ const PeopleList = () => {
                   <td className="px-4 py-2">{user.name}</td>
                   <td className="px-4 py-2">{user.email}</td>
                   <td className="px-4 py-2">
-                    {Date.parse(user.joined_at).toLocaleString()}
+                    {new Date(user.joined_at).toLocaleString()}
                   </td>
                   {isAdmin && (
                     <td className="flex justify-center gap-2 px-4 py-2">

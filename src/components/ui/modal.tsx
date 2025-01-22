@@ -3,7 +3,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -15,31 +14,35 @@ export const Modal = ({
   onOpenChange,
   onCancel,
   onSubmit,
+  allowSubmit = true,
   title,
-  description,
+  children,
 }: {
   open: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange?: (open: boolean) => void
   onCancel: () => void
   onSubmit: () => void
+  allowSubmit?: boolean
   title: string
-  description: string
+  children: React.ReactNode
 }) => {
-  // memoise the title and description so that if the data is deleted, the modal
+  // memoise the title so that if the data is deleted, the modal
   // doesn't display a flash of undefined data
   const [memoisedTitle] = useState(title)
-  const [memoisedDescription] = useState(description)
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{memoisedTitle}</AlertDialogTitle>
-          <AlertDialogDescription>{memoisedDescription}</AlertDialogDescription>
+
+          {children}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onSubmit}>Submit</AlertDialogAction>
+          <AlertDialogAction onClick={onSubmit} disabled={!allowSubmit}>
+            Submit
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

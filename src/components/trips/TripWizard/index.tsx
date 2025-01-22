@@ -1,22 +1,22 @@
 import { AlertDialog } from "@/components/ui/alert-dialog"
 import { useTripFormWizard } from "./useTripFormWizard"
-import { TripDetailsForm } from "./TripDetailsForm"
-import { TripLocationForm } from "./TripLocationForm"
-import { TripPeopleForm } from "./TripPeopleForm"
-import { TripSpeciesForm } from "./TripSpeciesForm"
+import { TripDetailsStage } from "./TripDetailsStage"
+import { TripLocationStage } from "./TripLocationStage"
+import { TripPeopleStage } from "./TripPeopleStage"
+import { TripSpeciesStage } from "./TripSpeciesStage"
 export { TripFormProvider } from "./useTripFormWizard"
 
 // Separate component that only depends on currentStep, props used instead of context to prevent re-renders
 const WizardContent = ({ currentStep }: { currentStep: number }) => {
   switch (currentStep) {
     case 0:
-      return <TripDetailsForm />
+      return <TripDetailsStage />
     case 1:
-      return <TripLocationForm />
+      return <TripLocationStage />
     case 2:
-      return <TripPeopleForm />
+      return <TripPeopleStage />
     case 3:
-      return <TripSpeciesForm />
+      return <TripSpeciesStage />
     default:
       return null
   }

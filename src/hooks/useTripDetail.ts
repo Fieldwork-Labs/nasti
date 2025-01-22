@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 
 import { supabase } from "@/lib/supabase"
 import { Trip } from "@/types"
+import { useCallback } from "react"
+import { queryClient } from "@/lib/utils"
 
 export type TripWithDetails = Trip & {
   members: string[]
@@ -26,5 +28,12 @@ export const useTripDetail = (tripId: string) => {
     queryFn: () => getTripDetail(tripId),
     enabled: Boolean(tripId),
   })
-  return { data, isLoading, isError, error }
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: ["trip", tripId],
+    })
+  }, [tripId])
+
+  return { data, isLoading, isError, error, invalidate }
 }

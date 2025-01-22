@@ -3504,7 +3504,7 @@ export type Database = {
       }
     }
     Enums: {
-      org_user_types: "Owner" | "Admin"
+      org_user_types: "Member" | "Admin"
     }
     CompositeTypes: {
       geometry_dump: {

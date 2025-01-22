@@ -1,4 +1,3 @@
-import { supabase } from "@/lib/supabase"
 import { Trip } from "@/types"
 import {
   createContext,
@@ -8,9 +7,8 @@ import {
   useState,
 } from "react"
 
-import useUserStore from "@/store/userStore"
 import useOpenClose, { UseOpenClose } from "@/hooks/useOpenClose"
-import { useTrips } from "@/hooks/useTrips"
+import { useUpdateTrip } from "../forms/useUpdateTrip"
 
 type TripFormWizardContext = UseOpenClose & {
   trip: Trip | undefined
@@ -35,9 +33,7 @@ const TripFormProviderContext = createContext<TripFormWizardContext>(
 export const TripFormProvider = ({ children }: { children: ReactNode }) => {
   const [currentStep, setCurrentStep] = useState(0)
   const [trip, setTrip] = useState<Trip | undefined>(undefined)
-  const { orgId } = useUserStore()
   const { close, ...openClose } = useOpenClose()
-  const { invalidate } = useTrips()
 
   const handleClose = useCallback(() => {
     setCurrentStep(0)
@@ -45,29 +41,7 @@ export const TripFormProvider = ({ children }: { children: ReactNode }) => {
     close()
   }, [setCurrentStep, setTrip, close])
 
-  const saveTrip = useCallback(
-    async (newTripDetails: Partial<Trip>) => {
-      if (!orgId) throw new Error("No organisation available")
-      if (!trip) throw new Error("No trip available")
-
-      const sbresponse = await supabase
-        .from("trip")
-        .upsert({
-          ...trip,
-          ...newTripDetails,
-        })
-        .select("*")
-        .single()
-
-      if (sbresponse.error) throw new Error(sbresponse.error.message)
-      // type assertion required because of bad typing in supabase for postgis geometry columns
-      const newTrip = sbresponse.data as Trip
-      setTrip(newTrip)
-      invalidate()
-      return newTrip
-    },
-    [orgId, trip, invalidate],
-  )
+  const saveTrip = useUpdateTrip(trip)
 
   return (
     <TripFormProviderContext.Provider
