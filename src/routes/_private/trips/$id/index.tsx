@@ -1,14 +1,17 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
+import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
+import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { getTripCoordinates, queryClient } from "@/lib/utils"
 import { createFileRoute, useParams } from "@tanstack/react-router"
 import { MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
 import useOpenClose from "@/hooks/useOpenClose"
 import { TripDetailsModal, TripLocationModal } from "@/components/trips/modals"
 import { useSuspenseQuery } from "@tanstack/react-query"
+import { TripSpeciesDetail } from "@/components/trips/TripSpeciesDetail"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -20,6 +23,9 @@ const TripDetail = () => {
   useAdminOnly()
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const { data: instance } = useSuspenseQuery(getTripQueryOptions(id))
+
+  const { data: people } = usePeople()
+  const { data: tripSpecies } = useTripSpecies(instance?.id)
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<"details" | "location">()
@@ -49,6 +55,14 @@ const TripDetail = () => {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance.location_coordinate])
+
+  const members = useMemo(() => {
+    if (instance && people && people.length > 0) {
+      return instance.members.map((member) =>
+        people.find((person) => person.id === member),
+      )
+    }
+  }, [instance, people])
 
   if (!instance) return <div>No trip found</div>
   return (
@@ -95,6 +109,31 @@ const TripDetail = () => {
               </div>
             </Marker>
           </Map>
+        </div>
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Members</h4>
+          {!members || members.length === 0 ? (
+            <p>No members found.</p>
+          ) : (
+            members.map((member) => <p>{member?.name}</p>)
+          )}
+        </div>
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Species</h4>
+          {!instance.species ||
+          instance.species.length === 0 ||
+          !tripSpecies ? (
+            <p>No species found.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {tripSpecies.map((species) => (
+                <TripSpeciesDetail
+                  key={species.species.ala_guid}
+                  species={species.species}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <TripDetailsModal
