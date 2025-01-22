@@ -9,7 +9,12 @@ import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useState, useMemo } from "react"
 import useOpenClose from "@/hooks/useOpenClose"
-import { TripDetailsModal, TripLocationModal } from "@/components/trips/modals"
+import {
+  TripDetailsModal,
+  TripLocationModal,
+  TripPeopleModal,
+  TripSpeciesModal,
+} from "@/components/trips/modals"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { TripSpeciesDetail } from "@/components/trips/TripSpeciesDetail"
 
@@ -18,6 +23,8 @@ const getTripQueryOptions = (id: string) => ({
   queryFn: () => getTripDetail(id),
   enabled: Boolean(id),
 })
+
+type ModalComponentNames = "details" | "location" | "people" | "species"
 
 const TripDetail = () => {
   useAdminOnly()
@@ -28,10 +35,10 @@ const TripDetail = () => {
   const { data: tripSpecies } = useTripSpecies(instance?.id)
 
   const { open, isOpen, close } = useOpenClose()
-  const [modalComponent, setModalComponent] = useState<"details" | "location">()
+  const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
 
   const openModal = useCallback(
-    (component: "details" | "location") => {
+    (component: ModalComponentNames) => {
       setModalComponent(component)
       open()
     },
@@ -79,7 +86,6 @@ const TripDetail = () => {
               onClick={() => openModal("details")}
             />
           </div>
-          <p>Trip ID: {instance.id}</p>
           <p>Trip Name: {instance.name}</p>
           <p>Trip Start: {instance.start_date}</p>
           <p>Trip End: {instance.end_date}</p>
@@ -111,15 +117,29 @@ const TripDetail = () => {
           </Map>
         </div>
         <div className="rounded-lg border border-foreground/50 p-2">
-          <h4 className="mb-2 text-xl font-bold">Members</h4>
+          <div className="flex justify-between">
+            <h4 className="mb-2 text-xl font-bold">Members</h4>
+            <PencilIcon
+              className="h-4 w-4 cursor-pointer"
+              onClick={() => openModal("people")}
+            />
+          </div>
           {!members || members.length === 0 ? (
             <p>No members found.</p>
           ) : (
-            members.map((member) => <p>{member?.name}</p>)
+            members.map((member) =>
+              member ? <p key={member.id}>{member.name}</p> : null,
+            )
           )}
         </div>
         <div className="rounded-lg border border-foreground/50 p-2">
-          <h4 className="mb-2 text-xl font-bold">Species</h4>
+          <div className="flex justify-between">
+            <h4 className="mb-2 text-xl font-bold">Species</h4>
+            <PencilIcon
+              className="h-4 w-4 cursor-pointer"
+              onClick={() => openModal("species")}
+            />
+          </div>
           {!instance.species ||
           instance.species.length === 0 ||
           !tripSpecies ? (
@@ -143,6 +163,16 @@ const TripDetail = () => {
       />
       <TripLocationModal
         isOpen={isOpen && modalComponent === "location"}
+        trip={instance}
+        close={close}
+      />
+      <TripPeopleModal
+        isOpen={isOpen && modalComponent === "people"}
+        trip={instance}
+        close={close}
+      />
+      <TripSpeciesModal
+        isOpen={isOpen && modalComponent === "species"}
         trip={instance}
         close={close}
       />

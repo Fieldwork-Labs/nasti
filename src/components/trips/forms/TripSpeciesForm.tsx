@@ -144,8 +144,13 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
 
       const allSpecies = [...(existingSpecies || []), ...newlyCreatedSpecies]
 
-      const tripSpeciesToCreate = Object.keys(selectedSpecies).map(
-        (alaGuid) => {
+      const tripSpeciesToCreate = Object.keys(selectedSpecies)
+        .filter(
+          (ala_guid) =>
+            !currentTripSpecies ||
+            !currentTripSpecies.find((sp) => sp.species.ala_guid === ala_guid),
+        )
+        .map((alaGuid) => {
           const species = allSpecies.find((s) => s.ala_guid === alaGuid)
           if (!species)
             throw new Error(`Species with GUID ${alaGuid} not found`)
@@ -153,8 +158,7 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
             trip_id: trip.id,
             species_id: species.id,
           }
-        },
-      )
+        })
 
       if (currentTripSpecies) {
         const removedSpecies = currentTripSpecies
