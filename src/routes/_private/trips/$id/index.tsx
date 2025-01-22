@@ -3,8 +3,8 @@ import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { getTripCoordinates, queryClient } from "@/lib/utils"
-import { createFileRoute, useParams } from "@tanstack/react-router"
-import { MapPin, PencilIcon } from "lucide-react"
+import { createFileRoute, Link, useParams } from "@tanstack/react-router"
+import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useState, useMemo } from "react"
@@ -76,8 +76,39 @@ const TripDetail = () => {
     <div className="mt-6 flex flex-col gap-4 pb-6">
       <div>
         <h4 className="mb-2 text-xl font-bold">{instance.name}</h4>
+
+        <Link
+          to="/trips"
+          className="flex items-center gap-2 text-sm text-secondary-foreground"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          <span>All Trips</span>
+        </Link>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="rounded-lg border border-foreground/50 p-2">
+        <div className="flex justify-between">
+          <h4 className="mb-2 text-xl font-bold">Map</h4>
+          <PencilIcon
+            className="h-4 w-4 cursor-pointer"
+            onClick={() => openModal("location")}
+          />
+        </div>
+        <Map
+          mapLib={mapboxgl as never}
+          mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+          {...viewState}
+          onMove={(evt) => setViewState(evt.viewState)}
+          style={{ height: 460 }}
+          mapStyle="mapbox://styles/mapbox/satellite-v9"
+        >
+          <Marker {...getTripCoordinates(instance)}>
+            <div className="rounded-full bg-white bg-opacity-50 p-2">
+              <MapPin className="h-5 w-5 text-primary" />
+            </div>
+          </Marker>
+        </Map>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-foreground/50 p-2">
           <div className="flex justify-between">
             <h4 className="mb-2 text-xl font-bold">Trip Details</h4>
@@ -86,36 +117,40 @@ const TripDetail = () => {
               onClick={() => openModal("details")}
             />
           </div>
-          <p>Trip Name: {instance.name}</p>
-          <p>Trip Start: {instance.start_date}</p>
-          <p>Trip End: {instance.end_date}</p>
-          {instance.location_name && (
-            <p>Trip Location: {instance.location_name}</p>
-          )}
+          <table>
+            <tr>
+              <th className="justify-start bg-secondary-background text-left">
+                Trip Name
+              </th>
+              <td>{instance.name}</td>
+            </tr>
+            {instance.start_date && (
+              <tr>
+                <th className="justify-start bg-secondary-background text-left">
+                  Trip Start
+                </th>
+                <td>{new Date(instance.start_date).toLocaleDateString()}</td>
+              </tr>
+            )}
+            {instance.end_date && (
+              <tr>
+                <th className="justify-start bg-secondary-background text-left">
+                  Trip End
+                </th>
+                <td>{new Date(instance.end_date).toLocaleDateString()}</td>
+              </tr>
+            )}
+            {instance.location_name && (
+              <tr>
+                <th className="justify-start bg-secondary-background text-left">
+                  Trip Location
+                </th>
+                <td>{instance.location_name}</td>
+              </tr>
+            )}
+          </table>
         </div>
-        <div className="rounded-lg border border-foreground/50 p-2">
-          <div className="flex justify-between">
-            <h4 className="mb-2 text-xl font-bold">Map</h4>
-            <PencilIcon
-              className="h-4 w-4 cursor-pointer"
-              onClick={() => openModal("location")}
-            />
-          </div>
-          <Map
-            mapLib={mapboxgl as never}
-            mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
-            {...viewState}
-            onMove={(evt) => setViewState(evt.viewState)}
-            style={{ height: 460 }}
-            mapStyle="mapbox://styles/mapbox/satellite-v9"
-          >
-            <Marker {...getTripCoordinates(instance)}>
-              <div className="rounded-full bg-white bg-opacity-50 p-2">
-                <MapPin className="h-5 w-5 text-primary" />
-              </div>
-            </Marker>
-          </Map>
-        </div>
+
         <div className="rounded-lg border border-foreground/50 p-2">
           <div className="flex justify-between">
             <h4 className="mb-2 text-xl font-bold">Members</h4>
@@ -128,7 +163,9 @@ const TripDetail = () => {
             <p>No members found.</p>
           ) : (
             members.map((member) =>
-              member ? <p key={member.id}>{member.name}</p> : null,
+              member ? (
+                <p key={member.id}>{member.name ?? "Uknown person"}</p>
+              ) : null,
             )
           )}
         </div>
