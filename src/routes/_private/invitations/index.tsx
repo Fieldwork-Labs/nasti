@@ -2,16 +2,18 @@ import { useCallback, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react"
+import { ArrowLeftIcon, PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ButtonLink } from "@/components/ui/buttonLink"
 import { Modal } from "@/components/ui/modal"
+import { useAdminOnly } from "@/hooks/useAdminOnly"
 
 const InvitationsList = () => {
-  const { orgId, role } = useUserStore()
+  useAdminOnly()
+  const { orgId } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -91,18 +93,6 @@ const InvitationsList = () => {
     [orgId, queryClient, toast],
   )
 
-  // Ensure the user is an admin
-  if (role && role !== "Admin") {
-    console.log("not admin", { role })
-    return (
-      <div className="p-4 text-center">
-        <p className="text-red-500">
-          Access Denied: You do not have permission to view this page.
-        </p>
-      </div>
-    )
-  }
-
   if (isLoading) {
     return (
       <div className="p-4 text-center">
@@ -122,37 +112,44 @@ const InvitationsList = () => {
   return (
     <div>
       <div className="flex justify-between">
-        <h2 className="text-2xl font-semibold mb-4">Invitations</h2>
+        <h2 className="mb-4 text-2xl font-semibold">Invitations</h2>
         <ButtonLink to="/invitations/new" className="flex gap-1">
           <PlusIcon aria-label="New Invitation" size={16} /> <span>New</span>
         </ButtonLink>
       </div>
+      <Link
+        to="/people"
+        className="flex items-center gap-2 text-sm text-secondary-foreground"
+      >
+        <ArrowLeftIcon className="h-4 w-4" />
+        <span>People List</span>
+      </Link>
       {!data || data.length === 0 ? (
         <p>No invitations found.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full rounded-lg overflow-hidden">
+          <table className="min-w-full overflow-hidden rounded-lg">
             <thead className="">
               <tr>
-                <th className="py-2 px-4 text-left">Name</th>
-                <th className="py-2 px-4 text-left">Email</th>
-                <th className="py-2 px-4 text-left">Created</th>
-                <th className="py-2 px-4 text-left">Expires</th>
-                <th className="py-2 px-4 text-left">Accepted</th>
-                <th className="py-2 px-4 ">Actions</th>
+                <th className="px-4 py-2 text-left">Name</th>
+                <th className="px-4 py-2 text-left">Email</th>
+                <th className="px-4 py-2 text-left">Created</th>
+                <th className="px-4 py-2 text-left">Expires</th>
+                <th className="px-4 py-2 text-left">Accepted</th>
+                <th className="px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {data.map((invitation) => (
                 <tr key={invitation.id} className="border-t">
-                  <td className="py-2 px-4">{invitation.name}</td>
-                  <td className="py-2 px-4">{invitation.email}</td>
-                  <td className="py-2 px-4">
+                  <td className="px-4 py-2">{invitation.name}</td>
+                  <td className="px-4 py-2">{invitation.email}</td>
+                  <td className="px-4 py-2">
                     {new Date(invitation.created_at).toLocaleDateString()}
                   </td>
                   <td
                     className={cn(
-                      "py-2 px-4",
+                      "px-4 py-2",
                       invitation.expires_at &&
                         new Date(invitation.expires_at) < new Date()
                         ? "text-red-500"
@@ -163,12 +160,12 @@ const InvitationsList = () => {
                       ? new Date(invitation.expires_at).toLocaleDateString()
                       : "Never"}
                   </td>
-                  <td className={"py-2 px-4"}>
+                  <td className={"px-4 py-2"}>
                     {invitation.accepted_at
                       ? new Date(invitation.accepted_at).toLocaleDateString()
                       : ""}
                   </td>
-                  <td className="py-2 px-4 flex gap-2 justify-center">
+                  <td className="flex justify-center gap-2 px-4 py-2">
                     <Button
                       size="icon"
                       onClick={() => handleResend(invitation.id)}
@@ -196,10 +193,12 @@ const InvitationsList = () => {
         open={Boolean(invitationToDelete)}
         onOpenChange={() => setInvitationToDelete(undefined)}
         title={`Delete Invitation to ${data?.find((inv) => inv.id === invitationToDelete)?.email}`}
-        description="This action cannot be undone. This will permanently delete the invitation."
         onCancel={() => setInvitationToDelete(undefined)}
         onSubmit={() => invitationToDelete && handleDelete(invitationToDelete)}
-      />
+      >
+        This action cannot be undone. This will permanently delete the
+        invitation.
+      </Modal>
     </div>
   )
 }

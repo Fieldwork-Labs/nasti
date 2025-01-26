@@ -87,7 +87,7 @@ const SetPasswordPage = () => {
         return
       }
       if (user) {
-        navigate({ to: "/dashboard" })
+        navigate({ to: "/trips" })
       }
     },
     [clearErrors, setError, navigate],
@@ -96,13 +96,13 @@ const SetPasswordPage = () => {
   console.log({ errors })
 
   return (
-    <div className="mt-6 flex flex-col pb-6 sm:w-full md:w-1/2 lg:w-1/3 gap-4">
+    <div className="mt-6 flex flex-col gap-4 pb-6 sm:w-full md:w-1/2 lg:w-1/3">
       <div>
         <h4 className="mb-2 text-xl font-bold">Set Password</h4>
         <p>In order to use NASTI, you must set a password.</p>
       </div>
       {!user && errors.root?.login && (
-        <div className="rounded-md border bg-orange-200 p-2 text-xs text-orange-800 flex align-right">
+        <div className="align-right flex rounded-md border bg-orange-200 p-2 text-xs text-orange-800">
           {errors.root.login.message}
         </div>
       )}
@@ -129,7 +129,7 @@ const SetPasswordPage = () => {
             error={errors.password2}
           />
           {errors.root?.login && (
-            <div className="rounded-md border bg-orange-200 p-2 text-xs text-orange-800 flex align-right">
+            <div className="align-right flex rounded-md border bg-orange-200 p-2 text-xs text-orange-800">
               {errors.root.login.message}
             </div>
           )}

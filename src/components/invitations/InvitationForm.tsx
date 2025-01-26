@@ -71,9 +71,22 @@ export const InvitationForm = () => {
         })}
         error={errors.email}
       />
-      <Button type="submit" disabled={!isValid || isSubmitting}>
-        {isSubmitting ? "Sending..." : "Send Invitation"}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant={"secondary"}
+          className="w-full"
+          onClick={() => navigate({ to: "/invitations" })}
+        >
+          Cancel
+        </Button>
+        <Button
+          className="w-full"
+          type="submit"
+          disabled={!isValid || isSubmitting}
+        >
+          {isSubmitting ? "Sending..." : "Send Invitation"}
+        </Button>
+      </div>
     </form>
   )
 }

@@ -46,26 +46,26 @@ const LoginForm = () => {
         getUser()
 
         toast({ description: "Logged in successfully!" })
-        navigate({ to: "/dashboard" })
+        navigate({ to: "/trips" })
       }
     },
     [setSession, getUser, navigate, toast],
   )
 
   return (
-    <div className="flex items-center justify-center px-4 mt-2">
+    <div className="mt-2 flex items-center justify-center px-4">
       {session ? (
-        <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md  text-center">
-          <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700">
+        <div className="w-full max-w-md rounded-lg bg-secondary-background p-8 text-center shadow-md">
+          <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">
             You're already logged in
           </h2>
-          <Link className="underline" to="/dashboard">
-            Go to dashboard
+          <Link className="underline" to="/trips">
+            Go to Trips
           </Link>
         </div>
       ) : (
-        <div className="max-w-md w-full bg-secondary-background p-8 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold mb-6 dark:text-gray-300 text-gray-700 text-center">
+        <div className="w-full max-w-md rounded-lg bg-secondary-background p-8 shadow-md">
+          <h2 className="mb-6 text-center text-2xl font-bold text-gray-700 dark:text-gray-300">
             Login to NASTI
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

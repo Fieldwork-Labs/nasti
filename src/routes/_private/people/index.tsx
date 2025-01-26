@@ -56,11 +56,15 @@ const PeopleList = () => {
   return (
     <div>
       <div className="flex justify-between">
-        <h2 className="mb-4 text-2xl font-semibold">Trips</h2>
+        <h2 className="mb-4 text-2xl font-semibold">People</h2>
         {isAdmin && (
-          <ButtonLink to="/invitations/new" className="flex gap-1">
-            <PlusIcon aria-label="New Trip" size={16} /> <span>Invite new</span>
-          </ButtonLink>
+          <span className="flex gap-2">
+            <ButtonLink to="/invitations">See invitations</ButtonLink>
+            <ButtonLink to="/invitations/new" className="flex gap-1">
+              <PlusIcon aria-label="New Trip" size={16} />{" "}
+              <span>Invite new</span>
+            </ButtonLink>
+          </span>
         )}
       </div>
       {!data || data.length === 0 ? (

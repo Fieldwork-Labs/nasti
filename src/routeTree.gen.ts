@@ -18,7 +18,6 @@ import { Route as AuthSetPasswordImport } from "./routes/auth/set-password"
 import { Route as AuthLoginImport } from "./routes/auth/login"
 import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
 import { Route as PrivateLayoutImport } from "./routes/_private/layout"
-import { Route as PrivateDashboardImport } from "./routes/_private/dashboard"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
 import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/index"
@@ -61,11 +60,6 @@ const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
 
 const PrivateLayoutRoute = PrivateLayoutImport.update({
   path: "/layout",
-  getParentRoute: () => PrivateRoute,
-} as any)
-
-const PrivateDashboardRoute = PrivateDashboardImport.update({
-  path: "/dashboard",
   getParentRoute: () => PrivateRoute,
 } as any)
 
@@ -121,13 +115,6 @@ declare module "@tanstack/react-router" {
       fullPath: ""
       preLoaderRoute: typeof PrivateImport
       parentRoute: typeof rootRoute
-    }
-    "/_private/dashboard": {
-      id: "/_private/dashboard"
-      path: "/dashboard"
-      fullPath: "/dashboard"
-      preLoaderRoute: typeof PrivateDashboardImport
-      parentRoute: typeof PrivateImport
     }
     "/_private/layout": {
       id: "/_private/layout"
@@ -219,7 +206,6 @@ declare module "@tanstack/react-router" {
 // Create and export the route tree
 
 interface PrivateRouteChildren {
-  PrivateDashboardRoute: typeof PrivateDashboardRoute
   PrivateLayoutRoute: typeof PrivateLayoutRoute
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
@@ -231,7 +217,6 @@ interface PrivateRouteChildren {
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
-  PrivateDashboardRoute: PrivateDashboardRoute,
   PrivateLayoutRoute: PrivateLayoutRoute,
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
@@ -248,7 +233,6 @@ const PrivateRouteWithChildren =
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
-  "/dashboard": typeof PrivateDashboardRoute
   "/layout": typeof PrivateLayoutRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
@@ -266,7 +250,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
-  "/dashboard": typeof PrivateDashboardRoute
   "/layout": typeof PrivateLayoutRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
@@ -285,7 +268,6 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   "/": typeof IndexRoute
   "/_private": typeof PrivateRouteWithChildren
-  "/_private/dashboard": typeof PrivateDashboardRoute
   "/_private/layout": typeof PrivateLayoutRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
@@ -305,7 +287,6 @@ export interface FileRouteTypes {
   fullPaths:
     | "/"
     | ""
-    | "/dashboard"
     | "/layout"
     | "/auth/confirm-signup"
     | "/auth/login"
@@ -322,7 +303,6 @@ export interface FileRouteTypes {
   to:
     | "/"
     | ""
-    | "/dashboard"
     | "/layout"
     | "/auth/confirm-signup"
     | "/auth/login"
@@ -339,7 +319,6 @@ export interface FileRouteTypes {
     | "__root__"
     | "/"
     | "/_private"
-    | "/_private/dashboard"
     | "/_private/layout"
     | "/auth/confirm-signup"
     | "/auth/login"
@@ -399,7 +378,6 @@ export const routeTree = rootRoute
     "/_private": {
       "filePath": "_private.tsx",
       "children": [
-        "/_private/dashboard",
         "/_private/layout",
         "/_private/invitations/new",
         "/_private/invitations/",
@@ -409,10 +387,6 @@ export const routeTree = rootRoute
         "/_private/trips/$id/edit",
         "/_private/trips/$id/"
       ]
-    },
-    "/_private/dashboard": {
-      "filePath": "_private/dashboard.tsx",
-      "parent": "/_private"
     },
     "/_private/layout": {
       "filePath": "_private/layout.tsx",

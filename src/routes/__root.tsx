@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Session } from "@supabase/supabase-js"
 import { QueryClientProvider } from "@tanstack/react-query"
@@ -52,7 +53,7 @@ const ThemeToggle = () => {
 }
 
 const UserMenu = () => {
-  const { logout } = useUserStore()
+  const { logout, isAdmin } = useUserStore()
   const navigate = useNavigate()
 
   const handleSignout = useCallback(async () => {
@@ -68,6 +69,14 @@ const UserMenu = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {isAdmin && (
+          <>
+            <DropdownMenuItem onClick={() => navigate({ to: "/people" })}>
+              People
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem onClick={handleSignout}>Logout</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -100,14 +109,19 @@ const RootComponent = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex min-h-screen flex-col bg-background">
         {/* Navbar */}
-        <header className="shadow bg-green-900 bg-opacity-30 border-b-2 border-green-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <Link to="/" className="flex-shrink-0 flex items-center">
-                <img src={logo} alt="NASTI Logo" />
-              </Link>
+        <header className="border-b-2 border-green-800 bg-green-900 bg-opacity-30 shadow">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex h-16 justify-between align-middle">
+              <div className="flex items-center gap-4 align-middle">
+                <Link to="/" className="flex flex-shrink-0 items-center">
+                  <img src={logo} alt="NASTI Logo" />
+                </Link>
+                <Link to="/trips" className="text-lead">
+                  My Trips
+                </Link>
+              </div>
               {/* Right side - User Menu */}
               <div className="flex items-center gap-4">
                 <ThemeToggle />
@@ -120,15 +134,15 @@ const RootComponent = () => {
 
         {/* Main Content */}
         <main className="flex-grow">
-          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 pt-4">
+          <div className="mx-auto max-w-7xl pt-4 sm:px-6 lg:px-8">
             <Outlet />
             <TanStackRouterDevtools />
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="bg-white shadow mt-auto">
-          <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+        <footer className="mt-auto bg-white shadow">
+          <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <p className="text-center text-sm text-gray-500">
               &copy; {new Date().getFullYear()} NASTI Project. All rights
               reserved.
