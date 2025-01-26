@@ -28,17 +28,6 @@ const getSpeciesImageUrl = async ({
   const alaUrl = `${BASE_URL}/${encodedGuid}${thumbnail ? "/thumbnail" : "original"}`
   const proxyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ala_image_proxy?url=${encodeURIComponent(alaUrl)}`
   return proxyUrl
-  //   const response = await fetch(proxyUrl)
-
-  //   if (!response.ok) {
-  //     throw new Error(`API Error: ${response.status} ${response.statusText}`)
-  //   }
-
-  //   console.log({ response })
-
-  //   const result = response.body
-  //   console.log("result", result)
-  //   return result
 }
 
 /**
@@ -53,23 +42,12 @@ export const useALAImage = (
   thumbnail: boolean = false,
   options: QueryOptions = {},
 ) => {
-  const {
-    enabled = true,
-    staleTime = 1000 * 60, // 60 seconds
-    retry = 2,
-    retryDelay = 1000,
-    ...queryOptions
-  } = options
-
-  console.log("should invalidate")
+  const { enabled = true, ...queryOptions } = options
 
   return useQuery({
     queryKey: ["speciesImage", id, thumbnail],
     queryFn: () => (id ? getSpeciesImageUrl({ id, thumbnail }) : null),
     enabled: enabled && Boolean(id),
-    staleTime,
-    retry,
-    retryDelay,
     ...queryOptions,
   })
 }
