@@ -8,7 +8,7 @@ import { Trip } from "@/types"
 import { getTrips } from "@/queries/trips"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 
-import { useTripForm } from "@/contexts/trip-form"
+import { useTripForm } from "@/components/trips/forms/TripDetailsForm"
 import { useNavigate } from "@tanstack/react-router"
 import { useToast } from "@/hooks/use-toast"
 import { FormField } from "@/components/ui/formField"

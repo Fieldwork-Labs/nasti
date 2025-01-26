@@ -1,7 +1,6 @@
-import { useTripForm } from "@/contexts/trip-form"
 import { useTripFormWizard } from "./useTripFormWizard"
 import { TripWizardStage } from "./lib"
-import { TripDetailsForm } from "../forms/TripDetailsForm"
+import { TripDetailsForm, useTripForm } from "../forms/TripDetailsForm"
 
 export const TripDetailsStage = () => {
   const { setCurrentStep, setTrip, close, trip } = useTripFormWizard()

@@ -1,6 +1,4 @@
-import { useTripForm } from "@/contexts/trip-form"
-
-import { TripDetailsForm } from "../forms/TripDetailsForm"
+import { TripDetailsForm, useTripForm } from "../forms/TripDetailsForm"
 import { Modal } from "@/components/ui/modal"
 import { Trip } from "@/types"
 import { useTripDetail } from "@/hooks/useTripDetail"

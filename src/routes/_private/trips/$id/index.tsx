@@ -85,29 +85,31 @@ const TripDetail = () => {
           <span>All Trips</span>
         </Link>
       </div>
-      <div className="rounded-lg border border-foreground/50 p-2">
-        <div className="flex justify-between">
-          <h4 className="mb-2 text-xl font-bold">Map</h4>
-          <PencilIcon
-            className="h-4 w-4 cursor-pointer"
-            onClick={() => openModal("location")}
-          />
+      {(instance.location_name || instance.location_coordinate) && (
+        <div className="rounded-lg border border-foreground/50 p-2">
+          <div className="flex justify-between">
+            <h4 className="mb-2 text-xl font-bold">{instance.location_name}</h4>
+            <PencilIcon
+              className="h-4 w-4 cursor-pointer"
+              onClick={() => openModal("location")}
+            />
+          </div>
+          <Map
+            mapLib={mapboxgl as never}
+            mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+            {...viewState}
+            onMove={(evt) => setViewState(evt.viewState)}
+            style={{ height: 460 }}
+            mapStyle="mapbox://styles/mapbox/satellite-v9"
+          >
+            <Marker {...getTripCoordinates(instance)}>
+              <div className="rounded-full bg-white bg-opacity-50 p-2">
+                <MapPin className="h-5 w-5 text-primary" />
+              </div>
+            </Marker>
+          </Map>
         </div>
-        <Map
-          mapLib={mapboxgl as never}
-          mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
-          {...viewState}
-          onMove={(evt) => setViewState(evt.viewState)}
-          style={{ height: 460 }}
-          mapStyle="mapbox://styles/mapbox/satellite-v9"
-        >
-          <Marker {...getTripCoordinates(instance)}>
-            <div className="rounded-full bg-white bg-opacity-50 p-2">
-              <MapPin className="h-5 w-5 text-primary" />
-            </div>
-          </Marker>
-        </Map>
-      </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-foreground/50 p-2">
           <div className="flex justify-between">
@@ -138,14 +140,6 @@ const TripDetail = () => {
                   Trip End
                 </th>
                 <td>{new Date(instance.end_date).toLocaleDateString()}</td>
-              </tr>
-            )}
-            {instance.location_name && (
-              <tr>
-                <th className="justify-start bg-secondary-background text-left">
-                  Trip Location
-                </th>
-                <td>{instance.location_name}</td>
               </tr>
             )}
           </table>
