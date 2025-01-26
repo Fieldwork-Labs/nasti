@@ -121,6 +121,7 @@ export type Database = {
           invited_by: string
           name: string | null
           organisation_id: string
+          organisation_name: string | null
           token: string
         }
         Insert: {
@@ -132,6 +133,7 @@ export type Database = {
           invited_by: string
           name?: string | null
           organisation_id: string
+          organisation_name?: string | null
           token?: string
         }
         Update: {
@@ -143,6 +145,7 @@ export type Database = {
           invited_by?: string
           name?: string | null
           organisation_id?: string
+          organisation_name?: string | null
           token?: string
         }
         Relationships: [

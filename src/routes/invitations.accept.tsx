@@ -45,7 +45,10 @@ const InvitationAcceptPage = () => {
       }
       if (!invitation) throw new Error("Invitation not found")
 
-      if (Date.parse(invitation.expires_at) < Date.now()) {
+      if (
+        !invitation.expires_at ||
+        Date.parse(invitation.expires_at) < Date.now()
+      ) {
         throw new Error("Invitation has expired")
       }
       return invitation
@@ -73,7 +76,7 @@ const InvitationAcceptPage = () => {
       )
 
       if (response.ok) {
-        navigate({ to: "/dashboard" })
+        navigate({ to: "/trips" })
       } else {
         const { error } = await response.json()
         setError("root", {
@@ -89,8 +92,8 @@ const InvitationAcceptPage = () => {
       <h1 className="text-lg">Welcome to NASTI</h1>
       {errorMessage && <p className="text-red-500">{errorMessage}</p>}
       {invitation && (
-        <div className="flex gap-2 flex-col lg:w-1/3">
-          <p className="bg-secondary-background p-4 text-sm rounded">
+        <div className="flex flex-col gap-2 lg:w-1/3">
+          <p className="rounded bg-secondary-background p-4 text-sm">
             You have been invited to join {invitation.organisation_name}. Please
             enter your signup details to continue.
           </p>
@@ -132,7 +135,7 @@ const InvitationAcceptPage = () => {
               error={errors.password2}
             />
             {errors.root && (
-              <div className="rounded-md border bg-orange-200 p-2 text-xs text-orange-800 flex align-right">
+              <div className="align-right flex rounded-md border bg-orange-200 p-2 text-xs text-orange-800">
                 {errors.root.message}
               </div>
             )}
