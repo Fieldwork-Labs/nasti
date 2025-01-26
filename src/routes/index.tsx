@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, redirect } from "@tanstack/react-router"
 
 const HomePage = () => {
   return (
@@ -10,4 +10,11 @@ const HomePage = () => {
 
 export const Route = createFileRoute("/")({
   component: HomePage,
+  beforeLoad: async ({ context }) => {
+    if (await context.getSession()) {
+      throw redirect({
+        to: "/trips",
+      })
+    }
+  },
 })

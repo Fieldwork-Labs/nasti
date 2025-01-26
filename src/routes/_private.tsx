@@ -25,42 +25,33 @@ const Nav = () => {
           <NavigationMenuLink
             asChild
             className={navigationMenuTriggerStyle()}
-            active={router.location.pathname === "/dashboard"}
-          >
-            <Link href="/dashboard">Dashboard</Link>
-          </NavigationMenuLink>
-        </NavigationMenuItem>
-        {isAdmin && (
-          <NavigationMenuItem>
-            <NavigationMenuLink
-              asChild
-              className={navigationMenuTriggerStyle()}
-              active={router.location.pathname.startsWith("/invitations")}
-            >
-              <Link href="/invitations">Invitations</Link>
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-        )}
-        {isAdmin && (
-          <NavigationMenuItem>
-            <NavigationMenuLink
-              asChild
-              className={navigationMenuTriggerStyle()}
-              active={router.location.pathname.startsWith("/people")}
-            >
-              <Link href="/people">People</Link>
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-        )}
-        <NavigationMenuItem>
-          <NavigationMenuLink
-            asChild
-            className={navigationMenuTriggerStyle()}
             active={router.location.pathname.startsWith("/trips")}
           >
             <Link href="/trips">Trips</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
+        {isAdmin && (
+          <>
+            <NavigationMenuItem>
+              <NavigationMenuLink
+                asChild
+                className={navigationMenuTriggerStyle()}
+                active={router.location.pathname.startsWith("/invitations")}
+              >
+                <Link href="/invitations">Invitations</Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink
+                asChild
+                className={navigationMenuTriggerStyle()}
+                active={router.location.pathname.startsWith("/people")}
+              >
+                <Link href="/people">People</Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          </>
+        )}
       </NavigationMenuList>
     </NavigationMenu>
   )
@@ -68,7 +59,7 @@ const Nav = () => {
 
 function AuthLayout() {
   return (
-    <div className="p-2 h-full flex flex-col gap-2">
+    <div className="flex h-full flex-col gap-2 p-2">
       <Nav />
       <Outlet />
     </div>
