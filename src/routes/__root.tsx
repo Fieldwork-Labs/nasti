@@ -19,7 +19,13 @@ import {
   Outlet,
   useNavigate,
 } from "@tanstack/react-router"
-import { Moon, Sun, User as UserIcon } from "lucide-react"
+import {
+  LeafIcon,
+  Moon,
+  PersonStandingIcon,
+  Sun,
+  User as UserIcon,
+} from "lucide-react"
 import React, { useCallback, useEffect } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -71,8 +77,11 @@ const UserMenu = () => {
       <DropdownMenuContent align="end">
         {isAdmin && (
           <>
+            <DropdownMenuItem onClick={() => navigate({ to: "/species" })}>
+              <LeafIcon className="mr-2 h-4 w-4" /> Species
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate({ to: "/people" })}>
-              People
+              <PersonStandingIcon className="mr-2 h-4 w-4" /> People
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
@@ -118,9 +127,11 @@ const RootComponent = () => {
                 <Link to="/" className="flex flex-shrink-0 items-center">
                   <img src={logo} alt="NASTI Logo" />
                 </Link>
-                <Link to="/trips" className="text-lead">
-                  My Trips
-                </Link>
+                {session && (
+                  <Link to="/trips" className="text-lead">
+                    My Trips
+                  </Link>
+                )}
               </div>
               {/* Right side - User Menu */}
               <div className="flex items-center gap-4">
