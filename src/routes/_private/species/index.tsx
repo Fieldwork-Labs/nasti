@@ -2,8 +2,10 @@ import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { useSpecies } from "@/hooks/useSpecies"
 import { createFileRoute } from "@tanstack/react-router"
 import { usePagination, Pagination } from "@/components/common/pagination"
+// @ts-expect-error: TS6133
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ButtonLink } from "@/components/ui/buttonLink"
+// @ts-expect-error: TS6133
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { PlusIcon } from "lucide-react"
 import { useALAImage } from "@/hooks/useALAImage"
