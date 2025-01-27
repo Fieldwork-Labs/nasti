@@ -52,7 +52,7 @@ const useUserStore = create<UserState>((set) => ({
         set({
           orgId,
           role,
-          isAdmin: role === ROLE.ADMIN || role === ROLE.OWNER,
+          isAdmin: role === ROLE.ADMIN,
         })
       }
     }
