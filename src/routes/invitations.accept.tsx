@@ -2,9 +2,12 @@ import { Button } from "@/components/ui/button"
 import { FormField } from "@/components/ui/formField"
 import { Spinner } from "@/components/ui/spinner"
 import { supabase } from "@/lib/supabase"
-import { useQuery } from "@tanstack/react-query"
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import {
+  createFileRoute,
+  useLoaderData,
+  useNavigate,
+} from "@tanstack/react-router"
+import { useCallback } from "react"
 import { useForm } from "react-hook-form"
 
 type FormData = {
@@ -13,12 +16,31 @@ type FormData = {
   password2: string
 }
 
-const InvitationAcceptPage = () => {
-  const { token } = useSearch({ from: "/invitations/accept" }) as {
-    token: string
+const getInvitationByToken = async (token: string) => {
+  const { data: invitation, error } = await supabase.rpc(
+    "get_invitation_by_token",
+    { token_value: token },
+  )
+
+  if (error) {
+    if (error.details === "The result contains 0 rows")
+      throw new Error("Invitation not found")
+    throw new Error(error.message)
   }
+  if (!invitation) throw new Error("Invitation not found")
+
+  if (
+    !invitation.expires_at ||
+    Date.parse(invitation.expires_at) < Date.now()
+  ) {
+    throw new Error("Invitation is not available or has expired")
+  }
+  return invitation
+}
+
+const InvitationAcceptPage = () => {
+  const { invitation, token } = useLoaderData({ from: "/invitations/accept" })
   const navigate = useNavigate()
-  const [errorMessage, setErrorMessage] = useState<string>()
 
   const {
     register,
@@ -27,38 +49,6 @@ const InvitationAcceptPage = () => {
     watch,
     formState: { errors, isValid, isSubmitting },
   } = useForm<FormData>({ mode: "all" })
-
-  // query to get invitation
-  const { data: invitation, error } = useQuery({
-    queryKey: ["invitation", token],
-    queryFn: async () => {
-      if (!token) throw new Error("Token not found")
-
-      const { data: invitation, error } = await supabase
-        .from("invitation")
-        .select("id, expires_at, organisation_id, organisation_name")
-        .eq("token", token)
-        .single()
-
-      if (error) {
-        throw new Error(error.message)
-      }
-      if (!invitation) throw new Error("Invitation not found")
-
-      if (
-        !invitation.expires_at ||
-        Date.parse(invitation.expires_at) < Date.now()
-      ) {
-        throw new Error("Invitation has expired")
-      }
-      return invitation
-    },
-    refetchOnMount: false,
-  })
-
-  useEffect(() => {
-    if (error) setErrorMessage(error.message)
-  }, [error])
 
   const onSubmit = useCallback(
     async (data: FormData) => {
@@ -90,7 +80,6 @@ const InvitationAcceptPage = () => {
   return (
     <div>
       <h1 className="text-lg">Welcome to NASTI</h1>
-      {errorMessage && <p className="text-red-500">{errorMessage}</p>}
       {invitation && (
         <div className="flex flex-col gap-2 lg:w-1/3">
           <p className="rounded bg-secondary-background p-4 text-sm">
@@ -151,6 +140,27 @@ const InvitationAcceptPage = () => {
   )
 }
 
+type SearchParams = {
+  token: string
+}
+
 export const Route = createFileRoute("/invitations/accept")({
   component: InvitationAcceptPage,
+  validateSearch: (search) => search as SearchParams,
+  loaderDeps: ({ search: { token } }) => ({
+    token,
+  }),
+  loader: async ({ deps: { token } }) => {
+    const invitation = await getInvitationByToken(token)
+    return { invitation, token }
+  },
+  errorComponent: ({ error }) => {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-lg">Unable to accept invitation</h1>
+        {error instanceof Error && <p>{error.message}</p>}
+        {error instanceof Error || <p>Unknown error</p>}
+      </div>
+    )
+  },
 })

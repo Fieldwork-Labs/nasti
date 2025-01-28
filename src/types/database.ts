@@ -1224,6 +1224,23 @@ export type Database = {
         }
         Returns: unknown
       }
+      get_invitation_by_token: {
+        Args: {
+          token_value: string
+        }
+        Returns: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string
+          name: string | null
+          organisation_id: string
+          organisation_name: string | null
+          token: string
+        }
+      }
       get_organisation_users:
         | {
             Args: Record<PropertyKey, never>
