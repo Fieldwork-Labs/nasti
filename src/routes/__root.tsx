@@ -115,7 +115,7 @@ const RootComponent = () => {
       authListener.subscription.unsubscribe()
     }
   }, [getUser, getSession, user])
-
+  console.log({ logo })
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col bg-background">
@@ -125,7 +125,7 @@ const RootComponent = () => {
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
                 <Link to="/" className="flex flex-shrink-0 items-center">
-                  <img src={logo} alt="NASTI Logo" />
+                  <img src={logo} alt="Seed Log Logo" width={200} />
                 </Link>
                 {session && (
                   <Link to="/trips" className="text-lead">
