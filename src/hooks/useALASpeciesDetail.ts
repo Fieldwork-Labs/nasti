@@ -178,7 +178,7 @@ const fetchSpeciesDetail = async (guid: string): Promise<SpeciesDetail> => {
  * @returns React Query result object
  */
 export const useSpeciesDetail = (
-  guid: string | null,
+  guid?: string | null,
   options: QueryOptions = {},
 ) => {
   const {

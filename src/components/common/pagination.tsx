@@ -42,7 +42,6 @@ export const Pagination = ({
   prevPage,
   setPage,
 }: PaginationProps) => {
-  console.log({ page, pageCount, nextPage, prevPage, setPage })
   if (pageCount <= 1) return null
   return (
     <ShadCnPagination>

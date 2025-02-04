@@ -20,8 +20,8 @@ export const Modal = ({
 }: {
   open: boolean
   onOpenChange?: (open: boolean) => void
-  onCancel: () => void
-  onSubmit: () => void
+  onCancel?: () => void
+  onSubmit?: () => void
   allowSubmit?: boolean
   title: string
   children: React.ReactNode
@@ -38,12 +38,14 @@ export const Modal = ({
 
           {children}
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onSubmit} disabled={!allowSubmit}>
-            Submit
-          </AlertDialogAction>
-        </AlertDialogFooter>
+        {onSubmit && (
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={onSubmit} disabled={!allowSubmit}>
+              Submit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        )}
       </AlertDialogContent>
     </AlertDialog>
   )

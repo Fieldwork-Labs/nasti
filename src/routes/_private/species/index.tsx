@@ -1,69 +1,92 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
-import { useSpecies } from "@/hooks/useSpecies"
+import { useSpecies, useSpeciesList } from "@/hooks/useSpecies"
 import { createFileRoute } from "@tanstack/react-router"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { usePagination, Pagination } from "@/components/common/pagination"
-// @ts-expect-error: TS6133
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { Modal } from "@/components/ui/modal"
+
 import { ButtonLink } from "@/components/ui/buttonLink"
-// @ts-expect-error: TS6133
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { PlusIcon } from "lucide-react"
+import { LeafIcon, PencilIcon, PlusIcon } from "lucide-react"
 import { useALAImage } from "@/hooks/useALAImage"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
-import { ImageIcon } from "lucide-react"
+import useOpenClose from "@/hooks/useOpenClose"
+import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 
-type SpeciesListItemProps = {
-  ala_guid: string | null
-  name: string
-  indigenous_name?: string | null
-}
-
-export const SpeciesListItem = ({
-  ala_guid,
-  name,
-  indigenous_name,
-}: SpeciesListItemProps) => {
-  const { data, error } = useSpeciesDetail(ala_guid)
+export const SpeciesListItem = ({ id }: { id: string }) => {
+  console.log("loading species", { id })
+  const { data: species, error } = useSpecies(id)
+  console.log("species", { species })
+  const { data } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, true)
+  const { open, isOpen, close } = useOpenClose()
 
-  if (!data || error) {
+  if (!species || !data || error) {
     return <></>
   }
 
   return (
-    <div className="flex h-16 gap-4">
-      {image ? (
-        <img
-          src={image}
-          alt={`${name} Image`}
-          width={80}
-          height={60}
-          className="text-sm"
-        />
-      ) : (
-        <span className="flex h-16 w-20 justify-center bg-slate-500 align-middle">
-          <ImageIcon />
-        </span>
-      )}
-      <div className="flex flex-col">
-        <h5 className="font-bold">
-          <i>{name}</i>
-        </h5>
-        <div className="flex flex-col">
-          {data.commonNames.length > 0 && (
-            <span>{data.commonNames[0].nameString}</span>
-          )}
-          {indigenous_name && <span>Indigenous Name: {indigenous_name}</span>}
+    <>
+      <div className="flex h-20 gap-4 rounded-sm bg-secondary-background">
+        {image ? (
+          <span className="flex h-20 w-20 content-center justify-center">
+            <img
+              src={image}
+              alt={`${name} Image`}
+              className="w-20 rounded-l-sm object-cover text-sm"
+            />
+          </span>
+        ) : (
+          <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
+            <LeafIcon />
+          </span>
+        )}
+        <div className="flex w-full flex-col py-1 pr-2">
+          <div className="flex items-center justify-between">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <i className="max-w-56 truncate font-semibold">
+                    {species?.name}
+                  </i>
+                </TooltipTrigger>
+                <TooltipContent>{species.name}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
+          </div>
+          <div className="flex flex-col text-sm">
+            {data.commonNames.length > 0 && (
+              <span>{data.commonNames[0].nameString}</span>
+            )}
+            {species.indigenous_name && (
+              <span>
+                <i>{species.indigenous_name}</i>
+              </span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      <Modal open={isOpen} title={`Edit ${species.name}`}>
+        <SpeciesIndigNameForm
+          onCancel={close}
+          onSuccess={close}
+          instance={species}
+        />
+      </Modal>
+    </>
   )
 }
 
 const SpeciesList = () => {
   useAdminOnly()
   const { page, prevPage, nextPage, setPage, pageSize } = usePagination()
-  const { data, count, isLoading, error } = useSpecies(page, pageSize)
+  const { data, count, isLoading, error } = useSpeciesList(page, pageSize)
 
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error.message}</div>
@@ -72,16 +95,16 @@ const SpeciesList = () => {
     <div>
       <div className="flex justify-between">
         <h2 className="mb-4 text-2xl font-semibold">Species</h2>
-        {/* TODO <ButtonLink className="flex gap-1">
-            <PlusIcon aria-label="New Trip" size={16} /> <span>Add new</span>
-          </ButtonLink> */}
+        <ButtonLink className="flex gap-1">
+          <PlusIcon aria-label="New Trip" size={16} /> <span>Add new</span>
+        </ButtonLink>
       </div>
       {!data || data.length === 0 ? (
         <p>No species found.</p>
       ) : (
-        <div className="grid md:grid-cols-2 md:gap-4 lg:grid-cols-3 lg:gap-4">
+        <div className="grid md:grid-cols-2 md:gap-2 lg:grid-cols-3 lg:gap-2">
           {data?.map((species) => (
-            <SpeciesListItem key={species.id} {...species} />
+            <SpeciesListItem key={species.id} id={species.id} />
           ))}
         </div>
       )}
