@@ -133,7 +133,7 @@ const SpeciesDetail = () => {
           </div>
         )}
         <div className="rounded-lg border border-foreground/50 p-2">
-          <h1 className="text-lead">Species Targetted Trips Map</h1>
+          <h1 className="text-lead">Species Targeted Trips Map</h1>
           <Map
             mapLib={mapboxgl as never}
             mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
