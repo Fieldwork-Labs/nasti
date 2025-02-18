@@ -45,7 +45,6 @@ export const useTripForm = ({
   const onSubmit = useCallback(
     async ({ name, startDate, endDate }: TripFormData) => {
       if (!orgId) throw new Error("No organisation available")
-      console.log({ isDirty })
       if (!isDirty) {
         onSuccess?.()
         return

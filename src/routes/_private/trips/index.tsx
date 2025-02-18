@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
@@ -16,68 +16,27 @@ import { TripFormWizard, TripFormProvider } from "@/components/trips/TripWizard"
 
 import { useTrips } from "@/hooks/useTrips"
 import { useTripFormWizard } from "@/components/trips/TripWizard/useTripFormWizard"
-import { getTripCoordinates } from "@/lib/utils"
+import {
+  getTripCoordinates,
+  TripWithLocation,
+  tripWithLocationFilter,
+} from "@/components/trips/utils"
+import { useViewState } from "@/hooks/useViewState"
 
 interface TripsMapProps {
   trips: Trip[]
 }
 
 const TripsMap = ({ trips }: TripsMapProps) => {
-  const [showPopup, setShowPopup] = useState<Trip | null>(null)
+  const [showPopup, setShowPopup] = useState<TripWithLocation | null>(null)
 
   // Calculate bounds based on all trip coordinates
-  const initialViewState = useMemo(() => {
-    const validTrips = trips.filter((trip) => trip.location_coordinate)
-
-    if (validTrips.length === 0) {
-      // Default view for Australia if no valid coordinates
-      return {
-        longitude: 133.7751,
-        latitude: -25.2744,
-        zoom: 3,
-      }
-    }
-
-    // Find min and max coordinates
-    const { latitude: initLat, longitude: initLng } = getTripCoordinates(
-      validTrips[0],
-    )
-
-    const bounds = validTrips.reduce(
-      (acc, trip) => {
-        const { longitude, latitude } = getTripCoordinates(trip)
-        return {
-          minLng: Math.min(acc.minLng, longitude),
-          maxLng: Math.max(acc.maxLng, longitude),
-          minLat: Math.min(acc.minLat, latitude),
-          maxLat: Math.max(acc.maxLat, latitude),
-        }
-      },
-      {
-        minLng: initLng,
-        maxLng: initLng,
-        minLat: initLat,
-        maxLat: initLat,
-      },
-    )
-
-    // Calculate center point
-    const centerLng = (bounds.minLng + bounds.maxLng) / 2
-    const centerLat = (bounds.minLat + bounds.maxLat) / 2
-
-    // Calculate appropriate zoom level
-    const latDiff = bounds.maxLat - bounds.minLat
-    const lngDiff = bounds.maxLng - bounds.minLng
-    const maxDiff = Math.max(latDiff, lngDiff)
-
-    const zoom = Math.floor(8 - Math.log2(maxDiff))
-
-    return {
-      longitude: centerLng,
-      latitude: centerLat,
-      zoom: Math.min(Math.max(zoom, 3), 15), // Clamp zoom between 3 and 15
-    }
-  }, [trips])
+  const initialViewState = useViewState(
+    trips
+      .filter(tripWithLocationFilter)
+      .map(getTripCoordinates)
+      .map(({ longitude, latitude }) => [longitude, latitude]),
+  )
 
   return (
     <Map
@@ -87,21 +46,19 @@ const TripsMap = ({ trips }: TripsMapProps) => {
       style={{ height: 540 }}
       mapStyle="mapbox://styles/mapbox/satellite-v9"
     >
-      {trips
-        .filter((trip) => trip.location_coordinate)
-        .map((trip) => (
-          <Marker {...getTripCoordinates(trip)} key={trip.id}>
-            <div className="rounded-full bg-white bg-opacity-50 p-2">
-              <MapPin
-                className="h-5 w-5 cursor-pointer text-primary"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowPopup(trip)
-                }}
-              />
-            </div>
-          </Marker>
-        ))}
+      {trips.filter(tripWithLocationFilter).map((trip) => (
+        <Marker {...getTripCoordinates(trip)} key={trip.id}>
+          <div className="rounded-full bg-white bg-opacity-50 p-2">
+            <MapPin
+              className="h-5 w-5 cursor-pointer text-primary"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowPopup(trip)
+              }}
+            />
+          </div>
+        </Marker>
+      ))}
       {showPopup && (
         <Popup
           onClose={() => setShowPopup(null)}

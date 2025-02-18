@@ -1,7 +1,7 @@
 import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { getTripCoordinates, queryClient } from "@/lib/utils"
+import { queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
@@ -15,9 +15,10 @@ import {
   TripSpeciesModal,
 } from "@/components/trips/modals"
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { TripSpeciesDetail } from "@/components/trips/TripSpeciesDetail"
 import { useTripMembers } from "@/hooks/useTripMembers"
 import useUserStore from "@/store/userStore"
+import { getTripCoordinates } from "@/components/trips/utils"
+import { SpeciesListItem } from "../../species"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -48,7 +49,7 @@ const TripDetail = () => {
   )
 
   const [viewState, setViewState] = useState(
-    instance
+    instance?.location_coordinate
       ? {
           ...getTripCoordinates(instance),
           zoom: 6.5,
@@ -190,10 +191,7 @@ const TripDetail = () => {
             ) : (
               <div className="flex flex-col gap-2">
                 {tripSpecies.map((species) => (
-                  <TripSpeciesDetail
-                    key={species.species.ala_guid}
-                    species={species.species}
-                  />
+                  <SpeciesListItem key={species.id} id={species.species_id} />
                 ))}
               </div>
             )}

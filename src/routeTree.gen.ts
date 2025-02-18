@@ -24,6 +24,7 @@ import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/inde
 import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
 import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
+import { Route as PrivateSpeciesIdIndexImport } from "./routes/_private/species/$id/index"
 import { Route as PrivateTripsIdEditImport } from "./routes/_private/trips/$id/edit"
 
 // Create/Update Routes
@@ -90,6 +91,11 @@ const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
 
 const PrivateTripsIdIndexRoute = PrivateTripsIdIndexImport.update({
   path: "/trips/$id/",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateSpeciesIdIndexRoute = PrivateSpeciesIdIndexImport.update({
+  path: "/species/$id/",
   getParentRoute: () => PrivateRoute,
 } as any)
 
@@ -193,6 +199,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateTripsIdEditImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/species/$id/": {
+      id: "/_private/species/$id/"
+      path: "/species/$id"
+      fullPath: "/species/$id"
+      preLoaderRoute: typeof PrivateSpeciesIdIndexImport
+      parentRoute: typeof PrivateImport
+    }
     "/_private/trips/$id/": {
       id: "/_private/trips/$id/"
       path: "/trips/$id"
@@ -213,6 +226,7 @@ interface PrivateRouteChildren {
   PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
   PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
   PrivateTripsIdEditRoute: typeof PrivateTripsIdEditRoute
+  PrivateSpeciesIdIndexRoute: typeof PrivateSpeciesIdIndexRoute
   PrivateTripsIdIndexRoute: typeof PrivateTripsIdIndexRoute
 }
 
@@ -224,6 +238,7 @@ const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
   PrivateTripsIdEditRoute: PrivateTripsIdEditRoute,
+  PrivateSpeciesIdIndexRoute: PrivateSpeciesIdIndexRoute,
   PrivateTripsIdIndexRoute: PrivateTripsIdIndexRoute,
 }
 
@@ -244,6 +259,7 @@ export interface FileRoutesByFullPath {
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
+  "/species/$id": typeof PrivateSpeciesIdIndexRoute
   "/trips/$id": typeof PrivateTripsIdIndexRoute
 }
 
@@ -261,6 +277,7 @@ export interface FileRoutesByTo {
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
+  "/species/$id": typeof PrivateSpeciesIdIndexRoute
   "/trips/$id": typeof PrivateTripsIdIndexRoute
 }
 
@@ -279,6 +296,7 @@ export interface FileRoutesById {
   "/_private/species/": typeof PrivateSpeciesIndexRoute
   "/_private/trips/": typeof PrivateTripsIndexRoute
   "/_private/trips/$id/edit": typeof PrivateTripsIdEditRoute
+  "/_private/species/$id/": typeof PrivateSpeciesIdIndexRoute
   "/_private/trips/$id/": typeof PrivateTripsIdIndexRoute
 }
 
@@ -298,6 +316,7 @@ export interface FileRouteTypes {
     | "/species"
     | "/trips"
     | "/trips/$id/edit"
+    | "/species/$id"
     | "/trips/$id"
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -314,6 +333,7 @@ export interface FileRouteTypes {
     | "/species"
     | "/trips"
     | "/trips/$id/edit"
+    | "/species/$id"
     | "/trips/$id"
   id:
     | "__root__"
@@ -330,6 +350,7 @@ export interface FileRouteTypes {
     | "/_private/species/"
     | "/_private/trips/"
     | "/_private/trips/$id/edit"
+    | "/_private/species/$id/"
     | "/_private/trips/$id/"
   fileRoutesById: FileRoutesById
 }
@@ -385,6 +406,7 @@ export const routeTree = rootRoute
         "/_private/species/",
         "/_private/trips/",
         "/_private/trips/$id/edit",
+        "/_private/species/$id/",
         "/_private/trips/$id/"
       ]
     },
@@ -426,6 +448,10 @@ export const routeTree = rootRoute
     },
     "/_private/trips/$id/edit": {
       "filePath": "_private/trips/$id/edit.tsx",
+      "parent": "/_private"
+    },
+    "/_private/species/$id/": {
+      "filePath": "_private/species/$id/index.tsx",
       "parent": "/_private"
     },
     "/_private/trips/$id/": {

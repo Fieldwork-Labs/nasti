@@ -35,7 +35,6 @@ export const InvitationForm = () => {
           body: JSON.stringify({ email, name }),
         },
       )
-      console.log({ response })
       if (!response.ok) {
         const text = await response.text()
         toast({

@@ -18,11 +18,9 @@ import useOpenClose from "@/hooks/useOpenClose"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 
 export const SpeciesListItem = ({ id }: { id: string }) => {
-  console.log("loading species", { id })
   const { data: species, error } = useSpecies(id)
-  console.log("species", { species })
   const { data } = useSpeciesDetail(species?.ala_guid)
-  const { data: image } = useALAImage(data?.imageIdentifier, true)
+  const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
   const { open, isOpen, close } = useOpenClose()
 
   if (!species || !data || error) {
@@ -31,7 +29,11 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
 
   return (
     <>
-      <div className="flex h-20 gap-4 rounded-sm bg-secondary-background">
+      <ButtonLink
+        to="/species/$id"
+        params={{ id: species.id }}
+        className="flex h-20 gap-4 rounded-sm bg-secondary-background p-0"
+      >
         {image ? (
           <span className="flex h-20 w-20 content-center justify-center">
             <img
@@ -45,7 +47,7 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
             <LeafIcon />
           </span>
         )}
-        <div className="flex w-full flex-col py-1 pr-2">
+        <div className="flex h-full w-full flex-col py-1 pr-2">
           <div className="flex items-center justify-between">
             <TooltipProvider>
               <Tooltip>
@@ -60,7 +62,7 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
 
             <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
           </div>
-          <div className="flex flex-col text-sm">
+          <div className="flex flex-col text-xs">
             {data.commonNames.length > 0 && (
               <span>{data.commonNames[0].nameString}</span>
             )}
@@ -71,7 +73,7 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
             )}
           </div>
         </div>
-      </div>
+      </ButtonLink>
       <Modal open={isOpen} title={`Edit ${species.name}`}>
         <SpeciesIndigNameForm
           onCancel={close}

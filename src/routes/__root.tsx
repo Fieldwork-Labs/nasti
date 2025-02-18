@@ -115,7 +115,6 @@ const RootComponent = () => {
       authListener.subscription.unsubscribe()
     }
   }, [getUser, getSession, user])
-  console.log({ logo })
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col bg-background">

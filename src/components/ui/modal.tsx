@@ -23,7 +23,7 @@ export const Modal = ({
   onCancel?: () => void
   onSubmit?: () => void
   allowSubmit?: boolean
-  title: string
+  title?: string
   children: React.ReactNode
 }) => {
   // memoise the title so that if the data is deleted, the modal
@@ -34,7 +34,9 @@ export const Modal = ({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{memoisedTitle}</AlertDialogTitle>
+          {memoisedTitle && (
+            <AlertDialogTitle>{memoisedTitle}</AlertDialogTitle>
+          )}
 
           {children}
         </AlertDialogHeader>

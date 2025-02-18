@@ -35,7 +35,6 @@ declare module "@tanstack/react-router" {
 
 const App = () => {
   const { session, getSession, orgId } = useUserStore()
-  console.log("app, orgId", orgId)
   return (
     <ThemeProvider>
       <RouterProvider
