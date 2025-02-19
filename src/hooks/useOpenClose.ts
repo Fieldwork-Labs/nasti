@@ -3,6 +3,7 @@ import { useState, useCallback } from "react"
 export interface UseOpenClose {
   isOpen: boolean
   open: () => void
+  setIsOpen: (isOpen: boolean) => void
   close: () => void
   toggle: () => void
 }
@@ -27,6 +28,7 @@ const useOpenClose = (initialState: boolean = false): UseOpenClose => {
     open,
     close,
     toggle,
+    setIsOpen,
   }
 }
 
