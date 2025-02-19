@@ -205,6 +205,27 @@ export const TripLocationForm = ({
             setUseCustomName(true)
             handleSubmit()
           }}
+          classNames={{
+            control: (state) =>
+              "border !rounded-lg !bg-secondary-background " +
+              (state.isFocused
+                ? "!shadow-sm !shadow-gray-200"
+                : "!border-gray-300"),
+            valueContainer: () => "!gap-1 !px-3 !py-1",
+            placeholder: () => "!text-gray-400",
+            input: () => "!text-sm !text-primary-foreground",
+            menu: () =>
+              "!bg-white !mt-1 !border !border-gray-200 !rounded-lg !shadow-md !bg-secondary-background",
+            menuList: () => "!py-1",
+            option: (state) =>
+              "!px-3 !py-2 !text-sm !text-primary" +
+              (state.isSelected
+                ? "!bg-blue-600 !text-white"
+                : state.isFocused
+                  ? "!bg-secondary !text-gray-900"
+                  : "!text-gray-700"),
+            noOptionsMessage: () => "!text-gray-400 !text-sm !p-2",
+          }}
         />
       )}
 

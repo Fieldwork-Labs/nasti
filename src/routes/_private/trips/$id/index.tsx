@@ -59,10 +59,11 @@ const TripDetail = () => {
 
   useEffect(() => {
     // update view state when trip location is edited
-    setViewState({
-      ...getTripCoordinates(instance),
-      zoom: 6.5,
-    })
+    if (instance?.location_coordinate)
+      setViewState({
+        ...getTripCoordinates(instance),
+        zoom: 6.5,
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance.location_coordinate])
 
@@ -152,6 +153,15 @@ const TripDetail = () => {
                 </tr>
               )}
             </table>
+            {!instance.location_coordinate && isAdmin && (
+              <div
+                className="flex cursor-pointer items-center gap-2 text-sm underline"
+                onClick={() => openModal("location")}
+              >
+                <span>Add location</span>
+                <PencilIcon className="h-4 w-4" />
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-foreground/50 p-2">
@@ -186,7 +196,8 @@ const TripDetail = () => {
             </div>
             {!instance.species ||
             instance.species.length === 0 ||
-            !tripSpecies ? (
+            !tripSpecies ||
+            tripSpecies.length === 0 ? (
               <p>No species found.</p>
             ) : (
               <div className="flex flex-col gap-2">

@@ -7,7 +7,7 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from "@/components/ui/combobox"
-import { TripSpeciesWithDetails } from "@/hooks/useTripSpecies"
+import { type TripSpeciesWithDetails } from "@/hooks/useTripSpecies"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useDebounce } from "@uidotdev/usehooks"

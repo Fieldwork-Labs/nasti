@@ -126,7 +126,7 @@ const SpeciesDetail = () => {
                     className="cursor-pointer text-sm underline"
                     onClick={() => setIsOpen(true)}
                   >
-                    Add indigenous name?
+                    Add indigenous name
                   </i>
                 </span>
               )}
