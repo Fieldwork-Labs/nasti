@@ -86,6 +86,7 @@ const SpeciesDetail = () => {
   const { isOpen, setIsOpen, close, open } = useOpenClose()
 
   // TODO waiting on approval of registration with ALA
+  // @ts-expect-error ignore next line
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { occurrences } = useALAOccurrences(instance?.ala_guid)
 

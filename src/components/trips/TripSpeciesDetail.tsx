@@ -12,7 +12,7 @@ type SpeciesDetailProps = {
 
 export const TripSpeciesDetail = ({ species }: SpeciesDetailProps) => {
   const { data, error } = useSpeciesDetail(species.ala_guid)
-  const { data: image } = useALAImage(data?.imageIdentifier, true)
+  const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
 
   if (!data || error) {
     return <></>
