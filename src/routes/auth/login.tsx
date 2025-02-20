@@ -107,6 +107,9 @@ const LoginForm = () => {
               </Button>
             </div>
           </form>
+          <div className="mt-2 flex justify-end text-sm underline">
+            <Link to="/auth/reset-password-request">Forgot password?</Link>
+          </div>
         </div>
       )}
     </div>

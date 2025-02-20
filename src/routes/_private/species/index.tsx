@@ -47,7 +47,7 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
             <LeafIcon />
           </span>
         )}
-        <div className="flex h-full w-full flex-col py-1 pr-2">
+        <div className="flex h-full w-full flex-col py-1 pr-2 text-foreground">
           <div className="flex items-center justify-between">
             <TooltipProvider>
               <Tooltip>

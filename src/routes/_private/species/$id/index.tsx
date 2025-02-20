@@ -132,19 +132,19 @@ const SpeciesDetail = () => {
               )}
             </div>
           </div>
+          {mainImage && (
+            <span
+              className="xs:px-6 flex cursor-pointer content-center justify-center md:max-w-96 md:px-0"
+              onClick={() => setModalImage(0)}
+            >
+              <img
+                src={`${mainImage}%2Foriginal`}
+                alt={`${instance.name} Image`}
+                className="rounded-sm object-cover text-sm"
+              />
+            </span>
+          )}
         </div>
-        {mainImage && (
-          <span
-            className="xs:px-6 flex cursor-pointer content-center justify-center md:max-w-96 md:px-0"
-            onClick={() => setModalImage(0)}
-          >
-            <img
-              src={`${mainImage}%2Foriginal`}
-              alt={`${instance.name} Image`}
-              className="rounded-sm object-cover text-sm"
-            />
-          </span>
-        )}
         {images.length > 0 && (
           <div className="flex gap-2 overflow-x-auto">
             {images.map((image, i) => (

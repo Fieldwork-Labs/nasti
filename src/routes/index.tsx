@@ -10,8 +10,12 @@ const HomePage = () => {
 
 export const Route = createFileRoute("/")({
   component: HomePage,
-  beforeLoad: async ({ context }) => {
-    if (await context.getSession()) {
+  beforeLoad: async ({ location, context, params }) => {
+    console.log({ params, location })
+    if (
+      (await context.getSession()) &&
+      !location.pathname.startsWith("/auth")
+    ) {
       throw redirect({
         to: "/trips",
       })

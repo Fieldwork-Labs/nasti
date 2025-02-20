@@ -10,206 +10,245 @@
 
 // Import Routes
 
-import { Route as rootRoute } from "./routes/__root"
-import { Route as PrivateImport } from "./routes/_private"
-import { Route as IndexImport } from "./routes/index"
-import { Route as InvitationsAcceptImport } from "./routes/invitations.accept"
-import { Route as AuthSetPasswordImport } from "./routes/auth/set-password"
-import { Route as AuthLoginImport } from "./routes/auth/login"
-import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
-import { Route as PrivateLayoutImport } from "./routes/_private/layout"
-import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
-import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
-import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/index"
-import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
-import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
-import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
-import { Route as PrivateSpeciesIdIndexImport } from "./routes/_private/species/$id/index"
-import { Route as PrivateTripsIdEditImport } from "./routes/_private/trips/$id/edit"
+import { Route as rootRoute } from './routes/__root'
+import { Route as PrivateImport } from './routes/_private'
+import { Route as IndexImport } from './routes/index'
+import { Route as InvitationsAcceptImport } from './routes/invitations.accept'
+import { Route as AuthSetPasswordImport } from './routes/auth/set-password'
+import { Route as AuthResetPasswordRequestImport } from './routes/auth/reset-password-request'
+import { Route as AuthResetPasswordConfirmImport } from './routes/auth/reset-password-confirm'
+import { Route as AuthResetPasswordImport } from './routes/auth/reset-password'
+import { Route as AuthLoginImport } from './routes/auth/login'
+import { Route as AuthConfirmSignupImport } from './routes/auth/confirm-signup'
+import { Route as PrivateLayoutImport } from './routes/_private/layout'
+import { Route as PrivateTripsIndexImport } from './routes/_private/trips/index'
+import { Route as PrivateSpeciesIndexImport } from './routes/_private/species/index'
+import { Route as PrivatePeopleIndexImport } from './routes/_private/people/index'
+import { Route as PrivateInvitationsIndexImport } from './routes/_private/invitations/index'
+import { Route as PrivateInvitationsNewImport } from './routes/_private/invitations/new'
+import { Route as PrivateTripsIdIndexImport } from './routes/_private/trips/$id/index'
+import { Route as PrivateSpeciesIdIndexImport } from './routes/_private/species/$id/index'
+import { Route as PrivateTripsIdEditImport } from './routes/_private/trips/$id/edit'
 
 // Create/Update Routes
 
 const PrivateRoute = PrivateImport.update({
-  id: "/_private",
+  id: '/_private',
   getParentRoute: () => rootRoute,
 } as any)
 
 const IndexRoute = IndexImport.update({
-  path: "/",
+  path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
 const InvitationsAcceptRoute = InvitationsAcceptImport.update({
-  path: "/invitations/accept",
+  path: '/invitations/accept',
   getParentRoute: () => rootRoute,
 } as any)
 
 const AuthSetPasswordRoute = AuthSetPasswordImport.update({
-  path: "/auth/set-password",
+  path: '/auth/set-password',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AuthResetPasswordRequestRoute = AuthResetPasswordRequestImport.update({
+  path: '/auth/reset-password-request',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AuthResetPasswordConfirmRoute = AuthResetPasswordConfirmImport.update({
+  path: '/auth/reset-password-confirm',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AuthResetPasswordRoute = AuthResetPasswordImport.update({
+  path: '/auth/reset-password',
   getParentRoute: () => rootRoute,
 } as any)
 
 const AuthLoginRoute = AuthLoginImport.update({
-  path: "/auth/login",
+  path: '/auth/login',
   getParentRoute: () => rootRoute,
 } as any)
 
 const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
-  path: "/auth/confirm-signup",
+  path: '/auth/confirm-signup',
   getParentRoute: () => rootRoute,
 } as any)
 
 const PrivateLayoutRoute = PrivateLayoutImport.update({
-  path: "/layout",
+  path: '/layout',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
-  path: "/trips/",
+  path: '/trips/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateSpeciesIndexRoute = PrivateSpeciesIndexImport.update({
-  path: "/species/",
+  path: '/species/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivatePeopleIndexRoute = PrivatePeopleIndexImport.update({
-  path: "/people/",
+  path: '/people/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateInvitationsIndexRoute = PrivateInvitationsIndexImport.update({
-  path: "/invitations/",
+  path: '/invitations/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
-  path: "/invitations/new",
+  path: '/invitations/new',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateTripsIdIndexRoute = PrivateTripsIdIndexImport.update({
-  path: "/trips/$id/",
+  path: '/trips/$id/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateSpeciesIdIndexRoute = PrivateSpeciesIdIndexImport.update({
-  path: "/species/$id/",
+  path: '/species/$id/',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateTripsIdEditRoute = PrivateTripsIdEditImport.update({
-  path: "/trips/$id/edit",
+  path: '/trips/$id/edit',
   getParentRoute: () => PrivateRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
-      id: "/"
-      path: "/"
-      fullPath: "/"
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
-    "/_private": {
-      id: "/_private"
-      path: ""
-      fullPath: ""
+    '/_private': {
+      id: '/_private'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof PrivateImport
       parentRoute: typeof rootRoute
     }
-    "/_private/layout": {
-      id: "/_private/layout"
-      path: "/layout"
-      fullPath: "/layout"
+    '/_private/layout': {
+      id: '/_private/layout'
+      path: '/layout'
+      fullPath: '/layout'
       preLoaderRoute: typeof PrivateLayoutImport
       parentRoute: typeof PrivateImport
     }
-    "/auth/confirm-signup": {
-      id: "/auth/confirm-signup"
-      path: "/auth/confirm-signup"
-      fullPath: "/auth/confirm-signup"
+    '/auth/confirm-signup': {
+      id: '/auth/confirm-signup'
+      path: '/auth/confirm-signup'
+      fullPath: '/auth/confirm-signup'
       preLoaderRoute: typeof AuthConfirmSignupImport
       parentRoute: typeof rootRoute
     }
-    "/auth/login": {
-      id: "/auth/login"
-      path: "/auth/login"
-      fullPath: "/auth/login"
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginImport
       parentRoute: typeof rootRoute
     }
-    "/auth/set-password": {
-      id: "/auth/set-password"
-      path: "/auth/set-password"
-      fullPath: "/auth/set-password"
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordImport
+      parentRoute: typeof rootRoute
+    }
+    '/auth/reset-password-confirm': {
+      id: '/auth/reset-password-confirm'
+      path: '/auth/reset-password-confirm'
+      fullPath: '/auth/reset-password-confirm'
+      preLoaderRoute: typeof AuthResetPasswordConfirmImport
+      parentRoute: typeof rootRoute
+    }
+    '/auth/reset-password-request': {
+      id: '/auth/reset-password-request'
+      path: '/auth/reset-password-request'
+      fullPath: '/auth/reset-password-request'
+      preLoaderRoute: typeof AuthResetPasswordRequestImport
+      parentRoute: typeof rootRoute
+    }
+    '/auth/set-password': {
+      id: '/auth/set-password'
+      path: '/auth/set-password'
+      fullPath: '/auth/set-password'
       preLoaderRoute: typeof AuthSetPasswordImport
       parentRoute: typeof rootRoute
     }
-    "/invitations/accept": {
-      id: "/invitations/accept"
-      path: "/invitations/accept"
-      fullPath: "/invitations/accept"
+    '/invitations/accept': {
+      id: '/invitations/accept'
+      path: '/invitations/accept'
+      fullPath: '/invitations/accept'
       preLoaderRoute: typeof InvitationsAcceptImport
       parentRoute: typeof rootRoute
     }
-    "/_private/invitations/new": {
-      id: "/_private/invitations/new"
-      path: "/invitations/new"
-      fullPath: "/invitations/new"
+    '/_private/invitations/new': {
+      id: '/_private/invitations/new'
+      path: '/invitations/new'
+      fullPath: '/invitations/new'
       preLoaderRoute: typeof PrivateInvitationsNewImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/invitations/": {
-      id: "/_private/invitations/"
-      path: "/invitations"
-      fullPath: "/invitations"
+    '/_private/invitations/': {
+      id: '/_private/invitations/'
+      path: '/invitations'
+      fullPath: '/invitations'
       preLoaderRoute: typeof PrivateInvitationsIndexImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/people/": {
-      id: "/_private/people/"
-      path: "/people"
-      fullPath: "/people"
+    '/_private/people/': {
+      id: '/_private/people/'
+      path: '/people'
+      fullPath: '/people'
       preLoaderRoute: typeof PrivatePeopleIndexImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/species/": {
-      id: "/_private/species/"
-      path: "/species"
-      fullPath: "/species"
+    '/_private/species/': {
+      id: '/_private/species/'
+      path: '/species'
+      fullPath: '/species'
       preLoaderRoute: typeof PrivateSpeciesIndexImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/trips/": {
-      id: "/_private/trips/"
-      path: "/trips"
-      fullPath: "/trips"
+    '/_private/trips/': {
+      id: '/_private/trips/'
+      path: '/trips'
+      fullPath: '/trips'
       preLoaderRoute: typeof PrivateTripsIndexImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/trips/$id/edit": {
-      id: "/_private/trips/$id/edit"
-      path: "/trips/$id/edit"
-      fullPath: "/trips/$id/edit"
+    '/_private/trips/$id/edit': {
+      id: '/_private/trips/$id/edit'
+      path: '/trips/$id/edit'
+      fullPath: '/trips/$id/edit'
       preLoaderRoute: typeof PrivateTripsIdEditImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/species/$id/": {
-      id: "/_private/species/$id/"
-      path: "/species/$id"
-      fullPath: "/species/$id"
+    '/_private/species/$id/': {
+      id: '/_private/species/$id/'
+      path: '/species/$id'
+      fullPath: '/species/$id'
       preLoaderRoute: typeof PrivateSpeciesIdIndexImport
       parentRoute: typeof PrivateImport
     }
-    "/_private/trips/$id/": {
-      id: "/_private/trips/$id/"
-      path: "/trips/$id"
-      fullPath: "/trips/$id"
+    '/_private/trips/$id/': {
+      id: '/_private/trips/$id/'
+      path: '/trips/$id'
+      fullPath: '/trips/$id'
       preLoaderRoute: typeof PrivateTripsIdIndexImport
       parentRoute: typeof PrivateImport
     }
@@ -246,112 +285,130 @@ const PrivateRouteWithChildren =
   PrivateRoute._addFileChildren(PrivateRouteChildren)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute
-  "": typeof PrivateRouteWithChildren
-  "/layout": typeof PrivateLayoutRoute
-  "/auth/confirm-signup": typeof AuthConfirmSignupRoute
-  "/auth/login": typeof AuthLoginRoute
-  "/auth/set-password": typeof AuthSetPasswordRoute
-  "/invitations/accept": typeof InvitationsAcceptRoute
-  "/invitations/new": typeof PrivateInvitationsNewRoute
-  "/invitations": typeof PrivateInvitationsIndexRoute
-  "/people": typeof PrivatePeopleIndexRoute
-  "/species": typeof PrivateSpeciesIndexRoute
-  "/trips": typeof PrivateTripsIndexRoute
-  "/trips/$id/edit": typeof PrivateTripsIdEditRoute
-  "/species/$id": typeof PrivateSpeciesIdIndexRoute
-  "/trips/$id": typeof PrivateTripsIdIndexRoute
+  '/': typeof IndexRoute
+  '': typeof PrivateRouteWithChildren
+  '/layout': typeof PrivateLayoutRoute
+  '/auth/confirm-signup': typeof AuthConfirmSignupRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/reset-password-confirm': typeof AuthResetPasswordConfirmRoute
+  '/auth/reset-password-request': typeof AuthResetPasswordRequestRoute
+  '/auth/set-password': typeof AuthSetPasswordRoute
+  '/invitations/accept': typeof InvitationsAcceptRoute
+  '/invitations/new': typeof PrivateInvitationsNewRoute
+  '/invitations': typeof PrivateInvitationsIndexRoute
+  '/people': typeof PrivatePeopleIndexRoute
+  '/species': typeof PrivateSpeciesIndexRoute
+  '/trips': typeof PrivateTripsIndexRoute
+  '/trips/$id/edit': typeof PrivateTripsIdEditRoute
+  '/species/$id': typeof PrivateSpeciesIdIndexRoute
+  '/trips/$id': typeof PrivateTripsIdIndexRoute
 }
 
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute
-  "": typeof PrivateRouteWithChildren
-  "/layout": typeof PrivateLayoutRoute
-  "/auth/confirm-signup": typeof AuthConfirmSignupRoute
-  "/auth/login": typeof AuthLoginRoute
-  "/auth/set-password": typeof AuthSetPasswordRoute
-  "/invitations/accept": typeof InvitationsAcceptRoute
-  "/invitations/new": typeof PrivateInvitationsNewRoute
-  "/invitations": typeof PrivateInvitationsIndexRoute
-  "/people": typeof PrivatePeopleIndexRoute
-  "/species": typeof PrivateSpeciesIndexRoute
-  "/trips": typeof PrivateTripsIndexRoute
-  "/trips/$id/edit": typeof PrivateTripsIdEditRoute
-  "/species/$id": typeof PrivateSpeciesIdIndexRoute
-  "/trips/$id": typeof PrivateTripsIdIndexRoute
+  '/': typeof IndexRoute
+  '': typeof PrivateRouteWithChildren
+  '/layout': typeof PrivateLayoutRoute
+  '/auth/confirm-signup': typeof AuthConfirmSignupRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/reset-password-confirm': typeof AuthResetPasswordConfirmRoute
+  '/auth/reset-password-request': typeof AuthResetPasswordRequestRoute
+  '/auth/set-password': typeof AuthSetPasswordRoute
+  '/invitations/accept': typeof InvitationsAcceptRoute
+  '/invitations/new': typeof PrivateInvitationsNewRoute
+  '/invitations': typeof PrivateInvitationsIndexRoute
+  '/people': typeof PrivatePeopleIndexRoute
+  '/species': typeof PrivateSpeciesIndexRoute
+  '/trips': typeof PrivateTripsIndexRoute
+  '/trips/$id/edit': typeof PrivateTripsIdEditRoute
+  '/species/$id': typeof PrivateSpeciesIdIndexRoute
+  '/trips/$id': typeof PrivateTripsIdIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  "/": typeof IndexRoute
-  "/_private": typeof PrivateRouteWithChildren
-  "/_private/layout": typeof PrivateLayoutRoute
-  "/auth/confirm-signup": typeof AuthConfirmSignupRoute
-  "/auth/login": typeof AuthLoginRoute
-  "/auth/set-password": typeof AuthSetPasswordRoute
-  "/invitations/accept": typeof InvitationsAcceptRoute
-  "/_private/invitations/new": typeof PrivateInvitationsNewRoute
-  "/_private/invitations/": typeof PrivateInvitationsIndexRoute
-  "/_private/people/": typeof PrivatePeopleIndexRoute
-  "/_private/species/": typeof PrivateSpeciesIndexRoute
-  "/_private/trips/": typeof PrivateTripsIndexRoute
-  "/_private/trips/$id/edit": typeof PrivateTripsIdEditRoute
-  "/_private/species/$id/": typeof PrivateSpeciesIdIndexRoute
-  "/_private/trips/$id/": typeof PrivateTripsIdIndexRoute
+  '/': typeof IndexRoute
+  '/_private': typeof PrivateRouteWithChildren
+  '/_private/layout': typeof PrivateLayoutRoute
+  '/auth/confirm-signup': typeof AuthConfirmSignupRoute
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/reset-password-confirm': typeof AuthResetPasswordConfirmRoute
+  '/auth/reset-password-request': typeof AuthResetPasswordRequestRoute
+  '/auth/set-password': typeof AuthSetPasswordRoute
+  '/invitations/accept': typeof InvitationsAcceptRoute
+  '/_private/invitations/new': typeof PrivateInvitationsNewRoute
+  '/_private/invitations/': typeof PrivateInvitationsIndexRoute
+  '/_private/people/': typeof PrivatePeopleIndexRoute
+  '/_private/species/': typeof PrivateSpeciesIndexRoute
+  '/_private/trips/': typeof PrivateTripsIndexRoute
+  '/_private/trips/$id/edit': typeof PrivateTripsIdEditRoute
+  '/_private/species/$id/': typeof PrivateSpeciesIdIndexRoute
+  '/_private/trips/$id/': typeof PrivateTripsIdIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | ""
-    | "/layout"
-    | "/auth/confirm-signup"
-    | "/auth/login"
-    | "/auth/set-password"
-    | "/invitations/accept"
-    | "/invitations/new"
-    | "/invitations"
-    | "/people"
-    | "/species"
-    | "/trips"
-    | "/trips/$id/edit"
-    | "/species/$id"
-    | "/trips/$id"
+    | '/'
+    | ''
+    | '/layout'
+    | '/auth/confirm-signup'
+    | '/auth/login'
+    | '/auth/reset-password'
+    | '/auth/reset-password-confirm'
+    | '/auth/reset-password-request'
+    | '/auth/set-password'
+    | '/invitations/accept'
+    | '/invitations/new'
+    | '/invitations'
+    | '/people'
+    | '/species'
+    | '/trips'
+    | '/trips/$id/edit'
+    | '/species/$id'
+    | '/trips/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | ""
-    | "/layout"
-    | "/auth/confirm-signup"
-    | "/auth/login"
-    | "/auth/set-password"
-    | "/invitations/accept"
-    | "/invitations/new"
-    | "/invitations"
-    | "/people"
-    | "/species"
-    | "/trips"
-    | "/trips/$id/edit"
-    | "/species/$id"
-    | "/trips/$id"
+    | '/'
+    | ''
+    | '/layout'
+    | '/auth/confirm-signup'
+    | '/auth/login'
+    | '/auth/reset-password'
+    | '/auth/reset-password-confirm'
+    | '/auth/reset-password-request'
+    | '/auth/set-password'
+    | '/invitations/accept'
+    | '/invitations/new'
+    | '/invitations'
+    | '/people'
+    | '/species'
+    | '/trips'
+    | '/trips/$id/edit'
+    | '/species/$id'
+    | '/trips/$id'
   id:
-    | "__root__"
-    | "/"
-    | "/_private"
-    | "/_private/layout"
-    | "/auth/confirm-signup"
-    | "/auth/login"
-    | "/auth/set-password"
-    | "/invitations/accept"
-    | "/_private/invitations/new"
-    | "/_private/invitations/"
-    | "/_private/people/"
-    | "/_private/species/"
-    | "/_private/trips/"
-    | "/_private/trips/$id/edit"
-    | "/_private/species/$id/"
-    | "/_private/trips/$id/"
+    | '__root__'
+    | '/'
+    | '/_private'
+    | '/_private/layout'
+    | '/auth/confirm-signup'
+    | '/auth/login'
+    | '/auth/reset-password'
+    | '/auth/reset-password-confirm'
+    | '/auth/reset-password-request'
+    | '/auth/set-password'
+    | '/invitations/accept'
+    | '/_private/invitations/new'
+    | '/_private/invitations/'
+    | '/_private/people/'
+    | '/_private/species/'
+    | '/_private/trips/'
+    | '/_private/trips/$id/edit'
+    | '/_private/species/$id/'
+    | '/_private/trips/$id/'
   fileRoutesById: FileRoutesById
 }
 
@@ -360,6 +417,9 @@ export interface RootRouteChildren {
   PrivateRoute: typeof PrivateRouteWithChildren
   AuthConfirmSignupRoute: typeof AuthConfirmSignupRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthResetPasswordConfirmRoute: typeof AuthResetPasswordConfirmRoute
+  AuthResetPasswordRequestRoute: typeof AuthResetPasswordRequestRoute
   AuthSetPasswordRoute: typeof AuthSetPasswordRoute
   InvitationsAcceptRoute: typeof InvitationsAcceptRoute
 }
@@ -369,6 +429,9 @@ const rootRouteChildren: RootRouteChildren = {
   PrivateRoute: PrivateRouteWithChildren,
   AuthConfirmSignupRoute: AuthConfirmSignupRoute,
   AuthLoginRoute: AuthLoginRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthResetPasswordConfirmRoute: AuthResetPasswordConfirmRoute,
+  AuthResetPasswordRequestRoute: AuthResetPasswordRequestRoute,
   AuthSetPasswordRoute: AuthSetPasswordRoute,
   InvitationsAcceptRoute: InvitationsAcceptRoute,
 }
@@ -389,6 +452,9 @@ export const routeTree = rootRoute
         "/_private",
         "/auth/confirm-signup",
         "/auth/login",
+        "/auth/reset-password",
+        "/auth/reset-password-confirm",
+        "/auth/reset-password-request",
         "/auth/set-password",
         "/invitations/accept"
       ]
@@ -419,6 +485,15 @@ export const routeTree = rootRoute
     },
     "/auth/login": {
       "filePath": "auth/login.tsx"
+    },
+    "/auth/reset-password": {
+      "filePath": "auth/reset-password.tsx"
+    },
+    "/auth/reset-password-confirm": {
+      "filePath": "auth/reset-password-confirm.tsx"
+    },
+    "/auth/reset-password-request": {
+      "filePath": "auth/reset-password-request.tsx"
     },
     "/auth/set-password": {
       "filePath": "auth/set-password.tsx"
