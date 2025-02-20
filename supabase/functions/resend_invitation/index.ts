@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   `
 
   const mailgunResponse = await fetch(
-    `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
+    `https://api.eu.mailgun.net/v3/${mailgunDomain}/messages`,
     {
       method: "POST",
       headers: {
