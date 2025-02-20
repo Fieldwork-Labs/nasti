@@ -10,10 +10,11 @@ import { cn } from "@/lib/utils"
 import { ButtonLink } from "@/components/ui/buttonLink"
 import { Modal } from "@/components/ui/modal"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
+import { Invitation } from "@/types"
 
 const InvitationsList = () => {
   useAdminOnly()
-  const { orgId } = useUserStore()
+  const { orgId, session } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -32,17 +33,16 @@ const InvitationsList = () => {
 
       if (error) throw new Error(error.message)
 
-      return invitations
+      return invitations as Invitation[]
     },
     enabled: Boolean(orgId), // Only run if org
   })
 
-  const [invitationToDelete, setInvitationToDelete] = useState<string>()
+  const [invitationToDelete, setInvitationToDelete] = useState<Invitation>()
 
   // Modify handleDelete to be the actual deletion logic
   const handleDelete = useCallback(
-    async (id: string) => {
-      const invitation = data?.find((inv) => inv.id === id)
+    async (invitation: Invitation) => {
       if (invitation?.accepted_at) {
         toast({
           variant: "destructive",
@@ -50,7 +50,10 @@ const InvitationsList = () => {
         })
         return
       }
-      const { error } = await supabase.from("invitation").delete().eq("id", id)
+      const { error } = await supabase
+        .from("invitation")
+        .delete()
+        .eq("id", invitation.id)
       if (error) {
         toast({
           variant: "destructive",
@@ -62,7 +65,7 @@ const InvitationsList = () => {
       }
       setInvitationToDelete(undefined) // Close modal after deletion
     },
-    [data, orgId, queryClient, toast],
+    [orgId, queryClient, toast],
   )
   // Handle resending an invitation
   const handleResend = useCallback(
@@ -73,6 +76,7 @@ const InvitationsList = () => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
           },
           body: JSON.stringify({ invitation_id: id }),
         },
@@ -90,7 +94,7 @@ const InvitationsList = () => {
         })
       }
     },
-    [orgId, queryClient, toast],
+    [orgId, queryClient, session, toast],
   )
 
   if (isLoading) {
@@ -151,7 +155,8 @@ const InvitationsList = () => {
                     className={cn(
                       "px-4 py-2",
                       invitation.expires_at &&
-                        new Date(invitation.expires_at) < new Date()
+                        new Date(invitation.expires_at) < new Date() &&
+                        !invitation.accepted_at
                         ? "text-red-500"
                         : "",
                     )}
@@ -176,7 +181,7 @@ const InvitationsList = () => {
                     </Button>
                     <Button
                       size="icon"
-                      onClick={() => setInvitationToDelete(invitation.id)}
+                      onClick={() => setInvitationToDelete(invitation)}
                       title="Delete"
                       disabled={Boolean(invitation.accepted_at)}
                     >
@@ -189,16 +194,20 @@ const InvitationsList = () => {
           </table>
         </div>
       )}
-      <Modal
-        open={Boolean(invitationToDelete)}
-        onOpenChange={() => setInvitationToDelete(undefined)}
-        title={`Delete Invitation to ${data?.find((inv) => inv.id === invitationToDelete)?.email}`}
-        onCancel={() => setInvitationToDelete(undefined)}
-        onSubmit={() => invitationToDelete && handleDelete(invitationToDelete)}
-      >
-        This action cannot be undone. This will permanently delete the
-        invitation.
-      </Modal>
+      {invitationToDelete && (
+        <Modal
+          open={Boolean(invitationToDelete)}
+          onOpenChange={() => setInvitationToDelete(undefined)}
+          title={`Delete Invitation to ${invitationToDelete?.email}`}
+          onCancel={() => setInvitationToDelete(undefined)}
+          onSubmit={() =>
+            invitationToDelete && handleDelete(invitationToDelete)
+          }
+        >
+          This action cannot be undone. This will permanently delete the
+          invitation.
+        </Modal>
+      )}
     </div>
   )
 }

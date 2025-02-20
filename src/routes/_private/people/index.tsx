@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon, TrashIcon } from "lucide-react"
 import { ButtonLink } from "@/components/ui/buttonLink"
 import { usePeople } from "@/hooks/usePeople"
+import { Modal } from "@/components/ui/modal"
 
 const PeopleList = () => {
   // TODO pagination
@@ -19,6 +20,7 @@ const PeopleList = () => {
   const { toast } = useToast()
 
   const { data, isLoading, isError, error } = usePeople()
+  const [personToDelete, setPersonToDelete] = useState<string>()
 
   // Handle deletion of an trip
   const handleDelete = useCallback(
@@ -32,6 +34,7 @@ const PeopleList = () => {
       } else {
         toast({ description: "User removed successfully." })
         queryClient.invalidateQueries({ queryKey: ["users", orgId] })
+        setPersonToDelete(undefined)
       }
     },
     [orgId, queryClient, toast],
@@ -92,7 +95,7 @@ const PeopleList = () => {
                     <td className="flex justify-center gap-2 px-4 py-2">
                       <Button
                         size="icon"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => setPersonToDelete(user.id)}
                         title="Delete"
                       >
                         <TrashIcon aria-label="Delete" size={16} />
@@ -104,6 +107,17 @@ const PeopleList = () => {
             </tbody>
           </table>
         </div>
+      )}
+      {personToDelete && (
+        <Modal
+          open={Boolean(personToDelete)}
+          onOpenChange={() => setPersonToDelete(undefined)}
+          title={`Remove ${data?.find((person) => person.id === personToDelete)?.name}`}
+          onCancel={() => setPersonToDelete(undefined)}
+          onSubmit={() => personToDelete && handleDelete(personToDelete)}
+        >
+          This action cannot be undone. This will permanently remove the user.
+        </Modal>
       )}
     </div>
   )

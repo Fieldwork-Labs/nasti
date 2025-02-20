@@ -12,6 +12,7 @@ const ResetPasswordConfirmPage = () => {
   if (confirmationUrl) window.location.replace(confirmationUrl)
 
   if (!confirmationUrl) return null
+  return <></>
 }
 
 export const Route = createFileRoute("/auth/reset-password-confirm")({
