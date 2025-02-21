@@ -11,12 +11,14 @@ import { ButtonLink } from "@/components/ui/buttonLink"
 import { Modal } from "@/components/ui/modal"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { Invitation } from "@/types"
+import { Spinner } from "@/components/ui/spinner"
 
 const InvitationsList = () => {
   useAdminOnly()
   const { orgId, session } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const [isResending, setIsResending] = useState<string>()
 
   // Fetch invitations
   const { data, isLoading, isError, error } = useQuery({
@@ -70,6 +72,7 @@ const InvitationsList = () => {
   // Handle resending an invitation
   const handleResend = useCallback(
     async (id: string) => {
+      setIsResending(id)
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resend_invitation`,
         {
@@ -81,6 +84,7 @@ const InvitationsList = () => {
           body: JSON.stringify({ invitation_id: id }),
         },
       )
+      setIsResending(undefined)
 
       if (response.ok) {
         toast({ description: "Invitation resent successfully." })
@@ -175,9 +179,15 @@ const InvitationsList = () => {
                       size="icon"
                       onClick={() => handleResend(invitation.id)}
                       title="Resend"
-                      disabled={Boolean(invitation.accepted_at)}
+                      disabled={
+                        Boolean(invitation.accepted_at) ||
+                        isResending === invitation.id
+                      }
                     >
-                      <RefreshCwIcon aria-label="Resend" size={16} />
+                      {isResending == invitation.id && <Spinner />}
+                      {isResending !== invitation.id && (
+                        <RefreshCwIcon aria-label="Resend" size={16} />
+                      )}
                     </Button>
                     <Button
                       size="icon"

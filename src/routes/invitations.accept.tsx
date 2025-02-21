@@ -158,7 +158,7 @@ export const Route = createFileRoute("/invitations/accept")({
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-lg">Unable to accept invitation</h1>
-        {error instanceof Error && <p>{error.message}</p>}
+        {error instanceof Error && error.message && <p>{error.message}</p>}
         {error instanceof Error || <p>Unknown error</p>}
       </div>
     )
