@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { usePagination, Pagination } from "@/components/common/pagination"
-import { Modal } from "@/components/ui/modal"
+import { Modal, type ModalProps } from "@/components/ui/modal"
 
 import { ButtonLink } from "@/components/ui/buttonLink"
 import { LeafIcon, PencilIcon, PlusIcon } from "lucide-react"
@@ -16,11 +16,38 @@ import { useALAImage } from "@/hooks/useALAImage"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import useOpenClose from "@/hooks/useOpenClose"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
+import { useSpeciesForm, SpeciesForm } from "@/components/species/SpeciesForm"
+import { Button } from "@/components/ui/button"
+
+const AddSpeciesModal = ({
+  open,
+  onOpenChange,
+  onCreate,
+}: ModalProps & { onCreate: () => void }) => {
+  const { onSubmit, ...formProps } = useSpeciesForm({
+    onCreate: (_) => {
+      if (onCreate) onCreate()
+      if (onOpenChange) onOpenChange(false)
+    },
+  })
+  return (
+    <Modal
+      title="New species"
+      open={open}
+      onOpenChange={onOpenChange}
+      onSubmit={onSubmit}
+      onCancel={() => (onOpenChange ? onOpenChange(false) : undefined)}
+    >
+      <SpeciesForm {...formProps} />
+    </Modal>
+  )
+}
 
 export const SpeciesListItem = ({ id }: { id: string }) => {
   const { data: species, error } = useSpecies(id)
   const { data } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
+
   const { open, isOpen, close } = useOpenClose()
 
   if (!species || !data || error) {
@@ -88,8 +115,11 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
 const SpeciesList = () => {
   useAdminOnly()
   const { page, prevPage, nextPage, setPage, pageSize } = usePagination()
-  const { data, count, isLoading, error } = useSpeciesList(page, pageSize)
-
+  const { data, count, isLoading, error, invalidate } = useSpeciesList(
+    page,
+    pageSize,
+  )
+  const { isOpen, setIsOpen, open } = useOpenClose()
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error.message}</div>
 
@@ -97,9 +127,9 @@ const SpeciesList = () => {
     <div>
       <div className="flex justify-between">
         <h2 className="mb-4 text-2xl font-semibold">Species</h2>
-        <ButtonLink className="flex gap-1">
+        <Button onClick={open} className="flex gap-1">
           <PlusIcon aria-label="New Trip" size={16} /> <span>Add new</span>
-        </ButtonLink>
+        </Button>
       </div>
       {!data || data.length === 0 ? (
         <p>No species found.</p>
@@ -117,6 +147,13 @@ const SpeciesList = () => {
         prevPage={prevPage}
         setPage={setPage}
       />
+      {isOpen && (
+        <AddSpeciesModal
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          onCreate={invalidate}
+        />
+      )}
     </div>
   )
 }

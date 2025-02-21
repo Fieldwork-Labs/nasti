@@ -9,6 +9,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useState } from "react"
 
+export type ModalProps = {
+  open: boolean
+  onOpenChange?: (open: boolean) => void
+  onCancel?: () => void
+  onSubmit?: () => void
+  allowSubmit?: boolean
+  title?: string
+}
+
 export const Modal = ({
   open,
   onOpenChange,
@@ -17,15 +26,7 @@ export const Modal = ({
   allowSubmit = true,
   title,
   children,
-}: {
-  open: boolean
-  onOpenChange?: (open: boolean) => void
-  onCancel?: () => void
-  onSubmit?: () => void
-  allowSubmit?: boolean
-  title?: string
-  children: React.ReactNode
-}) => {
+}: ModalProps & { children: React.ReactNode }) => {
   // memoise the title so that if the data is deleted, the modal
   // doesn't display a flash of undefined data
   const [memoisedTitle] = useState(title)

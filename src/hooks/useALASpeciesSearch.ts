@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useCallback } from "react"
 
 const BASE_URL = "https://api.ala.org.au/species/search/auto"
-export interface SearchResult {
+export interface AlaSpeciesSearchResult {
   commonName: string | null
   commonNameMatches: string[]
   georeferencedCount: number
@@ -18,7 +18,7 @@ export interface SearchResult {
 }
 
 interface SearchResponse {
-  autoCompleteList: SearchResult[]
+  autoCompleteList: AlaSpeciesSearchResult[]
 }
 
 interface SearchOptions {
@@ -42,7 +42,7 @@ interface QueryOptions extends SearchOptions {
 const fetchSpecies = async (
   searchTerm: string,
   options: SearchOptions = {},
-): Promise<SearchResult[]> => {
+): Promise<AlaSpeciesSearchResult[]> => {
   const { limit = 10 } = options
 
   const params = new URLSearchParams({

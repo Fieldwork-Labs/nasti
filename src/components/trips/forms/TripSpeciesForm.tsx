@@ -12,7 +12,10 @@ import { type TripSpeciesWithDetails } from "@/hooks/useTripSpecies"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useDebounce } from "@uidotdev/usehooks"
 import { supabase } from "@/lib/supabase"
-import { SearchResult, useALASpeciesSearch } from "@/hooks/useALASpeciesSearch"
+import {
+  AlaSpeciesSearchResult,
+  useALASpeciesSearch,
+} from "@/hooks/useALASpeciesSearch"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { Trip } from "@/types"
 
@@ -41,7 +44,7 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
 
   const debouncedSearch = useDebounce(searchValue, 300)
   const {
-    data: species,
+    data: alaSpecies,
     isLoading: isLoadingSpeciesSearch,
     error: searchError,
   } = useALASpeciesSearch(debouncedSearch)
@@ -82,12 +85,12 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
 
   const handleSelectSpecies = useCallback(
     (guid: string) => {
-      const thisSpecies = species?.find((s) => s.guid === guid)
+      const thisSpecies = alaSpecies?.find((s) => s.guid === guid)
       setSelectedSpecies((selected) =>
         thisSpecies ? { ...selected, [guid]: thisSpecies.name } : selected,
       )
     },
-    [species],
+    [alaSpecies],
   )
 
   const handleRemoveSpecies = useCallback((guid: string) => {
@@ -201,7 +204,7 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
     isSubmitting,
     isLoading,
     error,
-    searchResults: species,
+    searchResults: alaSpecies,
     onSearchChange: setSearchValue,
     onSelectSpecies: handleSelectSpecies,
     onRemoveSpecies: handleRemoveSpecies,
@@ -214,7 +217,7 @@ export interface TripSpeciesFormProps {
   selectedSpecies: SelectedSpecies
   isLoading: boolean
   error: string | null
-  searchResults: SearchResult[] | undefined
+  searchResults: AlaSpeciesSearchResult[] | undefined
   onSearchChange: (value: string) => void
   onSelectSpecies: (guid: string) => void
   onRemoveSpecies: (guid: string) => void
@@ -260,7 +263,7 @@ export const TripSpeciesForm = ({
       >
         <ComboboxInput
           aria-label="Species Search"
-          displayValue={(species: SearchResult) => species?.name}
+          displayValue={(species: AlaSpeciesSearchResult) => species?.name}
           onChange={(event) => onSearchChange(event.target.value)}
         />
         <ComboboxOptions anchor="bottom" className="z-[100]">
