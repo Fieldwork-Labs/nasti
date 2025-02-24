@@ -1,4 +1,3 @@
-import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { useSpecies, useSpeciesList } from "@/hooks/useSpecies"
 import { createFileRoute } from "@tanstack/react-router"
 import {
@@ -18,6 +17,7 @@ import useOpenClose from "@/hooks/useOpenClose"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 import { useSpeciesForm, SpeciesForm } from "@/components/species/SpeciesForm"
 import { Button } from "@/components/ui/button"
+import useUserStore from "@/store/userStore"
 
 const AddSpeciesModal = ({
   open,
@@ -47,6 +47,7 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
   const { data: species, error } = useSpecies(id)
   const { data } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
+  const { isAdmin } = useUserStore()
 
   const { open, isOpen, close } = useOpenClose()
 
@@ -87,7 +88,9 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
               </Tooltip>
             </TooltipProvider>
 
-            <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
+            {isAdmin && (
+              <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
+            )}
           </div>
           <div className="flex flex-col text-xs">
             {data.commonNames.length > 0 && (
@@ -113,13 +116,13 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
 }
 
 const SpeciesList = () => {
-  useAdminOnly()
   const { page, prevPage, nextPage, setPage, pageSize } = usePagination()
   const { data, count, isLoading, error, invalidate } = useSpeciesList(
     page,
     pageSize,
   )
   const { isOpen, setIsOpen, open } = useOpenClose()
+  const { isAdmin } = useUserStore()
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error.message}</div>
 
@@ -127,9 +130,11 @@ const SpeciesList = () => {
     <div>
       <div className="flex justify-between">
         <h2 className="mb-4 text-2xl font-semibold">Species</h2>
-        <Button onClick={open} className="flex gap-1">
-          <PlusIcon aria-label="New Trip" size={16} /> <span>Add new</span>
-        </Button>
+        {isAdmin && (
+          <Button onClick={open} className="flex gap-1">
+            <PlusIcon aria-label="New Trip" size={16} /> <span>Add new</span>
+          </Button>
+        )}
       </div>
       {!data || data.length === 0 ? (
         <p>No species found.</p>
@@ -147,7 +152,7 @@ const SpeciesList = () => {
         prevPage={prevPage}
         setPage={setPage}
       />
-      {isOpen && (
+      {isAdmin && isOpen && (
         <AddSpeciesModal
           open={isOpen}
           onOpenChange={setIsOpen}
