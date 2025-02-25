@@ -80,9 +80,10 @@ export const getSpecies = async (id: string) => {
   return data
 }
 
-export const useSpecies = (id: string) => {
+export const useSpecies = (id?: string | null) => {
   return useQuery({
     queryKey: ["species", "detail", id],
-    queryFn: () => getSpecies(id),
+    queryFn: () => (id ? getSpecies(id) : null),
+    enabled: Boolean(id),
   })
 }

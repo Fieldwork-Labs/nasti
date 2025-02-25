@@ -8,6 +8,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useState } from "react"
+import { Spinner } from "./spinner"
 
 export type ModalProps = {
   open: boolean
@@ -16,6 +17,7 @@ export type ModalProps = {
   onSubmit?: () => void
   allowSubmit?: boolean
   title?: string
+  isPending?: boolean
 }
 
 export const Modal = ({
@@ -24,6 +26,7 @@ export const Modal = ({
   onCancel,
   onSubmit,
   allowSubmit = true,
+  isPending = false,
   title,
   children,
 }: ModalProps & { children: React.ReactNode }) => {
@@ -45,7 +48,8 @@ export const Modal = ({
           <AlertDialogFooter>
             <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={onSubmit} disabled={!allowSubmit}>
-              Submit
+              {!isPending && "Submit"}
+              {isPending && <Spinner />}
             </AlertDialogAction>
           </AlertDialogFooter>
         )}

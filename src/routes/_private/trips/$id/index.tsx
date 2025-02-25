@@ -1,7 +1,7 @@
 import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { queryClient } from "@/lib/utils"
+import { parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
@@ -22,6 +22,10 @@ import { SpeciesListItem } from "../../species"
 import { Button } from "@/components/ui/button"
 import { AddCollectionModal } from "@/components/collections/CollectionFormModal"
 import { useToast } from "@/hooks/use-toast"
+import { Collection } from "@/types"
+import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
+import { useViewState } from "@/hooks/useViewState"
+import { CollectionListItem } from "@/components/collections/CollectionListItem"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -44,6 +48,7 @@ const TripDetail = () => {
   const { data: tripMembers } = useTripMembers(instance?.id)
   const { data: people } = usePeople()
   const { data: tripSpecies } = useTripSpecies(instance?.id)
+  const { data: collections } = useCollectionsByTrip(instance?.id)
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
@@ -57,24 +62,24 @@ const TripDetail = () => {
     [open],
   )
 
-  const [viewState, setViewState] = useState(
-    instance?.location_coordinate
-      ? {
-          ...getTripCoordinates(instance),
-          zoom: 6.5,
-        }
-      : { longitude: 133.7751, latitude: -25.2744, zoom: 3 },
+  const coords: [number, number][] = useMemo(
+    () =>
+      [
+        getTripCoordinates(instance),
+        ...(collections
+          ?.filter(({ location }) => Boolean(location))
+          .map(({ location }) => parsePostGISPoint(location!)) ?? []),
+      ].map((coord) => [coord.longitude, coord.latitude]),
+    [collections, instance],
   )
 
+  const initViewState = useViewState(coords)
+
+  const [viewState, setViewState] = useState(initViewState)
+
   useEffect(() => {
-    // update view state when trip location is edited
-    if (instance?.location_coordinate)
-      setViewState({
-        ...getTripCoordinates(instance),
-        zoom: 6.5,
-      })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instance.location_coordinate])
+    setViewState(initViewState)
+  }, [initViewState])
 
   const members = useMemo(() => {
     if (tripMembers && people && people.length > 0) {
@@ -95,18 +100,7 @@ const TripDetail = () => {
         <span>All Trips</span>
       </Link>
       <div className="mt-6 flex flex-col gap-4 pb-6">
-        <div className="flex justify-between">
-          <h2 className="mb-4 text-2xl font-semibold">{instance.name}</h2>
-          {isAdmin && (
-            <Button
-              onClick={() => openModal("collection")}
-              className="flex gap-1"
-            >
-              <ShoppingBag aria-label="New Collection" size={16} />{" "}
-              <span>Add Collection</span>
-            </Button>
-          )}
-        </div>
+        <h2 className="mb-4 text-2xl font-semibold">{instance.name}</h2>
         {(instance.location_name || instance.location_coordinate) && (
           <div className="rounded-lg border border-foreground/50 p-2">
             <div className="flex justify-between">
@@ -133,74 +127,110 @@ const TripDetail = () => {
                   <MapPin className="h-5 w-5 text-primary" />
                 </div>
               </Marker>
+              {collections
+                ?.filter(({ location }) => Boolean(location))
+                .map((coll) => (
+                  <Marker {...parsePostGISPoint(coll.location!)}>
+                    <div className="rounded-full bg-white bg-opacity-50 p-2">
+                      <ShoppingBag className="h-5 w-5 text-primary" />
+                    </div>
+                  </Marker>
+                ))}
             </Map>
           </div>
         )}
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-lg border border-foreground/50 p-2">
-            <div className="flex justify-between">
-              <h4 className="mb-2 text-xl font-bold">Trip Details</h4>
-              {isAdmin && (
-                <PencilIcon
-                  className="h-4 w-4 cursor-pointer"
-                  onClick={() => openModal("details")}
-                />
-              )}
-            </div>
-            <table>
-              <tr>
-                <th className="justify-start bg-secondary-background text-left">
-                  Trip Name
-                </th>
-                <td>{instance.name}</td>
-              </tr>
-              {instance.start_date && (
-                <tr>
-                  <th className="justify-start bg-secondary-background text-left">
-                    Trip Start
-                  </th>
-                  <td>{new Date(instance.start_date).toLocaleDateString()}</td>
-                </tr>
-              )}
-              {instance.end_date && (
-                <tr>
-                  <th className="justify-start bg-secondary-background text-left">
-                    Trip End
-                  </th>
-                  <td>{new Date(instance.end_date).toLocaleDateString()}</td>
-                </tr>
-              )}
-            </table>
-            {!instance.location_coordinate && isAdmin && (
-              <div
-                className="flex cursor-pointer items-center gap-2 text-sm underline"
-                onClick={() => openModal("location")}
-              >
-                <span>Add location</span>
-                <PencilIcon className="h-4 w-4" />
+          <div className="col-span-2 flex flex-col gap-4">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border border-foreground/50 p-2">
+                <div className="flex justify-between">
+                  <h4 className="mb-2 text-xl font-bold">Trip Details</h4>
+                  {isAdmin && (
+                    <PencilIcon
+                      className="h-4 w-4 cursor-pointer"
+                      onClick={() => openModal("details")}
+                    />
+                  )}
+                </div>
+                <table>
+                  <tr>
+                    <th className="justify-start bg-secondary-background text-left">
+                      Trip Name
+                    </th>
+                    <td>{instance.name}</td>
+                  </tr>
+                  {instance.start_date && (
+                    <tr>
+                      <th className="justify-start bg-secondary-background text-left">
+                        Trip Start
+                      </th>
+                      <td>
+                        {new Date(instance.start_date).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  )}
+                  {instance.end_date && (
+                    <tr>
+                      <th className="justify-start bg-secondary-background text-left">
+                        Trip End
+                      </th>
+                      <td>
+                        {new Date(instance.end_date).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  )}
+                </table>
+                {!instance.location_coordinate && isAdmin && (
+                  <div
+                    className="flex cursor-pointer items-center gap-2 text-sm underline"
+                    onClick={() => openModal("location")}
+                  >
+                    <span>Add location</span>
+                    <PencilIcon className="h-4 w-4" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-
-          <div className="rounded-lg border border-foreground/50 p-2">
-            <div className="flex justify-between">
-              <h4 className="mb-2 text-xl font-bold">Members</h4>
-              {isAdmin && (
-                <PencilIcon
-                  className="h-4 w-4 cursor-pointer"
-                  onClick={() => openModal("people")}
-                />
-              )}
+              <div className="rounded-lg border border-foreground/50 p-2">
+                <div className="flex justify-between">
+                  <h4 className="mb-2 text-xl font-bold">Members</h4>
+                  {isAdmin && (
+                    <PencilIcon
+                      className="h-4 w-4 cursor-pointer"
+                      onClick={() => openModal("people")}
+                    />
+                  )}
+                </div>
+                {!members || members.length === 0 ? (
+                  <p>No members found.</p>
+                ) : (
+                  members.map((member) =>
+                    member ? (
+                      <p key={member.id}>{member.name ?? "Uknown person"}</p>
+                    ) : null,
+                  )
+                )}
+              </div>
             </div>
-            {!members || members.length === 0 ? (
-              <p>No members found.</p>
-            ) : (
-              members.map((member) =>
-                member ? (
-                  <p key={member.id}>{member.name ?? "Uknown person"}</p>
-                ) : null,
-              )
-            )}
+            <div className="rounded-lg border border-foreground/50 p-2">
+              <div className="flex justify-between">
+                <h4 className="mb-2 text-xl font-bold">Collections</h4>
+                {isAdmin && (
+                  <Button
+                    onClick={() => openModal("collection")}
+                    className="flex gap-1"
+                  >
+                    <ShoppingBag aria-label="New Collection" size={16} />{" "}
+                    <span>Add Collection</span>
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid flex-col gap-2 lg:grid-cols-2">
+                {collections?.map((coll) => (
+                  <CollectionListItem key={coll.id} id={coll.id} />
+                ))}
+              </div>
+            </div>
           </div>
           <div className="rounded-lg border border-foreground/50 p-2">
             <div className="flex justify-between">
@@ -252,7 +282,7 @@ const TripDetail = () => {
               tripId={instance.id}
               open={isOpen && modalComponent === "collection"}
               close={close}
-              onCreate={() => {
+              onSuccess={(_: Collection) => {
                 toast.toast({ description: "Collection created successfully" })
               }}
             />

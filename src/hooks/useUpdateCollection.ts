@@ -48,12 +48,10 @@ export const useUpdateCollection = () => {
       queries.forEach(([queryKey]) => {
         queryClient.setQueryData<Collection[]>(queryKey, (oldData) => {
           if (!oldData) return oldData
-          return {
-            ...oldData,
-            items: oldData.map((item) =>
-              item.id === updatedItem.id ? updatedItem : item,
-            ),
-          }
+
+          return oldData.map((item) =>
+            item.id === updatedItem.id ? updatedItem : item,
+          )
         })
       })
     },

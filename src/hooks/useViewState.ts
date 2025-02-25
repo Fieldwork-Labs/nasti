@@ -40,7 +40,7 @@ export const useViewState = (
     const lngDiff = bounds.maxLng - bounds.minLng
     const maxDiff = Math.max(latDiff, lngDiff)
 
-    const zoom = Math.floor(8 - Math.log2(maxDiff))
+    const zoom = Math.floor(9 - Math.log2(maxDiff))
 
     return {
       longitude: centerLng,

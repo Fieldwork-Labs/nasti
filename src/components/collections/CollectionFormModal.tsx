@@ -6,16 +6,16 @@ export const AddCollectionModal = ({
   tripId,
   open,
   close,
-  onCreate,
+  onSuccess,
 }: ModalProps & {
   close: () => void
   tripId: string
-  onCreate?: (collection: Collection) => void
+  onSuccess?: (collection: Collection) => void
 }) => {
-  const { onSubmit, ...formProps } = useCollectionForm({
+  const { onSubmit, isPending, form } = useCollectionForm({
     tripId,
-    onCreate: (collection) => {
-      if (onCreate) onCreate(collection)
+    onSuccess: (collection) => {
+      if (onSuccess) onSuccess(collection)
       close()
     },
   })
@@ -25,10 +25,42 @@ export const AddCollectionModal = ({
       open={open}
       onSubmit={onSubmit}
       onCancel={close}
-      allowSubmit={!formProps.isPending && formProps.form.formState.isValid}
+      isPending={isPending}
+      allowSubmit={!isPending && form.formState.isValid}
     >
       {/* unmount the form on modal close, resets the form values */}
-      {open && <CollectionForm {...formProps} />}
+      {open && <CollectionForm {...{ form }} />}
+    </Modal>
+  )
+}
+export const UpdateCollectionModal = ({
+  instance,
+  open,
+  close,
+  onSuccess,
+}: ModalProps & {
+  close: () => void
+  instance: Collection
+  onSuccess?: (collection: Collection) => void
+}) => {
+  const { onSubmit, isPending, form } = useCollectionForm({
+    instance,
+    onSuccess: (collection) => {
+      if (onSuccess) onSuccess(collection)
+      close()
+    },
+  })
+  return (
+    <Modal
+      title="Update collection"
+      open={open}
+      onSubmit={onSubmit}
+      onCancel={close}
+      isPending={isPending}
+      allowSubmit={!isPending && form.formState.isValid}
+    >
+      {/* unmount the form on modal close, resets the form values */}
+      {open && <CollectionForm {...{ form }} />}
     </Modal>
   )
 }

@@ -1,7 +1,7 @@
 import { type Collection } from "@/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { InfoIcon } from "lucide-react"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -11,7 +11,8 @@ import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
 import { FormField } from "../ui/formField"
 import { Label, labelVariants } from "../ui/label"
 import { withTooltip } from "../ui/tooltip"
-import { useUpdateCollection } from "./useUpdateCollection"
+import { useUpdateCollection } from "../../hooks/useUpdateCollection"
+import { parsePostGISPoint } from "@/lib/utils"
 
 type CollectionFormData = {
   species_id: string | null
@@ -65,30 +66,60 @@ const schema = z
   )
 
 export const useCollectionForm = ({
+  instance,
   tripId,
-  onCreate,
+  onSuccess,
 }: {
-  tripId: string
-  onCreate: (collection: Collection) => void
+  instance?: Collection
+  tripId?: string
+  onSuccess: (collection: Collection) => void
 }) => {
   const { orgId, user } = useUserStore()
+
+  const defaultValues = useMemo(() => {
+    return instance
+      ? {
+          species_id: instance.species_id,
+          species_uncertain: Boolean(instance.species_uncertain),
+          field_name: instance.field_name ?? "",
+          ...(instance?.location
+            ? parsePostGISPoint(instance.location)
+            : {
+                latitude: undefined,
+                longitude: undefined,
+              }),
+          specimen_collected: Boolean(instance.specimen_collected),
+          description: instance.description ?? "",
+          weight_estimate_kg: instance.weight_estimate_kg,
+          plants_sampled_estimate: instance.plants_sampled_estimate,
+        }
+      : {
+          species_id: null,
+          species_uncertain: false,
+          field_name: "",
+          latitude: undefined,
+          longitude: undefined,
+          specimen_collected: false,
+          description: "",
+          weight_estimate_kg: null,
+          plants_sampled_estimate: null,
+        }
+  }, [instance])
+
   const form = useForm<CollectionFormData>({
-    defaultValues: {
-      species_id: null,
-      species_uncertain: false,
-      field_name: "",
-      latitude: undefined,
-      longitude: undefined,
-      specimen_collected: false,
-      description: "",
-      weight_estimate_kg: null,
-      plants_sampled_estimate: null,
-    },
+    defaultValues,
     resolver: zodResolver(schema),
     mode: "onChange",
     criteriaMode: "all",
     reValidateMode: "onChange",
   })
+
+  useEffect(() => {
+    // Only reset if the form has been mounted already
+    if (form) {
+      form.reset(defaultValues)
+    }
+  }, [defaultValues, form])
 
   const {
     mutateAsync: updateCollection,
@@ -102,22 +133,27 @@ export const useCollectionForm = ({
     async (data: CollectionFormData) => {
       if (!user || !orgId) throw new Error("Not logged in")
 
+      if (!tripId && !instance?.trip_id)
+        throw new Error("tripId or instance must be supplied to CollectionForm")
+
+      // type assertion safe because of check above
+      const trip_id = (instance ? instance.trip_id : tripId) as string
+
       const { latitude, longitude, ...rest } = data
       const location = `POINT(${longitude} ${latitude})`
       const newCollection = {
         ...rest,
+        id: instance?.id,
         created_by: user.id,
         location,
         organisation_id: orgId,
-        trip_id: tripId,
+        trip_id,
       }
-      const createdRecord = await updateCollection(newCollection)
+      const updatedRecord = await updateCollection(newCollection)
 
-      console.log({ createdRecord })
-
-      if (onCreate && createdRecord) onCreate(createdRecord)
+      if (onSuccess && updatedRecord) onSuccess(updatedRecord)
     },
-    [user, orgId, tripId, updateCollection, onCreate],
+    [user, orgId, tripId, instance, updateCollection, onSuccess],
   )
 
   return {
@@ -127,16 +163,17 @@ export const useCollectionForm = ({
   }
 }
 
-type CollectionFormProps = ReturnType<typeof useCollectionForm>
+type CollectionFormProps = Omit<
+  ReturnType<typeof useCollectionForm>,
+  "onSubmit" | "isPending"
+>
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
   <InfoIcon className="h-4 w-4 text-xs" />,
 )
 
-export const CollectionForm = (
-  props: Omit<CollectionFormProps, "onSubmit">,
-) => {
+export const CollectionForm = (props: CollectionFormProps) => {
   const {
     register,
     control,
