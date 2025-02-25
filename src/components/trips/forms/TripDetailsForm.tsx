@@ -1,12 +1,10 @@
 import { FormField } from "@/components/ui/formField"
-import { FieldErrors, UseFormRegister } from "react-hook-form"
+import { FieldErrors, UseFormRegister, useForm } from "react-hook-form"
 import { supabase } from "@/lib/supabase"
 import { Trip } from "@/types"
 import { useCallback } from "react"
 
 import useUserStore from "@/store/userStore"
-
-import { useForm } from "react-hook-form"
 
 export type TripFormData = {
   name: Trip["name"]

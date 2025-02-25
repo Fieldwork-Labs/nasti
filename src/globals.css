@@ -35,7 +35,7 @@
   --popover-foreground: 124 5% 90%;
   --primary: 124 63% 24%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 124 30% 20%;
+  --secondary: 124 30% 50%;
   --secondary-foreground: 50 0% 75%;
   --muted: 86 30% 24%;
   --muted-foreground: 124 5% 60%;
@@ -58,5 +58,14 @@
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }

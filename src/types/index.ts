@@ -10,6 +10,7 @@ export type Invitation = Table<"invitation">
 export type Species = Table<"species">
 export type TripSpecies = Table<"trip_species">
 export type Trip = Table<"trip"> & { location_coordinate: string | null } // override for bad supabase typing on geographic point fields
+export type Collection = Table<"collection">
 
 export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">

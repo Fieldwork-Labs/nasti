@@ -3,7 +3,7 @@ import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
-import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
+import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useState, useMemo } from "react"
@@ -19,6 +19,9 @@ import { useTripMembers } from "@/hooks/useTripMembers"
 import useUserStore from "@/store/userStore"
 import { getTripCoordinates } from "@/components/trips/utils"
 import { SpeciesListItem } from "../../species"
+import { Button } from "@/components/ui/button"
+import { AddCollectionModal } from "@/components/collections/CollectionFormModal"
+import { useToast } from "@/hooks/use-toast"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -26,7 +29,12 @@ const getTripQueryOptions = (id: string) => ({
   enabled: Boolean(id),
 })
 
-type ModalComponentNames = "details" | "location" | "people" | "species"
+type ModalComponentNames =
+  | "details"
+  | "location"
+  | "people"
+  | "species"
+  | "collection"
 
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
@@ -39,6 +47,7 @@ const TripDetail = () => {
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
+  const toast = useToast()
 
   const openModal = useCallback(
     (component: ModalComponentNames) => {
@@ -86,8 +95,17 @@ const TripDetail = () => {
         <span>All Trips</span>
       </Link>
       <div className="mt-6 flex flex-col gap-4 pb-6">
-        <div>
-          <h4 className="mb-2 text-xl font-bold">{instance.name}</h4>
+        <div className="flex justify-between">
+          <h2 className="mb-4 text-2xl font-semibold">{instance.name}</h2>
+          {isAdmin && (
+            <Button
+              onClick={() => openModal("collection")}
+              className="flex gap-1"
+            >
+              <ShoppingBag aria-label="New Collection" size={16} />{" "}
+              <span>Add Collection</span>
+            </Button>
+          )}
         </div>
         {(instance.location_name || instance.location_coordinate) && (
           <div className="rounded-lg border border-foreground/50 p-2">
@@ -229,6 +247,14 @@ const TripDetail = () => {
               isOpen={isOpen && modalComponent === "species"}
               trip={instance}
               close={close}
+            />
+            <AddCollectionModal
+              tripId={instance.id}
+              open={isOpen && modalComponent === "collection"}
+              close={close}
+              onCreate={() => {
+                toast.toast({ description: "Collection created successfully" })
+              }}
             />
           </>
         )}

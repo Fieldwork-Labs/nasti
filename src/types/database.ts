@@ -11,13 +11,13 @@ export type Database = {
     Tables: {
       collection: {
         Row: {
-          company_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
           field_name: string | null
           id: string
           location: unknown | null
+          organisation_id: string | null
           plants_sampled_estimate: number | null
           species_id: string | null
           species_uncertain: boolean | null
@@ -26,13 +26,13 @@ export type Database = {
           weight_estimate_kg: number | null
         }
         Insert: {
-          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           field_name?: string | null
           id?: string
           location?: unknown | null
+          organisation_id?: string | null
           plants_sampled_estimate?: number | null
           species_id?: string | null
           species_uncertain?: boolean | null
@@ -41,13 +41,13 @@ export type Database = {
           weight_estimate_kg?: number | null
         }
         Update: {
-          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           field_name?: string | null
           id?: string
           location?: unknown | null
+          organisation_id?: string | null
           plants_sampled_estimate?: number | null
           species_id?: string | null
           species_uncertain?: boolean | null
@@ -58,7 +58,7 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "collection_company_id_fkey"
-            columns: ["company_id"]
+            columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
             referencedColumns: ["id"]
