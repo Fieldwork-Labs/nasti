@@ -14,13 +14,23 @@ import { usePeople } from "@/hooks/usePeople"
 import useUserStore from "@/store/userStore"
 import { LeafIcon, PencilIcon } from "lucide-react"
 import { UpdateCollectionModal } from "./CollectionFormModal"
+import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 
-export const CollectionListItem = ({ id }: { id: string }) => {
+export const CollectionListItem = ({
+  id,
+  onHover,
+}: {
+  id: string
+  onHover: (id: string | undefined) => void
+}) => {
   const { data: collection, error } = useCollection(id)
   const { data: species } = useSpecies(collection?.species_id)
   const { data: speciesData } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(speciesData?.imageIdentifier, "thumbnail")
+  const { photos } = useCollectionPhotos(id)
   const { isAdmin } = useUserStore()
+
+  const photo = photos?.[0].signedUrl ?? image
 
   // @ts-expect-error Leaving this here for when we have a 'details' modal
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -32,25 +42,27 @@ export const CollectionListItem = ({ id }: { id: string }) => {
   } = useOpenClose()
 
   const { data: people } = usePeople()
-  if (!collection || !speciesData || error) {
+  if (!collection || error) {
     return <></>
   }
 
   const speciesName = species?.name ?? collection.field_name
-  console.log({ people, collection })
+
   const creator = people?.find((person) => person.id === collection.created_by)
 
   return (
     <>
       <div
+        onMouseOver={() => onHover(id)}
+        onMouseLeave={() => onHover(undefined)}
         onClick={() => console.log("todo - collection view detail modal ")}
         className="flex h-20 gap-2 rounded-sm bg-secondary-background text-primary-foreground hover:bg-primary/90"
       >
-        {image ? (
+        {photo ? (
           <span className="flex h-20 w-20 content-center justify-center">
             <img
-              src={image}
-              alt={`${name} Image`}
+              src={photo}
+              alt={`${speciesName} Image`}
               className="w-20 rounded-l-sm object-cover text-sm"
             />
           </span>
@@ -97,11 +109,13 @@ export const CollectionListItem = ({ id }: { id: string }) => {
           instance={species}
         />
       </Modal> */}
-      <UpdateCollectionModal
-        instance={collection}
-        open={isOpenUpdateModal}
-        close={closeUpdateModal}
-      />
+      {isOpenUpdateModal && (
+        <UpdateCollectionModal
+          instance={collection}
+          open={isOpenUpdateModal}
+          close={closeUpdateModal}
+        />
+      )}
     </>
   )
 }

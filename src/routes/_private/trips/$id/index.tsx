@@ -1,7 +1,7 @@
 import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { parsePostGISPoint, queryClient } from "@/lib/utils"
+import { cn, parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
@@ -20,9 +20,8 @@ import useUserStore from "@/store/userStore"
 import { getTripCoordinates } from "@/components/trips/utils"
 import { SpeciesListItem } from "../../species"
 import { Button } from "@/components/ui/button"
-import { AddCollectionModal } from "@/components/collections/CollectionFormModal"
-import { useToast } from "@/hooks/use-toast"
-import { Collection } from "@/types"
+import { AddCollectionWizardModal } from "@/components/collections/CollectionFormModal"
+
 import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
 import { useViewState } from "@/hooks/useViewState"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
@@ -52,7 +51,7 @@ const TripDetail = () => {
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
-  const toast = useToast()
+  const [collectionHovered, setCollectionHovered] = useState<string>()
 
   const openModal = useCallback(
     (component: ModalComponentNames) => {
@@ -130,9 +129,21 @@ const TripDetail = () => {
               {collections
                 ?.filter(({ location }) => Boolean(location))
                 .map((coll) => (
-                  <Marker {...parsePostGISPoint(coll.location!)}>
-                    <div className="rounded-full bg-white bg-opacity-50 p-2">
-                      <ShoppingBag className="h-5 w-5 text-primary" />
+                  <Marker {...parsePostGISPoint(coll.location!)} key={coll.id}>
+                    <div
+                      className={cn(
+                        "rounded-full transition-all duration-300",
+                        collectionHovered === coll.id
+                          ? "bg-white p-3"
+                          : "bg-white bg-opacity-50 p-2",
+                      )}
+                    >
+                      <ShoppingBag
+                        className={cn(
+                          "text-primary transition-all duration-300",
+                          collectionHovered === coll.id ? "h-6 w-6" : "h-5 w-5",
+                        )}
+                      />
                     </div>
                   </Marker>
                 ))}
@@ -153,32 +164,34 @@ const TripDetail = () => {
                   )}
                 </div>
                 <table>
-                  <tr>
-                    <th className="justify-start bg-secondary-background text-left">
-                      Trip Name
-                    </th>
-                    <td>{instance.name}</td>
-                  </tr>
-                  {instance.start_date && (
+                  <tbody>
                     <tr>
                       <th className="justify-start bg-secondary-background text-left">
-                        Trip Start
+                        Trip Name
                       </th>
-                      <td>
-                        {new Date(instance.start_date).toLocaleDateString()}
-                      </td>
+                      <td>{instance.name}</td>
                     </tr>
-                  )}
-                  {instance.end_date && (
-                    <tr>
-                      <th className="justify-start bg-secondary-background text-left">
-                        Trip End
-                      </th>
-                      <td>
-                        {new Date(instance.end_date).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  )}
+                    {instance.start_date && (
+                      <tr>
+                        <th className="justify-start bg-secondary-background text-left">
+                          Trip Start
+                        </th>
+                        <td>
+                          {new Date(instance.start_date).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    )}
+                    {instance.end_date && (
+                      <tr>
+                        <th className="justify-start bg-secondary-background text-left">
+                          Trip End
+                        </th>
+                        <td>
+                          {new Date(instance.end_date).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
                 </table>
                 {!instance.location_coordinate && isAdmin && (
                   <div
@@ -211,23 +224,27 @@ const TripDetail = () => {
                 )}
               </div>
             </div>
-            <div className="rounded-lg border border-foreground/50 p-2">
+            <div className="space-y-2 rounded-lg border border-foreground/50 p-2">
               <div className="flex justify-between">
                 <h4 className="mb-2 text-xl font-bold">Collections</h4>
                 {isAdmin && (
                   <Button
                     onClick={() => openModal("collection")}
-                    className="flex gap-1"
+                    className="flex gap-1 px-2 py-1"
                   >
-                    <ShoppingBag aria-label="New Collection" size={16} />{" "}
-                    <span>Add Collection</span>
+                    <ShoppingBag aria-label="New Collection" size={12} />{" "}
+                    <span className="text-sm">Add Collection</span>
                   </Button>
                 )}
               </div>
 
               <div className="grid flex-col gap-2 lg:grid-cols-2">
                 {collections?.map((coll) => (
-                  <CollectionListItem key={coll.id} id={coll.id} />
+                  <CollectionListItem
+                    key={coll.id}
+                    id={coll.id}
+                    onHover={setCollectionHovered}
+                  />
                 ))}
               </div>
             </div>
@@ -278,13 +295,10 @@ const TripDetail = () => {
               trip={instance}
               close={close}
             />
-            <AddCollectionModal
+            <AddCollectionWizardModal
               tripId={instance.id}
               open={isOpen && modalComponent === "collection"}
               close={close}
-              onSuccess={(_: Collection) => {
-                toast.toast({ description: "Collection created successfully" })
-              }}
             />
           </>
         )}

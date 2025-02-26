@@ -10,8 +10,7 @@ const HomePage = () => {
 
 export const Route = createFileRoute("/")({
   component: HomePage,
-  beforeLoad: async ({ location, context, params }) => {
-    console.log({ params, location })
+  beforeLoad: async ({ location, context }) => {
     if (
       (await context.getSession()) &&
       !location.pathname.startsWith("/auth")

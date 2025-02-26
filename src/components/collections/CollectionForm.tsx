@@ -1,7 +1,7 @@
 import { type Collection } from "@/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { InfoIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -75,23 +75,24 @@ export const useCollectionForm = ({
   onSuccess: (collection: Collection) => void
 }) => {
   const { orgId, user } = useUserStore()
+  const [collection, setCollection] = useState<Collection | undefined>(instance)
 
   const defaultValues = useMemo(() => {
-    return instance
+    return collection
       ? {
-          species_id: instance.species_id,
-          species_uncertain: Boolean(instance.species_uncertain),
-          field_name: instance.field_name ?? "",
-          ...(instance?.location
-            ? parsePostGISPoint(instance.location)
+          species_id: collection.species_id,
+          species_uncertain: Boolean(collection.species_uncertain),
+          field_name: collection.field_name ?? "",
+          ...(collection?.location
+            ? parsePostGISPoint(collection.location)
             : {
                 latitude: undefined,
                 longitude: undefined,
               }),
-          specimen_collected: Boolean(instance.specimen_collected),
-          description: instance.description ?? "",
-          weight_estimate_kg: instance.weight_estimate_kg,
-          plants_sampled_estimate: instance.plants_sampled_estimate,
+          specimen_collected: Boolean(collection.specimen_collected),
+          description: collection.description ?? "",
+          weight_estimate_kg: collection.weight_estimate_kg,
+          plants_sampled_estimate: collection.plants_sampled_estimate,
         }
       : {
           species_id: null,
@@ -104,7 +105,7 @@ export const useCollectionForm = ({
           weight_estimate_kg: null,
           plants_sampled_estimate: null,
         }
-  }, [instance])
+  }, [collection])
 
   const form = useForm<CollectionFormData>({
     defaultValues,
@@ -133,17 +134,19 @@ export const useCollectionForm = ({
     async (data: CollectionFormData) => {
       if (!user || !orgId) throw new Error("Not logged in")
 
-      if (!tripId && !instance?.trip_id)
-        throw new Error("tripId or instance must be supplied to CollectionForm")
+      if (!tripId && !collection?.trip_id)
+        throw new Error(
+          "tripId or collection must be supplied to CollectionForm",
+        )
 
       // type assertion safe because of check above
-      const trip_id = (instance ? instance.trip_id : tripId) as string
+      const trip_id = (collection ? collection.trip_id : tripId) as string
 
       const { latitude, longitude, ...rest } = data
       const location = `POINT(${longitude} ${latitude})`
       const newCollection = {
         ...rest,
-        id: instance?.id,
+        id: collection?.id,
         created_by: user.id,
         location,
         organisation_id: orgId,
@@ -151,22 +154,23 @@ export const useCollectionForm = ({
       }
       const updatedRecord = await updateCollection(newCollection)
 
-      if (onSuccess && updatedRecord) onSuccess(updatedRecord)
+      if (onSuccess && updatedRecord) {
+        setCollection(updatedRecord)
+        onSuccess(updatedRecord)
+      }
     },
-    [user, orgId, tripId, instance, updateCollection, onSuccess],
+    [user, orgId, tripId, collection, updateCollection, onSuccess],
   )
 
   return {
+    collection,
     form,
     onSubmit: form.handleSubmit(onSubmit),
     isPending,
   }
 }
 
-type CollectionFormProps = Omit<
-  ReturnType<typeof useCollectionForm>,
-  "onSubmit" | "isPending"
->
+type CollectionFormProps = Pick<ReturnType<typeof useCollectionForm>, "form">
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
@@ -194,7 +198,7 @@ export const CollectionForm = (props: CollectionFormProps) => {
       <div className="space-y-4">
         {/* Species Selector */}
         <SpeciesSearchCombobox
-          onChange={(id) => setValue("species_id", id)}
+          onChange={(id) => setValue("species_id", id, { shouldDirty: true })}
           value={speciesValue}
         />
 
