@@ -15,6 +15,7 @@ import useUserStore from "@/store/userStore"
 import { LeafIcon, PencilIcon } from "lucide-react"
 import { UpdateCollectionModal } from "./CollectionFormModal"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
+import { CollectionDetailModal } from "./CollectionDetailModal"
 
 export const CollectionListItem = ({
   id,
@@ -32,8 +33,6 @@ export const CollectionListItem = ({
 
   const photo = photos?.[0].signedUrl ?? image
 
-  // @ts-expect-error Leaving this here for when we have a 'details' modal
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { open, isOpen, close } = useOpenClose()
   const {
     open: openUpdateModal,
@@ -55,8 +54,8 @@ export const CollectionListItem = ({
       <div
         onMouseOver={() => onHover(id)}
         onMouseLeave={() => onHover(undefined)}
-        onClick={() => console.log("todo - collection view detail modal ")}
-        className="flex h-20 gap-2 rounded-sm bg-secondary-background text-primary-foreground hover:bg-primary/90"
+        onClick={open}
+        className="flex h-20 cursor-pointer gap-2 rounded-sm bg-secondary-background text-primary-foreground hover:bg-primary/90"
       >
         {photo ? (
           <span className="flex h-20 w-20 content-center justify-center">
@@ -98,17 +97,15 @@ export const CollectionListItem = ({
             {collection?.weight_estimate_kg && (
               <span>{collection?.weight_estimate_kg} kg</span>
             )}
-            {creator && <span>{creator.name ?? "Unkown Person"}</span>}
+            {creator && <span>{creator.name ?? "Unknown Person"}</span>}
           </div>
         </div>
       </div>
-      {/* <Modal open={isOpen} title={`Edit ${species.name}`}>
-        <SpeciesIndigNameForm
-          onCancel={close}
-          onSuccess={close}
-          instance={species}
-        />
-      </Modal> */}
+      <CollectionDetailModal
+        collection={collection}
+        open={isOpen}
+        onClose={close}
+      />
       {isOpenUpdateModal && (
         <UpdateCollectionModal
           instance={collection}

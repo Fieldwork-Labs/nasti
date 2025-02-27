@@ -16,7 +16,7 @@ export type ModalProps = {
   onCancel?: () => void
   onSubmit?: () => void
   allowSubmit?: boolean
-  title?: string
+  title?: string | React.ReactNode
   isPending?: boolean
 }
 

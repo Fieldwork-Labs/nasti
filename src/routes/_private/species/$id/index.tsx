@@ -28,6 +28,7 @@ import { useViewState } from "@/hooks/useViewState"
 import { Species } from "@/types"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 const getSpeciesQueryOptions = (id: string) => ({
   queryKey: ["species", id],
@@ -183,28 +184,32 @@ const SpeciesDetail = () => {
           </Map>
         </div>
       </div>
-      <Modal
+      <Dialog
         open={modalImage !== undefined}
         onOpenChange={(isOpen) => (!isOpen ? setModalImage(undefined) : null)}
       >
-        <Carousel opts={{ startIndex: modalImage }}>
-          <CarouselContent>
-            {allImages.map((img) => (
-              <CarouselItem
-                key={img}
-                className="flex max-h-[650px] items-center justify-center p-0"
-              >
-                <img
-                  src={`${img}%2Foriginal`}
-                  className="max-w-full object-cover"
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
-        </Carousel>
-      </Modal>
+        <DialogContent>
+          {/* DialogTitle required for screenreaders */}
+          <DialogTitle hidden>Species Image</DialogTitle>
+          <Carousel opts={{ startIndex: modalImage }} className="pt-4">
+            <CarouselContent>
+              {allImages.map((img) => (
+                <CarouselItem
+                  key={img}
+                  className="flex max-h-[650px] items-center justify-center p-0"
+                >
+                  <img
+                    src={`${img}%2Foriginal`}
+                    className="max-w-full object-cover"
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious />
+            <CarouselNext />
+          </Carousel>
+        </DialogContent>
+      </Dialog>
       <Modal
         open={isOpen}
         title={`Edit ${instance.name}`}
