@@ -43,7 +43,13 @@ const AddSpeciesModal = ({
   )
 }
 
-export const SpeciesListItem = ({ id }: { id: string }) => {
+export const SpeciesListItem = ({
+  id,
+  allowEdit = true,
+}: {
+  id: string
+  allowEdit?: boolean
+}) => {
   const { data: species, error } = useSpecies(id)
   const { data } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
@@ -88,7 +94,7 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
               </Tooltip>
             </TooltipProvider>
 
-            {isAdmin && (
+            {isAdmin && allowEdit && (
               <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
             )}
           </div>
