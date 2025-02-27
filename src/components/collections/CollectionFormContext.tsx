@@ -31,8 +31,10 @@ export const CollectionFormProvider = ({
   close,
   children,
   tripId,
+  instance,
 }: {
-  tripId: string
+  instance?: Collection
+  tripId?: string
   stage: CollectionFormStage
   setStage: (stage: CollectionFormStage) => void
   close: () => void
@@ -40,6 +42,7 @@ export const CollectionFormProvider = ({
 }) => {
   const { onSubmit, isPending, form, collection } = useCollectionForm({
     tripId,
+    instance,
     onSuccess: (_) => {
       setStage("photos")
     },

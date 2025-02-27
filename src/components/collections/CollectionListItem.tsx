@@ -11,9 +11,7 @@ import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useCollection } from "@/hooks/useCollection"
 import useOpenClose from "@/hooks/useOpenClose"
 import { usePeople } from "@/hooks/usePeople"
-import useUserStore from "@/store/userStore"
-import { LeafIcon, PencilIcon } from "lucide-react"
-import { UpdateCollectionModal } from "./CollectionFormModal"
+import { LeafIcon } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionDetailModal } from "./CollectionDetailModal"
 
@@ -29,16 +27,10 @@ export const CollectionListItem = ({
   const { data: speciesData } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(speciesData?.imageIdentifier, "thumbnail")
   const { photos } = useCollectionPhotos(id)
-  const { isAdmin } = useUserStore()
 
   const photo = photos?.[0].signedUrl ?? image
 
   const { open, isOpen, close } = useOpenClose()
-  const {
-    open: openUpdateModal,
-    isOpen: isOpenUpdateModal,
-    close: closeUpdateModal,
-  } = useOpenClose()
 
   const { data: people } = usePeople()
   if (!collection || error) {
@@ -82,13 +74,6 @@ export const CollectionListItem = ({
                 <TooltipContent>{speciesName}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-
-            {isAdmin && (
-              <PencilIcon
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => openUpdateModal()}
-              />
-            )}
           </div>
           <div className="flex flex-col text-start text-xs">
             {collection?.plants_sampled_estimate && (
@@ -106,13 +91,6 @@ export const CollectionListItem = ({
         open={isOpen}
         onClose={close}
       />
-      {isOpenUpdateModal && (
-        <UpdateCollectionModal
-          instance={collection}
-          open={isOpenUpdateModal}
-          close={closeUpdateModal}
-        />
-      )}
     </>
   )
 }

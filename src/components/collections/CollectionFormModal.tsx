@@ -8,10 +8,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Collection } from "@/types"
-import { useState } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 import { CollectionPhotoUpload } from "../collectionPhotos/CollectionPhotoUpload"
 import { Spinner } from "../ui/spinner"
-import { CollectionForm, useCollectionForm } from "./CollectionForm"
+import { CollectionForm } from "./CollectionForm"
 import {
   CollectionFormProvider,
   useCollectionFormContext,
@@ -38,7 +38,13 @@ export const CollectionFormPhotosModal = () => {
         {collection && <CollectionPhotoUpload collectionId={collection.id} />}
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel className="w-full" onClick={() => setStage("form")}>
+        <AlertDialogCancel
+          className="w-full"
+          onClick={(e) => {
+            e.preventDefault()
+            setStage("form")
+          }}
+        >
           Back
         </AlertDialogCancel>
         <AlertDialogAction className="w-full" onClick={close}>
@@ -102,49 +108,84 @@ export const AddCollectionWizardModal = ({
   )
 }
 
-export const UpdateCollectionModal = ({
+export const UpdateCollectionWizardModal = ({
   instance,
   open,
   close,
-  onSuccess,
 }: ModalProps & {
   close: () => void
   instance: Collection
-  onSuccess?: (collection: Collection) => void
 }) => {
-  const { onSubmit, isPending, form } = useCollectionForm({
-    instance,
-    onSuccess: (collection) => {
-      if (onSuccess) onSuccess(collection)
-      close()
-    },
-  })
+  const [stage, setStage] = useState<"form" | "photos">("form")
 
   return (
-    <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Update collection</AlertDialogTitle>
+    <CollectionFormProvider
+      stage={stage}
+      setStage={setStage}
+      instance={instance}
+      close={close}
+    >
+      <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
+        {/* unmount the form on modal close, resets the form values */}
+        {open && stage === "form" && <UpdateCollectionFormModal />}
+        {open && stage === "photos" && <CollectionFormPhotosModal />}
+      </AlertDialog>
+    </CollectionFormProvider>
+  )
+}
 
-          {/* unmount the form on modal close, resets the form values */}
-          {open && <CollectionForm {...{ form }} />}
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="w-full" onClick={close}>
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onSubmit}
-            className="w-full"
-            disabled={
-              isPending || !form.formState.isValid || !form.formState.isDirty
-            }
-          >
-            {!isPending && "Save"}
-            {isPending && <Spinner />}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+export const UpdateCollectionFormModal = () => {
+  const { close, form, onSubmit, isPending, setStage } =
+    useCollectionFormContext()
+
+  const handleGoToPhotos = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault()
+
+      console.log("handleGoToPhotos, dirt ?", form.formState.isDirty)
+      if (!form.formState.isDirty) return setStage("photos")
+      else {
+        await onSubmit()
+        setStage("photos")
+      }
+    },
+    [form.formState.isDirty, setStage, onSubmit],
+  )
+
+  const goToPhotosText = useMemo(() => {
+    if (!form.formState.isDirty) return "Update Photos"
+    else return "Save and Update Photos"
+  }, [form.formState.isDirty])
+
+  return (
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Update collection</AlertDialogTitle>
+        <CollectionForm {...{ form }} />
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel className="w-full" onClick={close}>
+          Cancel
+        </AlertDialogCancel>
+        <AlertDialogAction
+          onClick={handleGoToPhotos}
+          className="w-full"
+          disabled={isPending || !form.formState.isValid}
+        >
+          {!isPending && <span>{goToPhotosText}</span>}
+          {isPending && <Spinner />}
+        </AlertDialogAction>
+        <AlertDialogAction
+          onClick={onSubmit}
+          className="w-full"
+          disabled={
+            isPending || !form.formState.isValid || !form.formState.isDirty
+          }
+        >
+          {!isPending && "Save"}
+          {isPending && <Spinner />}
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
   )
 }

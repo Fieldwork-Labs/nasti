@@ -1,11 +1,9 @@
-import { useCallback, useState } from "react"
+import { useCallback } from "react"
 import { useDropzone } from "react-dropzone"
-import { Camera, Edit2, Trash2 } from "lucide-react"
+import { Camera } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
-import { CollectionPhotoSignedUrl } from "@/types"
-import { Button } from "../ui/button"
-import { Input } from "../ui/input"
 import { Spinner } from "../ui/spinner"
+import { CollectionPhotoCard } from "./CollectionPhotoCard"
 
 type CollectionPhotoUploadProps = { collectionId?: string }
 
@@ -105,7 +103,7 @@ export const CollectionPhotoUpload = ({
           {photos && photos.length > 0 ? (
             <div className="grid max-h-96 grid-cols-2 gap-4 overflow-scroll lg:grid-cols-3">
               {photos.map((photo) => (
-                <PhotoCard
+                <CollectionPhotoCard
                   key={photo.id}
                   photo={photo}
                   onDelete={deletePhotoAsync}
@@ -120,105 +118,6 @@ export const CollectionPhotoUpload = ({
           )}
         </div>
       )}
-    </div>
-  )
-}
-
-type PhotoCardProps = {
-  photo: CollectionPhotoSignedUrl
-  onDelete: (id: string) => Promise<string>
-  onUpdateCaption: (id: string, caption: string) => void
-}
-const PhotoCard = ({ photo, onDelete, onUpdateCaption }: PhotoCardProps) => {
-  const [isEditing, setIsEditing] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [caption, setCaption] = useState(photo.caption || "")
-
-  const handleSaveCaption = () => {
-    onUpdateCaption(photo.id, caption)
-    setIsEditing(false)
-  }
-
-  const handleDelete = useCallback(async () => {
-    setIsDeleting(true)
-    await onDelete(photo.id)
-    setIsDeleting(false)
-  }, [photo.id, onDelete])
-
-  return (
-    <div className="overflow-hidden rounded-lg border bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-gray-100">
-        <img
-          src={photo.signedUrl}
-          alt={photo.caption || "Collection photo"}
-          className="h-full w-full object-cover"
-        />
-        <button
-          onClick={handleDelete}
-          className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-          title="Delete photo"
-          disabled={isDeleting}
-        >
-          {!isDeleting && <Trash2 className="h-4 w-4" />}
-          {isDeleting && <Spinner className="h-4 w-4 text-white" />}
-        </button>
-      </div>
-      <div className="p-3">
-        {isEditing ? (
-          <div className="flex flex-col gap-1">
-            <Input
-              type="text"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              className="flex-1 rounded px-2 py-1 text-xs"
-              placeholder="Add a caption..."
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  handleSaveCaption()
-                }
-              }}
-            />
-            <div className="flex justify-between">
-              <Button
-                onClick={() => setIsEditing(false)}
-                className="h-min w-min rounded-sm p-1 text-xs"
-                variant={"secondary"}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveCaption}
-                className="h-min w-min rounded-sm p-1 text-xs"
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between align-middle">
-              <p className="flex-1 text-xs text-secondary">
-                {photo.caption || (
-                  <span className="italic text-muted">No caption</span>
-                )}
-              </p>
-              <button
-                className="text-primary"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit2 className="h-3 w-3" />
-              </button>
-            </div>
-            {photo.uploaded_at && (
-              <p className="mt-1 text-xs text-gray-500">
-                {new Date(photo.uploaded_at).toLocaleDateString()}
-              </p>
-            )}
-          </>
-        )}
-      </div>
     </div>
   )
 }
