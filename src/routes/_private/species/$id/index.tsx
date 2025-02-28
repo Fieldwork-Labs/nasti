@@ -4,7 +4,7 @@ import { parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { ArrowLeftIcon, MapPin, PencilIcon, ShoppingBag } from "lucide-react"
 import mapboxgl from "mapbox-gl"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Map as MapboxMap, Marker, Source, Layer } from "react-map-gl"
 import type { FeatureCollection } from "geojson"
 
@@ -25,7 +25,7 @@ import { useALAImages } from "@/hooks/useALAImages"
 import { useALAOccurrences } from "@/hooks/useALAOccurrences"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useTripsForSpecies } from "@/hooks/useTripsForSpecies"
-import { useViewState } from "@/hooks/useViewState"
+import { getViewState, PartialViewState } from "@/hooks/useViewState"
 import { Species } from "@/types"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
@@ -36,33 +36,65 @@ import { CollectionListItem } from "@/components/collections/CollectionListItem"
 
 type SourceNames = "trips" | "collections" | "occurrences"
 
-const OccurrencesLayer = ({ id }: { id: string }) => {
+const OccurrencesLayer = ({
+  id,
+  onUpdateViewState,
+}: {
+  id: string
+  onUpdateViewState: (viewState: PartialViewState) => void
+}) => {
   const { data: species } = useSpecies(id)
 
-  // Create a more stable reference for the query
-  const alaGuid = species?.ala_guid || null
-
   const { occurrences, hasNextPage, isFetching, fetchNextPage } =
-    useALAOccurrences(alaGuid, 1000)
+    useALAOccurrences(species?.ala_guid, 1000)
 
   useEffect(() => {
     // keep fetching em
     if (hasNextPage && !isFetching) fetchNextPage()
   }, [hasNextPage, isFetching, fetchNextPage])
 
-  const occurrencesGeoJson: FeatureCollection = {
-    type: "FeatureCollection",
-    features: occurrences
-      .filter((occ) => occ.decimalLatitude && occ.decimalLongitude)
-      .map(({ decimalLatitude, decimalLongitude }) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [decimalLongitude, decimalLatitude],
-        },
-        properties: {},
-      })),
-  }
+  const occurencesCoords: Array<[number, number]> = useMemo(
+    () =>
+      occurrences.map(({ decimalLongitude, decimalLatitude }) => [
+        decimalLongitude,
+        decimalLatitude,
+      ]),
+    [occurrences],
+  )
+
+  const occurrencesGeoJson: FeatureCollection = useMemo(
+    () => ({
+      type: "FeatureCollection",
+      features: occurencesCoords.map((coordinates, i) => {
+        if (!coordinates[0]) console.log("NOPE", i)
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates,
+          },
+          properties: {},
+        }
+      }),
+    }),
+    [occurencesCoords],
+  )
+
+  const viewStateRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    // Calculate the new view state
+    const newViewState = getViewState(occurencesCoords)
+
+    // Only update parent if there's a meaningful difference
+    // (using JSON.stringify is a simple way to do deep comparison)
+    const viewStateString = JSON.stringify(newViewState)
+
+    if (!viewStateRef.current || viewStateRef.current !== viewStateString) {
+      viewStateRef.current = viewStateString
+      onUpdateViewState(newViewState)
+    }
+  }, [occurencesCoords, onUpdateViewState])
 
   return (
     <Source id="map-data" type="geojson" data={occurrencesGeoJson}>
@@ -74,15 +106,42 @@ const OccurrencesLayer = ({ id }: { id: string }) => {
 const SpeciesMap = ({ id }: { id: string }) => {
   const { data: collections } = useCollectionsBySpecies(id)
   const { data: trips } = useTripsForSpecies(id)
-  const mapTrips = trips?.filter(tripWithLocationFilter) ?? []
-  const tripsCoordArray: Array<[number, number]> = mapTrips
-    .map(getTripCoordinates)
-    .map(({ longitude, latitude }) => [longitude, latitude])
 
-  const initialViewState = useViewState(tripsCoordArray)
-  const [viewState, setViewState] = useState(initialViewState)
+  const tripsCoordArray: Array<[number, number]> = useMemo(
+    () =>
+      (trips?.filter(tripWithLocationFilter) ?? [])
+        .map(getTripCoordinates)
+        .map(({ longitude, latitude }) => [longitude, latitude]),
+    [trips],
+  )
+
+  const [viewState, setViewState] = useState(getViewState(tripsCoordArray))
 
   const [selectedLayer, setSelectedLayer] = useState<SourceNames>("trips")
+
+  const mapCollectionsCoords = useMemo(
+    () =>
+      collections
+        ?.filter(({ location }) => Boolean(location))
+        .map((coll) => parsePostGISPoint(coll.location!)) as {
+        latitude: number
+        longitude: number
+      }[],
+    [collections],
+  )
+
+  useEffect(() => {
+    if (selectedLayer === "trips") setViewState(getViewState(tripsCoordArray))
+    if (selectedLayer === "collections")
+      setViewState(
+        getViewState(
+          mapCollectionsCoords.map(({ longitude, latitude }) => [
+            longitude,
+            latitude,
+          ]),
+        ),
+      )
+  }, [selectedLayer, tripsCoordArray, mapCollectionsCoords])
 
   return (
     <Tabs
@@ -108,11 +167,13 @@ const SpeciesMap = ({ id }: { id: string }) => {
         style={{ height: 460 }}
         mapStyle="mapbox://styles/mapbox/satellite-v9"
       >
-        {selectedLayer === "occurrences" && <OccurrencesLayer id={id} />}
+        {selectedLayer === "occurrences" && (
+          <OccurrencesLayer id={id} onUpdateViewState={setViewState} />
+        )}
         {selectedLayer === "trips" && (
           <>
-            {mapTrips.map((mapTrip) => (
-              <Marker {...getTripCoordinates(mapTrip)} key={mapTrip.id}>
+            {tripsCoordArray.map((coords, i) => (
+              <Marker latitude={coords[1]} longitude={coords[0]} key={i}>
                 <div className="rounded-full bg-white bg-opacity-50 p-2">
                   <MapPin className="h-5 w-5 text-primary" />
                 </div>
@@ -122,15 +183,13 @@ const SpeciesMap = ({ id }: { id: string }) => {
         )}
         {selectedLayer === "collections" && (
           <>
-            {collections
-              ?.filter(({ location }) => Boolean(location))
-              .map((coll) => (
-                <Marker {...parsePostGISPoint(coll.location!)} key={coll.id}>
-                  <div className="rounded-full bg-white bg-opacity-50 p-2">
-                    <ShoppingBag className="h-5 w-5 text-primary" />
-                  </div>
-                </Marker>
-              ))}
+            {mapCollectionsCoords.map(({ latitude, longitude }) => (
+              <Marker latitude={latitude} longitude={longitude} key={latitude}>
+                <div className="rounded-full bg-white bg-opacity-50 p-2">
+                  <ShoppingBag className="h-5 w-5 text-primary" />
+                </div>
+              </Marker>
+            ))}
           </>
         )}
       </MapboxMap>
@@ -267,7 +326,7 @@ const SpeciesDetail = () => {
 
           <div className="grid flex-col gap-2 lg:grid-cols-2">
             {collections?.map((coll) => (
-              <CollectionListItem key={coll.id} id={coll.id} />
+              <CollectionListItem key={coll.id} id={coll.id} showTrip />
             ))}
           </div>
         </div>

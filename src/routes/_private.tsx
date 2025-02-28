@@ -1,3 +1,4 @@
+import { Spinner } from "@/components/ui/spinner"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { Suspense } from "react"
 
@@ -23,7 +24,13 @@ export const Route = createFileRoute("/_private")({
     }
   },
   component: () => (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="px-auto mx-auto h-screen">
+          <Spinner size={"large"} />
+        </div>
+      }
+    >
       <AuthLayout />
     </Suspense>
   ),

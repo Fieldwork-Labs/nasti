@@ -22,11 +22,12 @@ export const getTripDetail = async (
   return trip[0] as TripWithDetails
 }
 
-export const useTripDetail = (tripId: string) => {
+export const useTripDetail = (tripId?: string) => {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["trip", tripId],
-    queryFn: () => getTripDetail(tripId),
+    queryFn: () => (tripId ? getTripDetail(tripId) : null),
     enabled: Boolean(tripId),
+    refetchOnMount: false,
   })
 
   const invalidate = useCallback(() => {

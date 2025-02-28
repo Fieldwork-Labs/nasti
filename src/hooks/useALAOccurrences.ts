@@ -158,10 +158,11 @@ export const useALAOccurrences = (
       if (!guid) return null
       const params = new URLSearchParams({
         q: `taxonConceptID:${guid}`,
-        fq: `spatiallyValid:true`,
+        fq: `decimalLatitude:[* TO *]`, // Only return records with coordinates
         start: pageParam.toString(),
         pageSize: ITEMS_PER_PAGE.toString(),
       })
+      params.append("fq", "country:Australia")
 
       const response = await fetch(
         `${BASE_URL}/occurrences/search/?${params.toString()}`,
@@ -171,7 +172,14 @@ export const useALAOccurrences = (
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
       }
 
-      return response.json() as Promise<QueryResponse>
+      const result: QueryResponse = await response.json()
+      return {
+        ...result,
+        // ala returns some records with no coordinates
+        occurrences: result.occurrences.filter(
+          (occ) => occ.decimalLatitude && occ.decimalLongitude,
+        ),
+      }
     },
     getNextPageParam: (lastPage) => {
       if (!lastPage) return undefined

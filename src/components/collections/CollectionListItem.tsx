@@ -14,12 +14,15 @@ import { usePeople } from "@/hooks/usePeople"
 import { LeafIcon } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionDetailModal } from "./CollectionDetailModal"
+import { useTripDetail } from "@/hooks/useTripDetail"
 
 export const CollectionListItem = ({
   id,
+  showTrip = false,
   onHover,
 }: {
   id: string
+  showTrip?: boolean
   onHover?: (id: string | undefined) => void
 }) => {
   const { data: collection, error } = useCollection(id)
@@ -27,6 +30,7 @@ export const CollectionListItem = ({
   const { data: speciesData } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(speciesData?.imageIdentifier, "thumbnail")
   const { photos } = useCollectionPhotos(id)
+  const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
   const photo = photos?.[0].signedUrl ?? image
 
@@ -76,6 +80,7 @@ export const CollectionListItem = ({
             </TooltipProvider>
           </div>
           <div className="flex flex-col text-start text-xs">
+            {showTrip && <span>Collected on: {trip?.name}</span>}
             {collection?.plants_sampled_estimate && (
               <span>{collection?.plants_sampled_estimate} Plants</span>
             )}
@@ -83,6 +88,7 @@ export const CollectionListItem = ({
               <span>{collection?.weight_estimate_kg} kg</span>
             )}
             {creator && <span>{creator.name ?? "Unknown Person"}</span>}
+            {<span>{new Date(collection.created_at).toLocaleString()}</span>}
           </div>
         </div>
       </div>
