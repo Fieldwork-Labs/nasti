@@ -1,5 +1,4 @@
 import { useInfiniteQuery } from "@tanstack/react-query"
-import { useALAAuth } from "./useALAAuth"
 
 const BASE_URL = "https://api.ala.org.au/occurrences"
 
@@ -7,7 +6,7 @@ interface ImageMetadata {
   [key: string]: Record<string, unknown>
 }
 
-interface Occurrence {
+export interface Occurrence {
   uuid: string
   occurrenceID: string
   dataHubUid: string[]
@@ -133,36 +132,39 @@ interface UseALAOccurrencesResult {
   isError: boolean
   error: Error | null
   hasNextPage: boolean
+  isFetching: boolean
   isFetchingNextPage: boolean
   fetchNextPage: () => void
 }
 
-const ITEMS_PER_PAGE = 50 // ALA's default page size
+const ITEMS_PER_PAGE = 100 // ALA's default page size
 
 export const useALAOccurrences = (
   guid?: string | null,
+  maxResults?: number,
 ): UseALAOccurrencesResult => {
-  const { data: authData } = useALAAuth()
   const {
     data,
     isLoading,
+    isFetching,
     isError,
     error,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
-    queryKey: ["alaOccurrences", guid],
+    queryKey: ["alaOccurrences", guid, maxResults],
     queryFn: async ({ pageParam = 0 }) => {
-      if (!guid || !authData) return null
-      const encodedGuid = encodeURIComponent(guid)
+      if (!guid) return null
+      const params = new URLSearchParams({
+        q: `taxonConceptID:${guid}`,
+        fq: `spatiallyValid:true`,
+        start: pageParam.toString(),
+        pageSize: ITEMS_PER_PAGE.toString(),
+      })
+
       const response = await fetch(
-        `${BASE_URL}/taxon/${encodedGuid}?start=${pageParam}&pageSize=${ITEMS_PER_PAGE}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authData.access_token}`,
-          },
-        },
+        `${BASE_URL}/occurrences/search/?${params.toString()}`,
       )
 
       if (!response.ok) {
@@ -174,10 +176,13 @@ export const useALAOccurrences = (
     getNextPageParam: (lastPage) => {
       if (!lastPage) return undefined
       const nextStartIndex = lastPage.startIndex + lastPage.pageSize
-      return nextStartIndex < lastPage.totalRecords ? nextStartIndex : undefined
+      return nextStartIndex < (maxResults ? maxResults : lastPage.totalRecords)
+        ? nextStartIndex
+        : undefined
     },
     initialPageParam: 0,
-    enabled: Boolean(guid) && Boolean(authData),
+    enabled: Boolean(guid),
+    refetchOnMount: false,
   })
 
   // Combine all occurrences from all fetched pages
@@ -190,6 +195,7 @@ export const useALAOccurrences = (
   return {
     occurrences,
     isLoading,
+    isFetching,
     isError,
     error: error as Error | null,
     hasNextPage,

@@ -1,11 +1,12 @@
 import useOpenClose from "@/hooks/useOpenClose"
-import { getSpecies } from "@/hooks/useSpecies"
-import { queryClient } from "@/lib/utils"
+import { getSpecies, useSpecies } from "@/hooks/useSpecies"
+import { parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
-import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
+import { ArrowLeftIcon, MapPin, PencilIcon, ShoppingBag } from "lucide-react"
 import mapboxgl from "mapbox-gl"
-import { useCallback, useState } from "react"
-import { Map, Marker } from "react-map-gl"
+import { useCallback, useEffect, useState } from "react"
+import { Map as MapboxMap, Marker, Source, Layer } from "react-map-gl"
+import type { FeatureCollection } from "geojson"
 
 import {
   getTripCoordinates,
@@ -29,11 +30,119 @@ import { Species } from "@/types"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { useCollectionsBySpecies } from "@/hooks/useCollectionsBySpecies"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { CollectionListItem } from "@/components/collections/CollectionListItem"
+
+type SourceNames = "trips" | "collections" | "occurrences"
+
+const OccurrencesLayer = ({ id }: { id: string }) => {
+  const { data: species } = useSpecies(id)
+
+  // Create a more stable reference for the query
+  const alaGuid = species?.ala_guid || null
+
+  const { occurrences, hasNextPage, isFetching, fetchNextPage } =
+    useALAOccurrences(alaGuid, 1000)
+
+  useEffect(() => {
+    // keep fetching em
+    if (hasNextPage && !isFetching) fetchNextPage()
+  }, [hasNextPage, isFetching, fetchNextPage])
+
+  const occurrencesGeoJson: FeatureCollection = {
+    type: "FeatureCollection",
+    features: occurrences
+      .filter((occ) => occ.decimalLatitude && occ.decimalLongitude)
+      .map(({ decimalLatitude, decimalLongitude }) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [decimalLongitude, decimalLatitude],
+        },
+        properties: {},
+      })),
+  }
+
+  return (
+    <Source id="map-data" type="geojson" data={occurrencesGeoJson}>
+      <Layer type="circle" id="markers" paint={{ "circle-color": "orange" }} />
+    </Source>
+  )
+}
+
+const SpeciesMap = ({ id }: { id: string }) => {
+  const { data: collections } = useCollectionsBySpecies(id)
+  const { data: trips } = useTripsForSpecies(id)
+  const mapTrips = trips?.filter(tripWithLocationFilter) ?? []
+  const tripsCoordArray: Array<[number, number]> = mapTrips
+    .map(getTripCoordinates)
+    .map(({ longitude, latitude }) => [longitude, latitude])
+
+  const initialViewState = useViewState(tripsCoordArray)
+  const [viewState, setViewState] = useState(initialViewState)
+
+  const [selectedLayer, setSelectedLayer] = useState<SourceNames>("trips")
+
+  return (
+    <Tabs
+      defaultValue="trips"
+      onValueChange={(val) => setSelectedLayer(val as SourceNames)}
+    >
+      <TabsList className="mb-2 w-full bg-secondary-background">
+        <TabsTrigger className="w-full" value="trips">
+          Trips
+        </TabsTrigger>
+        <TabsTrigger className="w-full" value="collections">
+          Collections
+        </TabsTrigger>
+        <TabsTrigger className="w-full" value="occurrences">
+          Public Records
+        </TabsTrigger>
+      </TabsList>
+      <MapboxMap
+        mapLib={mapboxgl as never}
+        mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+        {...viewState}
+        onMove={(evt) => setViewState(evt.viewState)}
+        style={{ height: 460 }}
+        mapStyle="mapbox://styles/mapbox/satellite-v9"
+      >
+        {selectedLayer === "occurrences" && <OccurrencesLayer id={id} />}
+        {selectedLayer === "trips" && (
+          <>
+            {mapTrips.map((mapTrip) => (
+              <Marker {...getTripCoordinates(mapTrip)} key={mapTrip.id}>
+                <div className="rounded-full bg-white bg-opacity-50 p-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+              </Marker>
+            ))}
+          </>
+        )}
+        {selectedLayer === "collections" && (
+          <>
+            {collections
+              ?.filter(({ location }) => Boolean(location))
+              .map((coll) => (
+                <Marker {...parsePostGISPoint(coll.location!)} key={coll.id}>
+                  <div className="rounded-full bg-white bg-opacity-50 p-2">
+                    <ShoppingBag className="h-5 w-5 text-primary" />
+                  </div>
+                </Marker>
+              ))}
+          </>
+        )}
+      </MapboxMap>
+    </Tabs>
+  )
+}
 
 const getSpeciesQueryOptions = (id: string) => ({
   queryKey: ["species", id],
   queryFn: () => getSpecies(id),
   enabled: Boolean(id),
+  refetchOnMount: false,
 })
 
 const useSpeciesImages = (alaGuid: string | null) => {
@@ -70,26 +179,12 @@ const useSpeciesDetailQuery = (id: string) => {
 const SpeciesDetail = () => {
   const { id } = useParams({ from: "/_private/species/$id/" })
   const { instance, invalidate } = useSpeciesDetailQuery(id)
+  const { data: collections } = useCollectionsBySpecies(id)
   const { data: alaData } = useSpeciesDetail(instance.ala_guid)
-
-  const { data: trips } = useTripsForSpecies(instance?.id)
-  const mapTrips = trips?.filter(tripWithLocationFilter) ?? []
-  const initialViewState = useViewState(
-    mapTrips
-      .map(getTripCoordinates)
-      .map(({ longitude, latitude }) => [longitude, latitude]),
-  )
-  const [viewState, setViewState] = useState(initialViewState)
-
   const { images, mainImage, allImages, setModalImage, modalImage } =
     useSpeciesImages(instance.ala_guid)
 
   const { isOpen, setIsOpen, close, open } = useOpenClose()
-
-  // TODO waiting on approval of registration with ALA
-  // @ts-expect-error ignore next line
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { occurrences } = useALAOccurrences(instance?.ala_guid)
 
   if (!instance) return <div>No species found</div>
   return (
@@ -165,23 +260,16 @@ const SpeciesDetail = () => {
           </div>
         )}
         <div className="rounded-lg border border-foreground/50 p-2">
-          <h1 className="text-lead">Species Targeted Trips Map</h1>
-          <Map
-            mapLib={mapboxgl as never}
-            mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
-            {...viewState}
-            onMove={(evt) => setViewState(evt.viewState)}
-            style={{ height: 460 }}
-            mapStyle="mapbox://styles/mapbox/satellite-v9"
-          >
-            {mapTrips.map((mapTrip) => (
-              <Marker {...getTripCoordinates(mapTrip)} key={mapTrip.id}>
-                <div className="rounded-full bg-white bg-opacity-50 p-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                </div>
-              </Marker>
+          <SpeciesMap id={id} />
+        </div>
+        <div className="space-y-2 rounded-lg border border-foreground/50 p-2">
+          <h4 className="mb-2 text-xl font-bold">Collections</h4>
+
+          <div className="grid flex-col gap-2 lg:grid-cols-2">
+            {collections?.map((coll) => (
+              <CollectionListItem key={coll.id} id={coll.id} />
             ))}
-          </Map>
+          </div>
         </div>
       </div>
       <Dialog

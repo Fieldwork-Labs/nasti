@@ -85,5 +85,6 @@ export const useSpecies = (id?: string | null) => {
     queryKey: ["species", "detail", id],
     queryFn: () => (id ? getSpecies(id) : null),
     enabled: Boolean(id),
+    refetchOnMount: false,
   })
 }

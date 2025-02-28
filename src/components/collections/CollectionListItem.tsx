@@ -20,7 +20,7 @@ export const CollectionListItem = ({
   onHover,
 }: {
   id: string
-  onHover: (id: string | undefined) => void
+  onHover?: (id: string | undefined) => void
 }) => {
   const { data: collection, error } = useCollection(id)
   const { data: species } = useSpecies(collection?.species_id)
@@ -44,8 +44,8 @@ export const CollectionListItem = ({
   return (
     <>
       <div
-        onMouseOver={() => onHover(id)}
-        onMouseLeave={() => onHover(undefined)}
+        onMouseOver={() => (onHover ? onHover(id) : null)}
+        onMouseLeave={() => (onHover ? onHover(undefined) : null)}
         onClick={open}
         className="flex h-20 cursor-pointer gap-2 rounded-sm bg-secondary-background text-primary-foreground hover:bg-primary/90"
       >
