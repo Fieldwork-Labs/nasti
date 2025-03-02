@@ -34,6 +34,7 @@ export const useTripSpecies = (tripId: string | undefined) => {
       return getTripSpecies(tripId)
     },
     enabled: Boolean(tripId),
+    refetchOnMount: false,
   })
 
   const invalidate = useCallback(

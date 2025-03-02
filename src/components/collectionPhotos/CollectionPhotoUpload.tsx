@@ -18,7 +18,7 @@ export const CollectionPhotoUpload = ({
     isUploading,
     uploadProgress,
     uploadPhoto,
-    updateCaption,
+    updateCaptionAsync,
     deletePhotoAsync,
   } = useCollectionPhotos(collectionId)
 
@@ -43,7 +43,7 @@ export const CollectionPhotoUpload = ({
   })
 
   const handleUpdateCaption = (photoId: string, newCaption: string) => {
-    updateCaption({ photoId, caption: newCaption })
+    return updateCaptionAsync({ photoId, caption: newCaption })
   }
 
   if (isError) {

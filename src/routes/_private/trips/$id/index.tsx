@@ -25,6 +25,7 @@ import { AddCollectionWizardModal } from "@/components/collections/CollectionFor
 import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
 import { useViewState } from "@/hooks/useViewState"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { Spinner } from "@/components/ui/spinner"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -47,7 +48,8 @@ const TripDetail = () => {
   const { data: tripMembers } = useTripMembers(instance?.id)
   const { data: people } = usePeople()
   const { data: tripSpecies } = useTripSpecies(instance?.id)
-  const { data: collections } = useCollectionsByTrip(instance?.id)
+  const { data: collections, isPending: isPendingCollections } =
+    useCollectionsByTrip(instance?.id)
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
@@ -63,12 +65,14 @@ const TripDetail = () => {
 
   const coords: [number, number][] = useMemo(
     () =>
-      [
-        getTripCoordinates(instance),
-        ...(collections
-          ?.filter(({ location }) => Boolean(location))
-          .map(({ location }) => parsePostGISPoint(location!)) ?? []),
-      ].map((coord) => [coord.longitude, coord.latitude]),
+      (instance.location_coordinate ? [getTripCoordinates(instance)] : [])
+        .concat(
+          collections
+            ?.filter(({ location }) => Boolean(location))
+            .map(({ location }) => parsePostGISPoint(location!)) ?? [],
+        )
+
+        .map((coord) => [coord.longitude, coord.latitude]),
     [collections, instance],
   )
 
@@ -113,41 +117,49 @@ const TripDetail = () => {
                 />
               )}
             </div>
-            <Map
-              mapLib={mapboxgl as never}
-              mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
-              {...viewState}
-              onMove={(evt) => setViewState(evt.viewState)}
-              style={{ height: 460 }}
-              mapStyle="mapbox://styles/mapbox/satellite-v9"
-            >
-              <Marker {...getTripCoordinates(instance)}>
-                <div className="rounded-full bg-white bg-opacity-50 p-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                </div>
-              </Marker>
-              {collections
-                ?.filter(({ location }) => Boolean(location))
-                .map((coll) => (
-                  <Marker {...parsePostGISPoint(coll.location!)} key={coll.id}>
-                    <div
-                      className={cn(
-                        "rounded-full transition-all duration-300",
-                        collectionHovered === coll.id
-                          ? "bg-white p-3"
-                          : "bg-white bg-opacity-50 p-2",
-                      )}
+            {instance.location_coordinate && (
+              <Map
+                mapLib={mapboxgl as never}
+                mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+                {...viewState}
+                onMove={(evt) => setViewState(evt.viewState)}
+                style={{ height: 460 }}
+                mapStyle="mapbox://styles/mapbox/satellite-v9"
+              >
+                <Marker {...getTripCoordinates(instance)}>
+                  <div className="rounded-full bg-white bg-opacity-50 p-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                </Marker>
+
+                {collections
+                  ?.filter(({ location }) => Boolean(location))
+                  .map((coll) => (
+                    <Marker
+                      {...parsePostGISPoint(coll.location!)}
+                      key={coll.id}
                     >
-                      <ShoppingBag
+                      <div
                         className={cn(
-                          "text-primary transition-all duration-300",
-                          collectionHovered === coll.id ? "h-6 w-6" : "h-5 w-5",
+                          "rounded-full transition-all duration-300",
+                          collectionHovered === coll.id
+                            ? "bg-white p-3"
+                            : "bg-white bg-opacity-50 p-2",
                         )}
-                      />
-                    </div>
-                  </Marker>
-                ))}
-            </Map>
+                      >
+                        <ShoppingBag
+                          className={cn(
+                            "text-primary transition-all duration-300",
+                            collectionHovered === coll.id
+                              ? "h-6 w-6"
+                              : "h-5 w-5",
+                          )}
+                        />
+                      </div>
+                    </Marker>
+                  ))}
+              </Map>
+            )}
           </div>
         )}
         <div className="grid gap-4 lg:grid-cols-3">
@@ -239,6 +251,9 @@ const TripDetail = () => {
               </div>
 
               <div className="grid flex-col gap-2 lg:grid-cols-2">
+                {isPendingCollections && <Spinner />}
+                {!collections ||
+                  (collections.length === 0 && "No collections yet")}
                 {collections?.map((coll) => (
                   <CollectionListItem
                     key={coll.id}

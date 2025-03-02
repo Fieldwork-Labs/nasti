@@ -1,27 +1,32 @@
 import { useCallback, useState } from "react"
 import { Edit2, Trash2 } from "lucide-react"
-import { CollectionPhotoSignedUrl } from "@/types"
+import { CollectionPhoto, CollectionPhotoSignedUrl } from "@/types"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Spinner } from "../ui/spinner"
+
 type PhotoCardProps = {
   photo: CollectionPhotoSignedUrl
   onDelete?: (id: string) => Promise<string>
-  onUpdateCaption?: (id: string, caption: string) => void
+  onUpdateCaption?: (id: string, caption: string) => Promise<CollectionPhoto>
 }
+
 export const CollectionPhotoCard = ({
   photo,
   onDelete,
   onUpdateCaption,
 }: PhotoCardProps) => {
   const [isEditing, setIsEditing] = useState(false)
+  const [isUpdating, setisUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [caption, setCaption] = useState(photo.caption || "")
 
-  const handleSaveCaption = () => {
-    if (onUpdateCaption) onUpdateCaption(photo.id, caption)
+  const handleSaveCaption = useCallback(async () => {
+    setisUpdating(true)
+    if (onUpdateCaption) await onUpdateCaption(photo.id, caption)
+    setisUpdating(false)
     setIsEditing(false)
-  }
+  }, [caption, onUpdateCaption, photo.id])
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true)
@@ -60,6 +65,7 @@ export const CollectionPhotoCard = ({
               placeholder="Add a caption..."
               autoFocus
               onKeyDown={(e) => {
+                if (isUpdating) return
                 if (e.key === "Enter") {
                   e.preventDefault()
                   handleSaveCaption()
@@ -75,10 +81,12 @@ export const CollectionPhotoCard = ({
                 Cancel
               </Button>
               <Button
+                disabled={isUpdating}
                 onClick={handleSaveCaption}
                 className="h-min w-min rounded-sm p-1 text-xs"
               >
-                Save
+                {!isUpdating && "Save"}
+                {isUpdating && "Saving..."}
               </Button>
             </div>
           </div>
