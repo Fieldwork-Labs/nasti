@@ -3,20 +3,23 @@ import { useCallback } from "react"
 import { supabase } from "@/lib/supabase" // Adjust import path as needed
 import { Species } from "@/types"
 
-export const useSpeciesSearch = (searchTerm: string = "") => {
+export const useSpeciesSearch = (searchTerm: string = "", tripId?: string) => {
   const searchSpecies = useCallback(
     async (term: string): Promise<Species[]> => {
       if (!term.trim()) {
         return []
       }
 
-      const query = supabase
+      let query = supabase
         .from("species")
         .select("*")
         .or(`name.ilike.%${term}%,indigenous_name.ilike.%${term}%`)
-        .limit(10)
 
-      const { data, error } = await query
+      if (tripId) {
+        query = query.eq("trip_id", tripId)
+      }
+
+      const { data, error } = await query.limit(10)
 
       if (error) {
         throw new Error(error.message)
@@ -24,11 +27,13 @@ export const useSpeciesSearch = (searchTerm: string = "") => {
 
       return data || []
     },
-    [],
+    [tripId],
   )
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["speciesSearch", searchTerm],
+    queryKey: tripId
+      ? ["speciesSearch", searchTerm]
+      : ["speciesSearch", "byTrip", tripId, searchTerm],
     queryFn: () => searchSpecies(searchTerm),
     enabled: searchTerm.length > 0,
   })

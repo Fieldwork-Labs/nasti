@@ -163,6 +163,7 @@ export const useCollectionForm = ({
   )
 
   return {
+    tripId,
     collection,
     form,
     onSubmit: form.handleSubmit(onSubmit),
@@ -170,14 +171,17 @@ export const useCollectionForm = ({
   }
 }
 
-type CollectionFormProps = Pick<ReturnType<typeof useCollectionForm>, "form">
+type CollectionFormProps = Pick<
+  ReturnType<typeof useCollectionForm>,
+  "form" | "tripId"
+>
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
   <InfoIcon className="h-4 w-4 text-xs" />,
 )
 
-export const CollectionForm = (props: CollectionFormProps) => {
+export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
   const {
     register,
     control,
@@ -185,7 +189,7 @@ export const CollectionForm = (props: CollectionFormProps) => {
     reset,
     setValue,
     watch,
-  } = props.form
+  } = form
 
   useEffect(() => {
     return () => reset()
@@ -200,6 +204,7 @@ export const CollectionForm = (props: CollectionFormProps) => {
         <SpeciesSearchCombobox
           onChange={(id) => setValue("species_id", id, { shouldDirty: true })}
           value={speciesValue}
+          tripId={tripId}
         />
 
         {/* Species Uncertain Checkbox */}

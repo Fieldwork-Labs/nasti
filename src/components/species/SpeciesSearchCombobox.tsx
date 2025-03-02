@@ -26,19 +26,21 @@ type SpeciesComboboxProps = {
   value: string | null
   onChange: (value: string | null) => void
   error?: string
+  tripId?: string
 }
 
 export const SpeciesSearchCombobox = ({
   value,
   onChange,
   error,
+  tripId,
 }: SpeciesComboboxProps) => {
   const [searchTerm, setSearchTerm] = useState("")
   const {
     data: species,
     isLoading,
     error: searchError,
-  } = useSpeciesSearch(searchTerm)
+  } = useSpeciesSearch(searchTerm, tripId)
   const { data: selectedSpecies } = useSpecies(value)
   const { data } = useSpeciesDetail(selectedSpecies?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
