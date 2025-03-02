@@ -56,14 +56,15 @@ export const CollectionFormPhotosModal = () => {
 }
 
 export const AddCollectionFormModal = () => {
-  const { close, form, onSubmit, isPending } = useCollectionFormContext()
+  const { close, form, onSubmit, isPending, tripId } =
+    useCollectionFormContext()
 
   return (
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>New collection</AlertDialogTitle>
 
-        <CollectionForm {...{ form }} />
+        <CollectionForm {...{ form }} tripId={tripId} />
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel className="w-full" onClick={close}>
@@ -135,7 +136,7 @@ export const UpdateCollectionWizardModal = ({
 }
 
 export const UpdateCollectionFormModal = () => {
-  const { close, form, onSubmit, isPending, setStage } =
+  const { close, form, onSubmit, isPending, setStage, tripId } =
     useCollectionFormContext()
 
   const handleGoToPhotos = useCallback(
@@ -161,7 +162,7 @@ export const UpdateCollectionFormModal = () => {
     <AlertDialogContent>
       <AlertDialogHeader>
         <AlertDialogTitle>Update collection</AlertDialogTitle>
-        <CollectionForm {...{ form }} />
+        <CollectionForm {...{ form }} tripId={tripId} />
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel className="w-full" onClick={close}>
