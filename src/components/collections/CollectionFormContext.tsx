@@ -4,12 +4,14 @@ import { useCollectionForm } from "./CollectionForm"
 
 type CollectionFormStage = "form" | "photos"
 
+type UseCollectionFormReturn = ReturnType<typeof useCollectionForm>
+
 type CollectionFormProviderProps = {
   stage: CollectionFormStage
   setStage: (stage: CollectionFormStage) => void
   collection: Collection | undefined
   close: () => void
-} & ReturnType<typeof useCollectionForm>
+} & UseCollectionFormReturn
 
 const CollectionFormContext = createContext<
   CollectionFormProviderProps | undefined
@@ -50,7 +52,16 @@ export const CollectionFormProvider = ({
 
   return (
     <CollectionFormContext.Provider
-      value={{ stage, setStage, close, onSubmit, collection, isPending, form }}
+      value={{
+        stage,
+        setStage,
+        close,
+        onSubmit,
+        collection,
+        isPending,
+        form,
+        tripId,
+      }}
     >
       {children}
     </CollectionFormContext.Provider>
