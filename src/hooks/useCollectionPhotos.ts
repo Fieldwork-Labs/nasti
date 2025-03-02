@@ -204,6 +204,7 @@ export const useCollectionPhotos = (collectionId?: string) => {
     error,
     isUploading,
     uploadProgress,
+    signedUrlsIsLoading,
     isDeleting: deletePhotoMutation.isPending,
     uploadPhoto: uploadPhotoMutation.mutate,
     uploadPhotoAsync: uploadPhotoMutation.mutateAsync,
