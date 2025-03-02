@@ -12,11 +12,11 @@ export const useSpeciesSearch = (searchTerm: string = "", tripId?: string) => {
 
       let query = supabase
         .from("species")
-        .select("*")
+        .select("*, trip_species!inner(*)")
         .or(`name.ilike.%${term}%,indigenous_name.ilike.%${term}%`)
 
       if (tripId) {
-        query = query.eq("trip_id", tripId)
+        query = query.eq("trip_species.trip_id", tripId)
       }
 
       const { data, error } = await query.limit(10)

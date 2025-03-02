@@ -15,6 +15,7 @@ import { LeafIcon } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionDetailModal } from "./CollectionDetailModal"
 import { useTripDetail } from "@/hooks/useTripDetail"
+import { Spinner } from "../ui/spinner"
 
 export const CollectionListItem = ({
   id,
@@ -29,10 +30,10 @@ export const CollectionListItem = ({
   const { data: species } = useSpecies(collection?.species_id)
   const { data: speciesData } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(speciesData?.imageIdentifier, "thumbnail")
-  const { photos } = useCollectionPhotos(id)
+  const { photos, signedUrlsIsLoading } = useCollectionPhotos(id)
   const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
-  const photo = photos?.[0].signedUrl ?? image
+  const photo = photos?.[0]?.signedUrl ?? image
 
   const { open, isOpen, close } = useOpenClose()
 
@@ -63,18 +64,27 @@ export const CollectionListItem = ({
         onClick={open}
         className="flex h-20 cursor-pointer gap-2 rounded-sm bg-secondary-background text-primary-foreground hover:bg-primary/90"
       >
-        {photo ? (
-          <span className="flex h-20 w-20 content-center justify-center">
-            <img
-              src={photo}
-              alt={`${speciesName} Image`}
-              className="w-20 rounded-l-sm object-cover text-sm"
-            />
-          </span>
-        ) : (
+        {signedUrlsIsLoading && (
           <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
-            <LeafIcon />
+            <Spinner className="h-6 w-6" />
           </span>
+        )}
+        {!signedUrlsIsLoading && (
+          <>
+            {photo ? (
+              <span className="flex h-20 w-20 content-center justify-center">
+                <img
+                  src={photo}
+                  alt={`${speciesName} Image`}
+                  className="w-20 rounded-l-sm object-cover text-sm"
+                />
+              </span>
+            ) : (
+              <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
+                <LeafIcon />
+              </span>
+            )}
+          </>
         )}
         <div className="flex h-full w-full flex-col py-1 pr-2 text-foreground">
           <div className="flex items-center justify-between">
