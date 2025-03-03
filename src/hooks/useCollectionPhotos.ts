@@ -119,10 +119,16 @@ export const useCollectionPhotos = (collectionId?: string) => {
       if (error) throw error
       return data as CollectionPhoto
     },
-    onSuccess: () => {
-      // Invalidate query to refetch photos
-      queryClient.invalidateQueries({
+    onSuccess: (newPhoto) => {
+      const queries = queryClient.getQueriesData({
         queryKey: ["collectionPhotos", "byCollection", collectionId],
+      })
+      // update query data
+      queries.forEach(([queryKey]) => {
+        queryClient.setQueryData<CollectionPhoto[]>(queryKey, (oldData) => {
+          if (!oldData || oldData.length === 0) return [newPhoto]
+          return [...oldData, newPhoto]
+        })
       })
     },
   })
@@ -161,10 +167,17 @@ export const useCollectionPhotos = (collectionId?: string) => {
       if (dbError) throw dbError
       return photoId
     },
-    onSuccess: () => {
-      // Invalidate query to refetch photos
-      queryClient.invalidateQueries({
+    onSuccess: (photoId) => {
+      // just delete that guy from the query cache
+      const queries = queryClient.getQueriesData({
         queryKey: ["collectionPhotos", "byCollection", collectionId],
+      })
+      // update query data
+      queries.forEach(([queryKey]) => {
+        queryClient.setQueryData<CollectionPhoto[]>(queryKey, (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+          return oldData.filter((item) => item.id !== photoId)
+        })
       })
     },
   })
@@ -190,9 +203,19 @@ export const useCollectionPhotos = (collectionId?: string) => {
       if (error) throw error
       return data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
+    onSuccess: (updatedPhoto) => {
+      const queries = queryClient.getQueriesData({
         queryKey: ["collectionPhotos", "byCollection", collectionId],
+      })
+      // update query data
+      queries.forEach(([queryKey]) => {
+        queryClient.setQueryData<CollectionPhoto[]>(queryKey, (oldData) => {
+          if (!oldData || oldData.length === 0) return [updatedPhoto]
+
+          return oldData.map((item) =>
+            item.id === updatedPhoto.id ? updatedPhoto : item,
+          )
+        })
       })
     },
   })
