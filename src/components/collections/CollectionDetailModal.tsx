@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Modal } from "../ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parsePostGISPoint } from "@/lib/utils"
 import { Collection } from "@/types"
 import { SpeciesListItem } from "@/routes/_private/species"
-import { PencilIcon, ShoppingBag } from "lucide-react"
+import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
 import { Button } from "../ui/button"
 import { Badge } from "../ui/badge"
@@ -16,6 +16,8 @@ import { UpdateCollectionWizardModal } from "./CollectionFormModal"
 import useOpenClose from "@/hooks/useOpenClose"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionPhotoCard } from "../collectionPhotos/CollectionPhotoCard"
+import { useDeleteCollection } from "@/hooks/useUpdateCollection"
+import { useToast } from "@/hooks/use-toast"
 
 export const CollectionDetailModal = ({
   collection,
@@ -44,12 +46,41 @@ export const CollectionDetailModal = ({
     isOpen: isOpenUpdateModal,
     close: closeUpdateModal,
   } = useOpenClose()
+  const {
+    open: openDeleteModal,
+    isOpen: isOpenDeleteModal,
+    close: closeDeleteModal,
+  } = useOpenClose()
+
+  const { mutateAsync: deleteCollection, isPending: isPendingDelete } =
+    useDeleteCollection()
+  const { toast } = useToast()
+
+  const handleDelete = useCallback(async () => {
+    if (!collection) return
+    await deleteCollection(collection.id)
+    closeDeleteModal()
+    close()
+    toast({ description: "Collection deleted successfully." })
+  }, [closeDeleteModal, deleteCollection, toast, collection])
 
   const { photos } = useCollectionPhotos(collection?.id)
 
   const { data: people } = usePeople()
   const creator = people?.find((person) => person.id === collection?.created_by)
 
+  const EditButtons = () => (
+    <span className="inline-flex space-x-2">
+      <PencilIcon
+        className="h-4 w-4 cursor-pointer hover:blur-xs"
+        onClick={openUpdateModal}
+      />
+      <TrashIcon
+        className="h-4 w-4 cursor-pointer hover:blur-xs"
+        onClick={openDeleteModal}
+      />
+    </span>
+  )
   if (!collection) return null
 
   return (
@@ -60,12 +91,7 @@ export const CollectionDetailModal = ({
         title={
           <div className="flex justify-between">
             <span>Collection</span>
-            {isAdmin && (
-              <PencilIcon
-                className="h-4 w-4 cursor-pointer"
-                onClick={openUpdateModal}
-              />
-            )}
+            {isAdmin && <EditButtons />}
           </div>
         }
       >
@@ -196,6 +222,19 @@ export const CollectionDetailModal = ({
           open={isOpenUpdateModal}
           close={closeUpdateModal}
         />
+      )}
+      {isOpenDeleteModal && (
+        <Modal
+          open={Boolean(isOpenDeleteModal)}
+          title={`Delete Collection`}
+          onCancel={closeDeleteModal}
+          onSubmit={handleDelete}
+          isPending={isPendingDelete}
+          allowSubmit={!isPendingDelete}
+        >
+          This action cannot be undone. This will permanently delete the
+          collection.
+        </Modal>
       )}
     </>
   )

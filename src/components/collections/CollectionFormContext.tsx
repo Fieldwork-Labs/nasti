@@ -1,5 +1,5 @@
 import { Collection } from "@/types"
-import { createContext, useContext } from "react"
+import { createContext, useContext, useEffect } from "react"
 import { useCollectionForm } from "./CollectionForm"
 
 type CollectionFormStage = "form" | "photos"
@@ -49,6 +49,10 @@ export const CollectionFormProvider = ({
       setStage("photos")
     },
   })
+
+  useEffect(() => {
+    return () => form.reset()
+  }, [form])
 
   return (
     <CollectionFormContext.Provider

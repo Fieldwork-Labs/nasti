@@ -66,6 +66,9 @@ module.exports = {
         sans: fontFamily.sans,
         mono: fontFamily.mono,
       },
+      blur: {
+        xs: "2px",
+      },
       keyframes: {
         "accordion-down": {
           from: {

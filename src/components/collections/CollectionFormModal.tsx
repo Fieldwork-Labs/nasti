@@ -93,20 +93,35 @@ export const AddCollectionWizardModal = ({
 }) => {
   const [stage, setStage] = useState<"form" | "photos">("form")
 
-  return (
-    <CollectionFormProvider
-      stage={stage}
-      setStage={setStage}
-      tripId={tripId}
-      close={close}
-    >
-      <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
-        {/* unmount the form on modal close, resets the form values */}
-        {open && stage === "form" && <AddCollectionFormModal />}
-        {open && stage === "photos" && <CollectionFormPhotosModal />}
-      </AlertDialog>
-    </CollectionFormProvider>
-  )
+  const handleClose = useCallback(() => {
+    setStage("form")
+    close()
+  }, [close])
+
+  if (!open) return null
+  // only mount the component if open, to ensure form is reset
+  if (open)
+    return (
+      <CollectionFormProvider
+        stage={stage}
+        setStage={setStage}
+        tripId={tripId}
+        close={close}
+      >
+        <AlertDialog
+          open={open}
+          onOpenChange={(isOpen) => (isOpen ? undefined : handleClose())}
+        >
+          {/* unmount the form on modal close, resets the form values */}
+          {open && (
+            <>
+              {stage === "form" && <AddCollectionFormModal />}
+              {stage === "photos" && <CollectionFormPhotosModal />}
+            </>
+          )}
+        </AlertDialog>
+      </CollectionFormProvider>
+    )
 }
 
 export const UpdateCollectionWizardModal = ({
@@ -143,7 +158,6 @@ export const UpdateCollectionFormModal = () => {
     async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault()
 
-      console.log("handleGoToPhotos, dirt ?", form.formState.isDirty)
       if (!form.formState.isDirty) return setStage("photos")
       else {
         await onSubmit()
