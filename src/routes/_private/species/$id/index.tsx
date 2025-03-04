@@ -132,9 +132,11 @@ const SpeciesMap = ({
         ?.filter(({ location }) => Boolean(location))
         .map((coll) => ({
           id: coll.id,
+          trip_id: coll.trip_id,
           ...parsePostGISPoint(coll.location!),
         })) as {
         id: string
+        trip_id: string
         latitude: number
         longitude: number
       }[],
@@ -195,14 +197,26 @@ const SpeciesMap = ({
           </>
         )}
         {selectedLayer === "collections" &&
-          mapCollectionsCoords.map(({ id, latitude, longitude }) => (
-            <CollectionMapMarker
-              latitude={latitude}
-              longitude={longitude}
-              key={id}
-              isHovered={collectionHovered === id}
-            />
-          ))}
+          mapCollectionsCoords.map(({ id, trip_id, latitude, longitude }) => {
+            const trip = trips?.find((trip) => trip.id === trip_id)
+            return (
+              <CollectionMapMarker
+                latitude={latitude}
+                longitude={longitude}
+                key={id}
+                isHovered={collectionHovered === id}
+                popupContent={
+                  <Link
+                    to={"/trips/$id"}
+                    params={{ id: trip_id }}
+                    className="text-primary"
+                  >
+                    {trip?.name} trip
+                  </Link>
+                }
+              />
+            )
+          })}
       </MapboxMap>
     </Tabs>
   )

@@ -135,13 +135,34 @@ const TripDetail = () => {
 
                 {collections
                   ?.filter(({ location }) => Boolean(location))
-                  .map((coll) => (
-                    <CollectionMapMarker
-                      {...parsePostGISPoint(coll.location!)}
-                      key={coll.id}
-                      isHovered={collectionHovered === coll.id}
-                    />
-                  ))}
+                  .map((coll) => {
+                    const species = tripSpecies?.find(
+                      ({ species_id }) => species_id === coll.species_id,
+                    )
+                    console.log({ species, id: coll.species_id })
+                    return (
+                      <CollectionMapMarker
+                        {...parsePostGISPoint(coll.location!)}
+                        key={coll.id}
+                        isHovered={collectionHovered === coll.id}
+                        popupContent={
+                          coll.species_id ? (
+                            <Link
+                              className="text-primary"
+                              to="/species/$id"
+                              params={{ id: coll.species_id }}
+                            >
+                              {species?.species.name}
+                            </Link>
+                          ) : (
+                            <span className="text-primary">
+                              {coll.field_name}
+                            </span>
+                          )
+                        }
+                      />
+                    )
+                  })}
               </Map>
             )}
           </div>
