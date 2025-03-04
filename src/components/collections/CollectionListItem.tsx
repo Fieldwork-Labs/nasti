@@ -87,7 +87,7 @@ export const CollectionListItem = ({
           </>
         )}
         <div className="flex h-full w-full flex-col py-1 pr-2 text-foreground">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-start gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -98,9 +98,9 @@ export const CollectionListItem = ({
                 <TooltipContent>{speciesName}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {showTrip && <span className="text-sm">{trip?.name}</span>}
           </div>
           <div className="flex flex-col text-start text-xs">
-            {showTrip && <span>Collected on: {trip?.name}</span>}
             {details && <span>{details}</span>}
             {creator && <span>{creator.name ?? "Unknown Person"}</span>}
             {<span>{new Date(collection.created_at).toLocaleString()}</span>}

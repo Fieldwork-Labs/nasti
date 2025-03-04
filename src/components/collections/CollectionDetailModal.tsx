@@ -18,6 +18,8 @@ import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionPhotoCard } from "../collectionPhotos/CollectionPhotoCard"
 import { useDeleteCollection } from "@/hooks/useUpdateCollection"
 import { useToast } from "@/hooks/use-toast"
+import { Link, useLocation } from "@tanstack/react-router"
+import { useTripDetail } from "@/hooks/useTripDetail"
 
 export const CollectionDetailModal = ({
   collection,
@@ -29,6 +31,7 @@ export const CollectionDetailModal = ({
   onClose: () => void
 }) => {
   const { isAdmin } = useUserStore()
+  const { pathname } = useLocation()
   // Parse location coordinates
   const coordinates = useMemo(() => {
     if (!collection?.location) return null
@@ -63,6 +66,8 @@ export const CollectionDetailModal = ({
     close()
     toast({ description: "Collection deleted successfully." })
   }, [closeDeleteModal, deleteCollection, toast, collection])
+
+  const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
   const { photos } = useCollectionPhotos(collection?.id)
 
@@ -132,6 +137,9 @@ export const CollectionDetailModal = ({
                     <thead>
                       <tr>
                         <th className="h-min text-left align-middle font-medium text-muted-foreground">
+                          Trip
+                        </th>
+                        <th className="h-min text-left align-middle font-medium text-muted-foreground">
                           Recorded at
                         </th>
                         <th className="h-min text-left align-middle font-medium text-muted-foreground">
@@ -141,6 +149,28 @@ export const CollectionDetailModal = ({
                     </thead>
                     <tbody>
                       <tr>
+                        <td className="h-min align-middle">
+                          {trip && (
+                            <>
+                              {pathname !== `/trips/${collection.trip_id}` && (
+                                <Link
+                                  to={`/trips/${collection.trip_id}`}
+                                  className="underline"
+                                >
+                                  {trip.name}
+                                </Link>
+                              )}
+                              {pathname == `/trips/${collection.trip_id}` && (
+                                <Button
+                                  className="bg-transparent p-0 text-xs underline hover:bg-transparent"
+                                  onClick={onClose}
+                                >
+                                  <span>{trip.name}</span>
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </td>
                         <td className="h-min align-middle">
                           {new Date(collection.created_at).toLocaleString()}
                         </td>
