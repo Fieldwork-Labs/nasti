@@ -2,7 +2,7 @@ import useOpenClose from "@/hooks/useOpenClose"
 import { getSpecies, useSpecies } from "@/hooks/useSpecies"
 import { parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
-import { ArrowLeftIcon, MapPin, PencilIcon, ShoppingBag } from "lucide-react"
+import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Map as MapboxMap, Marker, Source, Layer } from "react-map-gl"
@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useCollectionsBySpecies } from "@/hooks/useCollectionsBySpecies"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 
 type SourceNames = "trips" | "collections" | "occurrences"
 
@@ -103,7 +104,13 @@ const OccurrencesLayer = ({
   )
 }
 
-const SpeciesMap = ({ id }: { id: string }) => {
+const SpeciesMap = ({
+  id,
+  collectionHovered,
+}: {
+  id: string
+  collectionHovered?: string
+}) => {
   const { data: collections } = useCollectionsBySpecies(id)
   const { data: trips } = useTripsForSpecies(id)
 
@@ -123,7 +130,11 @@ const SpeciesMap = ({ id }: { id: string }) => {
     () =>
       collections
         ?.filter(({ location }) => Boolean(location))
-        .map((coll) => parsePostGISPoint(coll.location!)) as {
+        .map((coll) => ({
+          id: coll.id,
+          ...parsePostGISPoint(coll.location!),
+        })) as {
+        id: string
         latitude: number
         longitude: number
       }[],
@@ -183,17 +194,15 @@ const SpeciesMap = ({ id }: { id: string }) => {
             ))}
           </>
         )}
-        {selectedLayer === "collections" && (
-          <>
-            {mapCollectionsCoords.map(({ latitude, longitude }) => (
-              <Marker latitude={latitude} longitude={longitude} key={latitude}>
-                <div className="rounded-full bg-white bg-opacity-50 p-2">
-                  <ShoppingBag className="h-5 w-5 text-primary" />
-                </div>
-              </Marker>
-            ))}
-          </>
-        )}
+        {selectedLayer === "collections" &&
+          mapCollectionsCoords.map(({ id, latitude, longitude }) => (
+            <CollectionMapMarker
+              latitude={latitude}
+              longitude={longitude}
+              key={id}
+              isHovered={collectionHovered === id}
+            />
+          ))}
       </MapboxMap>
     </Tabs>
   )
@@ -246,6 +255,7 @@ const SpeciesDetail = () => {
     useSpeciesImages(instance.ala_guid)
 
   const { isOpen, setIsOpen, close, open } = useOpenClose()
+  const [collectionHovered, setCollectionHovered] = useState<string>()
 
   if (!instance) return <div>No species found</div>
   return (
@@ -321,7 +331,7 @@ const SpeciesDetail = () => {
           </div>
         )}
         <div className="rounded-lg border border-foreground/50 p-2">
-          <SpeciesMap id={id} />
+          <SpeciesMap id={id} collectionHovered={collectionHovered} />
         </div>
         <div className="space-y-2 rounded-lg border border-foreground/50 p-2">
           <h4 className="mb-2 text-xl font-bold">Collections</h4>
@@ -329,7 +339,12 @@ const SpeciesDetail = () => {
           <div className="grid flex-col gap-2 lg:grid-cols-2">
             {collections && collections.length > 0
               ? collections.map((coll) => (
-                  <CollectionListItem key={coll.id} id={coll.id} showTrip />
+                  <CollectionListItem
+                    key={coll.id}
+                    id={coll.id}
+                    showTrip
+                    onHover={setCollectionHovered}
+                  />
                 ))
               : "No collections recorded yet."}
           </div>

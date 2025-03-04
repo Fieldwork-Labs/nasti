@@ -1,7 +1,7 @@
 import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { cn, parsePostGISPoint, queryClient } from "@/lib/utils"
+import { parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
@@ -26,6 +26,7 @@ import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
 import { useViewState } from "@/hooks/useViewState"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { Spinner } from "@/components/ui/spinner"
+import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -135,28 +136,11 @@ const TripDetail = () => {
                 {collections
                   ?.filter(({ location }) => Boolean(location))
                   .map((coll) => (
-                    <Marker
+                    <CollectionMapMarker
                       {...parsePostGISPoint(coll.location!)}
                       key={coll.id}
-                    >
-                      <div
-                        className={cn(
-                          "rounded-full transition-all duration-300",
-                          collectionHovered === coll.id
-                            ? "bg-white p-3"
-                            : "bg-white bg-opacity-50 p-2",
-                        )}
-                      >
-                        <ShoppingBag
-                          className={cn(
-                            "text-primary transition-all duration-300",
-                            collectionHovered === coll.id
-                              ? "h-6 w-6"
-                              : "h-5 w-5",
-                          )}
-                        />
-                      </div>
-                    </Marker>
+                      isHovered={collectionHovered === coll.id}
+                    />
                   ))}
               </Map>
             )}
