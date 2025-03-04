@@ -98,7 +98,7 @@ export const SpeciesListItem = ({
               <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
             )}
           </div>
-          <div className="flex flex-col text-xs">
+          <div className="flex flex-col items-start text-xs">
             {data.commonNames.length > 0 && (
               <span>{data.commonNames[0].nameString}</span>
             )}

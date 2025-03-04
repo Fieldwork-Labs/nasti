@@ -152,9 +152,11 @@ const SpeciesMap = ({ id }: { id: string }) => {
         <TabsTrigger className="w-full" value="trips">
           Trips
         </TabsTrigger>
-        <TabsTrigger className="w-full" value="collections">
-          Collections
-        </TabsTrigger>
+        {mapCollectionsCoords && mapCollectionsCoords.length > 0 && (
+          <TabsTrigger className="w-full" value="collections">
+            Collections
+          </TabsTrigger>
+        )}
         <TabsTrigger className="w-full" value="occurrences">
           Public Records
         </TabsTrigger>
@@ -325,9 +327,11 @@ const SpeciesDetail = () => {
           <h4 className="mb-2 text-xl font-bold">Collections</h4>
 
           <div className="grid flex-col gap-2 lg:grid-cols-2">
-            {collections?.map((coll) => (
-              <CollectionListItem key={coll.id} id={coll.id} showTrip />
-            ))}
+            {collections && collections.length > 0
+              ? collections.map((coll) => (
+                  <CollectionListItem key={coll.id} id={coll.id} showTrip />
+                ))
+              : "No collections recorded yet."}
           </div>
         </div>
       </div>

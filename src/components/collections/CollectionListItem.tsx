@@ -38,6 +38,7 @@ export const CollectionListItem = ({
   const { open, isOpen, close } = useOpenClose()
 
   const { data: people } = usePeople()
+
   if (!collection || error) {
     return <></>
   }
@@ -98,7 +99,7 @@ export const CollectionListItem = ({
                 <TooltipContent>{speciesName}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            {showTrip && <span className="text-sm">{trip?.name}</span>}
+            {showTrip && <span className="text-xs">{trip?.name}</span>}
           </div>
           <div className="flex flex-col text-start text-xs">
             {details && <span>{details}</span>}

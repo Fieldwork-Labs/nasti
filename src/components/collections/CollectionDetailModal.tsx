@@ -3,7 +3,7 @@ import { Modal } from "../ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parsePostGISPoint } from "@/lib/utils"
-import { Collection } from "@/types"
+import { Collection, CollectionPhotoSignedUrl } from "@/types"
 import { SpeciesListItem } from "@/routes/_private/species"
 import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
@@ -20,6 +20,42 @@ import { useDeleteCollection } from "@/hooks/useUpdateCollection"
 import { useToast } from "@/hooks/use-toast"
 import { Link, useLocation } from "@tanstack/react-router"
 import { useTripDetail } from "@/hooks/useTripDetail"
+import { Dialog, DialogContent, DialogTitle } from "../ui/dialog"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "../ui/carousel"
+
+const PhotosTab = ({
+  photos,
+  onClickPhoto,
+}: {
+  photos: CollectionPhotoSignedUrl[]
+  onClickPhoto?: (photo: CollectionPhotoSignedUrl) => void
+}) => {
+  if (!photos || photos.length === 0)
+    return (
+      <p className="py-4 text-center text-gray-500">
+        No photos added yet. Upload some photos to get started.
+      </p>
+    )
+  return (
+    <div className="space-y-4">
+      <div className="grid max-h-96 grid-cols-2 gap-4 overflow-scroll lg:grid-cols-3">
+        {photos.map((photo) => (
+          <CollectionPhotoCard
+            key={photo.id}
+            photo={photo}
+            onClickPhoto={onClickPhoto}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export const CollectionDetailModal = ({
   collection,
@@ -67,9 +103,18 @@ export const CollectionDetailModal = ({
     toast({ description: "Collection deleted successfully." })
   }, [closeDeleteModal, deleteCollection, toast, collection])
 
+  const [modalImage, setModalImage] = useState<number>()
+
   const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
   const { photos } = useCollectionPhotos(collection?.id)
+  const handleClickPhoto = useCallback(
+    (photo: CollectionPhotoSignedUrl) => {
+      const index = photos?.findIndex((p) => p.id === photo.id)
+      if (index !== undefined) setModalImage(index)
+    },
+    [setModalImage, photos],
+  )
 
   const { data: people } = usePeople()
   const creator = people?.find((person) => person.id === collection?.created_by)
@@ -234,19 +279,10 @@ export const CollectionDetailModal = ({
               </div>
             </TabsContent>
             <TabsContent value="photos">
-              <div className="space-y-4">
-                {photos && photos.length > 0 ? (
-                  <div className="grid max-h-96 grid-cols-2 gap-4 overflow-scroll lg:grid-cols-3">
-                    {photos.map((photo) => (
-                      <CollectionPhotoCard key={photo.id} photo={photo} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="py-4 text-center text-gray-500">
-                    No photos added yet. Upload some photos to get started.
-                  </p>
-                )}
-              </div>
+              <PhotosTab
+                photos={photos ?? []}
+                onClickPhoto={handleClickPhoto}
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -274,6 +310,48 @@ export const CollectionDetailModal = ({
           collection.
         </Modal>
       )}
+      {
+        <Dialog
+          open={modalImage !== undefined}
+          onOpenChange={(isOpen) => (!isOpen ? setModalImage(undefined) : null)}
+        >
+          <DialogContent>
+            {/* DialogTitle required for screenreaders */}
+            <DialogTitle hidden>Species Image</DialogTitle>
+            <Carousel opts={{ startIndex: modalImage }} className="pt-4">
+              <CarouselContent>
+                {photos?.map((img) => (
+                  <CarouselItem key={img.url} className="my-auto h-full p-0">
+                    <div className="relative flex h-full w-full flex-col gap-1 text-center">
+                      <img
+                        src={`${img.signedUrl}`}
+                        className="max-h-[564px] w-full object-contain"
+                      />
+                      <div>
+                        {img.caption && (
+                          <span>
+                            <span className="text-secondary">
+                              {img.caption}
+                            </span>{" "}
+                            ·
+                          </span>
+                        )}{" "}
+                        {img.uploaded_at && (
+                          <span className="text-sm">
+                            {new Date(img.uploaded_at).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          </DialogContent>
+        </Dialog>
+      }
     </>
   )
 }

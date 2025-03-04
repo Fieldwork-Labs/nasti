@@ -4,17 +4,20 @@ import { CollectionPhoto, CollectionPhotoSignedUrl } from "@/types"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Spinner } from "../ui/spinner"
+import { cn } from "@/lib/utils"
 
 type PhotoCardProps = {
   photo: CollectionPhotoSignedUrl
   onDelete?: (id: string) => Promise<string>
   onUpdateCaption?: (id: string, caption: string) => Promise<CollectionPhoto>
+  onClickPhoto?: (photo: CollectionPhotoSignedUrl) => void
 }
 
 export const CollectionPhotoCard = ({
   photo,
   onDelete,
   onUpdateCaption,
+  onClickPhoto,
 }: PhotoCardProps) => {
   const [isEditing, setIsEditing] = useState(false)
   const [isUpdating, setisUpdating] = useState(false)
@@ -40,7 +43,11 @@ export const CollectionPhotoCard = ({
         <img
           src={photo.signedUrl}
           alt={photo.caption || "Collection photo"}
-          className="h-full w-full object-cover"
+          className={cn(
+            "h-full w-full object-cover",
+            onClickPhoto && !onDelete && "cursor-pointer",
+          )}
+          onClick={() => onClickPhoto && onClickPhoto(photo)}
         />
         {onDelete && (
           <button

@@ -5,7 +5,7 @@ import { Collection } from "@/types"
 
 import { queryClient } from "@/lib/utils"
 
-type QueryTuple = [QueryKey, Collection[] | undefined]
+type QueryTuple = [QueryKey, Collection[] | Collection | undefined]
 
 const findItemById = (
   queryDataArray: QueryTuple[],
@@ -14,8 +14,12 @@ const findItemById = (
   // Iterate through each tuple in the array
   for (const [_, collections] of queryDataArray) {
     if (!collections) continue
-    const foundItem = collections.find((item) => item.id === targetId)
-    if (foundItem) return foundItem
+    if (!Array.isArray(collections)) {
+      if (collections.id === targetId) return collections
+    } else {
+      const foundItem = collections.find((item) => item.id === targetId)
+      if (foundItem) return foundItem
+    }
   }
   return undefined
 }
