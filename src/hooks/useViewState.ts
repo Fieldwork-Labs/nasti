@@ -42,7 +42,7 @@ export const getViewState = (coords: Array<[number, number]>) => {
   return {
     longitude: centerLng,
     latitude: centerLat,
-    zoom: Math.min(Math.max(zoom, 3), 15), // Clamp zoom between 3 and 15
+    zoom: Math.min(Math.max(zoom, 2), 15), // Clamp zoom between 2 and 15
   }
 }
 

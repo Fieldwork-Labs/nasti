@@ -104,13 +104,35 @@ const TripDetail = () => {
         <span>All Trips</span>
       </Link>
       <div className="mt-6 flex flex-col gap-4 pb-6">
-        <h2 className="mb-4 text-2xl font-semibold">{instance.name}</h2>
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="mb-4 text-2xl font-semibold">{instance.name}</h2>
+          <div className="flex items-center gap-4">
+            <span className="rounded-lg bg-secondary-background p-2">
+              {instance.start_date &&
+                new Date(instance.start_date).toLocaleDateString()}{" "}
+              -{" "}
+              {instance.end_date &&
+                new Date(instance.end_date).toLocaleDateString()}
+            </span>
+            {isAdmin && (
+              <Button
+                size={"icon"}
+                onClick={() => openModal("details")}
+                title="Edit trip details"
+                className="bg-transparent"
+              >
+                <PencilIcon className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
         {(instance.location_name || instance.location_coordinate) && (
           <div className="rounded-lg border border-foreground/50 p-2">
             <div className="flex justify-between">
               <h4 className="mb-2 text-xl font-bold">
                 {instance.location_name}
               </h4>
+
               {isAdmin && (
                 <PencilIcon
                   className="h-4 w-4 cursor-pointer"
@@ -139,7 +161,7 @@ const TripDetail = () => {
                     const species = tripSpecies?.find(
                       ({ species_id }) => species_id === coll.species_id,
                     )
-                    console.log({ species, id: coll.species_id })
+
                     return (
                       <CollectionMapMarker
                         {...parsePostGISPoint(coll.location!)}
@@ -170,56 +192,6 @@ const TripDetail = () => {
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="col-span-2 flex flex-col gap-4">
             <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-lg border border-foreground/50 p-2">
-                <div className="flex justify-between">
-                  <h4 className="mb-2 text-xl font-bold">Trip Details</h4>
-                  {isAdmin && (
-                    <PencilIcon
-                      className="h-4 w-4 cursor-pointer"
-                      onClick={() => openModal("details")}
-                    />
-                  )}
-                </div>
-                <table>
-                  <tbody>
-                    <tr>
-                      <th className="justify-start bg-secondary-background text-left">
-                        Trip Name
-                      </th>
-                      <td>{instance.name}</td>
-                    </tr>
-                    {instance.start_date && (
-                      <tr>
-                        <th className="justify-start bg-secondary-background text-left">
-                          Trip Start
-                        </th>
-                        <td>
-                          {new Date(instance.start_date).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    )}
-                    {instance.end_date && (
-                      <tr>
-                        <th className="justify-start bg-secondary-background text-left">
-                          Trip End
-                        </th>
-                        <td>
-                          {new Date(instance.end_date).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-                {!instance.location_coordinate && isAdmin && (
-                  <div
-                    className="flex cursor-pointer items-center gap-2 text-sm underline"
-                    onClick={() => openModal("location")}
-                  >
-                    <span>Add location</span>
-                    <PencilIcon className="h-4 w-4" />
-                  </div>
-                )}
-              </div>
               <div className="rounded-lg border border-foreground/50 p-2">
                 <div className="flex justify-between">
                   <h4 className="mb-2 text-xl font-bold">Members</h4>

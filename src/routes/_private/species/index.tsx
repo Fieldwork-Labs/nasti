@@ -10,11 +10,10 @@ import { usePagination, Pagination } from "@/components/common/pagination"
 import { Modal, type ModalProps } from "@/components/ui/modal"
 
 import { ButtonLink } from "@/components/ui/buttonLink"
-import { LeafIcon, PencilIcon, PlusIcon } from "lucide-react"
+import { LeafIcon, PlusIcon } from "lucide-react"
 import { useALAImage } from "@/hooks/useALAImage"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import useOpenClose from "@/hooks/useOpenClose"
-import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 import { useSpeciesForm, SpeciesForm } from "@/components/species/SpeciesForm"
 import { Button } from "@/components/ui/button"
 import useUserStore from "@/store/userStore"
@@ -43,81 +42,59 @@ const AddSpeciesModal = ({
   )
 }
 
-export const SpeciesListItem = ({
-  id,
-  allowEdit = true,
-}: {
-  id: string
-  allowEdit?: boolean
-}) => {
+export const SpeciesListItem = ({ id }: { id: string }) => {
   const { data: species, error } = useSpecies(id)
   const { data } = useSpeciesDetail(species?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
-  const { isAdmin } = useUserStore()
-
-  const { open, isOpen, close } = useOpenClose()
 
   if (!species || !data || error) {
     return <></>
   }
 
   return (
-    <>
-      <ButtonLink
-        to="/species/$id"
-        params={{ id: species.id }}
-        className="flex h-20 gap-4 rounded-sm bg-secondary-background p-0"
-      >
-        {image ? (
-          <span className="flex h-20 w-20 content-center justify-center">
-            <img
-              src={image}
-              alt={`${species.name} Image`}
-              className="w-20 rounded-l-sm object-cover text-sm"
-            />
-          </span>
-        ) : (
-          <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
-            <LeafIcon />
-          </span>
-        )}
-        <div className="flex h-full w-full flex-col py-1 pr-2 text-foreground">
-          <div className="flex items-center justify-between">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <i className="max-w-56 truncate font-semibold">
-                    {species?.name}
-                  </i>
-                </TooltipTrigger>
-                <TooltipContent>{species.name}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            {isAdmin && allowEdit && (
-              <PencilIcon className="h-3 w-3 cursor-pointer" onClick={open} />
-            )}
-          </div>
-          <div className="flex flex-col items-start text-xs">
-            {data.commonNames.length > 0 && (
-              <span>{data.commonNames[0].nameString}</span>
-            )}
-            {species.indigenous_name && (
-              <span>
-                <i>{species.indigenous_name}</i>
-              </span>
-            )}
-          </div>
+    <ButtonLink
+      to="/species/$id"
+      params={{ id: species.id }}
+      className="flex h-20 gap-4 rounded-sm bg-secondary-background p-0"
+    >
+      {image ? (
+        <span className="flex h-20 w-20 content-center justify-center">
+          <img
+            src={image}
+            alt={`${species.name} Image`}
+            className="w-20 rounded-l-sm object-cover text-sm"
+          />
+        </span>
+      ) : (
+        <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
+          <LeafIcon />
+        </span>
+      )}
+      <div className="flex h-full w-full flex-col py-1 pr-2 text-foreground">
+        <div className="flex items-center justify-between">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <i className="max-w-56 truncate font-semibold">
+                  {species?.name}
+                </i>
+              </TooltipTrigger>
+              <TooltipContent>{species.name}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-      </ButtonLink>
-      <Modal open={isOpen} title={`Edit ${species.name}`}>
-        <SpeciesIndigNameForm
-          onCancel={close}
-          onSuccess={close}
-          instance={species}
-        />
-      </Modal>
-    </>
+        <div className="flex flex-col items-start text-xs">
+          {data.commonNames.length > 0 && (
+            <span>{data.commonNames[0].nameString}</span>
+          )}
+          {species.indigenous_name && (
+            <span>
+              <i>{species.indigenous_name}</i>
+            </span>
+          )}
+        </div>
+      </div>
+    </ButtonLink>
   )
 }
 

@@ -66,8 +66,7 @@ const OccurrencesLayer = ({
   const occurrencesGeoJson: FeatureCollection = useMemo(
     () => ({
       type: "FeatureCollection",
-      features: occurencesCoords.map((coordinates, i) => {
-        if (!coordinates[0]) console.log("NOPE", i)
+      features: occurencesCoords.map((coordinates) => {
         return {
           type: "Feature",
           geometry: {
@@ -86,7 +85,6 @@ const OccurrencesLayer = ({
   useEffect(() => {
     // Calculate the new view state
     const newViewState = getViewState(occurencesCoords)
-
     // Only update parent if there's a meaningful difference
     // (using JSON.stringify is a simple way to do deep comparison)
     const viewStateString = JSON.stringify(newViewState)

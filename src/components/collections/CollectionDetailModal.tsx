@@ -158,7 +158,7 @@ export const CollectionDetailModal = ({
           {collection.species_id && (
             <div>
               <div className="text-lead mb-1">Species</div>
-              <SpeciesListItem id={collection.species_id} allowEdit={false} />
+              <SpeciesListItem id={collection.species_id} />
             </div>
           )}
           {!collection.species_id && collection.field_name && (
