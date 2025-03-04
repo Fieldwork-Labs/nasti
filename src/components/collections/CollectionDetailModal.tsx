@@ -71,14 +71,22 @@ export const CollectionDetailModal = ({
 
   const EditButtons = () => (
     <span className="inline-flex space-x-2">
-      <PencilIcon
-        className="h-4 w-4 cursor-pointer hover:blur-xs"
+      <Button
+        size={"icon"}
         onClick={openUpdateModal}
-      />
-      <TrashIcon
-        className="h-4 w-4 cursor-pointer hover:blur-xs"
+        title="Edit Collection"
+        className="bg-transparent"
+      >
+        <PencilIcon className="h-4 w-4 text-white" />
+      </Button>
+      <Button
+        size={"icon"}
         onClick={openDeleteModal}
-      />
+        title="Delete Collection"
+        className="bg-transparent"
+      >
+        <TrashIcon className="h-4 w-4" />
+      </Button>
     </span>
   )
   if (!collection) return null
