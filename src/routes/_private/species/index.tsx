@@ -72,7 +72,7 @@ export const SpeciesListItem = ({
           <span className="flex h-20 w-20 content-center justify-center">
             <img
               src={image}
-              alt={`${name} Image`}
+              alt={`${species.name} Image`}
               className="w-20 rounded-l-sm object-cover text-sm"
             />
           </span>

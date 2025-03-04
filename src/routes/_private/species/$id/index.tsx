@@ -5,7 +5,7 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Map as MapboxMap, Marker, Source, Layer } from "react-map-gl"
+import { Map as MapboxMap, Marker, Source, Layer, Popup } from "react-map-gl"
 import type { FeatureCollection } from "geojson"
 
 import {
@@ -114,12 +114,18 @@ const SpeciesMap = ({
   const { data: collections } = useCollectionsBySpecies(id)
   const { data: trips } = useTripsForSpecies(id)
 
-  const tripsCoordArray: Array<[number, number]> = useMemo(
+  const mapTrips = useMemo(
     () =>
-      (trips?.filter(tripWithLocationFilter) ?? [])
-        .map(getTripCoordinates)
-        .map(({ longitude, latitude }) => [longitude, latitude]),
+      (trips?.filter(tripWithLocationFilter) ?? []).map((trip) => ({
+        ...trip,
+        ...getTripCoordinates(trip),
+      })),
     [trips],
+  )
+
+  const tripsCoordArray: Array<[number, number]> = useMemo(
+    () => mapTrips.map(({ longitude, latitude }) => [longitude, latitude]),
+    [mapTrips],
   )
 
   const [viewState, setViewState] = useState(getViewState(tripsCoordArray))
@@ -156,6 +162,11 @@ const SpeciesMap = ({
       )
   }, [selectedLayer, tripsCoordArray, mapCollectionsCoords])
 
+  const [tripPopup, setTripPopup] = useState<string>()
+  const tripForPopup = tripPopup
+    ? mapTrips?.find(({ id }) => id === tripPopup)
+    : undefined
+
   return (
     <Tabs
       defaultValue="trips"
@@ -187,13 +198,38 @@ const SpeciesMap = ({
         )}
         {selectedLayer === "trips" && (
           <>
-            {tripsCoordArray.map((coords, i) => (
-              <Marker latitude={coords[1]} longitude={coords[0]} key={i}>
+            {mapTrips.map(({ latitude, longitude, id }) => (
+              <Marker
+                latitude={latitude}
+                longitude={longitude}
+                key={id}
+                onClick={() => setTripPopup(id)}
+                className="cursor-pointer"
+              >
                 <div className="rounded-full bg-white bg-opacity-50 p-2">
                   <MapPin className="h-5 w-5 text-primary" />
                 </div>
               </Marker>
             ))}
+            {tripPopup && tripForPopup && (
+              <Popup
+                onClose={() => setTripPopup(undefined)}
+                latitude={tripForPopup.latitude}
+                longitude={tripForPopup.longitude}
+                closeOnClick={false}
+                closeButton={true}
+                anchor="bottom"
+                offset={25}
+              >
+                <Link
+                  to={"/trips/$id"}
+                  params={{ id: tripForPopup.id }}
+                  className="text-primary"
+                >
+                  {tripForPopup?.name} trip
+                </Link>
+              </Popup>
+            )}
           </>
         )}
         {selectedLayer === "collections" &&

@@ -64,7 +64,13 @@ const TripsMap = ({ trips }: TripsMapProps) => {
           onClose={() => setShowPopup(null)}
           {...getTripCoordinates(showPopup)}
         >
-          <span className="text-primary">{showPopup.name}</span>
+          <Link
+            to={"/trips/$id"}
+            params={{ id: showPopup.id }}
+            className="text-primary"
+          >
+            {showPopup?.name} trip
+          </Link>
         </Popup>
       )}
     </Map>
