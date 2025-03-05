@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { useCallback, useState } from "react"
-import { supabase } from "@/lib/supabase"
 import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { useToast } from "@/hooks/use-toast"
@@ -10,34 +9,60 @@ import { PlusIcon, TrashIcon } from "lucide-react"
 import { ButtonLink } from "@/components/ui/buttonLink"
 import { usePeople } from "@/hooks/usePeople"
 import { Modal } from "@/components/ui/modal"
+import { Spinner } from "@/components/ui/spinner"
+import { cn } from "@/lib/utils"
+import { GetOrgUsers } from "@/types"
 
 const PeopleList = () => {
   // TODO pagination
   // TODO search function
 
-  const { orgId, isAdmin } = useUserStore()
+  const { orgId, isAdmin, session, user: currentUser } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   const { data, isLoading, isError, error } = usePeople()
   const [personToDelete, setPersonToDelete] = useState<string>()
+  const [isDeleting, setIsDeleting] = useState<string>()
 
-  // Handle deletion of an trip
-  const handleDelete = useCallback(
+  // Handle disabling a user
+  const handleDisable = useCallback(
     async (id: string) => {
-      const { error } = await supabase.from("org_user").delete().eq("id", id)
-      if (error) {
+      setIsDeleting(id)
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/disable_user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ userId: id }),
+        },
+      )
+      setIsDeleting(undefined)
+      setPersonToDelete(undefined)
+
+      if (!response.ok) {
+        const message = await response.text()
         toast({
           variant: "destructive",
-          description: `Failed to remove user: ${error.message}`,
+          description: `Failed to disable user: ${message}`,
         })
       } else {
-        toast({ description: "User removed successfully." })
-        queryClient.invalidateQueries({ queryKey: ["users", orgId] })
-        setPersonToDelete(undefined)
+        toast({ description: "User disabled successfully." })
+        queryClient.setQueryData<GetOrgUsers["Returns"]>(
+          ["users", orgId],
+          (oldData) => {
+            if (!oldData || oldData.length === 0) return []
+            return oldData.map((item) =>
+              item.id === id ? { ...item, is_active: false } : item,
+            )
+          },
+        )
       }
     },
-    [orgId, queryClient, toast],
+    [orgId, queryClient, session?.access_token, toast],
   )
 
   if (isLoading) {
@@ -79,26 +104,40 @@ const PeopleList = () => {
               <tr>
                 <th className="px-4 py-2 text-left">Name</th>
                 <th className="px-4 py-2 text-left">Email</th>
+                <th className="px-4 py-2 text-left">Role</th>
                 <th className="px-4 py-2 text-left">Member Since</th>
                 {isAdmin && <th className="px-4 py-2">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {data.map((user) => (
-                <tr key={user.id} className="border-t">
+                <tr
+                  key={user.id}
+                  className={cn(
+                    "h-14 border-t",
+                    !user.is_active && "text-muted-foreground",
+                  )}
+                >
                   <td className="px-4 py-2">{user.name}</td>
                   <td className="px-4 py-2">{user.email}</td>
+                  <td className="px-4 py-2">{user.role}</td>
                   <td className="px-4 py-2">
                     {new Date(user.joined_at).toLocaleString()}
                   </td>
-                  {isAdmin && (
+                  {isAdmin && user.is_active && (
                     <td className="flex justify-center gap-2 px-4 py-2">
                       <Button
                         size="icon"
                         onClick={() => setPersonToDelete(user.id)}
                         title="Delete"
+                        disabled={
+                          isDeleting === user.id || user.id === currentUser?.id
+                        }
                       >
-                        <TrashIcon aria-label="Delete" size={16} />
+                        {isDeleting !== user.id && (
+                          <TrashIcon aria-label="Delete" size={16} />
+                        )}
+                        {isDeleting === user.id && <Spinner />}
                       </Button>
                     </td>
                   )}
@@ -114,9 +153,11 @@ const PeopleList = () => {
           onOpenChange={() => setPersonToDelete(undefined)}
           title={`Remove ${data?.find((person) => person.id === personToDelete)?.name}`}
           onCancel={() => setPersonToDelete(undefined)}
-          onSubmit={() => personToDelete && handleDelete(personToDelete)}
+          onSubmit={() => personToDelete && handleDisable(personToDelete)}
+          allowSubmit={!isDeleting}
+          isPending={Boolean(isDeleting)}
         >
-          This action cannot be undone. This will permanently remove the user.
+          This action cannot be undone. This will permanently disable the user.
         </Modal>
       )}
     </div>

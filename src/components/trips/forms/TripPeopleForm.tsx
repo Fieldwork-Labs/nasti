@@ -48,10 +48,12 @@ export const useTripPeopleForm = ({ trip, onSave }: TripPeopleFormArgs) => {
   }, [peopleError])
 
   const options: Option[] =
-    people?.map((person) => ({
-      value: person.id,
-      label: person.name ?? "Unknown Person",
-    })) ?? []
+    people
+      ?.filter(({ is_active }) => is_active)
+      .map((person) => ({
+        value: person.id,
+        label: person.name ?? "Unknown Person",
+      })) ?? []
 
   const handleSubmit = useCallback(async () => {
     try {

@@ -161,6 +161,7 @@ export type Database = {
       org_user: {
         Row: {
           id: string
+          is_active: boolean
           joined_at: string | null
           organisation_id: string
           role: Database["public"]["Enums"]["org_user_types"]
@@ -168,6 +169,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          is_active?: boolean
           joined_at?: string | null
           organisation_id: string
           role: Database["public"]["Enums"]["org_user_types"]
@@ -175,6 +177,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          is_active?: boolean
           joined_at?: string | null
           organisation_id?: string
           role?: Database["public"]["Enums"]["org_user_types"]
@@ -1241,31 +1244,18 @@ export type Database = {
           token: string
         }
       }
-      get_organisation_users:
-        | {
-            Args: Record<PropertyKey, never>
-            Returns: {
-              id: string
-              email: string
-              name: string
-              organisation_id: string
-              joined_at: string
-              role: Database["public"]["Enums"]["org_user_types"]
-            }[]
-          }
-        | {
-            Args: {
-              current_user_id: string
-            }
-            Returns: {
-              id: string
-              email: string
-              name: string
-              organisation_id: string
-              joined_at: string
-              role: Database["public"]["Enums"]["org_user_types"]
-            }[]
-          }
+      get_organisation_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          name: string
+          organisation_id: string
+          joined_at: string
+          role: Database["public"]["Enums"]["org_user_types"]
+          is_active: boolean
+        }[]
+      }
       get_proj4_from_srid: {
         Args: {
           "": number
