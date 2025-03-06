@@ -3,7 +3,6 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["VITE_*", "FRONTEND_URL", "MAILGUN_API_KEY", "MAILGUN_DOMAIN"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**"]
     },
