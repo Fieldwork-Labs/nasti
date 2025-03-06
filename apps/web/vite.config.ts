@@ -4,14 +4,17 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import { nodePolyfills } from "vite-plugin-node-polyfills"
 import path from "path"
 
-// https://vitejs.dev/config/
 export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  envDir: path.resolve(__dirname, "../.."),
+  // Use no envDir in production, default behavior works with Cloudflare
+  envDir:
+    process.env.NODE_ENV === "production"
+      ? undefined
+      : path.resolve(__dirname, "../.."),
   plugins: [
     react({ jsxRuntime: "automatic" }),
     TanStackRouterVite(),
