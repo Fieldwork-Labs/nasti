@@ -4,9 +4,10 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import { nodePolyfills } from "vite-plugin-node-polyfills"
 import path from "path"
 
-const isProd = process.env.NODE_ENV === "production"
+const isProd = process.env.CF_PAGES === "1"
 let define = {}
 if (isProd) {
+  console.log(process.env)
   define = {
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
       process.env.VITE_SUPABASE_URL,
