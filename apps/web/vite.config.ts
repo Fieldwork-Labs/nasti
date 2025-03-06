@@ -4,6 +4,8 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import { nodePolyfills } from "vite-plugin-node-polyfills"
 import path from "path"
 
+console.log({ isProd: process.env.NODE_ENV === "production" })
+
 export default defineConfig({
   resolve: {
     alias: {
