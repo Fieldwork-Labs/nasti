@@ -8,6 +8,8 @@ const isProd = process.env.CF_PAGES === "1"
 let define = {}
 if (isProd) {
   console.log(process.env)
+  console.log("0--------------9")
+  console.log("importmeta:", import.meta)
   define = {
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
       process.env.VITE_SUPABASE_URL,
