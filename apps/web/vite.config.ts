@@ -11,10 +11,10 @@ export default defineConfig({
     },
   },
   // Use no envDir in production, default behavior works with Cloudflare
-  envDir:
-    process.env.NODE_ENV === "production"
-      ? undefined
-      : path.resolve(__dirname, "../.."),
+  // envDir:
+  //   process.env.NODE_ENV === "production"
+  //     ? undefined
+  //     : path.resolve(__dirname, "../.."),
   plugins: [
     react({ jsxRuntime: "automatic" }),
     TanStackRouterVite(),
