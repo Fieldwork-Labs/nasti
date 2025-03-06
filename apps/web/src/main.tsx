@@ -7,6 +7,12 @@ import { routeTree } from "./routeTree.gen"
 import useUserStore from "./store/userStore"
 import { ThemeProvider } from "./contexts/theme"
 
+console.log("ENV check:", {
+  directAccess: process.env.VITE_SUPABASE_URL,
+  viteAccess: import.meta.env.VITE_SUPABASE_URL,
+  allViteEnv: import.meta.env,
+})
+
 // Create a new router instance
 const router = createRouter({
   routeTree,
