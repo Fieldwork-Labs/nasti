@@ -95,7 +95,7 @@ const TripsList = () => {
   const { toast } = useToast()
 
   // Fetch trips
-  const { data, isLoading, isError, error } = useTrips()
+  const { data, isPending, isError, error } = useTrips()
 
   // Handle deletion of an trip
   const handleDelete = useCallback(
@@ -114,7 +114,7 @@ const TripsList = () => {
     [orgId, queryClient, toast],
   )
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="p-4 text-center">
         <p>Loading trips...</p>

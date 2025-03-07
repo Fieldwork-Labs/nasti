@@ -7,7 +7,7 @@ import { useCallback } from "react"
 export const useTrips = () => {
   const { orgId } = useUserStore()
   // Fetch trips
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, isPending } = useQuery({
     queryKey: ["trips", orgId],
     queryFn: async () => {
       if (!orgId) {
@@ -23,5 +23,5 @@ export const useTrips = () => {
     })
   }, [orgId])
 
-  return { data, isLoading, isError, error, invalidate }
+  return { data, isLoading, isError, error, isPending, invalidate }
 }
