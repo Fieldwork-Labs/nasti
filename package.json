@@ -12,7 +12,9 @@
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx,js,jsx,css,scss,html,md,json}": "prettier --ignore-unknown --write --semi=false",
-    "apps/web/**/*.{js,ts,jsx,tsx}": "eslint --fix --max-warnings 0"
+    "apps/web/**/*.{js,ts,jsx,tsx}": "eslint --fix --max-warnings 0",
+    "packages/ui/**/*.{ts,tsx,js,jsx,css,scss,html,md,json}": "prettier --ignore-unknown --write --semi=false",
+    "packages/ui/**/*.{js,ts,jsx,tsx}": "eslint --fix --max-warnings 0"
   },
   "prettier": {
     "semi": false,
@@ -24,9 +26,9 @@
     "turbo": "^2.0.0",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
-    "globals": "^15.9.0",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
+    "@nasti/eslint-config": "workspace:*",
     "eslint": "^9.11.1",
     "prettier-plugin-tailwindcss": "^0.6.9"
   },
