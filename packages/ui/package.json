@@ -1,0 +1,78 @@
+{
+  "name": "@nasti/ui",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "files": [
+    "src/**/*.{js,ts,jsx,tsx}"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./button": "./components/button.tsx",
+    "./alert-dialog": "./components/alert-dialog.tsx",
+    "./card": "./components/card.tsx",
+    "./command": "./components/command.tsx",
+    "./input": "./components/input.tsx",
+    "./multi-select": "./components/multi-select.tsx",
+    "./scroll-area": "./components/scroll-area.tsx",
+    "./table": "./components/table.tsx",
+    "./tooltip": "./components/tooltip.tsx",
+    "./badge": "./components/badge.tsx",
+    "./carousel": "./components/carousel.tsx",
+    "./dialog": "./components/dialog.tsx",
+    "./inputWithLabel": "./components/inputWithLabel.tsx",
+    "./navigation-menu": "./components/navigation-menu.tsx",
+    "./separator": "./components/separator.tsx",
+    "./tabs": "./components/tabs.tsx",
+    "./checkbox": "./components/checkbox.tsx",
+    "./dropdown-menu": "./components/dropdown-menu.tsx",
+    "./label": "./components/label.tsx",
+    "./pagination": "./components/pagination.tsx",
+    "./skeleton": "./components/skeleton.tsx",
+    "./toast": "./components/toast.tsx",
+    "./button-link": "./components/button-link.tsx",
+    "./combobox": "./components/combobox.tsx",
+    "./formField": "./components/formField.tsx",
+    "./modal": "./components/modal.tsx",
+    "./popover": "./components/popover.tsx",
+    "./spinner": "./components/spinner.tsx",
+    "./toaster": "./components/toaster.tsx",
+    "./hooks/use-toast": "./hooks/use-toast.ts"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@nasti/utils": "workspace:*",
+    "@radix-ui/react-alert-dialog": "^1.1.2",
+    "@radix-ui/react-checkbox": "^1.1.4",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-dropdown-menu": "^2.1.2",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-navigation-menu": "^1.2.1",
+    "@radix-ui/react-popover": "^1.1.2",
+    "@radix-ui/react-scroll-area": "^1.2.3",
+    "@radix-ui/react-separator": "^1.1.1",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-tabs": "^1.1.3",
+    "@radix-ui/react-toast": "^1.2.2",
+    "@radix-ui/react-tooltip": "^1.1.7",
+    "class-variance-authority": "^0.7.0",
+    "cmdk": "1.0.0",
+    "embla-carousel-react": "^8.5.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.10",
+    "@nasti/typescript-config": "workspace:*",
+    "eslint": "^9.11.1",
+    "typescript": "5.5.4"
+  },
+  "peerDependencies": {
+    "@tanstack/react-router": "^1.64.0",
+    "lucide-react": "^0.453.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.53.1"
+  }
+}
