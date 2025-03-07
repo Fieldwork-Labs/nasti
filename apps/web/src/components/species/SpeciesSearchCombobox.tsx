@@ -7,10 +7,10 @@ import {
   ComboboxButton,
 } from "@headlessui/react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@nasti/utils"
 import { useSpeciesSearch } from "@/hooks/useSpeciesSearch"
 import { ChevronsUpDown, LeafIcon, XIcon } from "lucide-react"
-import { labelVariants } from "../ui/label"
+import { labelVariants } from "@nasti/ui/label"
 import { useSpecies } from "@/hooks/useSpecies"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useALAImage } from "@/hooks/useALAImage"
@@ -19,8 +19,8 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "../ui/tooltip"
-import { Button } from "../ui/button"
+} from "@nasti/ui/tooltip"
+import { Button } from "@nasti/ui/button"
 
 type SpeciesComboboxProps = {
   value: string | null

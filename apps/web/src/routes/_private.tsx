@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/ui/spinner"
+import { Spinner } from "@nasti/ui/spinner"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { Suspense } from "react"
 

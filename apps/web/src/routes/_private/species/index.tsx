@@ -5,17 +5,17 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@nasti/ui/tooltip"
 import { usePagination, Pagination } from "@/components/common/pagination"
-import { Modal, type ModalProps } from "@/components/ui/modal"
+import { Modal, type ModalProps } from "@nasti/ui/modal"
 
-import { ButtonLink } from "@/components/ui/buttonLink"
+import { ButtonLink } from "@nasti/ui/button-link"
 import { LeafIcon, PlusIcon } from "lucide-react"
 import { useALAImage } from "@/hooks/useALAImage"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import useOpenClose from "@/hooks/useOpenClose"
 import { useSpeciesForm, SpeciesForm } from "@/components/species/SpeciesForm"
-import { Button } from "@/components/ui/button"
+import { Button } from "@nasti/ui/button"
 import useUserStore from "@/store/userStore"
 
 const AddSpeciesModal = ({

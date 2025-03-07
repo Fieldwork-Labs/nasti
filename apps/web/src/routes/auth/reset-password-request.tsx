@@ -3,9 +3,9 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { type SubmitHandler, useForm } from "react-hook-form"
-import { Spinner } from "@/components/ui/spinner"
-import { FormField } from "@/components/ui/formField"
-import { Button } from "@/components/ui/button"
+import { Spinner } from "@nasti/ui/spinner"
+import { FormField } from "@nasti/ui/formField"
+import { Button } from "@nasti/ui/button"
 
 type FormData = {
   email: string

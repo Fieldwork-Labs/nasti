@@ -2,7 +2,7 @@ import { useCallback } from "react"
 import { useDropzone } from "react-dropzone"
 import { Camera } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
-import { Spinner } from "../ui/spinner"
+import { Spinner } from "@nasti/ui/spinner"
 import { CollectionPhotoCard } from "./CollectionPhotoCard"
 
 type CollectionPhotoUploadProps = { collectionId?: string }

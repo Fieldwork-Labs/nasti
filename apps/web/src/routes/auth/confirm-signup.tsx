@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@nasti/ui/button"
 import { useConfirmationUrl } from "@/hooks/useConfirmationUrl"
 
 const ConfirmSignupPage = () => {

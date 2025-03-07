@@ -18,8 +18,8 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@/components/ui/carousel"
-import { Modal } from "@/components/ui/modal"
+} from "@nasti/ui/carousel"
+import { Modal } from "@nasti/ui/modal"
 import { useALAImage } from "@/hooks/useALAImage"
 import { useALAImages } from "@/hooks/useALAImages"
 import { useALAOccurrences } from "@/hooks/useALAOccurrences"
@@ -29,9 +29,9 @@ import { getViewState, PartialViewState } from "@/hooks/useViewState"
 import { Species } from "@/types"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
 import { useCollectionsBySpecies } from "@/hooks/useCollectionsBySpecies"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 

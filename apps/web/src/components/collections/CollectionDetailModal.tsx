@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react"
-import { Modal } from "../ui/modal"
+import { Modal } from "@nasti/ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parsePostGISPoint } from "@/lib/utils"
@@ -7,9 +7,9 @@ import { Collection, CollectionPhotoSignedUrl } from "@/types"
 import { SpeciesListItem } from "@/routes/_private/species"
 import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
-import { Button } from "../ui/button"
-import { Badge } from "../ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@nasti/ui/button"
+import { Badge } from "@nasti/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 
 import useUserStore from "@/store/userStore"
 import { UpdateCollectionWizardModal } from "./CollectionFormModal"
@@ -17,17 +17,17 @@ import useOpenClose from "@/hooks/useOpenClose"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionPhotoCard } from "../collectionPhotos/CollectionPhotoCard"
 import { useDeleteCollection } from "@/hooks/useUpdateCollection"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@nasti/ui/hooks/use-toast"
 import { Link, useLocation } from "@tanstack/react-router"
 import { useTripDetail } from "@/hooks/useTripDetail"
-import { Dialog, DialogContent, DialogTitle } from "../ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "../ui/carousel"
+} from "@nasti/ui/carousel"
 
 const PhotosTab = ({
   photos,

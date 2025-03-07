@@ -19,13 +19,13 @@ import { useTripMembers } from "@/hooks/useTripMembers"
 import useUserStore from "@/store/userStore"
 import { getTripCoordinates } from "@/components/trips/utils"
 import { SpeciesListItem } from "../../species"
-import { Button } from "@/components/ui/button"
+import { Button } from "@nasti/ui/button"
 import { AddCollectionWizardModal } from "@/components/collections/CollectionFormModal"
 
 import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
 import { useViewState } from "@/hooks/useViewState"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
-import { Spinner } from "@/components/ui/spinner"
+import { Spinner } from "@nasti/ui/spinner"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 
 const getTripQueryOptions = (id: string) => ({

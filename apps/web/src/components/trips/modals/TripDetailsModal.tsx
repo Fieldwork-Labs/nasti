@@ -1,5 +1,5 @@
 import { TripDetailsForm, useTripForm } from "../forms/TripDetailsForm"
-import { Modal } from "@/components/ui/modal"
+import { Modal } from "@nasti/ui/modal"
 import { Trip } from "@/types"
 import { useTripDetail } from "@/hooks/useTripDetail"
 

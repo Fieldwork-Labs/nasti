@@ -1,11 +1,11 @@
 import { LeafIcon, XIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@nasti/ui/button"
 import {
   Combobox,
   ComboboxInput,
   ComboboxOption,
   ComboboxOptions,
-} from "@/components/ui/combobox"
+} from "@nasti/ui/combobox"
 
 import { useCallback, useEffect, useState } from "react"
 import { useDebounce } from "@uidotdev/usehooks"
@@ -24,9 +24,9 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../ui/tooltip"
-import { FormField } from "../ui/formField"
-import { Label } from "../ui/label"
+} from "@nasti/ui/tooltip"
+import { FormField } from "@nasti/ui/formField"
+import { Label } from "@nasti/ui/label"
 
 type SpeciesFormArgs = {
   onCreate?: (species: Species) => void

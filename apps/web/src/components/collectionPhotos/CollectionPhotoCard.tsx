@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react"
 import { Edit2, Trash2 } from "lucide-react"
 import { CollectionPhoto, CollectionPhotoSignedUrl } from "@/types"
-import { Button } from "../ui/button"
-import { Input } from "../ui/input"
-import { Spinner } from "../ui/spinner"
-import { cn } from "@/lib/utils"
+import { Button } from "@nasti/ui/button"
+import { Input } from "@nasti/ui/input"
+import { Spinner } from "@nasti/ui/spinner"
+import { cn } from "@nasti/utils"
 
 type PhotoCardProps = {
   photo: CollectionPhotoSignedUrl

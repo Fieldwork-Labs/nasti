@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useTripMembers } from "@/hooks/useTripMembers"
 import { usePeople } from "@/hooks/usePeople"
-import { Option } from "@/components/ui/multi-select"
-import { MultiSelect } from "@/components/ui/multi-select"
+import { Option, MultiSelect } from "@nasti/ui/multi-select"
 import { Trip } from "@/types"
 
 type UserId = string

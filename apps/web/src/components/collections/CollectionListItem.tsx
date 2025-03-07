@@ -3,7 +3,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@nasti/ui/tooltip"
 import { useSpecies } from "@/hooks/useSpecies"
 
 import { useALAImage } from "@/hooks/useALAImage"
@@ -15,7 +15,7 @@ import { LeafIcon } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionDetailModal } from "./CollectionDetailModal"
 import { useTripDetail } from "@/hooks/useTripDetail"
-import { Spinner } from "../ui/spinner"
+import { Spinner } from "@nasti/ui/spinner"
 
 export const CollectionListItem = ({
   id,

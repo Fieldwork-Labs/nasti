@@ -1,4 +1,4 @@
-import { Modal } from "@/components/ui/modal"
+import { Modal } from "@nasti/ui/modal"
 import { Trip } from "@/types"
 import { useCallback } from "react"
 import {

@@ -6,11 +6,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@nasti/ui/alert-dialog"
 import { Collection } from "@/types"
 import React, { useCallback, useMemo, useState } from "react"
 import { CollectionPhotoUpload } from "../collectionPhotos/CollectionPhotoUpload"
-import { Spinner } from "../ui/spinner"
+import { Spinner } from "@nasti/ui/spinner"
 import { CollectionForm } from "./CollectionForm"
 import {
   CollectionFormProvider,

@@ -6,8 +6,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Spinner } from "@/components/ui/spinner"
+} from "@nasti/ui/alert-dialog"
+import { Spinner } from "@nasti/ui/spinner"
 import { ReactNode } from "react"
 
 type TripWizardStageProps = {

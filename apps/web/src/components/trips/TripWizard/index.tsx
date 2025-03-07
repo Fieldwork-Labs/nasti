@@ -1,4 +1,4 @@
-import { AlertDialog } from "@/components/ui/alert-dialog"
+import { AlertDialog } from "@nasti/ui/alert-dialog"
 import { useTripFormWizard } from "./useTripFormWizard"
 import { TripDetailsStage } from "./TripDetailsStage"
 import { TripLocationStage } from "./TripLocationStage"

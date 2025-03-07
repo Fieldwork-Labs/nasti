@@ -1,9 +1,9 @@
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@nasti/ui/hooks/use-toast"
 import { Invitation } from "@/types"
 import { useCallback } from "react"
 import { useForm } from "react-hook-form"
-import { FormField } from "../ui/formField"
-import { Button } from "../ui/button"
+import { FormField } from "@nasti/ui/formField"
+import { Button } from "@nasti/ui/button"
 import useUserStore from "@/store/userStore"
 import { useNavigate } from "@tanstack/react-router"
 

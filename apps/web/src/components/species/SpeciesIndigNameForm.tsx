@@ -1,4 +1,4 @@
-import { FormField } from "@/components/ui/formField"
+import { FormField } from "@nasti/ui/formField"
 import { Species } from "@/types"
 import { useCallback, useEffect } from "react"
 
@@ -6,8 +6,8 @@ import useUserStore from "@/store/userStore"
 
 import { useUpdateSpecies } from "@/hooks/useUpdateSpecies"
 import { useForm } from "react-hook-form"
-import { Button } from "../ui/button"
-import { Spinner } from "../ui/spinner"
+import { Button } from "@nasti/ui/button"
+import { Spinner } from "@nasti/ui/spinner"
 
 export type SpeciesIndigNameFormData = {
   indigenous_name: Species["indigenous_name"]

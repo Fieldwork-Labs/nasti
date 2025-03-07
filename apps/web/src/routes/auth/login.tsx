@@ -5,11 +5,11 @@ import { supabase } from "@/lib/supabase"
 import useUserStore from "@/store/userStore"
 import { useForm } from "react-hook-form"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from "@nasti/ui/button"
+import { Input } from "@nasti/ui/input"
+import { Label } from "@nasti/ui/label"
 import { useCallback } from "react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@nasti/ui/hooks/use-toast"
 
 type FormData = {
   email: string

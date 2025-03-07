@@ -6,7 +6,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination"
+} from "@nasti/ui/pagination"
 import { useState } from "react"
 
 type PaginationProps = {

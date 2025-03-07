@@ -10,10 +10,10 @@ import { useAdminOnly } from "@/hooks/useAdminOnly"
 
 import { useTripForm } from "@/components/trips/forms/TripDetailsForm"
 import { useNavigate } from "@tanstack/react-router"
-import { useToast } from "@/hooks/use-toast"
-import { FormField } from "@/components/ui/formField"
-import { ButtonLink } from "@/components/ui/buttonLink"
-import { Button } from "@/components/ui/button"
+import { useToast } from "@nasti/ui/hooks/use-toast"
+import { FormField } from "@nasti/ui/formField"
+import { ButtonLink } from "@nasti/ui/button-link"
+import { Button } from "@nasti/ui/button"
 import { useCallback } from "react"
 
 const TripFormEdit = () => {

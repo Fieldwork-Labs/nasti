@@ -1,5 +1,5 @@
 import logo from "@/assets/logo.svg"
-import { ButtonLink } from "@/components/ui/buttonLink"
+import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@/lib/supabase"
 import { queryClient } from "@/lib/utils"
@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
+} from "@nasti/ui/dropdown-menu"
 import { Session } from "@supabase/supabase-js"
 import { QueryClientProvider } from "@tanstack/react-query"
 import {
@@ -28,8 +28,8 @@ import {
 } from "lucide-react"
 import React, { useCallback, useEffect } from "react"
 
-import { Button } from "@/components/ui/button"
-import { Toaster } from "@/components/ui/toaster"
+import { Button } from "@nasti/ui/button"
+import { Toaster } from "@nasti/ui/toaster"
 
 const TanStackRouterDevtools = import.meta.env.DEV
   ? React.lazy(() =>

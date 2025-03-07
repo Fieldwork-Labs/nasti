@@ -1,12 +1,12 @@
 import { XIcon } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@nasti/ui/badge"
+import { Button } from "@nasti/ui/button"
 import {
   Combobox,
   ComboboxInput,
   ComboboxOption,
   ComboboxOptions,
-} from "@/components/ui/combobox"
+} from "@nasti/ui/combobox"
 import { type TripSpeciesWithDetails } from "@/hooks/useTripSpecies"
 
 import { useCallback, useEffect, useMemo, useState } from "react"

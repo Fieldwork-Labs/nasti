@@ -1,5 +1,5 @@
 import { TripSpeciesForm, useTripSpeciesForm } from "../forms/TripSpeciesForm"
-import { Modal } from "@/components/ui/modal"
+import { Modal } from "@nasti/ui/modal"
 import { Trip } from "@/types"
 
 export const TripSpeciesModal = ({

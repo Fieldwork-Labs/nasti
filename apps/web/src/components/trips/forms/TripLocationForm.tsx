@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import { Button } from "@nasti/ui/button"
 import { parsePostGISPoint } from "@/lib/utils"
 import { Trip } from "@/types"
 import debounce from "lodash/debounce"
