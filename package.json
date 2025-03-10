@@ -38,9 +38,11 @@
     "@types/react": "^18.3.10"
   },
   "resolutions": {
+    "@types/react": "^18.3.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@types/react": "^18.3.10"
+    "sharp": "0.32.6",
+    "sharp-ico": "0.1.5"
   },
   "packageManager": "pnpm@8.10.5"
 }
