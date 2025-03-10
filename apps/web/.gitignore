@@ -1,0 +1,3 @@
+# needed to allow tailwind upgrade to run
+# https://github.com/tailwindlabs/tailwindcss/discussions/16499
+/node_modules
