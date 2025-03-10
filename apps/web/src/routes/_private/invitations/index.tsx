@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { createFileRoute, Link } from "@tanstack/react-router"

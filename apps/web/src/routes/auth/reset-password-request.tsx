@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { useCallback, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { type SubmitHandler, useForm } from "react-hook-form"
 import { Spinner } from "@nasti/ui/spinner"
 import { FormField } from "@nasti/ui/formField"

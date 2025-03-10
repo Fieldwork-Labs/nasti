@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { Collection } from "@nasti/common/types"
 import { useQuery } from "@tanstack/react-query"
 

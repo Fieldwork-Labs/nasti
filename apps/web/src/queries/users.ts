@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 
 export const getUsers = async () => {
   const { data: users, error } = await supabase.rpc("get_organisation_users")

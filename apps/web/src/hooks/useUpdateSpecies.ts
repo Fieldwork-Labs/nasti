@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/utils"
 import { Species } from "@nasti/common/types"
 import { useMutation } from "@tanstack/react-query"

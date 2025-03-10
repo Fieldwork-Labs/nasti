@@ -1,6 +1,6 @@
 import { TripWithDetails } from "@/hooks/useTripDetail"
 import { useTrips } from "@/hooks/useTrips"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import useUserStore from "@/store/userStore"
 import { Trip } from "@nasti/common/types"
 import { useCallback } from "react"

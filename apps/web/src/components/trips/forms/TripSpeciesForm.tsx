@@ -11,7 +11,7 @@ import { type TripSpeciesWithDetails } from "@/hooks/useTripSpecies"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useDebounce } from "@uidotdev/usehooks"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import {
   AlaSpeciesSearchResult,
   useALASpeciesSearch,

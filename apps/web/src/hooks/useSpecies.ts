@@ -1,6 +1,6 @@
 import { QueryKey, useQuery } from "@tanstack/react-query"
 
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { Species } from "@nasti/common/types"
 import { useInvalidate } from "./useInvalidate"
 import { queryClient } from "@/lib/utils"

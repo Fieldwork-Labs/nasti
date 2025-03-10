@@ -6,9 +6,13 @@
   "type": "module",
   "main": "index.ts",
   "files": [
+    "supabase.ts",
     "types/index.ts"
   ],
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.45.4"
   }
 }

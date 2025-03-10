@@ -1,7 +1,7 @@
 import logo from "@/assets/logo.svg"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/utils"
 import useUserStore from "@/store/userStore"
 import {

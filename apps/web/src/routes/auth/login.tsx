@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { useNavigate, Link } from "@tanstack/react-router"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import useUserStore from "@/store/userStore"
 import { useForm } from "react-hook-form"
 

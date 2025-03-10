@@ -1,6 +1,6 @@
 import { type Collection } from "@nasti/common/types"
 
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/utils"
 import { useMutation } from "@tanstack/react-query"
 

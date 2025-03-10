@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { supabase } from "../lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { Session, User } from "@supabase/supabase-js"
 import { Role, ROLE } from "@nasti/common/types"
 

@@ -1,6 +1,6 @@
 // useTripPeopleForm.ts
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import { useTripMembers } from "@/hooks/useTripMembers"
 import { usePeople } from "@/hooks/usePeople"
 import { Option, MultiSelect } from "@nasti/ui/multi-select"

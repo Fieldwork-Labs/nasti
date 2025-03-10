@@ -9,7 +9,7 @@ import {
 
 import { useCallback, useEffect, useState } from "react"
 import { useDebounce } from "@uidotdev/usehooks"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import {
   AlaSpeciesSearchResult,
   useALASpeciesSearch,

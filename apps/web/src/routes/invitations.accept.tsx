@@ -1,7 +1,7 @@
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { Spinner } from "@nasti/ui/spinner"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@nasti/common/supabase"
 import {
   createFileRoute,
   useLoaderData,
