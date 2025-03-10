@@ -1,0 +1,16 @@
+{
+  "extends": "@nasti/typescript-config/app.json",
+  "include": ["src", "../../packages/common/supabase.ts"],
+  "exclude": ["node_modules", "dist"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/": ["src/"],
+      "@/*": ["src/*"]
+    },
+    "noEmit": true,
+    "composite": false,
+    "incremental": false
+  },
+  "references": []
+}

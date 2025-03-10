@@ -1,0 +1,11 @@
+{
+  "extends": "../../packages/typescript-config/app.json",
+  "include": ["."],
+  "exclude": ["node_modules", "dist"],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "composite": false,
+    "incremental": false
+  }
+}
