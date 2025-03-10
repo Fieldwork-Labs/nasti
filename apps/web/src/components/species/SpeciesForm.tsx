@@ -222,12 +222,12 @@ export const SpeciesForm = ({
                 }
                 onChange={(event) => onSearchChange(event.target.value)}
               />
-              <ComboboxOptions anchor="bottom" className="z-[100]">
+              <ComboboxOptions anchor="bottom" className="z-100">
                 {searchResults?.map((species) => (
                   <ComboboxOption
                     key={species.guid}
                     value={species.guid}
-                    className="z-[100] flex justify-between"
+                    className="z-100 flex justify-between"
                   >
                     <span className="italic">{species.name}</span>
                     {species.commonName && <span>{species.commonName}</span>}

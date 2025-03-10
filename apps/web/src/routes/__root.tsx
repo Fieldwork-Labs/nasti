@@ -119,11 +119,11 @@ const RootComponent = () => {
     <QueryClientProvider client={queryClient}>
       <div className="bg-background flex min-h-screen flex-col">
         {/* Navbar */}
-        <header className="border-b-2 border-green-800 bg-green-900 bg-opacity-30 shadow">
+        <header className="border-b-2 border-green-800 bg-green-900/30 shadow-sm">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
-                <Link to="/" className="flex flex-shrink-0 items-center">
+                <Link to="/" className="flex shrink-0 items-center">
                   <img src={logo} alt="Seed Log Logo" width={200} />
                 </Link>
                 {session && (
@@ -143,7 +143,7 @@ const RootComponent = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-grow">
+        <main className="grow">
           <div className="mx-auto max-w-7xl pt-4 sm:px-6 lg:px-8">
             <Outlet />
             <TanStackRouterDevtools />
@@ -151,7 +151,7 @@ const RootComponent = () => {
         </main>
 
         {/* Footer */}
-        <footer className="mt-auto bg-white shadow">
+        <footer className="mt-auto bg-white shadow-sm">
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <p className="text-center text-sm text-gray-500">
               &copy; {new Date().getFullYear()} NASTI Project. All rights

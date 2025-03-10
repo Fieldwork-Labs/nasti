@@ -271,7 +271,7 @@ export const CollectionDetailModal = ({
                         longitude={coordinates.longitude}
                         latitude={coordinates.latitude}
                       >
-                        <div className="rounded-full bg-white bg-opacity-50 p-2">
+                        <div className="rounded-full bg-white/50 p-2">
                           <ShoppingBag className="text-primary h-5 w-5" />
                         </div>
                       </Marker>

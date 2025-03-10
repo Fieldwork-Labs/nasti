@@ -48,7 +48,7 @@ const TripsMap = ({ trips }: TripsMapProps) => {
     >
       {trips.filter(tripWithLocationFilter).map((trip) => (
         <Marker {...getTripCoordinates(trip)} key={trip.id}>
-          <div className="rounded-full bg-white bg-opacity-50 p-2">
+          <div className="rounded-full bg-white/50 p-2">
             <MapPin
               className="text-primary h-5 w-5 cursor-pointer"
               onClick={(e) => {

@@ -204,7 +204,7 @@ const SpeciesMap = ({
                 onClick={() => setTripPopup(id)}
                 className="cursor-pointer"
               >
-                <div className="rounded-full bg-white bg-opacity-50 p-2">
+                <div className="rounded-full bg-white/50 p-2">
                   <MapPin className="text-primary h-5 w-5" />
                 </div>
               </Marker>
@@ -365,7 +365,7 @@ const SpeciesDetail = () => {
           <div className="flex gap-2 overflow-x-auto">
             {images.map((image, i) => (
               <div
-                className="flex h-20 w-20 flex-shrink-0 cursor-pointer rounded-sm"
+                className="flex h-20 w-20 shrink-0 cursor-pointer rounded-sm"
                 key={image}
                 onClick={() => setModalImage(i + 1)} // use +1 to account for main image coming first
               >
