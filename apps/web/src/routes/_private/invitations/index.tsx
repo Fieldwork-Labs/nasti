@@ -10,7 +10,7 @@ import { cn } from "@nasti/utils"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { Modal } from "@nasti/ui/modal"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
-import { Invitation } from "@/types"
+import { Invitation } from "@nasti/common/types"
 import { Spinner } from "@nasti/ui/spinner"
 
 const InvitationsList = () => {

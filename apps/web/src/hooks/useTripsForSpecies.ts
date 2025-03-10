@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 import { useQuery } from "@tanstack/react-query"
 
 const getTripsForSpecies = async (speciesId: string) => {

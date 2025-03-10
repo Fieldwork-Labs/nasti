@@ -1,7 +1,7 @@
 import { QueryKey, useQuery } from "@tanstack/react-query"
 
 import { supabase } from "@/lib/supabase"
-import { Collection } from "@/types"
+import { Collection } from "@nasti/common/types"
 
 import { queryClient } from "@/lib/utils"
 

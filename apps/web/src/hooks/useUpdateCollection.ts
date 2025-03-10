@@ -1,4 +1,4 @@
-import { type Collection } from "@/types"
+import { type Collection } from "@nasti/common/types"
 
 import { supabase } from "@/lib/supabase"
 import { queryClient } from "@/lib/utils"

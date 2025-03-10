@@ -11,7 +11,7 @@ import { usePeople } from "@/hooks/usePeople"
 import { Modal } from "@nasti/ui/modal"
 import { Spinner } from "@nasti/ui/spinner"
 import { cn } from "@nasti/utils"
-import { GetOrgUsers } from "@/types"
+import { GetOrgUsers } from "@nasti/common/types"
 
 const PeopleList = () => {
   // TODO pagination

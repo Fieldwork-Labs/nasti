@@ -1,6 +1,6 @@
 import { TripDetailsForm, useTripForm } from "../forms/TripDetailsForm"
 import { Modal } from "@nasti/ui/modal"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 import { useTripDetail } from "@/hooks/useTripDetail"
 
 export const TripDetailsModal = ({

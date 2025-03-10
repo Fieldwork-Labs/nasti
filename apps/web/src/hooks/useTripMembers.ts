@@ -2,7 +2,7 @@ import { supabase } from "@/lib/supabase"
 import { useQuery } from "@tanstack/react-query"
 import { queryClient } from "@/lib/utils"
 import { useCallback } from "react"
-import { TripMember } from "@/types"
+import { TripMember } from "@nasti/common/types"
 
 const getTripMembers = async (tripId: string): Promise<TripMember[]> => {
   const { data: members, error } = await supabase

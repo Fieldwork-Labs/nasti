@@ -30,7 +30,6 @@ const LoginForm = () => {
 
   const onSubmit = useCallback(
     async (values: FormData) => {
-      // Do something with form data
       const { email, password } = values
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -39,8 +38,12 @@ const LoginForm = () => {
       })
 
       if (error) {
-        console.log({ error })
-        toast({ description: error.message, variant: "destructive" })
+        if (error.message === "Failed to fetch") {
+          toast({
+            description: "Unable to connect to server",
+            variant: "destructive",
+          })
+        } else toast({ description: error.message, variant: "destructive" })
       } else {
         setSession(data.session)
         getUser()

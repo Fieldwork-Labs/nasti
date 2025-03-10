@@ -1,4 +1,4 @@
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 import {
   createContext,
   ReactNode,

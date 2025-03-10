@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { Collection } from "@/types"
+import { Collection } from "@nasti/common/types"
 import { useQuery } from "@tanstack/react-query"
 
 const getCollectionsBySpecies = async (speciesId: string) => {

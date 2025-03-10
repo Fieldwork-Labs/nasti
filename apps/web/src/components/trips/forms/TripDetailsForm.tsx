@@ -1,7 +1,7 @@
 import { FormField } from "@nasti/ui/formField"
 import { FieldErrors, UseFormRegister, useForm } from "react-hook-form"
 import { supabase } from "@/lib/supabase"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 import { useCallback } from "react"
 
 import useUserStore from "@/store/userStore"

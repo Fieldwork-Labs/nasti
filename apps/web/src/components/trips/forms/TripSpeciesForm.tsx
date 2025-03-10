@@ -17,7 +17,7 @@ import {
   useALASpeciesSearch,
 } from "@/hooks/useALASpeciesSearch"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 
 export type GUID = string
 export type SpeciesName = string

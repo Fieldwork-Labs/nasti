@@ -16,7 +16,7 @@ import {
 } from "@/hooks/useALASpeciesSearch"
 import useUserStore from "@/store/userStore"
 import { useQuery } from "@tanstack/react-query"
-import { Species } from "@/types"
+import { Species } from "@nasti/common/types"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useALAImage } from "@/hooks/useALAImage"
 import {

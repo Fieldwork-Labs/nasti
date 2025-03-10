@@ -1,4 +1,4 @@
-import { type Collection } from "@/types"
+import { type Collection } from "@nasti/common/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { InfoIcon } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"

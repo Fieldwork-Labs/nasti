@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react"
 import { Edit2, Trash2 } from "lucide-react"
-import { CollectionPhoto, CollectionPhotoSignedUrl } from "@/types"
+import { CollectionPhoto, CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Spinner } from "@nasti/ui/spinner"

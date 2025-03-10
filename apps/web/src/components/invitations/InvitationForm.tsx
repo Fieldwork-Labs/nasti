@@ -1,5 +1,5 @@
 import { useToast } from "@nasti/ui/hooks/use-toast"
-import { Invitation } from "@/types"
+import { Invitation } from "@nasti/common/types"
 import { useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { FormField } from "@nasti/ui/formField"

@@ -1,6 +1,6 @@
 import { TripPeopleForm, useTripPeopleForm } from "../forms/TripPeopleForm"
 import { Modal } from "@nasti/ui/modal"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 
 export const TripPeopleModal = ({
   isOpen,

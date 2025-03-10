@@ -1,5 +1,5 @@
 import { Modal } from "@nasti/ui/modal"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 import { useCallback } from "react"
 import {
   TripLocationDetails,

@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import { queryClient } from "@/lib/utils"
-import { Species } from "@/types"
+import { Species } from "@nasti/common/types"
 import { useMutation } from "@tanstack/react-query"
 import { PaginatedSpeciesList } from "./useSpecies"
 

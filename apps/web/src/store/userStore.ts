@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { supabase } from "../lib/supabase"
 import { Session, User } from "@supabase/supabase-js"
-import { Role, ROLE } from "../types"
+import { Role, ROLE } from "@nasti/common/types"
 
 type UserState = {
   user: User | null

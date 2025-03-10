@@ -1,5 +1,5 @@
 import { FormField } from "@nasti/ui/formField"
-import { Species } from "@/types"
+import { Species } from "@nasti/common/types"
 import { useCallback, useEffect } from "react"
 
 import useUserStore from "@/store/userStore"

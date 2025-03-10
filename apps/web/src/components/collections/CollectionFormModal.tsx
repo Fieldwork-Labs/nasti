@@ -7,7 +7,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@nasti/ui/alert-dialog"
-import { Collection } from "@/types"
+import { Collection } from "@nasti/common/types"
 import React, { useCallback, useMemo, useState } from "react"
 import { CollectionPhotoUpload } from "../collectionPhotos/CollectionPhotoUpload"
 import { Spinner } from "@nasti/ui/spinner"

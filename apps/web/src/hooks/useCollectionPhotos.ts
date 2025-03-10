@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import useUserStore from "@/store/userStore"
-import { CollectionPhotoSignedUrl } from "@/types"
+import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { queryClient } from "@/lib/utils"
 
 export const useCollectionPhotos = (collectionId?: string) => {

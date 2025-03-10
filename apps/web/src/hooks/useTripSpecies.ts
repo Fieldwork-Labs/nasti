@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 
 import { supabase } from "@/lib/supabase"
-import { TripSpecies } from "@/types"
+import { TripSpecies } from "@nasti/common/types"
 import { queryClient } from "@/lib/utils"
 import { useCallback } from "react"
 

@@ -4,7 +4,7 @@ import {
   useLoaderData,
 } from "@tanstack/react-router"
 import { queryClient } from "@/lib/utils"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 import { getTrips } from "@/queries/trips"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 

@@ -1,4 +1,4 @@
-import { Collection } from "@/types"
+import { Collection } from "@nasti/common/types"
 import { createContext, useContext, useEffect } from "react"
 import { useCollectionForm } from "./CollectionForm"
 

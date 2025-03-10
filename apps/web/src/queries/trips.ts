@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 
 export const getTrips = async (orgId: string): Promise<Trip[]> => {
   const { data: trips, error } = await supabase

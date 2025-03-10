@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useCallback } from "react"
 import { supabase } from "@/lib/supabase" // Adjust import path as needed
-import { Species } from "@/types"
+import { Species } from "@nasti/common/types"
 
 export const useSpeciesSearch = (searchTerm: string = "", tripId?: string) => {
   const searchSpecies = useCallback(

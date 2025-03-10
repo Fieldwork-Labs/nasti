@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 import { useTripMembers } from "@/hooks/useTripMembers"
 import { usePeople } from "@/hooks/usePeople"
 import { Option, MultiSelect } from "@nasti/ui/multi-select"
-import { Trip } from "@/types"
+import { Trip } from "@nasti/common/types"
 
 type UserId = string
 
