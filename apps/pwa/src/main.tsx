@@ -13,7 +13,7 @@ const router = createRouter({
   defaultNotFoundComponent: () => (
     <div className="mt-6 flex-col pb-6 sm:w-full">
       <div className="rounded-lg border-2 p-6 text-lg md:w-1/2">
-        <h4 className="mb-2 text-xl font-bold text-gray-800">404 Error</h4>
+        <h4 className="text-primary mb-2 text-xl font-bold">404 Error x</h4>
         We were unable to find the page you are looking for.
       </div>
     </div>
@@ -31,7 +31,7 @@ declare module "@tanstack/react-router" {
 const App = () => {
   return (
     <ThemeProvider>
-      <RouterProvider router={router} context={{}} />
+      <RouterProvider router={router} />
     </ThemeProvider>
   )
 }
