@@ -5,6 +5,7 @@ import "./style.css"
 import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 import { ThemeProvider } from "./contexts/theme"
+import { NastiPersistQueryClientProvider } from "./lib/queryClient"
 
 // Create a new router instance
 const router = createRouter({
@@ -31,7 +32,9 @@ declare module "@tanstack/react-router" {
 const App = () => {
   return (
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <NastiPersistQueryClientProvider>
+        <RouterProvider router={router} />
+      </NastiPersistQueryClientProvider>
     </ThemeProvider>
   )
 }

@@ -7,7 +7,7 @@ import {
   useState,
 } from "react"
 
-import useOpenClose, { UseOpenClose } from "@/hooks/useOpenClose"
+import { useOpenClose, type UseOpenClose } from "@nasti/ui/hooks"
 import { useUpdateTrip } from "../forms/useUpdateTrip"
 
 type TripFormWizardContext = UseOpenClose & {

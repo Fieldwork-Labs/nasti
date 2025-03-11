@@ -1,4 +1,4 @@
-import useOpenClose from "@/hooks/useOpenClose"
+import { useOpenClose } from "@nasti/ui/hooks"
 import { getSpecies, useSpecies } from "@/hooks/useSpecies"
 import { parsePostGISPoint, queryClient } from "@/lib/utils"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"

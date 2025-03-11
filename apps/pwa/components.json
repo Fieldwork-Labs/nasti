@@ -12,6 +12,7 @@
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@/components",
+    "hooks": "@/hooks",
     "utils": "@/lib/utils",
     "ui": "@nasti/ui"
   }

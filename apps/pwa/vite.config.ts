@@ -3,9 +3,19 @@ import { defineConfig } from "vite"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+import path from "path"
+
+const isProd = process.env.CF_PAGES === "1"
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  // Use no envDir in production, default behavior works with Cloudflare
+  envDir: isProd ? undefined : path.resolve(__dirname, "../.."),
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react(),

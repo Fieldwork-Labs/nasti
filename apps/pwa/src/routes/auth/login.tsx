@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { useNavigate, Link } from "@tanstack/react-router"
-import { supabase } from "@nasti/common/supabase"
-import useUserStore from "@/store/userStore"
 import { useForm } from "react-hook-form"
 
 import { Button } from "@nasti/ui/button"
@@ -10,6 +8,7 @@ import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { useCallback } from "react"
 import { useToast } from "@nasti/ui/hooks"
+import { useAuth } from "@/hooks/useAuth"
 
 type FormData = {
   email: string
@@ -18,7 +17,7 @@ type FormData = {
 
 const LoginForm = () => {
   const navigate = useNavigate()
-  const { getUser, setSession, session } = useUserStore()
+  const { login, user } = useAuth()
 
   const { toast } = useToast()
 
@@ -32,44 +31,42 @@ const LoginForm = () => {
     async (values: FormData) => {
       const { email, password } = values
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      await login.mutateAsync({
         email,
         password,
       })
 
-      if (error) {
-        if (error.message === "Failed to fetch") {
+      if (login.isError) {
+        if (login.error.message === "Failed to fetch") {
           toast({
             description: "Unable to connect to server",
             variant: "destructive",
           })
-        } else toast({ description: error.message, variant: "destructive" })
+        } else
+          toast({ description: login.error.message, variant: "destructive" })
       } else {
-        setSession(data.session)
-        getUser()
-
         toast({ description: "Logged in successfully!" })
-        navigate({ to: "/trips" })
+        navigate({ to: "/" })
       }
     },
-    [setSession, getUser, navigate, toast],
+    [login, navigate, toast],
   )
 
   return (
-    <div className="mt-2 flex items-center justify-center px-4">
-      {session ? (
+    <div className="my-auto flex items-center justify-center px-2">
+      {user ? (
         <div className="bg-secondary-background w-full max-w-md rounded-lg p-8 text-center shadow-md">
           <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">
             You're already logged in
           </h2>
-          <Link className="underline" to="/trips">
+          <Link className="underline" to="/">
             Go to Trips
           </Link>
         </div>
       ) : (
         <div className="bg-secondary-background w-full max-w-md rounded-lg p-8 shadow-md">
           <h2 className="mb-6 text-center text-2xl font-bold text-gray-700 dark:text-gray-300">
-            Login to NASTI
+            Login
           </h2>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email Input */}
@@ -111,7 +108,7 @@ const LoginForm = () => {
             </div>
           </form>
           <div className="mt-2 flex justify-end text-sm underline">
-            <Link to="/auth/reset-password-request">Forgot password?</Link>
+            {/* <Link to="/auth/reset-password-request">Forgot password?</Link> */}
           </div>
         </div>
       )}

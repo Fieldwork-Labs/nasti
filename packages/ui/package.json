@@ -40,7 +40,7 @@
     "./popover": "./components/popover.tsx",
     "./spinner": "./components/spinner.tsx",
     "./toaster": "./components/toaster.tsx",
-    "./hooks/use-toast": "./hooks/use-toast.ts",
+    "./hooks": "./hooks/index.ts",
     "./styles/globals.css": "./styles/globals.css",
     "./utils": "./utils/index.ts"
   },

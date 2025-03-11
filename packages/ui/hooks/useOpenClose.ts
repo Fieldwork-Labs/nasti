@@ -32,4 +32,4 @@ const useOpenClose = (initialState: boolean = false): UseOpenClose => {
   }
 }
 
-export default useOpenClose
+export { useOpenClose }

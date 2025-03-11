@@ -7,7 +7,7 @@ import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useState, useMemo } from "react"
-import useOpenClose from "@/hooks/useOpenClose"
+import { useOpenClose } from "@nasti/ui/hooks"
 import {
   TripDetailsModal,
   TripLocationModal,
