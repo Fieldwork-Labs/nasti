@@ -17,7 +17,7 @@ export default defineConfig({
   // define,
   plugins: [
     react({ jsxRuntime: "automatic" }),
-    TanStackRouterVite(),
+    TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     nodePolyfills({ globals: { Buffer: true } }),
   ],
 })

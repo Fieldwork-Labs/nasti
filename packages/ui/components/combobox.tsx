@@ -5,7 +5,7 @@ import {
   ComboboxOptions as HeadlessComboboxOptions,
   ComboboxOption as HeadlessComboboxOption,
 } from "@headlessui/react"
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 export { type ComboboxProps } from "@headlessui/react"
 
 const Combobox = HeadlessCombobox

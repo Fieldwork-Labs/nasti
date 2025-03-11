@@ -1,4 +1,4 @@
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 
 function Skeleton({
   className,

@@ -10,7 +10,7 @@ import { ButtonLink } from "@nasti/ui/button-link"
 import { usePeople } from "@/hooks/usePeople"
 import { Modal } from "@nasti/ui/modal"
 import { Spinner } from "@nasti/ui/spinner"
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { GetOrgUsers } from "@nasti/common/types"
 
 const PeopleList = () => {

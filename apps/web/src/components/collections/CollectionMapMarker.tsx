@@ -1,4 +1,4 @@
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { ShoppingBag } from "lucide-react"
 import { useState } from "react"
 import { Marker, Popup } from "react-map-gl"

@@ -1,5 +1,5 @@
 import React from "react"
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { VariantProps, cva } from "class-variance-authority"
 import { Loader2 } from "lucide-react"
 

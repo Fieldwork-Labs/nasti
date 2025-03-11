@@ -7,7 +7,7 @@ import {
   ComboboxButton,
 } from "@headlessui/react"
 
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { useSpeciesSearch } from "@/hooks/useSpeciesSearch"
 import { ChevronsUpDown, LeafIcon, XIcon } from "lucide-react"
 import { labelVariants } from "@nasti/ui/label"

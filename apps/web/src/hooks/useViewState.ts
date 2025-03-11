@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { ViewState } from "react-map-gl"
+import { type ViewState } from "react-map-gl"
 
 export const getViewState = (coords: Array<[number, number]>) => {
   if (coords.length === 0) {
@@ -53,6 +53,6 @@ export type PartialViewState = Pick<
 
 export const useViewState = (
   coords: Array<[number, number]>,
-): Pick<ViewState, "longitude" | "latitude" | "zoom"> => {
+): PartialViewState => {
   return useMemo(() => getViewState(coords), [coords])
 }

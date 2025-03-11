@@ -4,7 +4,7 @@ import { CollectionPhoto, CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Spinner } from "@nasti/ui/spinner"
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 
 type PhotoCardProps = {
   photo: CollectionPhotoSignedUrl

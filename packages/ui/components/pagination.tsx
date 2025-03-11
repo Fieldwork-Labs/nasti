@@ -1,7 +1,7 @@
 import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { ButtonProps, buttonVariants } from "@nasti/ui/button"
 import { Link } from "@tanstack/react-router"
 

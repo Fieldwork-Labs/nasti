@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
-@config '../tailwind.config.js';
+@config "../../../packages/tailwind-config/tailwind.config.ts";
 
 @layer utilities {
   :root {
     --background: 145 50% 90%;
-    --secondary-background: 145 60% 95%;
+    --secondary-background: 156 65% 95%;
     --foreground: 145 5% 10%;
     --card: 145 50% 90%;
     --card-foreground: 145 5% 15%;
@@ -60,14 +60,5 @@
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }
