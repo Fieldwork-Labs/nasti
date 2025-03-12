@@ -41,7 +41,7 @@ export const useAuth = () => {
     mutationFn: async () => {
       const { error } = await supabase.auth.signOut()
 
-      throw error
+      if (error) throw error
     },
     onSuccess: () => {
       queryClient.setQueryData(["authUser"], null)
@@ -59,7 +59,7 @@ export const useAuth = () => {
 
   return {
     user,
-    getSession: supabase.auth.getSession,
+    getSession: () => supabase.auth.getSession(),
     login,
     logout,
     isLoggedIn: Boolean(user),

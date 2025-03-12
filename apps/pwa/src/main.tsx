@@ -6,6 +6,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 import { ThemeProvider } from "./contexts/theme"
 import { NastiPersistQueryClientProvider } from "./lib/queryClient"
+import { useAuth } from "./hooks/useAuth"
 
 // Create a new router instance
 const router = createRouter({
@@ -19,7 +20,10 @@ const router = createRouter({
       </div>
     </div>
   ),
-  context: {},
+  context: {
+    isLoggedIn: false,
+    getSession: undefined,
+  },
 })
 
 // Register the router instance for type safety
@@ -30,11 +34,10 @@ declare module "@tanstack/react-router" {
 }
 
 const App = () => {
+  const { isLoggedIn, getSession } = useAuth()
   return (
     <ThemeProvider>
-      <NastiPersistQueryClientProvider>
-        <RouterProvider router={router} />
-      </NastiPersistQueryClientProvider>
+      <RouterProvider router={router} context={{ isLoggedIn, getSession }} />
     </ThemeProvider>
   )
 }
@@ -45,7 +48,9 @@ if (!rootElement.innerHTML) {
   const root = createRoot(rootElement)
   root.render(
     <StrictMode>
-      <App />
+      <NastiPersistQueryClientProvider>
+        <App />
+      </NastiPersistQueryClientProvider>
     </StrictMode>,
   )
 }

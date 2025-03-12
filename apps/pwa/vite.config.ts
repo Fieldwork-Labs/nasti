@@ -49,9 +49,9 @@ export default defineConfig({
         type: "module",
       },
     }),
-    basicSsl({
-      /** name of certification */
-      name: "nasti-pwa-dev-cert",
-    }),
+    // basicSsl({
+    //   /** name of certification */
+    //   name: "nasti-pwa-dev-cert",
+    // }),
   ],
 })

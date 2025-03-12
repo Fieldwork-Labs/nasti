@@ -49,7 +49,7 @@ const LoginForm = () => {
         } else
           setError("root", { type: "manual", message: login.error.message })
       } else {
-        navigate({ to: "/" })
+        navigate({ to: "/trips" })
       }
     },
     [login, navigate, setError, clearErrors],

@@ -8,6 +8,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@nasti/ui/alert-dialog"
+import { useNavigate } from "@tanstack/react-router"
+import { useCallback } from "react"
 
 export const SettingsMenuModal = ({
   close,
@@ -17,19 +19,20 @@ export const SettingsMenuModal = ({
   isOpen: boolean
 }) => {
   const { logout } = useAuth()
-  console.log({ isOpen })
+
+  const navigate = useNavigate()
+
+  const handleLogout = useCallback(async () => {
+    await logout.mutateAsync()
+    navigate({ to: "/auth/login" })
+  }, [logout, navigate])
 
   return (
     <AlertDialog open={isOpen} onOpenChange={close}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Settings</AlertDialogTitle>
-          <AlertDialogAction
-            className="w-full"
-            onClick={() => {
-              logout.mutateAsync()
-            }}
-          >
+          <AlertDialogAction className="w-full" onClick={handleLogout}>
             Logout
           </AlertDialogAction>
         </AlertDialogHeader>
