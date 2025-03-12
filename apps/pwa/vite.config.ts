@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import path from "path"
+import basicSsl from "@vitejs/plugin-basic-ssl"
 
 const isProd = process.env.CF_PAGES === "1"
 
@@ -22,8 +23,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "prompt",
-      injectRegister: false,
-
+      injectRegister: "auto",
       pwaAssets: {
         disabled: false,
         config: true,
@@ -43,11 +43,15 @@ export default defineConfig({
       },
 
       devOptions: {
-        enabled: false,
+        enabled: true,
         navigateFallback: "index.html",
         suppressWarnings: true,
         type: "module",
       },
+    }),
+    basicSsl({
+      /** name of certification */
+      name: "nasti-pwa-dev-cert",
     }),
   ],
 })

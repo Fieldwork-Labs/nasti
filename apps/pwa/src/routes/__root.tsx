@@ -12,10 +12,9 @@ export const Route = createRootRoute({
     const { isOpen, open, close } = useOpenClose()
 
     return (
-      <>
-        <div className="flex justify-between p-2">
-          <span className="text-lead">Seed Store</span>
-          {isLoggedIn && (
+      <div className="h-screen">
+        {isLoggedIn && (
+          <div className="flex justify-between py-2 pr-2">
             <Button
               // asChild
               onClick={open}
@@ -24,12 +23,12 @@ export const Route = createRootRoute({
             >
               <LeafIcon />
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         <Outlet />
         <TanStackRouterDevtools />
         <SettingsMenuModal isOpen={isOpen} close={close} />
-      </>
+      </div>
     )
   },
 })
