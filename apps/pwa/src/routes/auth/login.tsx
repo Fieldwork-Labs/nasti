@@ -6,9 +6,9 @@ import { useForm } from "react-hook-form"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
-import { useCallback } from "react"
-import { useToast } from "@nasti/ui/hooks"
+import { useCallback, useEffect } from "react"
 import { useAuth } from "@/hooks/useAuth"
+import { cn } from "@nasti/ui/utils"
 
 type FormData = {
   email: string
@@ -19,18 +19,23 @@ const LoginForm = () => {
   const navigate = useNavigate()
   const { login, user } = useAuth()
 
-  const { toast } = useToast()
-
   const {
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting },
+    formState: { isValid, isSubmitting, errors },
+    setError,
+    clearErrors,
   } = useForm<FormData>({ mode: "all" })
+
+  useEffect(() => {
+    if (login.isError)
+      setError("root", { type: "manual", message: login.error.message })
+  }, [login.isError, login.error, setError])
 
   const onSubmit = useCallback(
     async (values: FormData) => {
+      clearErrors()
       const { email, password } = values
-
       await login.mutateAsync({
         email,
         password,
@@ -38,18 +43,16 @@ const LoginForm = () => {
 
       if (login.isError) {
         if (login.error.message === "Failed to fetch") {
-          toast({
-            description: "Unable to connect to server",
-            variant: "destructive",
+          setError("root", {
+            message: "Unable to connect to server",
           })
         } else
-          toast({ description: login.error.message, variant: "destructive" })
+          setError("root", { type: "manual", message: login.error.message })
       } else {
-        toast({ description: "Logged in successfully!" })
         navigate({ to: "/" })
       }
     },
-    [login, navigate, toast],
+    [login, navigate, setError, clearErrors],
   )
 
   return (
@@ -70,8 +73,7 @@ const LoginForm = () => {
               Login
             </h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Email Input */}
-              <div>
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="email" className="pwa:text-base">
                   Email Address
                 </Label>
@@ -84,16 +86,24 @@ const LoginForm = () => {
                   {...register("email")}
                   placeholder="you@example.com"
                 />
+                {errors.email && (
+                  <div className="flex justify-end text-xs text-orange-600">
+                    {errors.email.message}
+                  </div>
+                )}
               </div>
 
               {/* Password Input */}
 
-              <div>
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="password" className="pwa:text-base">
                   Password
                 </Label>
                 <Input
-                  className="pwa:text-base"
+                  className={cn(
+                    "pwa:text-base",
+                    errors.password ? "border-orange-600/80" : "",
+                  )}
                   type="password"
                   id="password"
                   required
@@ -101,7 +111,17 @@ const LoginForm = () => {
                   {...register("password")}
                   placeholder="••••••••"
                 />
+                {errors.password && (
+                  <div className="flex justify-end text-xs text-orange-600">
+                    {errors.password.message}
+                  </div>
+                )}
               </div>
+              {errors.root && (
+                <div className="rounded-lg bg-orange-600/30 p-2 text-xs text-orange-600">
+                  {errors.root.message}
+                </div>
+              )}
 
               {/* Submit Button */}
               <div>

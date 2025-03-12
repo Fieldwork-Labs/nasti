@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
+import { AuthRetryableFetchError } from "@supabase/supabase-js"
 
 export const useAuth = () => {
   const queryClient = useQueryClient()
@@ -16,10 +17,14 @@ export const useAuth = () => {
         email,
         password,
       })
-
-      if (error) throw error
+      if (error) {
+        if (error instanceof AuthRetryableFetchError)
+          throw new Error("Unable to connect to server")
+        else throw error
+      }
       return data
     },
+    retry: false,
     onSuccess: (data) => {
       // Update auth data in query client cache
       queryClient.setQueryData(["authUser"], data.user)
@@ -35,7 +40,8 @@ export const useAuth = () => {
   const logout = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
+
+      throw error
     },
     onSuccess: () => {
       queryClient.setQueryData(["authUser"], null)
