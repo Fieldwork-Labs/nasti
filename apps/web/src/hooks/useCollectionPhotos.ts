@@ -88,6 +88,7 @@ export const useCollectionPhotos = (collectionId?: string) => {
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
       setIsUploading(true)
+
       const filePath = `${orgId}/collections/${collectionId}/${photoId}.${fileExt}`
 
       // Upload file to Supabase Storage
@@ -145,16 +146,10 @@ export const useCollectionPhotos = (collectionId?: string) => {
 
       if (fetchError) throw fetchError
 
-      // Extract path from URL
-      const urlParts = photo.url.split("/")
-      const filePath = urlParts
-        .slice(urlParts.indexOf("collection-photos") + 1)
-        .join("/")
-
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from("collection-photos")
-        .remove([filePath])
+        .remove([photo.url])
 
       if (storageError) throw storageError
 
