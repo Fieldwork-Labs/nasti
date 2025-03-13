@@ -10,7 +10,6 @@ export const getTripsQueryOptions = (orgId: string | null) => ({
     if (!orgId) {
       throw new Error("Organisation not found")
     }
-    await new Promise((resolve) => setTimeout(resolve, 2000))
     return getTrips(orgId)
   },
   enabled: Boolean(orgId),
