@@ -2,6 +2,11 @@
 
 @config "../../../packages/tailwind-config/tailwind.config.ts";
 
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+}
+
 @layer utilities {
   :root {
     --background: 145 50% 90%;

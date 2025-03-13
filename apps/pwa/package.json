@@ -32,6 +32,7 @@
     "@nasti/eslint-config": "workspace:*",
     "@nasti/tailwind-config": "workspace:*",
     "@nasti/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.0.12",
     "@tanstack/router-devtools": "^1.64.0",
     "@tanstack/router-plugin": "^1.64.0",
     "@types/react": "^19.0.8",
