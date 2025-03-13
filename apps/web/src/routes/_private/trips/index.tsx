@@ -16,7 +16,7 @@ import {
   TripWithLocation,
   tripWithLocationFilter,
 } from "@/components/trips/utils"
-import { getTripsQueryOptions } from "@/hooks/useTrips"
+import { getTripsQueryOptions } from "@nasti/common/hooks"
 import { useViewState } from "@/hooks/useViewState"
 import { queryClient } from "@/lib/utils"
 import { Spinner } from "@nasti/ui/spinner"
@@ -155,11 +155,7 @@ export const Route = createFileRoute("/_private/trips/")({
       <Spinner size={"xl"} />
     </div>
   ),
-  loader: async ({ context }) => {
-    const { orgId } = context
-
-    return queryClient.ensureQueryData<Trip[] | null>(
-      getTripsQueryOptions(orgId),
-    )
+  loader: async () => {
+    return queryClient.ensureQueryData<Trip[] | null>(getTripsQueryOptions())
   },
 })

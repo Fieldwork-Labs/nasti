@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-router"
 import { queryClient } from "@/lib/utils"
 import { Trip } from "@nasti/common/types"
-import { getTrips } from "@/queries/trips"
+
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 
 import { useTripForm } from "@/components/trips/forms/TripDetailsForm"
@@ -15,6 +15,7 @@ import { FormField } from "@nasti/ui/formField"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { Button } from "@nasti/ui/button"
 import { useCallback } from "react"
+import { getTripsQueryOptions } from "@nasti/common/hooks"
 
 const TripFormEdit = () => {
   useAdminOnly()
@@ -91,21 +92,12 @@ const TripFormEdit = () => {
 }
 
 export const Route = createFileRoute("/_private/trips/$id/edit")({
-  loader: async ({ params, context }) => {
-    // TODO find out why no orgID present in this function on reload
+  loader: async ({ params }) => {
     const { id } = params
-    const { orgId } = context
-    if (!orgId) console.error("no org id")
 
-    const tripsQueryData = await queryClient.ensureQueryData<Trip[]>({
-      queryKey: ["trips", orgId],
-      queryFn: () => {
-        if (!orgId) {
-          return Promise.resolve([])
-        }
-        return getTrips(orgId)
-      },
-    })
+    const tripsQueryData = await queryClient.ensureQueryData<Trip[]>(
+      getTripsQueryOptions(),
+    )
 
     const instance = tripsQueryData.find((t) => t.id === id)
 

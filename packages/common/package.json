@@ -7,12 +7,17 @@
   "main": "index.ts",
   "files": [
     "supabase.ts",
-    "types/index.ts"
+    "types/index.ts",
+    "index.ts"
   ],
   "publishConfig": {
     "access": "public"
   },
+  "devDependencies": {
+    "@nasti/typescript-config": "workspace:*"
+  },
   "peerDependencies": {
+    "@tanstack/react-query": "^5.67.2",
     "@supabase/supabase-js": "^2.45.4"
   }
 }

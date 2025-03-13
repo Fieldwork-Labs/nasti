@@ -1,5 +1,5 @@
 import { TripWithDetails } from "@/hooks/useTripDetail"
-import { useTrips } from "@/hooks/useTrips"
+import { useTrips } from "@nasti/common/hooks/useTrips"
 import { supabase } from "@nasti/common/supabase"
 import useUserStore from "@/store/userStore"
 import { Trip } from "@nasti/common/types"

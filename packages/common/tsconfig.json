@@ -1,0 +1,5 @@
+{
+  "extends": "@nasti/typescript-config/app.json",
+  "include": ["."],
+  "exclude": ["dist", "node_modules"]
+}
