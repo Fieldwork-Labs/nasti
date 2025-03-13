@@ -1,7 +1,12 @@
 import { useOpenClose } from "@nasti/ui/hooks"
 import { getSpecies, useSpecies } from "@/hooks/useSpecies"
 import { parsePostGISPoint, queryClient } from "@/lib/utils"
-import { createFileRoute, Link, useParams } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useParams,
+} from "@tanstack/react-router"
 import { ArrowLeftIcon, MapPin, PencilIcon } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -27,13 +32,13 @@ import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useTripsForSpecies } from "@/hooks/useTripsForSpecies"
 import { getViewState, PartialViewState } from "@/hooks/useViewState"
 import { Species } from "@nasti/common/types"
-import { useSuspenseQuery } from "@tanstack/react-query"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
 import { useCollectionsBySpecies } from "@/hooks/useCollectionsBySpecies"
 import { Tabs, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
+import { Spinner } from "@nasti/ui/spinner"
 
 type SourceNames = "trips" | "collections" | "occurrences"
 
@@ -263,7 +268,7 @@ const getSpeciesQueryOptions = (id: string) => ({
   refetchOnMount: false,
 })
 
-const useSpeciesImages = (alaGuid: string | null) => {
+const useSpeciesImages = (alaGuid?: string | null) => {
   const { data: alaData } = useSpeciesDetail(alaGuid)
   const { data: image } = useALAImage(alaData?.imageIdentifier)
   const [modalImage, setModalImage] = useState<number>()
@@ -282,25 +287,25 @@ const useSpeciesImages = (alaGuid: string | null) => {
   }
 }
 
-const useSpeciesDetailQuery = (id: string) => {
-  const { data: instance } = useSuspenseQuery(getSpeciesQueryOptions(id))
-
+const useSpeciesDetailInvalidate = (id: string) => {
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: ["species", id],
     })
   }, [id])
 
-  return { invalidate, instance }
+  return { invalidate }
 }
 
 const SpeciesDetail = () => {
+  const instance = Route.useLoaderData()
+
   const { id } = useParams({ from: "/_private/species/$id/" })
-  const { instance, invalidate } = useSpeciesDetailQuery(id)
+  const { invalidate } = useSpeciesDetailInvalidate(id)
   const { data: collections } = useCollectionsBySpecies(id)
-  const { data: alaData } = useSpeciesDetail(instance.ala_guid)
+  const { data: alaData } = useSpeciesDetail(instance?.ala_guid)
   const { images, mainImage, allImages, setModalImage, modalImage } =
-    useSpeciesImages(instance.ala_guid)
+    useSpeciesImages(instance?.ala_guid)
 
   const { isOpen, setIsOpen, close, open } = useOpenClose()
   const [collectionHovered, setCollectionHovered] = useState<string>()
@@ -449,6 +454,14 @@ export const Route = createFileRoute("/_private/species/$id/")({
     return queryClient.ensureQueryData<Species | null>(
       getSpeciesQueryOptions(id),
     )
+  },
+  pendingComponent: () => (
+    <div className="px-auto mx-auto mt-36">
+      <Spinner size={"xl"} />
+    </div>
+  ),
+  onError() {
+    throw notFound()
   },
   component: SpeciesDetail,
 })

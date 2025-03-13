@@ -16,8 +16,10 @@ import {
   TripWithLocation,
   tripWithLocationFilter,
 } from "@/components/trips/utils"
-import { useTrips } from "@/hooks/useTrips"
+import { getTripsQueryOptions } from "@/hooks/useTrips"
 import { useViewState } from "@/hooks/useViewState"
+import { queryClient } from "@/lib/utils"
+import { Spinner } from "@nasti/ui/spinner"
 
 interface TripsMapProps {
   trips: Trip[]
@@ -104,27 +106,8 @@ const TripTableRow = ({ trip }: { trip: Trip }) => {
 const TripsList = () => {
   // TODO pagination
   // TODO search function
-
+  const data = Route.useLoaderData()
   const { isAdmin } = useUserStore()
-
-  // Fetch trips
-  const { data, isPending, isError, error } = useTrips()
-
-  if (isPending) {
-    return (
-      <div className="p-4 text-center">
-        <p>Loading trips...</p>
-      </div>
-    )
-  }
-
-  if (isError && error) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-red-500">Error: {error.message}</p>
-      </div>
-    )
-  }
 
   return (
     <TripFormProvider>
@@ -167,4 +150,16 @@ const TripsList = () => {
 
 export const Route = createFileRoute("/_private/trips/")({
   component: TripsList,
+  pendingComponent: () => (
+    <div className="px-auto mx-auto mt-36">
+      <Spinner size={"xl"} />
+    </div>
+  ),
+  loader: async ({ context }) => {
+    const { orgId } = context
+
+    return queryClient.ensureQueryData<Trip[] | null>(
+      getTripsQueryOptions(orgId),
+    )
+  },
 })

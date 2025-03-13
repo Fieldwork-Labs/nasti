@@ -12,8 +12,9 @@ function AuthLayout() {
 
 export const Route = createFileRoute("/_private")({
   beforeLoad: async ({ context, location }) => {
-    if (!context.session) {
-      const session = await context.getSession()
+    let session = context.session
+    if (!session) {
+      session = await context.getSession()
       if (!session)
         throw redirect({
           to: "/auth/login",
@@ -21,6 +22,22 @@ export const Route = createFileRoute("/_private")({
             redirect: location.href,
           },
         })
+    }
+    let orgId = context.orgId
+    if (!orgId) {
+      const authDetails = await context.getUser()
+      orgId = authDetails?.orgId ?? null
+      if (!orgId)
+        throw redirect({
+          to: "/auth/login",
+          search: {
+            redirect: location.href,
+          },
+        })
+    }
+    return {
+      orgId,
+      session,
     }
   },
   component: () => (

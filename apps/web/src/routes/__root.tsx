@@ -3,7 +3,7 @@ import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/utils"
-import useUserStore from "@/store/userStore"
+import useUserStore, { AuthDetails } from "@/store/userStore"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,28 +93,19 @@ const UserMenu = () => {
 }
 
 const RootComponent = () => {
-  const { getUser, getSession, session, user } = useUserStore()
+  const { getSession, session } = useUserStore()
 
   useEffect(() => {
-    // TODO this pattern results in the first load containing no user or org ID.
-    // This causes failures when loading a route like /trips/$id/edit which depends on an orgId being present in the context to be
-    // able to load
-    // to fix this, we need to understand:
-    // - how to ensure the org can be nicely loaded before the entire application loads no matter what the route
-
-    // Fetch user on app load
-    if (!user) getUser()
-
     // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      console.log({ authChangeEvent: event })
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
       getSession()
     })
 
     return () => {
       authListener.subscription.unsubscribe()
     }
-  }, [getUser, getSession, user])
+  }, [getSession])
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="bg-background flex min-h-screen flex-col">
@@ -168,6 +159,7 @@ const RootComponent = () => {
 export const Route = createRootRouteWithContext<{
   session: Session | null
   getSession: () => Promise<Session | null>
+  getUser: () => Promise<AuthDetails | null>
   orgId: string | null
 }>()({
   component: RootComponent,
