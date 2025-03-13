@@ -3,7 +3,7 @@ import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/utils"
-import useUserStore from "@/store/userStore"
+import useUserStore, { AuthDetails } from "@/store/userStore"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,37 +93,28 @@ const UserMenu = () => {
 }
 
 const RootComponent = () => {
-  const { getUser, getSession, session, user } = useUserStore()
+  const { getSession, session } = useUserStore()
 
   useEffect(() => {
-    // TODO this pattern results in the first load containing no user or org ID.
-    // This causes failures when loading a route like /trips/$id/edit which depends on an orgId being present in the context to be
-    // able to load
-    // to fix this, we need to understand:
-    // - how to ensure the org can be nicely loaded before the entire application loads no matter what the route
-
-    // Fetch user on app load
-    if (!user) getUser()
-
     // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      console.log({ authChangeEvent: event })
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
       getSession()
     })
 
     return () => {
       authListener.subscription.unsubscribe()
     }
-  }, [getUser, getSession, user])
+  }, [getSession])
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="bg-background flex min-h-screen flex-col">
         {/* Navbar */}
-        <header className="border-b-2 border-green-800 bg-green-900 bg-opacity-30 shadow">
+        <header className="border-b-2 border-green-800 bg-green-900/30 shadow-sm">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
-                <Link to="/" className="flex flex-shrink-0 items-center">
+                <Link to="/" className="flex shrink-0 items-center">
                   <img src={logo} alt="Seed Log Logo" width={200} />
                 </Link>
                 {session && (
@@ -143,7 +134,7 @@ const RootComponent = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-grow">
+        <main className="grow">
           <div className="mx-auto max-w-7xl pt-4 sm:px-6 lg:px-8">
             <Outlet />
             <TanStackRouterDevtools />
@@ -151,7 +142,7 @@ const RootComponent = () => {
         </main>
 
         {/* Footer */}
-        <footer className="mt-auto bg-white shadow">
+        <footer className="mt-auto bg-white shadow-sm">
           <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <p className="text-center text-sm text-gray-500">
               &copy; {new Date().getFullYear()} NASTI Project. All rights
@@ -168,6 +159,7 @@ const RootComponent = () => {
 export const Route = createRootRouteWithContext<{
   session: Session | null
   getSession: () => Promise<Session | null>
+  getUser: () => Promise<AuthDetails | null>
   orgId: string | null
 }>()({
   component: RootComponent,

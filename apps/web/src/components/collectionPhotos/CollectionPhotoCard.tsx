@@ -4,7 +4,7 @@ import { CollectionPhoto, CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Spinner } from "@nasti/ui/spinner"
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 
 type PhotoCardProps = {
   photo: CollectionPhotoSignedUrl
@@ -38,7 +38,7 @@ export const CollectionPhotoCard = ({
   }, [photo.id, onDelete])
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white shadow-sm transition-shadow hover:shadow-md">
+    <div className="shadow-xs overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow-md">
       <div className="relative aspect-square overflow-hidden bg-gray-100">
         <img
           src={photo.signedUrl}
@@ -52,7 +52,7 @@ export const CollectionPhotoCard = ({
         {onDelete && (
           <button
             onClick={handleDelete}
-            className="absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+            className="focus:outline-hidden absolute right-2 top-2 rounded-full bg-red-500 p-1 text-white hover:bg-red-600 focus:ring-2 focus:ring-red-500/50"
             title="Delete photo"
             disabled={isDeleting}
           >

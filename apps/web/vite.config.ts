@@ -16,8 +16,8 @@ export default defineConfig({
   envDir: isProd ? undefined : path.resolve(__dirname, "../.."),
   // define,
   plugins: [
+    TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react({ jsxRuntime: "automatic" }),
-    TanStackRouterVite(),
     nodePolyfills({ globals: { Buffer: true } }),
   ],
 })

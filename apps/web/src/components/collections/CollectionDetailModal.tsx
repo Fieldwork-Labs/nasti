@@ -13,11 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 
 import useUserStore from "@/store/userStore"
 import { UpdateCollectionWizardModal } from "./CollectionFormModal"
-import useOpenClose from "@/hooks/useOpenClose"
+import { useOpenClose, useToast } from "@nasti/ui/hooks"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionPhotoCard } from "../collectionPhotos/CollectionPhotoCard"
 import { useDeleteCollection } from "@/hooks/useUpdateCollection"
-import { useToast } from "@nasti/ui/hooks/use-toast"
 import { Link, useLocation } from "@tanstack/react-router"
 import { useTripDetail } from "@/hooks/useTripDetail"
 import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
@@ -271,7 +270,7 @@ export const CollectionDetailModal = ({
                         longitude={coordinates.longitude}
                         latitude={coordinates.latitude}
                       >
-                        <div className="rounded-full bg-white bg-opacity-50 p-2">
+                        <div className="rounded-full bg-white/50 p-2">
                           <ShoppingBag className="text-primary h-5 w-5" />
                         </div>
                       </Marker>

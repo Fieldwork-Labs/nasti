@@ -2,19 +2,23 @@ import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { parsePostGISPoint, queryClient } from "@/lib/utils"
-import { createFileRoute, Link, useParams } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useParams,
+} from "@tanstack/react-router"
 import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
 import { Map, Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useState, useMemo } from "react"
-import useOpenClose from "@/hooks/useOpenClose"
+import { useOpenClose } from "@nasti/ui/hooks"
 import {
   TripDetailsModal,
   TripLocationModal,
   TripPeopleModal,
   TripSpeciesModal,
 } from "@/components/trips/modals"
-import { useSuspenseQuery } from "@tanstack/react-query"
 import { useTripMembers } from "@/hooks/useTripMembers"
 import useUserStore from "@/store/userStore"
 import { getTripCoordinates } from "@/components/trips/utils"
@@ -44,13 +48,13 @@ type ModalComponentNames =
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const { isAdmin } = useUserStore()
-  const { data: instance } = useSuspenseQuery(getTripQueryOptions(id))
+  const instance = Route.useLoaderData()
 
   const { data: tripMembers } = useTripMembers(instance?.id)
   const { data: people } = usePeople()
   const { data: tripSpecies } = useTripSpecies(instance?.id)
   const { data: collections, isPending: isPendingCollections } =
-    useCollectionsByTrip(instance?.id)
+    useCollectionsByTrip(id)
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
@@ -66,7 +70,7 @@ const TripDetail = () => {
 
   const coords: [number, number][] = useMemo(
     () =>
-      (instance.location_coordinate ? [getTripCoordinates(instance)] : [])
+      (instance?.location_coordinate ? [getTripCoordinates(instance)] : [])
         .concat(
           collections
             ?.filter(({ location }) => Boolean(location))
@@ -150,7 +154,7 @@ const TripDetail = () => {
                 mapStyle="mapbox://styles/mapbox/satellite-v9"
               >
                 <Marker {...getTripCoordinates(instance)}>
-                  <div className="rounded-full bg-white bg-opacity-50 p-2">
+                  <div className="rounded-full bg-white/50 p-2">
                     <MapPin className="text-primary h-5 w-5" />
                   </div>
                 </Marker>
@@ -306,6 +310,14 @@ export const Route = createFileRoute("/_private/trips/$id/")({
     return queryClient.ensureQueryData<TripWithDetails | null>(
       getTripQueryOptions(id),
     )
+  },
+  pendingComponent: () => (
+    <div className="px-auto mx-auto mt-36">
+      <Spinner size={"xl"} />
+    </div>
+  ),
+  onError() {
+    throw notFound()
   },
   component: TripDetail,
 })

@@ -3,6 +3,12 @@ import { supabase } from "@nasti/common/supabase"
 import { Session, User } from "@supabase/supabase-js"
 import { Role, ROLE } from "@nasti/common/types"
 
+export type AuthDetails = {
+  user: User | null
+  orgId: string | null
+  isAdmin: boolean | null
+}
+
 type UserState = {
   user: User | null
   session: Session | null
@@ -13,7 +19,7 @@ type UserState = {
   setSession: (session: Session) => void
   setOrgId: (orgId: string) => void
   setRole: (role: Role) => void
-  getUser: () => Promise<void>
+  getUser: () => Promise<AuthDetails | null>
   getSession: () => Promise<Session | null>
   logout: () => Promise<void>
 }
@@ -54,8 +60,10 @@ const useUserStore = create<UserState>((set) => ({
           role,
           isAdmin: role === ROLE.ADMIN,
         })
+        return { user, orgId, isAdmin: role === ROLE.ADMIN }
       }
     }
+    return { user, orgId: null, isAdmin: null }
   },
   getSession: async () => {
     const {

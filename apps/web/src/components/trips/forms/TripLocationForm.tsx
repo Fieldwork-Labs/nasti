@@ -207,24 +207,24 @@ export const TripLocationForm = ({
           }}
           classNames={{
             control: (state) =>
-              "border !rounded-lg !bg-secondary-background " +
+              "border rounded-lg! bg-secondary-background! " +
               (state.isFocused
-                ? "!shadow-sm !shadow-gray-200"
-                : "!border-gray-300"),
-            valueContainer: () => "!gap-1 !px-3 !py-1",
-            placeholder: () => "!text-gray-400",
-            input: () => "!text-sm !text-primary-foreground",
+                ? "shadow-xs! shadow-gray-200!"
+                : "border-gray-300!"),
+            valueContainer: () => "gap-1! px-3! py-1!",
+            placeholder: () => "text-gray-400!",
+            input: () => "text-sm! text-primary-foreground!",
             menu: () =>
-              "!bg-white !mt-1 !border !border-gray-200 !rounded-lg !shadow-md !bg-secondary-background",
-            menuList: () => "!py-1",
+              "bg-white! mt-1! border! border-gray-200! rounded-lg! shadow-md! bg-secondary-background!",
+            menuList: () => "py-1!",
             option: (state) =>
-              "!px-3 !py-2 !text-sm !text-primary" +
+              "px-3! py-2! text-sm! text-primary!" +
               (state.isSelected
-                ? "!bg-blue-600 !text-white"
+                ? "bg-blue-600! text-white!"
                 : state.isFocused
-                  ? "!bg-secondary !text-gray-900"
-                  : "!text-gray-700"),
-            noOptionsMessage: () => "!text-gray-400 !text-sm !p-2",
+                  ? "bg-secondary! text-gray-900!"
+                  : "text-gray-700!"),
+            noOptionsMessage: () => "text-gray-400! text-sm! p-2!",
           }}
         />
       )}
@@ -244,7 +244,7 @@ export const TripLocationForm = ({
             latitude={locationCoords.latitude}
             longitude={locationCoords.longitude}
           >
-            <div className="rounded-full bg-white bg-opacity-50 p-2">
+            <div className="rounded-full bg-white/50 p-2">
               <MapPin className="text-primary h-5 w-5" />
             </div>
           </Marker>

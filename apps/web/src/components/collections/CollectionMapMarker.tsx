@@ -1,4 +1,4 @@
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { ShoppingBag } from "lucide-react"
 import { useState } from "react"
 import { Marker, Popup } from "react-map-gl"
@@ -26,7 +26,7 @@ export const CollectionMapMarker = ({
         <div
           className={cn(
             "cursor-pointer rounded-full transition-all duration-300",
-            isHovered ? "bg-white p-3" : "bg-white bg-opacity-50 p-2",
+            isHovered ? "bg-white p-3" : "bg-white/50 p-2",
           )}
         >
           <ShoppingBag

@@ -7,7 +7,7 @@ import {
   ComboboxButton,
 } from "@headlessui/react"
 
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { useSpeciesSearch } from "@/hooks/useSpeciesSearch"
 import { ChevronsUpDown, LeafIcon, XIcon } from "lucide-react"
 import { labelVariants } from "@nasti/ui/label"
@@ -101,14 +101,14 @@ export const SpeciesSearchCombobox = ({
               <div
                 className={cn(
                   "bg-secondary-background relative w-full cursor-default overflow-hidden rounded-lg border text-left",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2",
+                  "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2",
                   error && "border-orange-800 focus:border-orange-500",
                 )}
               >
                 <ComboboxInput
                   className={cn(
                     "bg-secondary-background w-full border-none py-2 pl-3 pr-10 text-sm leading-5",
-                    "focus:outline-none focus:ring-0",
+                    "focus:outline-hidden focus:ring-0",
                   )}
                   displayValue={(id: string) =>
                     species?.find((s) => s.id === id)?.name ?? ""
@@ -126,7 +126,7 @@ export const SpeciesSearchCombobox = ({
               <ComboboxOptions
                 className={cn(
                   "bg-secondary-background absolute mt-1 max-h-60 w-full overflow-auto rounded-md py-1 text-base",
-                  "z-50 shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm",
+                  "focus:outline-hidden z-50 shadow-lg ring-1 ring-black/5 sm:text-sm",
                 )}
               >
                 {isLoading && (

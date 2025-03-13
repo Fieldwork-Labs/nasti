@@ -40,11 +40,12 @@
     "./popover": "./components/popover.tsx",
     "./spinner": "./components/spinner.tsx",
     "./toaster": "./components/toaster.tsx",
-    "./hooks/use-toast": "./hooks/use-toast.ts"
+    "./hooks": "./hooks/index.ts",
+    "./styles/globals.css": "./styles/globals.css",
+    "./utils": "./utils/index.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
-    "@nasti/utils": "workspace:*",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-dialog": "^1.1.2",
@@ -65,7 +66,9 @@
   "devDependencies": {
     "@types/react": "^18.3.10",
     "@nasti/typescript-config": "workspace:*",
+    "clsx": "^2.1.1",
     "eslint": "^9.11.1",
+    "tailwind-merge": "^2.5.4",
     "typescript": "5.5.4"
   },
   "peerDependencies": {
@@ -73,6 +76,7 @@
     "lucide-react": "^0.453.0",
     "react": "^18.3.1",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^7.53.1"
+    "react-hook-form": "^7.53.1",
+    "tailwindcss": "^4.0.12"
   }
 }

@@ -1,4 +1,4 @@
-import { useToast } from "@nasti/ui/hooks/use-toast"
+import { useToast } from "@nasti/ui/hooks"
 import {
   Toast,
   ToastClose,

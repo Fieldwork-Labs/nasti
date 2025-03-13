@@ -8,8 +8,8 @@ import { useForm } from "react-hook-form"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
-import { useCallback } from "react"
-import { useToast } from "@nasti/ui/hooks/use-toast"
+import { useCallback, useRef } from "react"
+import { useToast } from "@nasti/ui/hooks"
 
 type FormData = {
   email: string
@@ -19,7 +19,8 @@ type FormData = {
 const LoginForm = () => {
   const navigate = useNavigate()
   const { getUser, setSession, session } = useUserStore()
-
+  // prevent flash of "already logged in" state after submitting
+  const hasSubmitted = useRef(false)
   const { toast } = useToast()
 
   const {
@@ -30,6 +31,7 @@ const LoginForm = () => {
 
   const onSubmit = useCallback(
     async (values: FormData) => {
+      hasSubmitted.current = true
       const { email, password } = values
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -38,6 +40,7 @@ const LoginForm = () => {
       })
 
       if (error) {
+        hasSubmitted.current = false
         if (error.message === "Failed to fetch") {
           toast({
             description: "Unable to connect to server",
@@ -45,19 +48,19 @@ const LoginForm = () => {
           })
         } else toast({ description: error.message, variant: "destructive" })
       } else {
+        await getUser()
         setSession(data.session)
-        getUser()
-
-        toast({ description: "Logged in successfully!" })
         navigate({ to: "/trips" })
+        toast({ description: "Logged in successfully!" })
       }
+      return true
     },
     [setSession, getUser, navigate, toast],
   )
 
   return (
     <div className="mt-2 flex items-center justify-center px-4">
-      {session ? (
+      {session && !hasSubmitted.current ? (
         <div className="bg-secondary-background w-full max-w-md rounded-lg p-8 text-center shadow-md">
           <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">
             You're already logged in

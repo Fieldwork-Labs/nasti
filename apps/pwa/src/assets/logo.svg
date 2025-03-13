@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Main seed body -->
+  <path d="M16 4C12 4 6 8 6 16C6 24 10 28 16 28C22 28 26 24 26 16C26 8 20 4 16 4Z" 
+        fill="#8B4513"
+        stroke="#422006"
+        stroke-width="1.5"
+        stroke-linejoin="round"/>
+  
+  <!-- Highlight/shine -->
+  <path d="M14 8C12 9 10 12 10 16C10 20 12 23 14 24"
+        fill="none"
+        stroke="#D2691E"
+        stroke-width="1.5"
+        stroke-linecap="round"/>
+        
+  <!-- Seed tip detail -->
+  <path d="M16 5C15 6 15 7 16 8C17 7 17 6 16 5Z"
+        fill="#422006"/>
+        
+</svg>

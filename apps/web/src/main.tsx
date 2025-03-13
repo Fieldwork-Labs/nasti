@@ -1,6 +1,6 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
-import "./globals.css"
+import "./style.css"
 
 import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
@@ -23,6 +23,7 @@ const router = createRouter({
     session: null,
     getSession: () => Promise.resolve(null),
     orgId: null,
+    getUser: () => Promise.resolve(null),
   },
 })
 
@@ -34,12 +35,12 @@ declare module "@tanstack/react-router" {
 }
 
 const App = () => {
-  const { session, getSession, orgId } = useUserStore()
+  const { session, getSession, orgId, getUser } = useUserStore()
   return (
     <ThemeProvider>
       <RouterProvider
         router={router}
-        context={{ session, getSession, orgId }}
+        context={{ session, getSession, orgId, getUser }}
       />
     </ThemeProvider>
   )

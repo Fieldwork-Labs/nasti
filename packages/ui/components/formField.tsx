@@ -4,7 +4,7 @@ import {
   type InputHTMLAttributes,
 } from "react"
 import type { FieldError } from "react-hook-form"
-import { cn } from "@nasti/utils"
+import { cn } from "@nasti/ui/utils"
 import { Label } from "./label"
 import { Input } from "./input"
 

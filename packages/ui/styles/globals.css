@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@config "../../../packages/tailwind-config/tailwind.config.ts";
+
+@layer utilities {
+  :root {
+    --background: 145 50% 90%;
+    --secondary-background: 156 65% 95%;
+    --foreground: 145 5% 10%;
+    --card: 145 50% 90%;
+    --card-foreground: 145 5% 15%;
+    --popover: 145 100% 95%;
+    --popover-foreground: 145 100% 10%;
+    --primary: 145 63% 24%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 145 30% 70%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 86 30% 85%;
+    --muted-foreground: 145 5% 35%;
+    --accent: 86 30% 80%;
+    --accent-foreground: 145 5% 15%;
+    --destructive: 0 100% 30%;
+    --destructive-foreground: 145 5% 90%;
+    --border: 145 30% 50%;
+    --input: 145 30% 24%;
+    --ring: 145 63% 24%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 124 35% 8%;
+    --secondary-background: 124 50% 12%;
+    --foreground: 124 5% 90%;
+    --card: 124 50% 10%;
+    --card-foreground: 124 5% 90%;
+    --popover: 124 50% 5%;
+    --popover-foreground: 124 5% 90%;
+    --primary: 124 63% 24%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 124 30% 50%;
+    --secondary-foreground: 50 0% 75%;
+    --muted: 86 30% 24%;
+    --muted-foreground: 124 5% 60%;
+    --accent: 86 30% 24%;
+    --accent-foreground: 124 5% 90%;
+    --destructive: 0 100% 30%;
+    --destructive-foreground: 124 5% 90%;
+    --border: 124 30% 24%;
+    --input: 124 30% 24%;
+    --ring: 124 63% 24%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.DialogOverlay[data-state="open"],
+.DialogContent[data-state="open"] {
+  animation: fadeIn 300ms ease-out;
+}
+
+.DialogOverlay[data-state="closed"],
+.DialogContent[data-state="closed"] {
+  animation: fadeOut 300ms ease-in;
+}
