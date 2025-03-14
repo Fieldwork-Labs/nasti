@@ -22,7 +22,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "prompt",
+      srcDir: "./src",
+      registerType: "autoUpdate",
       injectRegister: "auto",
       pwaAssets: {
         disabled: false,
@@ -34,19 +35,30 @@ export default defineConfig({
         short_name: "nasti-pwa",
         description: "nasti-pwa",
         theme_color: "#092a0b",
+        start_url: "/",
       },
 
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
+        globPatterns: ["**/*.{ts,tsx,js,css,html,svg,png,ico}"],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        skipWaiting: true,
+        navigateFallback: "index.html",
       },
 
       devOptions: {
         enabled: true,
         navigateFallback: "index.html",
-        suppressWarnings: true,
         type: "module",
+      },
+      injectManifest: {
+        globDirectory: "dist",
+        globPatterns: [
+          "**/assets/**/*.{js,css}",
+          "index.html",
+          "manifest.webmanifest",
+        ],
+        globIgnores: ["**/*.map"],
       },
     }),
     // basicSsl({

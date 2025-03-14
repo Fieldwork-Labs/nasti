@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { cn } from "@nasti/ui/utils"
 
@@ -18,6 +18,8 @@ type FormData = {
 const LoginForm = () => {
   const navigate = useNavigate()
   const { login, user } = useAuth()
+  // to prevent flash of "Already logged in" state after submitting
+  const hasLoggedIn = useRef(false)
 
   const {
     register,
@@ -34,6 +36,7 @@ const LoginForm = () => {
 
   const onSubmit = useCallback(
     async (values: FormData) => {
+      hasLoggedIn.current = true
       clearErrors()
       const { email, password } = values
       await login.mutateAsync({
@@ -42,6 +45,7 @@ const LoginForm = () => {
       })
 
       if (login.isError) {
+        hasLoggedIn.current = false
         if (login.error.message === "Failed to fetch") {
           setError("root", {
             message: "Unable to connect to server",
@@ -58,12 +62,12 @@ const LoginForm = () => {
   return (
     <div className="flex h-full flex-col justify-center">
       <div className="relative -top-20 flex flex-col items-center justify-center md:px-2">
-        {user ? (
+        {user && !hasLoggedIn.current ? (
           <div className="bg-secondary-background w-full max-w-md rounded-lg p-8 text-center shadow-md">
             <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">
               You're already logged in
             </h2>
-            <Link className="underline" to="/">
+            <Link className="underline" to="/trips">
               Go to Trips
             </Link>
           </div>

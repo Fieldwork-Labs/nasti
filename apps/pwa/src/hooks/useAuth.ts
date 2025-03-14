@@ -24,6 +24,7 @@ export const useAuth = () => {
       }
       return data
     },
+    networkMode: "online",
     retry: false,
     onSuccess: (data) => {
       // Update auth data in query client cache
@@ -43,9 +44,11 @@ export const useAuth = () => {
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onMutate: () => {
+      // regardless of online state, we want to clear the user data
       queryClient.setQueryData(["authUser"], null)
     },
+    networkMode: "online",
   })
 
   const { data: user } = useQuery({
@@ -54,6 +57,7 @@ export const useAuth = () => {
       const { data } = await supabase.auth.getUser()
       return data.user
     },
+    networkMode: "online",
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 

@@ -41,7 +41,10 @@ function TripsList() {
         </TabsList>
         <TabsContent value="list" className="">
           {trips?.map((trip) => (
-            <Card className="flex flex-row rounded-none bg-inherit p-0">
+            <Card
+              className="flex flex-row rounded-none bg-inherit p-0"
+              key={trip.id}
+            >
               <div className="flex flex-grow flex-col">
                 <CardHeader className="p-3">
                   <CardTitle>{trip.name}</CardTitle>
@@ -55,9 +58,9 @@ function TripsList() {
                     new Date(trip.end_date).toLocaleDateString()}
                 </CardContent>
               </div>
-              <span className="w-1/6 pr-2">
-                <ChevronRight size="medium" />
-              </span>
+              <div className="text-secondary flex w-1/6 flex-col justify-center pr-2">
+                <ChevronRight height={45} width={45} />
+              </div>
             </Card>
           ))}
         </TabsContent>

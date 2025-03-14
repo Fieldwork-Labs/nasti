@@ -24,7 +24,6 @@ export const SettingsMenuModal = ({
 
   const handleLogout = useCallback(async () => {
     await logout.mutateAsync()
-    navigate({ to: "/auth/login" })
   }, [logout, navigate])
 
   return (

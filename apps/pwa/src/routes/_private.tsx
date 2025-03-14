@@ -1,15 +1,28 @@
+import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@nasti/common/supabase"
 import { Spinner } from "@nasti/ui/spinner"
-import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  useNavigate,
+  redirect,
+} from "@tanstack/react-router"
 import { Suspense } from "react"
 
 function AuthLayout() {
+  const { isLoggedIn } = useAuth()
+  const navigate = useNavigate()
+  if (!isLoggedIn) {
+    navigate({
+      to: "/auth/login",
+    })
+    return <Spinner />
+  }
   return <Outlet />
 }
 
 export const Route = createFileRoute("/_private")({
   beforeLoad: async ({ context, location }) => {
-    console.log({ context, location })
     if (!context.isLoggedIn) {
       const {
         data: { session },
