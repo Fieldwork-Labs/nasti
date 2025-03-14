@@ -21,7 +21,7 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react(),
-    nodePolyfills(),
+    nodePolyfills({ globals: { Buffer: true } }),
     tailwindcss(),
     VitePWA({
       srcDir: "./src",
