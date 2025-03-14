@@ -1,5 +1,5 @@
 import { queryClient } from "@/lib/queryClient"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Trip } from "@nasti/common/types"
 import { Spinner } from "@nasti/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
@@ -105,13 +105,13 @@ const TripsMap = ({ trips }: { trips: Trip[] }) => {
             onClose={() => setShowPopup(null)}
             {...getTripCoordinates(showPopup)}
           >
-            {/* <Link
-            to={"/trips/$id"}
-            params={{ id: showPopup.id }}
-            className="text-primary"
-          >
-            {showPopup?.name} trip
-          </Link> */}
+            <Link
+              to={"/trips/$id"}
+              params={{ id: showPopup.id }}
+              className="text-primary"
+            >
+              {showPopup?.name} trip
+            </Link>
           </Popup>
         )}
       </Map>
@@ -121,9 +121,10 @@ const TripsMap = ({ trips }: { trips: Trip[] }) => {
 
 function TripsList() {
   const trips = Route.useLoaderData()
+  const navigate = useNavigate({ from: "/trips" })
   return (
     <div>
-      <div className="p-2 text-xl">Trips</div>
+      <div className="p-2 text-2xl">Trips</div>
       <Tabs defaultValue="list">
         <TabsList className="bg-secondary-background mb-2 w-full">
           <TabsTrigger className="w-full" value="list">
@@ -138,6 +139,9 @@ function TripsList() {
             <Card
               className="flex flex-row rounded-none bg-inherit p-0"
               key={trip.id}
+              onClick={() =>
+                navigate({ to: "/trips/$id", params: { id: trip.id } })
+              }
             >
               <div className="flex flex-grow flex-col">
                 <CardHeader className="p-3">
