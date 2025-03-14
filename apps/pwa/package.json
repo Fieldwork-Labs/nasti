@@ -41,6 +41,7 @@
     "@vite-pwa/assets-generator": "^0.2.6",
     "@vitejs/plugin-basic-ssl": "^2.0.0",
     "@vitejs/plugin-react": "^4.3.2",
+    "vite-plugin-node-polyfills": "^0.23.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.18.0",
     "eslint-plugin-react-hooks": "^5.0.0",

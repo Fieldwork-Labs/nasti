@@ -12,7 +12,7 @@ import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
 import { withTooltip } from "@nasti/ui/tooltip"
 import { useUpdateCollection } from "../../hooks/useUpdateCollection"
-import { parsePostGISPoint } from "@/lib/utils"
+import { parsePostGISPoint } from "@nasti/common/utils"
 
 type CollectionFormData = {
   species_id: string | null

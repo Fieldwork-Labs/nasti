@@ -164,6 +164,9 @@ importers:
       vite:
         specifier: ^6.0.11
         version: 6.2.1(@types/node@22.13.10)
+      vite-plugin-node-polyfills:
+        specifier: ^0.23.0
+        version: 0.23.0(rollup@2.79.2)(vite@6.2.1)
       vite-plugin-pwa:
         specifier: ^0.21.1
         version: 0.21.1(@vite-pwa/assets-generator@0.2.6)(vite@6.2.1)(workbox-build@7.3.0)(workbox-window@7.3.0)
@@ -236,9 +239,6 @@ importers:
       tailwindcss:
         specifier: ^4.0.12
         version: 4.0.12
-      wkx:
-        specifier: ^0.5.0
-        version: 0.5.0
       zod:
         specifier: ^3.23.8
         version: 3.24.2
@@ -284,7 +284,7 @@ importers:
         version: 6.2.1(@types/node@22.13.10)
       vite-plugin-node-polyfills:
         specifier: ^0.23.0
-        version: 0.23.0(vite@6.2.1)
+        version: 0.23.0(rollup@2.79.2)(vite@6.2.1)
 
   packages/common:
     dependencies:
@@ -294,10 +294,19 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.67.2
         version: 5.67.2(react@18.3.1)
+      react-map-gl:
+        specifier: ^7.1.7
+        version: 7.1.9(mapbox-gl@3.10.0)(react-dom@18.3.1)(react@18.3.1)
+      wkx:
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@nasti/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@types/geojson':
+        specifier: ^7946.0.16
+        version: 7946.0.16
 
   packages/eslint-config:
     dependencies:
@@ -3369,7 +3378,7 @@ packages:
       - supports-color
     dev: true
 
-  /@rollup/plugin-inject@5.0.5:
+  /@rollup/plugin-inject@5.0.5(rollup@2.79.2):
     resolution: {integrity: sha512-2+DEJbNBoPROPkgTDNe8/1YXWcqxbN5DTjASVIOx8HS+pITXushyNiBV56RB08zuptzz8gT3YfkqriTBVycepg==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
@@ -3381,6 +3390,7 @@ packages:
       '@rollup/pluginutils': 5.1.4(rollup@2.79.2)
       estree-walker: 2.0.2
       magic-string: 0.30.17
+      rollup: 2.79.2
     dev: true
 
   /@rollup/plugin-node-resolve@15.3.1(rollup@2.79.2):
@@ -8762,12 +8772,12 @@ packages:
       which-typed-array: 1.1.19
     dev: true
 
-  /vite-plugin-node-polyfills@0.23.0(vite@6.2.1):
+  /vite-plugin-node-polyfills@0.23.0(rollup@2.79.2)(vite@6.2.1):
     resolution: {integrity: sha512-4n+Ys+2bKHQohPBKigFlndwWQ5fFKwaGY6muNDMTb0fSQLyBzS+jjUNRZG9sKF0S/Go4ApG6LFnUGopjkILg3w==}
     peerDependencies:
       vite: ^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0
     dependencies:
-      '@rollup/plugin-inject': 5.0.5
+      '@rollup/plugin-inject': 5.0.5(rollup@2.79.2)
       node-stdlib-browser: 1.3.1
       vite: 6.2.1(@types/node@22.13.10)
     transitivePeerDependencies:

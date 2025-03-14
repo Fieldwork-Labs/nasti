@@ -1,4 +1,4 @@
-import { parsePostGISPoint } from "@/lib/utils"
+import { parsePostGISPoint } from "@nasti/common/utils"
 import { Trip } from "@nasti/common/types"
 
 export type TripWithLocation = Omit<Trip, "location_coordinate"> & {

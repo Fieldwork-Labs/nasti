@@ -1,7 +1,8 @@
 import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { parsePostGISPoint, queryClient } from "@/lib/utils"
+import { parsePostGISPoint } from "@nasti/common/utils"
+import { queryClient } from "@/lib/utils"
 import {
   createFileRoute,
   Link,
@@ -27,7 +28,7 @@ import { Button } from "@nasti/ui/button"
 import { AddCollectionWizardModal } from "@/components/collections/CollectionFormModal"
 
 import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
-import { useViewState } from "@/hooks/useViewState"
+import { useViewState } from "@nasti/common/hooks"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { Spinner } from "@nasti/ui/spinner"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"

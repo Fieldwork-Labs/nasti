@@ -1,5 +1,5 @@
 import { Button } from "@nasti/ui/button"
-import { parsePostGISPoint } from "@/lib/utils"
+import { parsePostGISPoint } from "@nasti/common/utils"
 import { Trip } from "@nasti/common/types"
 import debounce from "lodash/debounce"
 import { MapPin, XIcon } from "lucide-react"

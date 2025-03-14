@@ -16,8 +16,7 @@ import {
   TripWithLocation,
   tripWithLocationFilter,
 } from "@/components/trips/utils"
-import { getTripsQueryOptions } from "@nasti/common/hooks"
-import { useViewState } from "@/hooks/useViewState"
+import { getTripsQueryOptions, useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@/lib/utils"
 import { Spinner } from "@nasti/ui/spinner"
 

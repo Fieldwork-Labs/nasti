@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import path from "path"
 import basicSsl from "@vitejs/plugin-basic-ssl"
+import { nodePolyfills } from "vite-plugin-node-polyfills"
 
 const isProd = process.env.CF_PAGES === "1"
 
@@ -20,6 +21,7 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react(),
+    nodePolyfills(),
     tailwindcss(),
     VitePWA({
       srcDir: "./src",

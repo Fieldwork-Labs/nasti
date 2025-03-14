@@ -1,6 +1,7 @@
 import { useOpenClose } from "@nasti/ui/hooks"
 import { getSpecies, useSpecies } from "@/hooks/useSpecies"
-import { parsePostGISPoint, queryClient } from "@/lib/utils"
+import { parsePostGISPoint } from "@nasti/common/utils"
+import { queryClient } from "@/lib/utils"
 import {
   createFileRoute,
   Link,
@@ -30,7 +31,7 @@ import { useALAImages } from "@/hooks/useALAImages"
 import { useALAOccurrences } from "@/hooks/useALAOccurrences"
 import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useTripsForSpecies } from "@/hooks/useTripsForSpecies"
-import { getViewState, PartialViewState } from "@/hooks/useViewState"
+import { getViewState, type PartialViewState } from "@nasti/common/hooks"
 import { Species } from "@nasti/common/types"
 import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
