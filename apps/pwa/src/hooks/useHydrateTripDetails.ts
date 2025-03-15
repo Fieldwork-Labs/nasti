@@ -1,7 +1,10 @@
 import { supabase } from "@nasti/common/supabase"
 import { useQuery } from "@tanstack/react-query"
+import { useCallback, useMemo, useState } from "react"
 
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
+  const [isRefetching, setIsRefetching] = useState(false)
+
   const tripDetailsQuery = useQuery({
     queryKey: ["trip", "details", id],
     queryFn: async () => {
@@ -48,14 +51,14 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
   const peopleQuery = useQuery({
     queryKey: ["people", "list"],
-    queryFn: () => supabase.rpc("get_organisation_users"),
+    queryFn: async () => await supabase.rpc("get_organisation_users"),
   })
 
   const tripSpecies = tripDetailsQuery.data?.species.map((s) => s.species_id)
   const speciesQuery = useQuery({
     queryKey: ["species", "forTrip", id],
-    queryFn: () =>
-      supabase
+    queryFn: async () =>
+      await supabase
         .from("species")
         .select("*")
         .in("id", tripSpecies ?? []),
@@ -63,18 +66,51 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   })
 
   const isPending =
-    tripDetailsQuery.isPending ||
-    speciesQuery.isPending ||
-    peopleQuery.isPending
+    !isRefetching &&
+    (tripDetailsQuery.isPending ||
+      speciesQuery.isPending ||
+      peopleQuery.isPending)
+
+  const isFetching =
+    !isRefetching &&
+    (tripDetailsQuery.isFetching ||
+      speciesQuery.isFetching ||
+      peopleQuery.isFetching)
+
   const isError =
     tripDetailsQuery.isError || speciesQuery.isError || peopleQuery.isError
-  return {
-    data: {
-      trip: tripDetailsQuery.data,
-      species: speciesQuery.data,
-      people: peopleQuery.data,
-    },
-    isPending,
-    isError,
-  }
+
+  const refetch = useCallback(async () => {
+    setIsRefetching(true)
+    await tripDetailsQuery.refetch()
+    await speciesQuery.refetch()
+    await peopleQuery.refetch()
+    setIsRefetching(false)
+  }, [tripDetailsQuery, speciesQuery, peopleQuery])
+
+  const resultData = useMemo(
+    () => ({
+      data: {
+        trip: tripDetailsQuery.data,
+        species: speciesQuery.data?.data,
+        people: peopleQuery.data?.data,
+      },
+      isFetching,
+      isPending,
+      isError,
+      refetch,
+      isRefetching,
+    }),
+    [
+      tripDetailsQuery,
+      speciesQuery,
+      peopleQuery,
+      isFetching,
+      isPending,
+      isError,
+      refetch,
+      isRefetching,
+    ],
+  )
+  return resultData
 }

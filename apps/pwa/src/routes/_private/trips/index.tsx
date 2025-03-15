@@ -11,12 +11,13 @@ import {
   CardTitle,
 } from "@nasti/ui/card"
 import { getTripsQueryOptions, useViewState } from "@nasti/common/hooks"
-import { ChevronRight, MapPin } from "lucide-react"
+import { ChevronRight, MapPin, RefreshCwIcon } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useEffect, useRef, useState } from "react"
 import Map, { Marker, Popup } from "react-map-gl"
 import { parsePostGISPoint } from "@nasti/common/utils"
+import { cn } from "@nasti/ui/utils"
 
 export type TripWithLocation = Omit<Trip, "location_coordinate"> & {
   location_coordinate: string
@@ -41,7 +42,9 @@ export const Route = createFileRoute("/_private/trips/")({
     </div>
   ),
   loader: async () => {
-    return queryClient.ensureQueryData<Trip[] | null>(getTripsQueryOptions())
+    const queryOptions = getTripsQueryOptions()
+    const trips = await queryClient.ensureQueryData<Trip[] | null>(queryOptions)
+    return { trips }
   },
 })
 
@@ -120,11 +123,25 @@ const TripsMap = ({ trips }: { trips: Trip[] }) => {
 }
 
 function TripsList() {
-  const trips = Route.useLoaderData()
+  const { trips } = Route.useLoaderData()
   const navigate = useNavigate({ from: "/trips" })
+  const queryOptions = getTripsQueryOptions()
+  const refetch = () => queryClient.refetchQueries(queryOptions)
+
+  const state = queryClient.getQueryState(queryOptions.queryKey)
+  const isFetching = state?.fetchStatus === "fetching"
+
   return (
     <div>
-      <div className="p-2 text-2xl">Trips</div>
+      <div className="flex items-center justify-between align-middle">
+        <div className="p-2 text-2xl">Trips</div>
+        <div className="p-2">
+          <RefreshCwIcon
+            onClick={refetch}
+            className={cn("h-5 w-5", isFetching ? "animate-spin" : "")}
+          />
+        </div>
+      </div>
       <Tabs defaultValue="list">
         <TabsList className="bg-secondary-background mb-2 w-full">
           <TabsTrigger className="w-full" value="list">

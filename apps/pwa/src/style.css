@@ -1,3 +1,26 @@
 @import "../../../packages/ui/styles/globals.css";
 
 @config "../tailwind.config.ts";
+
+.fab {
+  width: 70px;
+  height: 70px;
+  /* background-color: #873bdd; */
+  border-radius: 50%;
+  transition: all 0.1s ease-in-out;
+
+  font-size: 36px;
+  color: white;
+  text-align: center;
+  line-height: 70px;
+
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  z-index: 50;
+}
+
+.fab:active {
+  box-shadow: 0 6px 10px 0 #464545;
+  transform: scale(1.05);
+}
