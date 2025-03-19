@@ -1,5 +1,5 @@
-import { useALAImage } from "@/hooks/useALAImage"
-import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
+import { useALAImage } from "@nasti/common/hooks/useALAImage"
+import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
 import { ImageIcon } from "lucide-react"
 
 type SpeciesDetailProps = {
@@ -11,7 +11,7 @@ type SpeciesDetailProps = {
 }
 
 export const TripSpeciesDetail = ({ species }: SpeciesDetailProps) => {
-  const { data, error } = useSpeciesDetail(species.ala_guid)
+  const { data, error } = useALASpeciesDetail(species.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
 
   if (!data || error) {

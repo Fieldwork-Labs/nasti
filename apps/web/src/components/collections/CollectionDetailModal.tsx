@@ -133,6 +133,7 @@ export const CollectionDetailModal = ({
         onClick={openDeleteModal}
         title="Delete Collection"
         className="bg-transparent"
+        variant={"destructive"}
       >
         <TrashIcon className="h-4 w-4" />
       </Button>

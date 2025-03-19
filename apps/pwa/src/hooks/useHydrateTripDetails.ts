@@ -1,4 +1,5 @@
 import { supabase } from "@nasti/common/supabase"
+import { Collection, CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { useQuery } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
 
@@ -8,20 +9,27 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const tripDetailsQuery = useQuery({
     queryKey: ["trip", "details", id],
     queryFn: async () => {
-      const trip = await supabase.from("trip").select("*").eq("id", id).single()
-      if (trip.error) throw new Error(trip.error.message)
+      const tripPromise = supabase
+        .from("trip")
+        .select("*")
+        .eq("id", id)
+        .single()
 
-      const tripSpecies = await supabase
+      const tripSpeciesPromise = supabase
         .from("trip_species")
         .select("*")
         .eq("trip_id", id)
-      if (tripSpecies.error) throw new Error(tripSpecies.error.message)
 
-      const tripMembers = await supabase
+      const tripMembersPromise = supabase
         .from("trip_member")
         .select("*")
         .eq("trip_id", id)
-      if (tripMembers.error) throw new Error(tripMembers.error.message)
+
+      const [trip, tripSpecies, tripMembers] = await Promise.all([
+        tripPromise,
+        tripSpeciesPromise,
+        tripMembersPromise,
+      ])
 
       const collections = await supabase
         .from("collection")
@@ -31,18 +39,36 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
       const collectionPhotos = await supabase
         .from("collection_photo")
-        .select("*")
-        .in(
-          "collection_id",
-          collections.data.map((c) => c.id),
+        .select(
+          `
+          *,
+          collection!inner (
+            id,
+            trip_id
+          )
+        `,
         )
+        .eq("collection.trip_id", id)
       if (collectionPhotos.error)
         throw new Error(collectionPhotos.error.message)
 
+      // Get public URL
+      const { data } = await supabase.storage
+        .from("collection-photos")
+        .createSignedUrls(
+          collectionPhotos?.data.map(({ url }) => url) ?? [],
+          60 * 60,
+        )
+
+      const signedPhotos = (data?.map(({ signedUrl }, i) => ({
+        ...collectionPhotos?.data?.[i],
+        signedUrl,
+      })) ?? []) as CollectionPhotoSignedUrl[]
+
       return {
         ...trip.data,
-        collections: collections.data,
-        collectionPhotos: collectionPhotos.data,
+        collections: collections.data as Collection[],
+        collectionPhotos: signedPhotos,
         species: tripSpecies.data,
         members: tripMembers.data,
       }
@@ -54,7 +80,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     queryFn: async () => await supabase.rpc("get_organisation_users"),
   })
 
-  const tripSpecies = tripDetailsQuery.data?.species.map((s) => s.species_id)
+  const tripSpecies = tripDetailsQuery.data?.species?.map((s) => s.species_id)
   const speciesQuery = useQuery({
     queryKey: ["species", "forTrip", id],
     queryFn: async () =>

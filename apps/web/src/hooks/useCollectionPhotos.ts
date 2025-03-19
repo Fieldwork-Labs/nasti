@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import useUserStore from "@/store/userStore"
 import { CollectionPhotoSignedUrl } from "@nasti/common/types"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 
 export const useCollectionPhotos = (collectionId?: string) => {
   const [isUploading, setIsUploading] = useState(false)

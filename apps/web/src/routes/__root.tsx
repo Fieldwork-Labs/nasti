@@ -2,7 +2,7 @@ import logo from "@/assets/logo.svg"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@nasti/common/supabase"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 import useUserStore, { AuthDetails } from "@/store/userStore"
 import {
   DropdownMenu,

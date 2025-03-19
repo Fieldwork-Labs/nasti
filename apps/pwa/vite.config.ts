@@ -50,7 +50,7 @@ export default defineConfig({
 
       devOptions: {
         enabled: true,
-        navigateFallback: "index.html",
+        navigateFallback: "/",
         type: "module",
       },
       injectManifest: {

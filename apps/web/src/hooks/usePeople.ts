@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { getUsers } from "@/queries/users"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 import { useCallback } from "react"
 
 export const usePeople = () => {

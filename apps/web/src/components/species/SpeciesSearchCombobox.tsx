@@ -12,8 +12,8 @@ import { useSpeciesSearch } from "@/hooks/useSpeciesSearch"
 import { ChevronsUpDown, LeafIcon, XIcon } from "lucide-react"
 import { labelVariants } from "@nasti/ui/label"
 import { useSpecies } from "@/hooks/useSpecies"
-import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
-import { useALAImage } from "@/hooks/useALAImage"
+import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
+import { useALAImage } from "@nasti/common/hooks/useALAImage"
 import {
   TooltipProvider,
   Tooltip,
@@ -42,7 +42,7 @@ export const SpeciesSearchCombobox = ({
     error: searchError,
   } = useSpeciesSearch(searchTerm, tripId)
   const { data: selectedSpecies } = useSpecies(value)
-  const { data } = useSpeciesDetail(selectedSpecies?.ala_guid)
+  const { data } = useALASpeciesDetail(selectedSpecies?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
 
   return (

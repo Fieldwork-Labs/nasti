@@ -1,7 +1,7 @@
 import { useOpenClose } from "@nasti/ui/hooks"
 import { getSpecies, useSpecies } from "@/hooks/useSpecies"
 import { parsePostGISPoint } from "@nasti/common/utils"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 import {
   createFileRoute,
   Link,
@@ -26,10 +26,10 @@ import {
   CarouselPrevious,
 } from "@nasti/ui/carousel"
 import { Modal } from "@nasti/ui/modal"
-import { useALAImage } from "@/hooks/useALAImage"
-import { useALAImages } from "@/hooks/useALAImages"
-import { useALAOccurrences } from "@/hooks/useALAOccurrences"
-import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
+import { useALAImage } from "@nasti/common/hooks/useALAImage"
+import { useALAImages } from "@nasti/common/hooks/useALAImages"
+import { useALAOccurrences } from "@nasti/common/hooks/useALAOccurrences"
+import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
 import { useTripsForSpecies } from "@/hooks/useTripsForSpecies"
 import { getViewState, type PartialViewState } from "@nasti/common/hooks"
 import { Species } from "@nasti/common/types"
@@ -270,7 +270,7 @@ const getSpeciesQueryOptions = (id: string) => ({
 })
 
 const useSpeciesImages = (alaGuid?: string | null) => {
-  const { data: alaData } = useSpeciesDetail(alaGuid)
+  const { data: alaData } = useALASpeciesDetail(alaGuid)
   const { data: image } = useALAImage(alaData?.imageIdentifier)
   const [modalImage, setModalImage] = useState<number>()
   const { data: images } = useALAImages(alaGuid)
@@ -304,7 +304,7 @@ const SpeciesDetail = () => {
   const { id } = useParams({ from: "/_private/species/$id/" })
   const { invalidate } = useSpeciesDetailInvalidate(id)
   const { data: collections } = useCollectionsBySpecies(id)
-  const { data: alaData } = useSpeciesDetail(instance?.ala_guid)
+  const { data: alaData } = useALASpeciesDetail(instance?.ala_guid)
   const { images, mainImage, allImages, setModalImage, modalImage } =
     useSpeciesImages(instance?.ala_guid)
 

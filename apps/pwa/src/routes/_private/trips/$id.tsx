@@ -14,41 +14,112 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import {
   ChevronLeft,
   ChevronRight,
+  LeafIcon,
   PlusCircle,
   RefreshCwIcon,
 } from "lucide-react"
+import { useMemo } from "react"
+import {
+  Collection,
+  CollectionPhotoSignedUrl,
+  Person,
+  Species,
+} from "@nasti/common/types"
+import { useALASpeciesImage } from "@nasti/common/hooks"
+
+const CollectionListItem = ({
+  collection,
+  photo,
+  species,
+  person,
+}: {
+  collection: Collection | null
+  photo: CollectionPhotoSignedUrl | null
+  species?: Species | null
+  person?: Person | null
+}) => {
+  const image = useALASpeciesImage({ guid: species?.ala_guid })
+  const collPhoto = photo?.signedUrl ?? image
+
+  if (!collection) return <></>
+
+  return (
+    <Card
+      className="flex flex-row rounded-none bg-inherit p-0"
+      key={collection.id}
+    >
+      {collPhoto ? (
+        <span className="flex h-24 w-24 content-center justify-center">
+          <img
+            src={collPhoto}
+            alt={`${species?.name} Image`}
+            className="w-24 object-cover text-sm"
+          />
+        </span>
+      ) : (
+        <span className="flex h-24 w-24 items-center justify-center bg-slate-500">
+          <LeafIcon className="h-8 w-8" />
+        </span>
+      )}
+
+      <div className="flex flex-grow flex-col">
+        <CardHeader className="p-2">
+          <CardTitle className="m-0 text-lg">
+            {species?.name ? (
+              <i>{species.name}</i>
+            ) : collection.field_name && collection.field_name !== "" ? (
+              collection.field_name
+            ) : (
+              "Uknown species"
+            )}
+          </CardTitle>
+          <CardDescription>{person?.name || "Unknown person"}</CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 pb-3 text-sm">
+          {collection.created_at &&
+            new Date(collection.created_at).toLocaleString()}
+        </CardContent>
+      </div>
+      <div className="text-secondary flex w-1/6 flex-col justify-center pr-2">
+        <ChevronRight height={45} width={45} />
+      </div>
+    </Card>
+  )
+}
 
 const CollectionListTab = ({ id }: { id: string }) => {
   const { data } = useHydrateTripDetails({ id })
+
+  const collectionPhotosMap = useMemo(() => {
+    if (!data.trip?.collectionPhotos) return {}
+    return data.trip.collectionPhotos.reduce(
+      (acc, photo) => {
+        if (!acc[photo.collection_id]) acc[photo.collection_id] = []
+        acc[photo.collection_id].push(photo)
+        return acc
+      },
+      {} as Record<string, CollectionPhotoSignedUrl[]>,
+    )
+  }, [data.trip?.collectionPhotos])
 
   if (!data) return <></>
   return (
     <>
       {data.trip?.collections.map((coll) => {
-        const species = data.species?.find(({ id }) => id === coll.species_id)
-        const person = data.people?.find(({ id }) => id === coll.created_by)
+        const species = data.species?.find(
+          (species) => species.id === coll.species_id,
+        )
+        const person = data.people?.find(
+          (person) => person.id === coll.created_by,
+        )
         return (
-          <Card
-            className="flex flex-row rounded-none bg-inherit p-0"
+          <CollectionListItem
             key={coll.id}
-          >
-            <div className="flex flex-grow flex-col">
-              <CardHeader className="p-2">
-                <CardTitle className="m-0 text-lg">
-                  {species?.name ? <i>{species.name}</i> : coll.field_name}
-                </CardTitle>
-                <CardDescription>
-                  {person?.name || "Unkown person"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-3 pb-3 text-sm">
-                {coll.created_at && new Date(coll.created_at).toLocaleString()}
-              </CardContent>
-            </div>
-            <div className="text-secondary flex w-1/6 flex-col justify-center pr-2">
-              <ChevronRight height={45} width={45} />
-            </div>
-          </Card>
+            collection={coll}
+            photo={collectionPhotosMap[coll.id]?.[0]}
+            species={species}
+            person={person}
+          />
         )
       })}
       {data.trip && data.trip.collections.length === 0 && (

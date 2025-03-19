@@ -13,12 +13,12 @@ import { supabase } from "@nasti/common/supabase"
 import {
   AlaSpeciesSearchResult,
   useALASpeciesSearch,
-} from "@/hooks/useALASpeciesSearch"
+} from "@nasti/common/hooks/useALASpeciesSearch"
 import useUserStore from "@/store/userStore"
 import { useQuery } from "@tanstack/react-query"
 import { Species } from "@nasti/common/types"
-import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
-import { useALAImage } from "@/hooks/useALAImage"
+import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
+import { useALAImage } from "@nasti/common/hooks/useALAImage"
 import {
   Tooltip,
   TooltipContent,
@@ -153,7 +153,7 @@ export const SpeciesForm = ({
   onClear,
   onSearchClose,
 }: SpeciesFormProps) => {
-  const { data } = useSpeciesDetail(selectedSpecies?.guid)
+  const { data } = useALASpeciesDetail(selectedSpecies?.guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
 
   return (

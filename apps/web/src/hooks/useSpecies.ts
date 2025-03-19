@@ -3,7 +3,7 @@ import { QueryKey, useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { Species } from "@nasti/common/types"
 import { useInvalidate } from "./useInvalidate"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 
 export type PaginatedSpeciesList = {
   data: Species[]

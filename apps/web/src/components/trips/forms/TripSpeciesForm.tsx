@@ -15,7 +15,7 @@ import { supabase } from "@nasti/common/supabase"
 import {
   AlaSpeciesSearchResult,
   useALASpeciesSearch,
-} from "@/hooks/useALASpeciesSearch"
+} from "@nasti/common/hooks/useALASpeciesSearch"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { Trip } from "@nasti/common/types"
 

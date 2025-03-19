@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { Trip } from "@nasti/common/types"
 import { useCallback } from "react"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 
 export type TripWithDetails = Trip & {
   members: string[]

@@ -3,7 +3,7 @@ import {
   CatchNotFound,
   useLoaderData,
 } from "@tanstack/react-router"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 import { Trip } from "@nasti/common/types"
 
 import { useAdminOnly } from "@/hooks/useAdminOnly"

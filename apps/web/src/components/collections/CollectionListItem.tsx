@@ -6,8 +6,6 @@ import {
 } from "@nasti/ui/tooltip"
 import { useSpecies } from "@/hooks/useSpecies"
 
-import { useALAImage } from "@/hooks/useALAImage"
-import { useSpeciesDetail } from "@/hooks/useALASpeciesDetail"
 import { useCollection } from "@/hooks/useCollection"
 import { useOpenClose } from "@nasti/ui/hooks"
 import { usePeople } from "@/hooks/usePeople"
@@ -16,6 +14,7 @@ import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionDetailModal } from "./CollectionDetailModal"
 import { useTripDetail } from "@/hooks/useTripDetail"
 import { Spinner } from "@nasti/ui/spinner"
+import { useALASpeciesImage } from "@nasti/common/hooks"
 
 export const CollectionListItem = ({
   id,
@@ -28,8 +27,7 @@ export const CollectionListItem = ({
 }) => {
   const { data: collection, error } = useCollection(id)
   const { data: species } = useSpecies(collection?.species_id)
-  const { data: speciesData } = useSpeciesDetail(species?.ala_guid)
-  const { data: image } = useALAImage(speciesData?.imageIdentifier, "thumbnail")
+  const image = useALASpeciesImage({ guid: species?.ala_guid })
   const { photos, signedUrlsIsLoading } = useCollectionPhotos(id)
   const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 

@@ -1,4 +1,4 @@
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "../utils"
 import { useQuery } from "@tanstack/react-query"
 
 import { useCallback } from "react"

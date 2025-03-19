@@ -1,7 +1,7 @@
 import { type Collection } from "@nasti/common/types"
 
 import { supabase } from "@nasti/common/supabase"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 import { useMutation } from "@tanstack/react-query"
 
 type MaybeNewCollection = Omit<Collection, "id" | "created_at"> & {

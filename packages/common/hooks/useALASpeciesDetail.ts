@@ -177,7 +177,7 @@ const fetchSpeciesDetail = async (guid: string): Promise<SpeciesDetail> => {
  * @param options - Query configuration options
  * @returns React Query result object
  */
-export const useSpeciesDetail = (
+export const useALASpeciesDetail = (
   guid?: string | null,
   options: QueryOptions = {},
 ) => {
@@ -190,7 +190,7 @@ export const useSpeciesDetail = (
   } = options
 
   return useQuery({
-    queryKey: ["speciesDetail", guid],
+    queryKey: ["alaSpeciesDetail", guid],
     queryFn: () => (guid ? fetchSpeciesDetail(guid) : null),
     enabled: enabled && Boolean(guid),
     staleTime,

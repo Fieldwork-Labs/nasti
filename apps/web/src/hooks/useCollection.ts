@@ -3,7 +3,7 @@ import { QueryKey, useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { Collection } from "@nasti/common/types"
 
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 
 type QueryTuple = [QueryKey, Collection[] | Collection | undefined]
 

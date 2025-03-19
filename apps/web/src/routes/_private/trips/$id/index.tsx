@@ -2,7 +2,7 @@ import { usePeople } from "@/hooks/usePeople"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
 import { parsePostGISPoint } from "@nasti/common/utils"
-import { queryClient } from "@/lib/utils"
+import { queryClient } from "@nasti/common/utils"
 import {
   createFileRoute,
   Link,
