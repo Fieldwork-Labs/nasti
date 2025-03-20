@@ -53,7 +53,7 @@ export const TripFormProvider = ({ children }: { children: ReactNode }) => {
         setCurrentStep,
         trip,
         setTrip,
-        saveTrip,
+        saveTrip: saveTrip.mutateAsync,
       }}
     >
       {children}

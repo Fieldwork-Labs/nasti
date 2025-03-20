@@ -19,6 +19,7 @@ import {
 import { getTripsQueryOptions, useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@nasti/common/utils"
 import { Spinner } from "@nasti/ui/spinner"
+import { useSuspenseQuery } from "@tanstack/react-query"
 
 interface TripsMapProps {
   trips: Trip[]
@@ -105,7 +106,7 @@ const TripTableRow = ({ trip }: { trip: Trip }) => {
 const TripsList = () => {
   // TODO pagination
   // TODO search function
-  const data = Route.useLoaderData()
+  const { data } = useSuspenseQuery(getTripsQueryOptions())
   const { isAdmin } = useUserStore()
 
   return (

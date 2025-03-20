@@ -32,6 +32,7 @@ import { useViewState } from "@nasti/common/hooks"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { Spinner } from "@nasti/ui/spinner"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
+import { useSuspenseQuery } from "@tanstack/react-query"
 
 const getTripQueryOptions = (id: string) => ({
   queryKey: ["trip", id],
@@ -49,7 +50,7 @@ type ModalComponentNames =
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const { isAdmin } = useUserStore()
-  const instance = Route.useLoaderData()
+  const { data: instance } = useSuspenseQuery(getTripQueryOptions(id))
 
   const { data: tripMembers } = useTripMembers(instance?.id)
   const { data: people } = usePeople()

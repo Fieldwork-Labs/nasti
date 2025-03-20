@@ -1,8 +1,8 @@
 import { FormField } from "@nasti/ui/formField"
 import { FieldErrors, UseFormRegister, useForm } from "react-hook-form"
-import { supabase } from "@nasti/common/supabase"
 import { Trip } from "@nasti/common/types"
 import { useCallback } from "react"
+import { useUpdateTrip } from "../forms/useUpdateTrip"
 
 import useUserStore from "@/store/userStore"
 
@@ -40,6 +40,8 @@ export const useTripForm = ({
       : undefined,
   })
 
+  const saveTrip = useUpdateTrip(instance)
+
   const onSubmit = useCallback(
     async ({ name, startDate, endDate }: TripFormData) => {
       if (!orgId) throw new Error("No organisation available")
@@ -47,27 +49,22 @@ export const useTripForm = ({
         onSuccess?.()
         return
       }
+      const sbresponse = await saveTrip.mutateAsync({
+        id: instance ? instance.id : undefined,
+        name,
+        start_date: startDate,
+        end_date: endDate,
+        organisation_id: orgId,
+        created_by: user?.id,
+      })
 
-      const sbresponse = await supabase
-        .from("trip")
-        .upsert({
-          id: instance ? instance.id : undefined,
-          name,
-          start_date: startDate,
-          end_date: endDate,
-          organisation_id: orgId,
-          created_by: user?.id,
-        })
-        .select("*")
-        .single()
-
-      if (sbresponse.error) onError?.(sbresponse.error.message)
+      if (saveTrip.isError) onError?.(saveTrip.error.message)
       else {
         // type assertion required because of bad typing in supabase for postgis geometry columns
-        onSuccess?.(sbresponse.data as Trip)
+        onSuccess?.(sbresponse)
       }
     },
-    [orgId, isDirty, instance, user?.id, onError, onSuccess],
+    [orgId, isDirty, instance, user?.id, onError, onSuccess, saveTrip],
   )
 
   return {

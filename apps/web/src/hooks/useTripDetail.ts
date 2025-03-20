@@ -11,8 +11,9 @@ export type TripWithDetails = Trip & {
 }
 
 export const getTripDetail = async (
-  tripId: string,
+  tripId?: string,
 ): Promise<TripWithDetails> => {
+  if (!tripId) throw new Error("No trip ID provided")
   const { data: trip, error } = await supabase
     .rpc("get_trip", { p_trip_id: tripId })
     .order("created_at", { ascending: false })
@@ -22,13 +23,17 @@ export const getTripDetail = async (
   return trip[0] as TripWithDetails
 }
 
+export const getTripDetailQueryOptions = (tripId?: string) => ({
+  queryKey: ["trip", tripId],
+  queryFn: () => getTripDetail(tripId),
+  enabled: Boolean(tripId),
+  refetchOnMount: false,
+})
+
 export const useTripDetail = (tripId?: string) => {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["trip", tripId],
-    queryFn: () => (tripId ? getTripDetail(tripId) : null),
-    enabled: Boolean(tripId),
-    refetchOnMount: false,
-  })
+  const { data, isLoading, isError, error } = useQuery(
+    getTripDetailQueryOptions(tripId),
+  )
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({

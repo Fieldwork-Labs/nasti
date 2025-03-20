@@ -317,7 +317,7 @@ export const CollectionDetailModal = ({
           open={modalImage !== undefined}
           onOpenChange={(isOpen) => (!isOpen ? setModalImage(undefined) : null)}
         >
-          <DialogContent>
+          <DialogContent className="lg:min-w-[720px]">
             {/* DialogTitle required for screenreaders */}
             <DialogTitle hidden>Species Image</DialogTitle>
             <Carousel opts={{ startIndex: modalImage }} className="pt-4">
