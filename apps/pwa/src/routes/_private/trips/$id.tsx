@@ -6,10 +6,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@nasti/ui/card"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@nasti/ui/drawer"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@nasti/ui/dropdown-menu"
 import { Spinner } from "@nasti/ui/spinner"
-import { cn } from "@nasti/ui/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@nasti/ui/tooltip"
+import { cn } from "@nasti/ui/utils"
 
+import {
+  useALAImage,
+  useALASpeciesDetail,
+  useALASpeciesImage,
+} from "@nasti/common/hooks"
+import {
+  Collection,
+  CollectionPhotoSignedUrl,
+  Person,
+  Species,
+} from "@nasti/common/types"
+import { Button } from "@nasti/ui/button"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import {
   ChevronLeft,
@@ -17,15 +50,10 @@ import {
   LeafIcon,
   PlusCircle,
   RefreshCwIcon,
+  Settings,
+  X,
 } from "lucide-react"
-import { useMemo } from "react"
-import {
-  Collection,
-  CollectionPhotoSignedUrl,
-  Person,
-  Species,
-} from "@nasti/common/types"
-import { useALASpeciesImage } from "@nasti/common/hooks"
+import { useMemo, useState } from "react"
 
 const CollectionListItem = ({
   collection,
@@ -136,12 +164,16 @@ const CollectionListTab = ({ id }: { id: string }) => {
   )
 }
 
+type SettingsDrawers = "species" | "people"
+
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id" })
   const { data, isFetching, isError, refetch, isRefetching } =
     useHydrateTripDetails({ id })
   const navigate = useNavigate()
 
+  const [isOpenSettings, setIsOpenSettings] = useState<SettingsDrawers>()
+  console.log({ isOpenSettings })
   const handleBackClick = () => {
     navigate({ to: "/trips" })
   }
@@ -177,27 +209,144 @@ const TripDetail = () => {
           />
         </div>
       </div>
-      <Tabs defaultValue="collections">
-        <TabsList className="bg-secondary-background mb-2 w-full">
-          <TabsTrigger className="w-full" value="collections">
-            Collections
-          </TabsTrigger>
-          {data.species && data.species.length > 0 && (
-            <TabsTrigger className="w-full" value="species">
+      <div className="flex justify-end p-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={"outline"}
+              size="default"
+              className="text-md space-x-2"
+            >
+              <Settings aria-label="Settings" size={18} /> <span>Settings</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="text-md">
+            <DropdownMenuItem onClick={() => setIsOpenSettings("species")}>
               Species
-            </TabsTrigger>
-          )}
-          {data.people && data.people.length > 0 && (
-            <TabsTrigger className="w-full" value="people">
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setIsOpenSettings("people")}>
               People
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <Tabs defaultValue="list">
+        <TabsList className="bg-secondary-background mb-2 w-full">
+          <TabsTrigger className="w-full" value="list">
+            Collection List
+          </TabsTrigger>
+          {data.trip?.collections && data.trip.collections.length > 0 && (
+            <TabsTrigger className="w-full" value="map">
+              Map
             </TabsTrigger>
           )}
         </TabsList>
-        <TabsContent value="collections">
+        <TabsContent value="list">
           <CollectionListTab id={id} />
         </TabsContent>
+        <TabsContent value="map">MAP HERE</TabsContent>
       </Tabs>
+      <SpeciesDrawer
+        species={data.species}
+        isOpen={isOpenSettings === "species"}
+        onOpenChange={(isOpen) =>
+          setIsOpenSettings(isOpen ? "species" : undefined)
+        }
+      />
     </div>
+  )
+}
+
+export const SpeciesListItem = ({ species }: { species: Species }) => {
+  const { data } = useALASpeciesDetail(species?.ala_guid)
+  const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
+
+  if (!species || !data) {
+    return <></>
+  }
+
+  return (
+    <div className="border-primary flex h-20 gap-4 border-t p-0">
+      {image ? (
+        <span className="flex h-20 w-20 content-center justify-center">
+          <img
+            src={image}
+            alt={`${species.name} Image`}
+            className="w-20 object-cover text-sm"
+          />
+        </span>
+      ) : (
+        <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
+          <LeafIcon />
+        </span>
+      )}
+      <div className="text-foreground flex h-full w-full flex-col py-1 pr-2">
+        <div className="flex items-center justify-between">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <i className="max-w-56 truncate font-semibold">
+                  {species?.name}
+                </i>
+              </TooltipTrigger>
+              <TooltipContent>{species.name}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="flex flex-col items-start text-xs">
+          {data.commonNames.length > 0 && (
+            <span>{data.commonNames[0].nameString}</span>
+          )}
+          {species.indigenous_name && (
+            <span>
+              <i>{species.indigenous_name}</i>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SpeciesDrawer = ({
+  species,
+  isOpen,
+  onOpenChange,
+}: {
+  species?: Species[] | null
+  isOpen: boolean
+  onOpenChange: (isOpen: boolean) => void
+}) => {
+  return (
+    <Drawer open={isOpen} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <DrawerHeader>
+          <div className="flex justify-between">
+            <DrawerTitle>Target Species</DrawerTitle>
+            <DrawerClose>
+              <X />
+            </DrawerClose>
+          </div>
+          <DrawerDescription>
+            Select a species to record a collection
+          </DrawerDescription>
+        </DrawerHeader>
+        {species && species.length > 0 && (
+          <div className="border-primary overflow-y-scroll border-b">
+            {species.map((sp) => (
+              <SpeciesListItem key={sp.id} species={sp} />
+            ))}
+          </div>
+        )}
+        {!species ||
+          (species.length === 0 && (
+            <div className="text-muted-foreground p-4 text-center">
+              No species configured for this trip.
+            </div>
+          ))}
+      </DrawerContent>
+    </Drawer>
   )
 }
 

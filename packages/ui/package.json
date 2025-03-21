@@ -15,6 +15,7 @@
     "./alert-dialog": "./components/alert-dialog.tsx",
     "./card": "./components/card.tsx",
     "./command": "./components/command.tsx",
+    "./drawer": "./components/drawer.tsx",
     "./input": "./components/input.tsx",
     "./multi-select": "./components/multi-select.tsx",
     "./scroll-area": "./components/scroll-area.tsx",
@@ -61,6 +62,7 @@
     "@radix-ui/react-tooltip": "^1.1.7",
     "class-variance-authority": "^0.7.0",
     "cmdk": "1.0.0",
+    "vaul": "^1.1.2",
     "embla-carousel-react": "^8.5.2"
   },
   "devDependencies": {
