@@ -35,6 +35,7 @@ import {
   useALAImage,
   useALASpeciesDetail,
   useALASpeciesImage,
+  useViewState,
 } from "@nasti/common/hooks"
 import {
   Collection,
@@ -51,9 +52,14 @@ import {
   PlusCircle,
   RefreshCwIcon,
   Settings,
+  ShoppingBag,
   X,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { parsePostGISPoint } from "@nasti/common/utils"
+import mapboxgl from "mapbox-gl"
+import "mapbox-gl/dist/mapbox-gl.css"
+import Map, { Marker, Popup } from "react-map-gl"
 
 const CollectionListItem = ({
   collection,
@@ -164,6 +170,84 @@ const CollectionListTab = ({ id }: { id: string }) => {
   )
 }
 
+const CollectionsMap = ({ id }: { id: string }) => {
+  const { data } = useHydrateTripDetails({ id })
+
+  const [showPopup, setShowPopup] = useState<Collection | null>(null)
+  const [mapHeight, setMapHeight] = useState("calc(100vh - 100px)")
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const updateMapHeight = () => {
+      if (mapContainerRef.current) {
+        // Get the top position of the map container
+        const topPosition = mapContainerRef.current.getBoundingClientRect().top
+        // Calculate remaining viewport height
+        setMapHeight(`calc(100vh - ${topPosition}px)`)
+      }
+    }
+
+    // Initial calculation
+    updateMapHeight()
+
+    // Add resize listener
+    window.addEventListener("resize", updateMapHeight)
+
+    // Cleanup
+    return () => window.removeEventListener("resize", updateMapHeight)
+  }, [])
+
+  const collections =
+    data.trip?.collections.filter((col) => Boolean(col.location)) ?? []
+
+  // Calculate bounds based on all trip coordinates
+  const initialViewState = useViewState(
+    collections
+      .map((col) => parsePostGISPoint(col.location!))
+      .map(({ longitude, latitude }) => [longitude, latitude]),
+  )
+
+  return (
+    <div ref={mapContainerRef} className="w-full" style={{ height: mapHeight }}>
+      <Map
+        mapLib={mapboxgl as never}
+        mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+        initialViewState={initialViewState}
+        style={{ width: "100%", height: "100%" }}
+        mapStyle="mapbox://styles/mapbox/satellite-v9"
+      >
+        {collections.map((col) => (
+          <Marker {...parsePostGISPoint(col.location!)} key={col.id}>
+            <div className="rounded-full bg-white/50 p-2">
+              <ShoppingBag
+                className="text-primary h-5 w-5 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPopup(col)
+                }}
+              />
+            </div>
+          </Marker>
+        ))}
+        {showPopup && (
+          <Popup
+            onClose={() => setShowPopup(null)}
+            {...parsePostGISPoint(showPopup.location!)}
+          >
+            {/* <Link
+              to={"/trips/$id"}
+              params={{ id: showPopup.id }}
+              className="text-primary"
+            >
+              {showPopup?.name} trip
+            </Link> */}
+          </Popup>
+        )}
+      </Map>
+    </div>
+  )
+}
+
 type SettingsDrawers = "species" | "people"
 
 const TripDetail = () => {
@@ -245,7 +329,9 @@ const TripDetail = () => {
         <TabsContent value="list">
           <CollectionListTab id={id} />
         </TabsContent>
-        <TabsContent value="map">MAP HERE</TabsContent>
+        <TabsContent value="map">
+          <CollectionsMap id={id} />
+        </TabsContent>
       </Tabs>
       <SpeciesDrawer
         species={data.species}
