@@ -98,9 +98,16 @@ const CollectionListItem = ({
 
       <div className="flex flex-grow flex-col">
         <CardHeader className="p-2">
-          <CardTitle className="m-0 text-lg">
+          <CardTitle className="m-0 w-52 truncate overflow-ellipsis text-lg md:w-96">
             {species?.name ? (
-              <i>{species.name}</i>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <i>{species.name}</i>
+                  </TooltipTrigger>
+                  <TooltipContent>{species.name}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             ) : collection.field_name && collection.field_name !== "" ? (
               collection.field_name
             ) : (
@@ -114,7 +121,7 @@ const CollectionListItem = ({
             new Date(collection.created_at).toLocaleString()}
         </CardContent>
       </div>
-      <div className="text-secondary flex w-1/6 flex-col justify-center pr-2">
+      <div className="text-secondary flex shrink flex-col justify-center pr-2">
         <ChevronRight height={45} width={45} />
       </div>
     </Card>

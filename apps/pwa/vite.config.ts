@@ -53,15 +53,16 @@ export default defineConfig({
         navigateFallback: "/",
         type: "module",
       },
-      injectManifest: {
-        globDirectory: "dist",
-        globPatterns: [
-          "**/assets/**/*.{js,css}",
-          "index.html",
-          "manifest.webmanifest",
-        ],
-        globIgnores: ["**/*.map"],
-      },
+      // injectManifest: {
+      //   globDirectory: "dist",
+      //   globPatterns: [
+      //     "**/assets/**/*.{js,css}",
+      //     "index.html",
+      //     "manifest.webmanifest",
+      //   ],
+
+      //   globIgnores: ["**/*.map"],
+      // },
     }),
     // basicSsl({
     //   /** name of certification */

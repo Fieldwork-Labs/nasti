@@ -173,7 +173,7 @@ function TripsList() {
                     new Date(trip.end_date).toLocaleDateString()}
                 </CardContent>
               </div>
-              <div className="text-secondary flex w-1/6 flex-col justify-center pr-2">
+              <div className="text-secondary flex shrink flex-col justify-center pr-2">
                 <ChevronRight height={45} width={45} />
               </div>
             </Card>

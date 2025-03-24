@@ -23,7 +23,7 @@ export const TripLocationModal = ({
   const handleSave = useCallback(
     async (tripLocationDetails?: TripLocationDetails) => {
       if (tripLocationDetails) {
-        await updateTrip(tripLocationDetails)
+        await updateTrip.mutateAsync(tripLocationDetails)
         invalidate()
       }
       close()
