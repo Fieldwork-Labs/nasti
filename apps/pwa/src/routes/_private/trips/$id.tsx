@@ -60,6 +60,7 @@ import { parsePostGISPoint } from "@nasti/common/utils"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import Map, { Marker, Popup } from "react-map-gl"
+import { useGeoLocation } from "@/contexts/location"
 
 const CollectionListItem = ({
   collection,
@@ -179,6 +180,7 @@ const CollectionListTab = ({ id }: { id: string }) => {
 
 const CollectionsMap = ({ id }: { id: string }) => {
   const { data } = useHydrateTripDetails({ id })
+  const { location } = useGeoLocation()
 
   const [showPopup, setShowPopup] = useState<Collection | null>(null)
   const [mapHeight, setMapHeight] = useState("calc(100vh - 100px)")
@@ -207,12 +209,16 @@ const CollectionsMap = ({ id }: { id: string }) => {
   const collections =
     data.trip?.collections.filter((col) => Boolean(col.location)) ?? []
 
+  const initialCollectionCoords: Array<[number, number]> = collections
+    .map((col) => parsePostGISPoint(col.location!))
+    .map(({ longitude, latitude }) => [longitude, latitude])
+
+  if (location) {
+    console.log({ location })
+    initialCollectionCoords.push([location.longitude, location.latitude])
+  }
   // Calculate bounds based on all trip coordinates
-  const initialViewState = useViewState(
-    collections
-      .map((col) => parsePostGISPoint(col.location!))
-      .map(({ longitude, latitude }) => [longitude, latitude]),
-  )
+  const initialViewState = useViewState(initialCollectionCoords)
 
   return (
     <div ref={mapContainerRef} className="w-full" style={{ height: mapHeight }}>
@@ -223,6 +229,11 @@ const CollectionsMap = ({ id }: { id: string }) => {
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/mapbox/satellite-v9"
       >
+        {location && (
+          <Marker {...location}>
+            <div className="h-4 w-4 rounded-full border border-blue-400 bg-blue-500" />
+          </Marker>
+        )}
         {collections.map((col) => (
           <Marker {...parsePostGISPoint(col.location!)} key={col.id}>
             <div className="rounded-full bg-white/50 p-2">

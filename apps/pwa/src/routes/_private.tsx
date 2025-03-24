@@ -1,3 +1,4 @@
+import { GeoLocationProvider } from "@/contexts/location"
 import { useAuth } from "@/hooks/useAuth"
 import { supabase } from "@nasti/common/supabase"
 import { Spinner } from "@nasti/ui/spinner"
@@ -18,7 +19,11 @@ function AuthLayout() {
     })
     return <Spinner />
   }
-  return <Outlet />
+  return (
+    <GeoLocationProvider>
+      <Outlet />
+    </GeoLocationProvider>
+  )
 }
 
 export const Route = createFileRoute("/_private")({
