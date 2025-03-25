@@ -5,8 +5,10 @@ import React, {
   useEffect,
   ReactNode,
   useMemo,
+  useCallback,
 } from "react"
-// import { useSettings } from "./useSettings"
+
+import { point, distance } from "@turf/turf"
 
 // Type definitions
 type GeolocationData = Omit<GeolocationCoordinates, "toJSON">
@@ -15,6 +17,13 @@ interface GeoLocationContextType {
   locationDisplay: string | undefined
   location: GeolocationData | undefined
   warning: number | undefined
+  getDistanceKm: ({
+    latitude,
+    longitude,
+  }: {
+    latitude: number
+    longitude: number
+  }) => number | undefined
 }
 
 // Create context with a default undefined value
@@ -31,12 +40,6 @@ interface GeoLocationProviderProps {
 export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
   children,
 }) => {
-  const {
-    settings: { watchLocation },
-  } = {
-    settings: { watchLocation: true },
-  }
-
   const [location, setLocation] = useState<GeolocationData>()
   const [warning, setWarning] = useState<number | undefined>(undefined)
 
@@ -57,20 +60,26 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
 
     const onError: PositionErrorCallback = ({ code }) => setWarning(code)
 
-    if (watchLocation) {
-      watchId = navigator.geolocation.watchPosition(onSuccess, onError, {
-        enableHighAccuracy: true,
-      })
-    } else {
-      navigator.geolocation.getCurrentPosition(onSuccess, onError)
-    }
+    watchId = navigator.geolocation.watchPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+    })
 
     return () => {
       if (watchId) {
         navigator.geolocation.clearWatch(watchId)
       }
     }
-  }, [watchLocation])
+  }, [])
+
+  const getDistanceKm = useCallback(
+    ({ latitude, longitude }: { latitude: number; longitude: number }) => {
+      if (!location) return undefined
+      const myPoint = point([location.longitude, location.latitude])
+      const otherPoint = point([longitude, latitude])
+      return distance(myPoint, otherPoint, { units: "kilometers" })
+    },
+    [location],
+  )
 
   const locationDisplay = useMemo(() => {
     if (location) {
@@ -93,6 +102,7 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
     locationDisplay,
     location,
     warning,
+    getDistanceKm,
   }
 
   return (

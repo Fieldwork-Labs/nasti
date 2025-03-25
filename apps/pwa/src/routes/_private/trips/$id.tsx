@@ -75,12 +75,22 @@ const CollectionListItem = ({
 }) => {
   const image = useALASpeciesImage({ guid: species?.ala_guid })
   const collPhoto = photo?.signedUrl ?? image
+  const { getDistanceKm } = useGeoLocation()
+
+  const displayDistance = useMemo(() => {
+    const collLocation = collection?.location
+      ? parsePostGISPoint(collection?.location)
+      : undefined
+    const distance = collLocation ? getDistanceKm(collLocation) : undefined
+    if (distance === undefined) return undefined
+    return distance > 10 ? distance?.toFixed(0) : distance.toFixed(2)
+  }, [getDistanceKm, collection])
 
   if (!collection) return <></>
 
   return (
     <Card
-      className="flex flex-row rounded-none bg-inherit p-0"
+      className="flex max-h-24 flex-row rounded-none bg-inherit p-0"
       key={collection.id}
     >
       {collPhoto ? (
@@ -117,9 +127,12 @@ const CollectionListItem = ({
           </CardTitle>
           <CardDescription>{person?.name || "Unknown person"}</CardDescription>
         </CardHeader>
-        <CardContent className="px-3 pb-3 text-sm">
+        <CardContent className="w-60 truncate overflow-ellipsis px-3 pb-3 text-xs">
           {collection.created_at &&
-            new Date(collection.created_at).toLocaleString()}
+            new Date(collection.created_at).toLocaleString()}{" "}
+          {displayDistance && (
+            <span className="text-secondary">{displayDistance} km away</span>
+          )}
         </CardContent>
       </div>
       <div className="text-secondary flex shrink flex-col justify-center pr-2">
