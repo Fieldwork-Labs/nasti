@@ -11,10 +11,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@nasti/ui/components",
-    "utils": "@nasti/ui/lib/utils",
-    "hooks": "@nasti/ui/hooks",
+    "components": "components",
+    "utils": "utils",
+    "hooks": "hooks",
     "lib": "@nasti/ui/lib",
-    "ui": "@nasti/ui/components"
+    "ui": "components"
   }
 }

@@ -1,7 +1,29 @@
 import { supabase } from "@nasti/common/supabase"
-import { Collection, CollectionPhotoSignedUrl } from "@nasti/common/types"
+import { Collection, CollectionPhotoSignedUrl, Trip } from "@nasti/common/types"
+
 import { useQuery } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
+
+export type TripDetails = Trip & {
+  collections: Collection[]
+  collectionPhotos: CollectionPhotoSignedUrl[]
+  species:
+    | {
+        id: string
+        species_id: string
+        trip_id: string
+      }[]
+    | null
+  members:
+    | {
+        id: string
+        joined_at: string | null
+        role: string | null
+        trip_id: string
+        user_id: string
+      }[]
+    | null
+}
 
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
@@ -31,10 +53,13 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         tripMembersPromise,
       ])
 
+      if (!trip.data) return null
+
       const collections = await supabase
         .from("collection")
         .select("*")
         .eq("trip_id", id)
+        .order("created_at", { ascending: false })
       if (collections.error) throw new Error(collections.error.message)
 
       const collectionPhotos = await supabase
@@ -53,25 +78,28 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         throw new Error(collectionPhotos.error.message)
 
       // Get public URL
-      const { data } = await supabase.storage
-        .from("collection-photos")
-        .createSignedUrls(
-          collectionPhotos?.data.map(({ url }) => url) ?? [],
-          60 * 60,
-        )
+      const photoPaths = collectionPhotos?.data.map(({ url }) => url)
+      let signedPhotos: CollectionPhotoSignedUrl[] | undefined = undefined
+      // request to supabase storage for an empty array throws an error
+      if (photoPaths && photoPaths.length > 0) {
+        const { data } = await supabase.storage
+          .from("collection-photos")
+          .createSignedUrls(photoPaths, 60 * 60)
 
-      const signedPhotos = (data?.map(({ signedUrl }, i) => ({
-        ...collectionPhotos?.data?.[i],
-        signedUrl,
-      })) ?? []) as CollectionPhotoSignedUrl[]
+        signedPhotos = (data?.map(({ signedUrl }, i) => ({
+          ...collectionPhotos?.data?.[i],
+          signedUrl,
+        })) ?? []) as CollectionPhotoSignedUrl[]
+      }
 
-      return {
-        ...trip.data,
+      const result: TripDetails = {
+        ...(trip.data as Trip),
         collections: collections.data as Collection[],
-        collectionPhotos: signedPhotos,
+        collectionPhotos: signedPhotos ?? [],
         species: tripSpecies.data,
         members: tripMembers.data,
       }
+      return result
     },
   })
 

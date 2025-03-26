@@ -31,12 +31,7 @@ import {
 } from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
 
-import {
-  useALAImage,
-  useALASpeciesDetail,
-  useALASpeciesImage,
-  useViewState,
-} from "@nasti/common/hooks"
+import { useALASpeciesImage, useViewState } from "@nasti/common/hooks"
 import {
   Collection,
   CollectionPhotoSignedUrl,
@@ -53,14 +48,20 @@ import {
   RefreshCwIcon,
   Settings,
   ShoppingBag,
+  SortAsc,
+  SortDesc,
   X,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import MiniSearch from "minisearch"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { parsePostGISPoint } from "@nasti/common/utils"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import Map, { Marker, Popup } from "react-map-gl"
 import { useGeoLocation } from "@/contexts/location"
+import { ButtonLink } from "@nasti/ui/button-link"
+import { SpeciesSelectList } from "@/components/species/SpeciesSelectList"
+import { Input } from "@nasti/ui/input"
 
 const CollectionListItem = ({
   collection,
@@ -142,8 +143,16 @@ const CollectionListItem = ({
   )
 }
 
+type CollectionWithSpecies = Collection & { species?: Species }
+
 const CollectionListTab = ({ id }: { id: string }) => {
+  const [sortMode, setSortMode] = useState<
+    "created_at-asc" | "created_at-desc" | "distance-asc" | "distance-desc"
+  >("created_at-desc")
+  const [searchValue, setSearchValue] = useState("")
+  const isSearching = useRef(false)
   const { data } = useHydrateTripDetails({ id })
+  const { getDistanceKm } = useGeoLocation()
 
   const collectionPhotosMap = useMemo(() => {
     if (!data.trip?.collectionPhotos) return {}
@@ -157,37 +166,173 @@ const CollectionListTab = ({ id }: { id: string }) => {
     )
   }, [data.trip?.collectionPhotos])
 
+  const searchableCollections: CollectionWithSpecies[] = useMemo(() => {
+    if (!data.trip?.collections) return []
+    return data.trip.collections.map((coll) => {
+      if (coll.species_id && data.species)
+        return {
+          ...coll,
+          // add the species for ease of searching
+          species: data.species.find((sp) => sp.id === coll.species_id),
+        }
+      return coll
+    })
+  }, [data.trip?.collections])
+
+  const [searchResults, setSearchResults] = useState<
+    Array<CollectionWithSpecies>
+  >(searchableCollections)
+
+  const sortedSearchResults = useMemo(() => {
+    const sorted = searchResults
+      .sort((a, b) => {
+        if (sortMode.startsWith("created_at")) {
+          return (
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          )
+        } else if (sortMode.startsWith("distance")) {
+          const aLocation = a?.location
+            ? parsePostGISPoint(a.location)
+            : undefined
+          const bLocation = b?.location
+            ? parsePostGISPoint(b.location)
+            : undefined
+          const aDistance = aLocation ? getDistanceKm(aLocation) : 100000000
+          const bDistance = bLocation ? getDistanceKm(bLocation) : 100000000
+          return (aDistance ?? 100000000) - (bDistance ?? 100000000)
+        }
+        return 1
+      })
+      .map((coll) => {
+        if (coll.species_id && data.species)
+          return {
+            ...coll,
+            // add the species for ease of searching
+            species: data.species.find((sp) => sp.id === coll.species_id),
+          }
+        return coll
+      })
+    if (sortMode.split("-")[1] === "desc") return sorted.reverse()
+    return sorted
+  }, [searchResults, sortMode, getDistanceKm])
+
+  const miniSearch = new MiniSearch({
+    fields: ["field_name", "description", "species.name"],
+    searchOptions: {
+      fuzzy: 0.2,
+    },
+    extractField: (document, fieldName) => {
+      // Access nested fields
+      return fieldName
+        .split(".")
+        .reduce((doc, key) => doc && doc[key], document)
+    },
+  })
+  miniSearch.addAll(searchableCollections)
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      isSearching.current = true
+      setSearchValue(e.target.value)
+      const searchMatches = miniSearch
+        .search(e.target.value, { prefix: true })
+        .map((item) => item.id)
+
+      setSearchResults(
+        searchableCollections.filter((coll) => searchMatches.includes(coll.id)),
+      )
+    },
+    [miniSearch, searchableCollections],
+  )
+
+  useEffect(() => {
+    if (searchValue.length === 0) setSearchResults(searchableCollections)
+  }, [searchValue, miniSearch])
+
+  const resetSearch = () => {
+    setSearchValue("")
+    setSearchResults(searchableCollections)
+    isSearching.current = false
+  }
+
   if (!data) return <></>
   return (
-    <>
-      {data.trip?.collections.map((coll) => {
-        const species = data.species?.find(
-          (species) => species.id === coll.species_id,
-        )
-        const person = data.people?.find(
-          (person) => person.id === coll.created_by,
-        )
-        return (
-          <CollectionListItem
-            key={coll.id}
-            collection={coll}
-            photo={collectionPhotosMap[coll.id]?.[0]}
-            species={species}
-            person={person}
-          />
-        )
-      })}
-      {data.trip && data.trip.collections.length === 0 && (
-        <div className="text-center">
-          <span className="p-4 text-xl">No collections recorded yet</span>
-        </div>
-      )}
-      {/* <Link to="data/new" className="z-50"> */}
-      <button className="fab from-secondary to-primary flex items-center justify-center bg-gradient-to-br">
-        <PlusCircle width={42} height={42} />
-      </button>
-      {/* </Link> */}
-    </>
+    <div className="flex flex-col gap-2">
+      <div className="flex w-full justify-between gap-1 px-1 text-sm">
+        <Input
+          placeholder="Search collections"
+          className="w-full transition-all ease-in-out"
+          value={searchValue}
+          onChange={handleSearchChange}
+        />
+        {isSearching.current && (
+          <Button
+            onClick={resetSearch}
+            className="text-xs"
+            variant={"outline"}
+            size={"icon"}
+          >
+            <X height={14} width={14} />
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={"outline"}
+              size="default"
+              className="text-md space-x-2"
+            >
+              {sortMode.split("-")[1] === "desc" && (
+                <SortDesc aria-label="Settings" size={14} />
+              )}
+              {sortMode.split("-")[1] === "asc" && (
+                <SortAsc aria-label="Settings" size={14} />
+              )}
+              {!isSearching.current && (
+                <span>
+                  {sortMode.startsWith("created_at") ? "Created" : "Distance"}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="text-md">
+            <DropdownMenuItem onClick={() => setSortMode("created_at-desc")}>
+              Newest first
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortMode("created_at-asc")}>
+              Oldest first
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortMode("distance-desc")}>
+              Furthest first
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortMode("distance-asc")}>
+              Closest first
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <div>
+        {sortedSearchResults.map((coll) => {
+          const person = data.people?.find(
+            (person) => person.id === coll.created_by,
+          )
+          return (
+            <CollectionListItem
+              key={coll.id}
+              collection={coll}
+              photo={collectionPhotosMap[coll.id]?.[0]}
+              species={coll.species}
+              person={person}
+            />
+          )
+        })}
+        {data.trip && data.trip.collections.length === 0 && (
+          <div className="text-center">
+            <span className="p-4 text-xl">No collections recorded yet</span>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -282,13 +427,13 @@ const CollectionsMap = ({ id }: { id: string }) => {
 type SettingsDrawers = "species" | "people"
 
 const TripDetail = () => {
-  const { id } = useParams({ from: "/_private/trips/$id" })
+  const { id } = useParams({ from: "/_private/trips/$id/" })
   const { data, isFetching, isError, refetch, isRefetching } =
     useHydrateTripDetails({ id })
   const navigate = useNavigate()
 
   const [isOpenSettings, setIsOpenSettings] = useState<SettingsDrawers>()
-  console.log({ isOpenSettings })
+
   const handleBackClick = () => {
     navigate({ to: "/trips" })
   }
@@ -324,7 +469,7 @@ const TripDetail = () => {
           />
         </div>
       </div>
-      <div className="flex justify-end p-2">
+      <div className="flex justify-end p-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -363,9 +508,16 @@ const TripDetail = () => {
         <TabsContent value="map">
           <CollectionsMap id={id} />
         </TabsContent>
+        <ButtonLink
+          to="/trips/$id/collections/new"
+          className="fab from-secondary to-primary z-50 flex items-center justify-center bg-gradient-to-br"
+        >
+          <PlusCircle width={42} height={42} />
+        </ButtonLink>
       </Tabs>
       <SpeciesDrawer
         species={data.species}
+        tripId={id}
         isOpen={isOpenSettings === "species"}
         onOpenChange={(isOpen) =>
           setIsOpenSettings(isOpen ? "species" : undefined)
@@ -375,66 +527,18 @@ const TripDetail = () => {
   )
 }
 
-export const SpeciesListItem = ({ species }: { species: Species }) => {
-  const { data } = useALASpeciesDetail(species?.ala_guid)
-  const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
-
-  if (!species || !data) {
-    return <></>
-  }
-
-  return (
-    <div className="border-primary flex h-20 gap-4 border-t p-0">
-      {image ? (
-        <span className="flex h-20 w-20 content-center justify-center">
-          <img
-            src={image}
-            alt={`${species.name} Image`}
-            className="w-20 object-cover text-sm"
-          />
-        </span>
-      ) : (
-        <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
-          <LeafIcon />
-        </span>
-      )}
-      <div className="text-foreground flex h-full w-full flex-col py-1 pr-2">
-        <div className="flex items-center justify-between">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <i className="max-w-56 truncate font-semibold">
-                  {species?.name}
-                </i>
-              </TooltipTrigger>
-              <TooltipContent>{species.name}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <div className="flex flex-col items-start text-xs">
-          {data.commonNames.length > 0 && (
-            <span>{data.commonNames[0].nameString}</span>
-          )}
-          {species.indigenous_name && (
-            <span>
-              <i>{species.indigenous_name}</i>
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 const SpeciesDrawer = ({
   species,
+  tripId,
   isOpen,
   onOpenChange,
 }: {
   species?: Species[] | null
+  tripId: string
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
 }) => {
+  const navigate = useNavigate()
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
       <DrawerContent>
@@ -449,25 +553,22 @@ const SpeciesDrawer = ({
             Select a species to record a collection
           </DrawerDescription>
         </DrawerHeader>
-        {species && species.length > 0 && (
-          <div className="border-primary overflow-y-scroll border-b">
-            {species.map((sp) => (
-              <SpeciesListItem key={sp.id} species={sp} />
-            ))}
-          </div>
-        )}
-        {!species ||
-          (species.length === 0 && (
-            <div className="text-muted-foreground p-4 text-center">
-              No species configured for this trip.
-            </div>
-          ))}
+        <SpeciesSelectList
+          species={species ?? undefined}
+          onSelectSpecies={(sp) =>
+            navigate({
+              to: "/trips/$id/collections/new",
+              params: { id: tripId },
+              search: { speciesId: sp.id },
+            })
+          }
+        />
       </DrawerContent>
     </Drawer>
   )
 }
 
-export const Route = createFileRoute("/_private/trips/$id")({
+export const Route = createFileRoute("/_private/trips/$id/")({
   component: TripDetail,
   pendingComponent: () => (
     <div className="px-auto mx-auto mt-36">

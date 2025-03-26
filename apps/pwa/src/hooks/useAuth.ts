@@ -26,15 +26,26 @@ export const useAuth = () => {
     },
     networkMode: "online",
     retry: false,
-    onSuccess: (data) => {
-      // Update auth data in query client cache
-      queryClient.setQueryData(["authUser"], data.user)
+    onSuccess: async (data) => {
+      // Fetch organization and role
+      const { data: orgData, error: orgError } = await supabase
+        .from("org_user")
+        .select("*, organisation(id, name)")
+        .eq("user_id", data.user.id)
+        .single()
 
-      // Prefetch necessary data for offline use
-      queryClient.prefetchQuery({
-        queryKey: ["trips", "list"],
-        queryFn: fetchTrips,
-      })
+      if (orgError) {
+        throw new Error("Unable to fetch organisation")
+      } else {
+        // Update auth data in query client cache
+        queryClient.setQueryData(["auth", "user"], data.user)
+        queryClient.setQueryData(["auth", "orgUser"], orgData)
+        // Prefetch necessary data for offline use
+        queryClient.prefetchQuery({
+          queryKey: ["trips", "list"],
+          queryFn: fetchTrips,
+        })
+      }
     },
   })
 
@@ -46,13 +57,13 @@ export const useAuth = () => {
     },
     onMutate: () => {
       // regardless of online state, we want to clear the user data
-      queryClient.setQueryData(["authUser"], null)
+      queryClient.setQueryData(["auth"], null)
     },
     networkMode: "online",
   })
 
   const { data: user } = useQuery({
-    queryKey: ["authUser"],
+    queryKey: ["auth", "user"],
     queryFn: async () => {
       const { data } = await supabase.auth.getUser()
       return data.user
@@ -61,8 +72,26 @@ export const useAuth = () => {
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 
+  const { data: org } = useQuery({
+    queryKey: ["auth", "orgUser"],
+    queryFn: async () => {
+      if (!user) return null
+      const { data: orgData, error: orgError } = await supabase
+        .from("org_user")
+        .select("*, organisation(id, name)")
+        .eq("user_id", user.id)
+        .single()
+      if (orgError) throw new Error("Unable to fetch organisation")
+      return orgData
+    },
+    enabled: Boolean(user),
+    networkMode: "online",
+    staleTime: 60 * 60 * 1000, // 1 hour
+  })
+
   return {
     user,
+    org,
     getSession: () => supabase.auth.getSession(),
     login,
     logout,
