@@ -245,15 +245,15 @@ const CollectionListTab = ({ id }: { id: string }) => {
     [miniSearch, searchableCollections],
   )
 
-  useEffect(() => {
-    if (searchValue.length === 0) setSearchResults(searchableCollections)
-  }, [searchValue, miniSearch])
-
-  const resetSearch = () => {
+  const resetSearch = useCallback(() => {
     setSearchValue("")
     setSearchResults(searchableCollections)
     isSearching.current = false
-  }
+  }, [setSearchValue, setSearchResults])
+
+  useEffect(() => {
+    if (isSearching.current && searchValue.length === 0) resetSearch()
+  }, [searchValue, resetSearch, isSearching.current])
 
   if (!data) return <></>
   return (
@@ -261,14 +261,16 @@ const CollectionListTab = ({ id }: { id: string }) => {
       <div className="flex w-full justify-between gap-1 px-1 text-sm">
         <Input
           placeholder="Search collections"
-          className="w-full transition-all ease-in-out"
+          className={`transition-all duration-500 ease-in-out ${
+            isSearching.current ? "w-full flex-grow" : "w-full"
+          }`}
           value={searchValue}
           onChange={handleSearchChange}
         />
         {isSearching.current && (
           <Button
             onClick={resetSearch}
-            className="text-xs"
+            className="text-xs opacity-100 transition-opacity duration-500 ease-in-out"
             variant={"outline"}
             size={"icon"}
           >
@@ -280,7 +282,7 @@ const CollectionListTab = ({ id }: { id: string }) => {
             <Button
               variant={"outline"}
               size="default"
-              className="text-md space-x-2"
+              className="text-md space-x-2 transition-all duration-500 ease-in-out"
             >
               {sortMode.split("-")[1] === "desc" && (
                 <SortDesc aria-label="Settings" size={14} />
@@ -288,8 +290,12 @@ const CollectionListTab = ({ id }: { id: string }) => {
               {sortMode.split("-")[1] === "asc" && (
                 <SortAsc aria-label="Settings" size={14} />
               )}
-              {!isSearching.current && (
-                <span>
+              {!isSearching.current ? (
+                <span className="opacity-100 transition-opacity duration-300 ease-in-out">
+                  {sortMode.startsWith("created_at") ? "Created" : "Distance"}
+                </span>
+              ) : (
+                <span className="w-0 overflow-hidden opacity-0 transition-all duration-300 ease-in-out">
                   {sortMode.startsWith("created_at") ? "Created" : "Distance"}
                 </span>
               )}
