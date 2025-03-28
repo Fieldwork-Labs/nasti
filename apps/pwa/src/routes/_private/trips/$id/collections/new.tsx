@@ -1,4 +1,9 @@
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  useNavigate,
+  useParams,
+  useSearch,
+} from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -16,8 +21,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
 import { Collection } from "@nasti/common/types"
 
+const addCollectionSearchSchema = z.object({
+  speciesId: z.string().optional(),
+})
+
 export const Route = createFileRoute("/_private/trips/$id/collections/new")({
   component: AddCollection,
+  validateSearch: (search) => addCollectionSearchSchema.parse(search),
 })
 
 type CollectionFormData = {
@@ -69,7 +79,9 @@ function AddCollection() {
     from: "/_private/trips/$id/collections/new",
   })
 
-  // TODO add species ID search param
+  const { speciesId: initialSpeciesId } = useSearch({
+    from: "/_private/trips/$id/collections/new",
+  })
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate()
@@ -81,7 +93,7 @@ function AddCollection() {
     handleSubmit,
     formState: { isValid, isSubmitting },
   } = useForm<CollectionFormData>({
-    defaultValues,
+    defaultValues: { ...defaultValues, species_id: initialSpeciesId },
     resolver: zodResolver(schema),
     mode: "onChange",
     criteriaMode: "all",
