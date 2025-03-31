@@ -1,11 +1,18 @@
 import { supabase } from "@nasti/common/supabase"
-import { Collection, CollectionPhotoSignedUrl, Trip } from "@nasti/common/types"
+import {
+  Collection,
+  CollectionPhotoSignedUrl,
+  CollectionWithCoord,
+  Trip,
+} from "@nasti/common/types"
 
-import { useQuery } from "@tanstack/react-query"
+import { useMutationState, useQuery } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
+import { getMutationKey } from "./useCollectionCreate"
+import { parsePostGISPoint } from "@nasti/common/utils"
 
 export type TripDetails = Trip & {
-  collections: Collection[]
+  collections: Array<CollectionWithCoord>
   collectionPhotos: CollectionPhotoSignedUrl[]
   species:
     | {
@@ -27,6 +34,17 @@ export type TripDetails = Trip & {
 
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
+
+  const pendingCollections = useMutationState<Collection>({
+    filters: {
+      mutationKey: getMutationKey(id),
+      status: "pending",
+    },
+    select: (mutation) => mutation.state.variables as Collection,
+  }).map((coll) => ({
+    ...coll,
+    isPending: true,
+  }))
 
   const tripDetailsQuery = useQuery({
     queryKey: ["trip", "details", id],
@@ -92,9 +110,42 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         })) ?? []) as CollectionPhotoSignedUrl[]
       }
 
+      const collectionsWithCoord: CollectionWithCoord[] = (
+        collections.data as Collection[]
+      ).map((coll) => {
+        if (!coll.location) return coll
+        return {
+          ...coll,
+          locationCoord: parsePostGISPoint(coll.location),
+        }
+      })
+
+      const pendingCollectionsWithCoord: CollectionWithCoord[] =
+        pendingCollections.map((coll) => {
+          if (!coll.location) return coll
+          // coll.location is a string with the format `POINT(lng lat)`
+          const innerString = coll.location.substring(
+            7,
+            coll.location.length - 1,
+          )
+          const [lng, lat] = innerString.split(" ")
+          return {
+            ...coll,
+            locationCoord: {
+              latitude: parseFloat(lat),
+              longitude: parseFloat(lng),
+            },
+          }
+        })
+
+      const collectionsData = [
+        ...collectionsWithCoord,
+        ...pendingCollectionsWithCoord,
+      ]
+
       const result: TripDetails = {
         ...(trip.data as Trip),
-        collections: collections.data as Collection[],
+        collections: collectionsData,
         collectionPhotos: signedPhotos ?? [],
         species: tripSpecies.data,
         members: tripMembers.data,
@@ -164,6 +215,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       isError,
       refetch,
       isRefetching,
+      tripDetailsQuery.dataUpdatedAt,
     ],
   )
   return resultData

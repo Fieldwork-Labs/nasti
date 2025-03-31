@@ -33,7 +33,7 @@ export const SpeciesListItem = ({
   return (
     <div
       className={cn(
-        "border-primary flex h-20 gap-4 border-t p-0",
+        "border-primary flex h-[82px] gap-4 border-t p-0",
         isSelected ? "bg-primary" : "",
         className,
       )}

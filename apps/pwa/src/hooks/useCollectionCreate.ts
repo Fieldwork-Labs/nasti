@@ -1,10 +1,11 @@
-import { type Collection } from "@nasti/common/types"
+import { CollectionMaybePending, type Collection } from "@nasti/common/types"
 
 import { supabase } from "@nasti/common/supabase"
 
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useMutationState } from "@tanstack/react-query"
 import { TripDetails } from "./useHydrateTripDetails"
 import { queryClient } from "@/lib/queryClient"
+import { useCallback } from "react"
 
 const createCollection = async (createdItem: Collection) => {
   const query = supabase.from("collection").insert(createdItem)
@@ -17,10 +18,29 @@ const createCollection = async (createdItem: Collection) => {
   return data as Collection
 }
 
-export const useCollectionCreate = () => {
-  return useMutation<Collection, unknown, Collection>({
+export const getMutationKey = (tripId?: string) => ["createCollection", tripId]
+
+export const useCollectionCreate = ({ tripId }: { tripId: string }) => {
+  const mutation = useMutation<Collection, unknown, Collection>({
+    mutationKey: getMutationKey(tripId),
     mutationFn: (createdItem) => createCollection(createdItem),
-    onSuccess: (createdItem, variables) => {
+    onMutate: (variable) => {
+      // Get the trip details data blob
+      const queryKey = ["trip", "details", variable.trip_id]
+      const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
+      if (!tripQuery) throw new Error("Unknown trip")
+
+      queryClient.setQueryData(queryKey, {
+        ...tripQuery,
+        collections: [
+          ...tripQuery.collections,
+          { ...variable, isPending: true },
+        ],
+      })
+      // TODO - update list for species if implemented
+    },
+    onSettled: (createdItem) => {
+      if (!createdItem) return
       // Update the individual item cache
       queryClient.setQueryData(
         ["collections", "detail", createdItem.id],
@@ -28,18 +48,21 @@ export const useCollectionCreate = () => {
       )
 
       // Get the trip details data blob
-      const queryKey = ["trip", "details", variables.trip_id]
+      const queryKey = ["trip", "details", createdItem.trip_id]
       const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
       if (!tripQuery) throw new Error("Unknown trip")
 
       queryClient.setQueryData(queryKey, {
         ...tripQuery,
-        collections: [...tripQuery.collections, createdItem],
+        collections: [
+          ...tripQuery.collections.filter((c) => c.id !== createdItem.id),
+          createdItem,
+        ],
       })
 
-      if (variables.species_id) {
+      if (createdItem.species_id) {
         queryClient.setQueryData<Collection[]>(
-          ["collections", "bySpecies", variables.species_id],
+          ["collections", "bySpecies", createdItem.species_id],
           (oldData) => {
             if (!oldData) return [createdItem]
             return [...oldData, createdItem]
@@ -48,4 +71,21 @@ export const useCollectionCreate = () => {
       }
     },
   })
+
+  const isMutating = useMutationState({
+    filters: { mutationKey: getMutationKey(tripId) },
+  })
+
+  const getIsMutating = useCallback(
+    ({ id }: { id: string }) =>
+      isMutating.find(
+        ({ status, variables, isPaused }) =>
+          status === "pending" &&
+          !isPaused &&
+          (variables as CollectionMaybePending).id === id,
+      ),
+    [isMutating],
+  )
+
+  return { ...mutation, getIsMutating }
 }

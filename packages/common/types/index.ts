@@ -11,6 +11,10 @@ export type Species = Table<"species">
 export type TripSpecies = Table<"trip_species">
 export type Trip = Table<"trip"> & { location_coordinate: string | null } // override for bad supabase typing on geographic point fields
 export type Collection = Table<"collection"> & { location: string | null }
+export type CollectionMaybePending = Collection & { isPending?: boolean }
+export type CollectionWithCoord = CollectionMaybePending & {
+  locationCoord?: { latitude: number; longitude: number }
+}
 export type CollectionPhoto = Table<"collection_photo">
 export type CollectionPhotoSignedUrl = Table<"collection_photo"> & {
   signedUrl: string

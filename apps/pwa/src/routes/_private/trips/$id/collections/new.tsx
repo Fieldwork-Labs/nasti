@@ -84,7 +84,7 @@ function AddCollection() {
   })
 
   const { location, locationDisplay } = useGeoLocation()
-  const { mutateAsync: createCollection } = useCollectionCreate()
+  const { mutate: createCollection } = useCollectionCreate({ tripId })
 
   const {
     watch,
@@ -127,7 +127,7 @@ function AddCollection() {
         organisation_id: org.organisation_id,
         trip_id: tripId,
       }
-      await createCollection(newCollection)
+      createCollection(newCollection)
 
       navigate({ to: "/trips/$id", params: { id: tripId } })
     },
@@ -146,14 +146,17 @@ function AddCollection() {
         <div className="flex flex-col gap-4 px-1">
           {!enterFieldName && (
             <>
-              <SpeciesSelectInput
-                onClickFieldName={() => setEnterFieldName(true)}
-                onSelectSpecies={(speciesId) =>
-                  setValue("species_id", speciesId)
-                }
-                tripId={tripId}
-                selectedSpeciesId={speciesId ?? undefined}
-              />
+              {/* -mx-1 is to remove the padding on this item */}
+              <div className="-mx-1">
+                <SpeciesSelectInput
+                  onClickFieldName={() => setEnterFieldName(true)}
+                  onSelectSpecies={(speciesId) =>
+                    setValue("species_id", speciesId)
+                  }
+                  tripId={tripId}
+                  selectedSpeciesId={speciesId ?? undefined}
+                />
+              </div>
               {speciesId && (
                 // no need to show this element if species is not selected
                 <div className="flex items-center space-x-2">

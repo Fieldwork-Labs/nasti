@@ -33,8 +33,8 @@ import { cn } from "@nasti/ui/utils"
 
 import { useALASpeciesImage, useViewState } from "@nasti/common/hooks"
 import {
-  Collection,
   CollectionPhotoSignedUrl,
+  CollectionWithCoord,
   Person,
   Species,
 } from "@nasti/common/types"
@@ -54,7 +54,7 @@ import {
 } from "lucide-react"
 import MiniSearch from "minisearch"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { parsePostGISPoint } from "@nasti/common/utils"
+
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import Map, { Marker, Popup } from "react-map-gl"
@@ -62,6 +62,7 @@ import { useGeoLocation } from "@/contexts/location"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { SpeciesSelectList } from "@/components/species/SpeciesSelectList"
 import { Input } from "@nasti/ui/input"
+import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 
 const CollectionListItem = ({
   collection,
@@ -69,7 +70,7 @@ const CollectionListItem = ({
   species,
   person,
 }: {
-  collection: Collection | null
+  collection: CollectionWithCoord
   photo: CollectionPhotoSignedUrl | null
   species?: Species | null
   person?: Person | null
@@ -77,21 +78,29 @@ const CollectionListItem = ({
   const image = useALASpeciesImage({ guid: species?.ala_guid })
   const collPhoto = photo?.signedUrl ?? image
   const { getDistanceKm } = useGeoLocation()
+  const { getIsMutating } = useCollectionCreate({
+    tripId: collection.trip_id ?? "",
+  })
 
   const displayDistance = useMemo(() => {
-    const collLocation = collection?.location
-      ? parsePostGISPoint(collection?.location)
-      : undefined
+    const collLocation = collection?.locationCoord
     const distance = collLocation ? getDistanceKm(collLocation) : undefined
     if (distance === undefined) return undefined
     return distance > 10 ? distance?.toFixed(0) : distance.toFixed(2)
   }, [getDistanceKm, collection])
 
+  const isMutating = getIsMutating({ id: collection.id })
+
   if (!collection) return <></>
 
   return (
     <Card
-      className="flex max-h-24 flex-row rounded-none bg-inherit p-0"
+      className={cn(
+        "flex max-h-24 flex-row rounded-none bg-inherit p-0",
+        collection.isPending && "border-green-500 bg-gray-400/10",
+        isMutating &&
+          "animate-pulse border-green-600 bg-amber-50/20 dark:bg-amber-950/10",
+      )}
       key={collection.id}
     >
       {collPhoto ? (
@@ -143,7 +152,7 @@ const CollectionListItem = ({
   )
 }
 
-type CollectionWithSpecies = Collection & { species?: Species }
+type CollectionWithSpecies = CollectionWithCoord & { species?: Species }
 
 const CollectionListTab = ({ id }: { id: string }) => {
   const [sortMode, setSortMode] = useState<
@@ -153,6 +162,8 @@ const CollectionListTab = ({ id }: { id: string }) => {
   const isSearching = useRef(false)
   const { data } = useHydrateTripDetails({ id })
   const { getDistanceKm } = useGeoLocation()
+
+  const miniSearchRef = useRef<MiniSearch<CollectionWithSpecies> | null>(null)
 
   const collectionPhotosMap = useMemo(() => {
     if (!data.trip?.collectionPhotos) return {}
@@ -167,8 +178,9 @@ const CollectionListTab = ({ id }: { id: string }) => {
   }, [data.trip?.collectionPhotos])
 
   const searchableCollections: CollectionWithSpecies[] = useMemo(() => {
-    if (!data.trip?.collections) return []
-    return data.trip.collections.map((coll) => {
+    const collections = data.trip?.collections ?? []
+    if (collections.length === 0) return []
+    return collections.map((coll) => {
       if (coll.species_id && data.species)
         return {
           ...coll,
@@ -184,65 +196,93 @@ const CollectionListTab = ({ id }: { id: string }) => {
   >(searchableCollections)
 
   const sortedSearchResults = useMemo(() => {
-    const sorted = searchResults
-      .sort((a, b) => {
-        if (sortMode.startsWith("created_at")) {
-          return (
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          )
-        } else if (sortMode.startsWith("distance")) {
-          const aLocation = a?.location
-            ? parsePostGISPoint(a.location)
-            : undefined
-          const bLocation = b?.location
-            ? parsePostGISPoint(b.location)
-            : undefined
-          const aDistance = aLocation ? getDistanceKm(aLocation) : 100000000
-          const bDistance = bLocation ? getDistanceKm(bLocation) : 100000000
-          return (aDistance ?? 100000000) - (bDistance ?? 100000000)
-        }
-        return 1
-      })
-      .map((coll) => {
-        if (coll.species_id && data.species)
-          return {
-            ...coll,
-            // add the species for ease of searching
-            species: data.species.find((sp) => sp.id === coll.species_id),
-          }
-        return coll
-      })
+    const sorted = [...searchResults].sort((a, b) => {
+      if (sortMode.startsWith("created_at")) {
+        return (
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+      } else if (sortMode.startsWith("distance")) {
+        const aDistance = a?.locationCoord
+          ? getDistanceKm(a.locationCoord)
+          : 100000000
+        const bDistance = b?.locationCoord
+          ? getDistanceKm(b.locationCoord)
+          : 100000000
+        return (aDistance ?? 100000000) - (bDistance ?? 100000000)
+      }
+      return 1
+    })
+
     if (sortMode.split("-")[1] === "desc") return sorted.reverse()
     return sorted
   }, [searchResults, sortMode, getDistanceKm])
 
-  const miniSearch = new MiniSearch({
-    fields: ["field_name", "description", "species.name"],
-    searchOptions: {
-      fuzzy: 0.2,
-    },
-    extractField: (document, fieldName) => {
-      // Access nested fields
-      return fieldName
-        .split(".")
-        .reduce((doc, key) => doc && doc[key], document)
-    },
-  })
-  miniSearch.addAll(searchableCollections)
+  // Initialize miniSearch
+  useEffect(() => {
+    if (!miniSearchRef.current) {
+      miniSearchRef.current = new MiniSearch<CollectionWithSpecies>({
+        fields: ["field_name", "description", "species.name"],
+        searchOptions: {
+          fuzzy: 0.2,
+        },
+        extractField: (document, fieldName) => {
+          // Access nested fields
+          return (
+            fieldName
+              .split(".")
+              // sorry this is necessary due to poor type inference of minisearch library
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .reduce((doc: any, key: string) => doc && doc[key], document)
+          )
+        },
+      })
+    }
+  }, [])
+
+  // Update search index and results when collections change
+  useEffect(() => {
+    if (!miniSearchRef.current) return
+
+    miniSearchRef.current.removeAll()
+    miniSearchRef.current.addAll(searchableCollections)
+
+    // If there's a search in progress, update the results
+    if (searchValue.length > 0) {
+      const searchMatches = miniSearchRef.current
+        .search(searchValue, { prefix: true })
+        .map((item) => item.id)
+
+      setSearchResults(
+        searchableCollections.filter((coll) => searchMatches.includes(coll.id)),
+      )
+    } else {
+      // If no search is active, show all collections
+      setSearchResults(searchableCollections)
+    }
+  }, [searchableCollections, searchValue])
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newSearchValue = e.target.value
       isSearching.current = true
-      setSearchValue(e.target.value)
-      const searchMatches = miniSearch
-        .search(e.target.value, { prefix: true })
+      setSearchValue(newSearchValue)
+
+      if (newSearchValue.length === 0) {
+        setSearchResults(searchableCollections)
+        return
+      }
+
+      if (!miniSearchRef.current) return
+
+      const searchMatches = miniSearchRef.current
+        .search(newSearchValue, { prefix: true })
         .map((item) => item.id)
 
       setSearchResults(
         searchableCollections.filter((coll) => searchMatches.includes(coll.id)),
       )
     },
-    [miniSearch, searchableCollections],
+    [searchableCollections],
   )
 
   const resetSearch = useCallback(() => {
@@ -346,7 +386,7 @@ const CollectionsMap = ({ id }: { id: string }) => {
   const { data } = useHydrateTripDetails({ id })
   const { location } = useGeoLocation()
 
-  const [showPopup, setShowPopup] = useState<Collection | null>(null)
+  const [showPopup, setShowPopup] = useState<CollectionWithCoord | null>(null)
   const [mapHeight, setMapHeight] = useState("calc(100vh - 100px)")
   const mapContainerRef = useRef<HTMLDivElement>(null)
 
@@ -371,11 +411,11 @@ const CollectionsMap = ({ id }: { id: string }) => {
   }, [])
 
   const collections =
-    data.trip?.collections.filter((col) => Boolean(col.location)) ?? []
+    data.trip?.collections.filter((col) => Boolean(col.locationCoord)) ?? []
 
-  const initialCollectionCoords: Array<[number, number]> = collections
-    .map((col) => parsePostGISPoint(col.location!))
-    .map(({ longitude, latitude }) => [longitude, latitude])
+  const initialCollectionCoords: Array<[number, number]> = collections.map(
+    ({ locationCoord }) => [locationCoord!.longitude, locationCoord!.latitude],
+  )
 
   if (location) {
     console.log({ location })
@@ -399,7 +439,7 @@ const CollectionsMap = ({ id }: { id: string }) => {
           </Marker>
         )}
         {collections.map((col) => (
-          <Marker {...parsePostGISPoint(col.location!)} key={col.id}>
+          <Marker {...col.locationCoord!} key={col.id}>
             <div className="rounded-full bg-white/50 p-2">
               <ShoppingBag
                 className="text-primary h-5 w-5 cursor-pointer"
@@ -414,7 +454,7 @@ const CollectionsMap = ({ id }: { id: string }) => {
         {showPopup && (
           <Popup
             onClose={() => setShowPopup(null)}
-            {...parsePostGISPoint(showPopup.location!)}
+            {...showPopup.locationCoord!}
           >
             {/* <Link
               to={"/trips/$id"}
