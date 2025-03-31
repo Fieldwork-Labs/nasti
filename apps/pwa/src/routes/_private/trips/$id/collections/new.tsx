@@ -4,7 +4,7 @@ import {
   useParams,
   useSearch,
 } from "@tanstack/react-router"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useCallback, useState } from "react"
@@ -92,6 +92,7 @@ function AddCollection() {
     register,
     handleSubmit,
     formState: { isValid, isSubmitting },
+    control,
   } = useForm<CollectionFormData>({
     defaultValues: { ...defaultValues, species_id: initialSpeciesId },
     resolver: zodResolver(schema),
@@ -134,6 +135,11 @@ function AddCollection() {
     [user, tripId, location, createCollection, navigate],
   )
 
+  const handleSetEnterFieldName = useCallback(() => {
+    setEnterFieldName(true)
+    setValue("species_uncertain", true)
+  }, [setEnterFieldName, setValue])
+
   const handleResetEnterFieldName = useCallback(() => {
     setEnterFieldName(false)
     setValue("field_name", "")
@@ -149,7 +155,7 @@ function AddCollection() {
               {/* -mx-1 is to remove the padding on this item */}
               <div className="-mx-1">
                 <SpeciesSelectInput
-                  onClickFieldName={() => setEnterFieldName(true)}
+                  onClickFieldName={handleSetEnterFieldName}
                   onSelectSpecies={(speciesId) =>
                     setValue("species_id", speciesId)
                   }
@@ -157,29 +163,6 @@ function AddCollection() {
                   selectedSpeciesId={speciesId ?? undefined}
                 />
               </div>
-              {speciesId && (
-                // no need to show this element if species is not selected
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="species_uncertain"
-                    {...register("species_uncertain")}
-                  />
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="species_uncertain" className="text-lg">
-                      <span>Species Uncertain?</span>
-                    </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <InfoIcon className="h-6 w-6" />
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80">
-                        Select this if you are not 100% certain about the
-                        identification of the species.
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              )}
             </>
           )}
           {enterFieldName && (
@@ -201,6 +184,36 @@ function AddCollection() {
               </div>
             </div>
           )}
+          <div className="flex items-center space-x-2">
+            <Controller
+              control={control}
+              name="species_uncertain"
+              render={({ field: { onChange, value } }) => (
+                <Switch
+                  id="species_uncertain"
+                  checked={value}
+                  onChange={onChange}
+                  onClick={() => onChange(!value)}
+                />
+              )}
+            />
+
+            <div className="flex items-center gap-2">
+              <Label htmlFor="species_uncertain" className="text-lg">
+                <span>Species Uncertain?</span>
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <InfoIcon className="h-6 w-6" />
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  Select this if you are not 100% certain about the
+                  identification of the species. Set by default when entering a
+                  field name rather than selecting a known species.
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
           <div className="flex items-center space-x-2">
             <Switch
               id="specimen_collected"
