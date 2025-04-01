@@ -40,6 +40,7 @@
     "./modal": "./components/modal.tsx",
     "./popover": "./components/popover.tsx",
     "./spinner": "./components/spinner.tsx",
+    "./textarea": "./components/textarea.tsx",
     "./switch": "./components/switch.tsx",
     "./toaster": "./components/toaster.tsx",
     "./hooks": "./hooks/index.ts",

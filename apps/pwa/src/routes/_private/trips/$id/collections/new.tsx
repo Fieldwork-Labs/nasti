@@ -17,9 +17,11 @@ import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { Button } from "@nasti/ui/button"
 import { Switch } from "@nasti/ui/switch"
+import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
 import { Collection } from "@nasti/common/types"
+import { cn } from "@nasti/ui/utils"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -47,8 +49,12 @@ const schema = z
     field_name: z.string(),
     specimen_collected: z.boolean(),
     description: z.string(),
-    weight_estimate_kg: z.number().nullable(),
-    plants_sampled_estimate: z.number().nullable(),
+    weight_estimate_kg: z.coerce
+      .number({ message: "Please enter a valid number" })
+      .nullable(),
+    plants_sampled_estimate: z.coerce
+      .number({ message: "Please enter a valid number" })
+      .nullable(),
   })
   .refine(
     (data) => {
@@ -91,12 +97,12 @@ function AddCollection() {
     setValue,
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting },
+    formState: { isValid, isSubmitting, errors },
     control,
   } = useForm<CollectionFormData>({
     defaultValues: { ...defaultValues, species_id: initialSpeciesId },
     resolver: zodResolver(schema),
-    mode: "onChange",
+    mode: "all",
     criteriaMode: "all",
     reValidateMode: "onChange",
   })
@@ -145,9 +151,11 @@ function AddCollection() {
     setValue("field_name", "")
   }, [setEnterFieldName, setValue])
 
+  const [descriptionFocus, setDescriptionFocus] = useState(false)
+
   return (
-    <div className="h-11/12 flex flex-col justify-between">
-      <div>
+    <div className="h-11/12 flex flex-col justify-between gap-2">
+      <div className="overflow-y-scroll">
         <div className="flex items-center p-2 text-2xl">New Collection</div>
         <div className="flex flex-col gap-4 px-1">
           {!enterFieldName && (
@@ -251,9 +259,84 @@ function AddCollection() {
               className="h-12 text-lg"
             />
           </div>
+          <div>
+            <Label htmlFor="description">
+              <span>Description</span>
+            </Label>
+            <Textarea
+              {...register("description")}
+              id="description"
+              name="description"
+              className={cn(
+                "h-20 text-lg transition-all duration-500 ease-in-out",
+                descriptionFocus && "h-40",
+              )}
+              placeholder="Enter notes or description here"
+              onFocus={() => setDescriptionFocus(true)}
+              onBlur={() => setDescriptionFocus(false)}
+            />
+          </div>
+          <div>
+            <Label
+              htmlFor="weight_estimate_kg"
+              className="flex items-center gap-2"
+            >
+              <span>Weight Estimated (kg)</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <InfoIcon className="h-4 w-4" />
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  Estimate of the weight of seeds collected
+                </PopoverContent>
+              </Popover>
+            </Label>
+            <Input
+              autoComplete="off"
+              {...register("weight_estimate_kg")}
+              className={errors.weight_estimate_kg ? "border-amber-600" : ""}
+              id="weight_estimate_kg"
+              name="weight_estimate_kg"
+            />
+            {errors.weight_estimate_kg && (
+              <div className="mt-1 text-sm text-amber-600">
+                {errors.weight_estimate_kg.message}
+              </div>
+            )}
+          </div>
+          <div>
+            <Label
+              htmlFor="plants_sampled_estimate"
+              className="flex items-center gap-2"
+            >
+              <span>Number of plants sampled</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <InfoIcon className="h-4 w-4" />
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  Estimate of the number of plants sampled in this collection
+                </PopoverContent>
+              </Popover>
+            </Label>
+            <Input
+              autoComplete="off"
+              {...register("plants_sampled_estimate")}
+              className={
+                errors.plants_sampled_estimate ? "border-amber-600" : ""
+              }
+              id="plants_sampled_estimate"
+              name="plants_sampled_estimate"
+            />
+            {errors.plants_sampled_estimate && (
+              <div className="mt-1 text-sm text-amber-600">
+                {errors.plants_sampled_estimate.message}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      <div className="flex flex-col gap-2 px-1 md:flex-row md:gap-4">
+      <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">
         <Button
           variant={"secondary"}
           onClick={() => navigate({ to: "/trips/$id", params: { id: tripId } })}
