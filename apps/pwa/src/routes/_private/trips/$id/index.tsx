@@ -78,7 +78,7 @@ const CollectionListItem = ({
   const image = useALASpeciesImage({ guid: species?.ala_guid })
   const collPhoto = photo?.signedUrl ?? image
   const { getDistanceKm } = useGeoLocation()
-  const { getIsMutating } = useCollectionCreate({
+  const { getIsMutating, getIsPending } = useCollectionCreate({
     tripId: collection.trip_id ?? "",
   })
 
@@ -90,6 +90,7 @@ const CollectionListItem = ({
   }, [getDistanceKm, collection])
 
   const isMutating = getIsMutating({ id: collection.id })
+  const isPending = getIsPending({ id: collection.id })
 
   if (!collection) return <></>
 
@@ -97,7 +98,7 @@ const CollectionListItem = ({
     <Card
       className={cn(
         "flex max-h-24 flex-row rounded-none bg-inherit p-0",
-        collection.isPending && "border-green-500 bg-gray-400/10",
+        isPending && "border-green-500 bg-gray-400/10",
         isMutating &&
           "animate-pulse border-green-600 bg-amber-50/20 dark:bg-amber-950/10",
       )}

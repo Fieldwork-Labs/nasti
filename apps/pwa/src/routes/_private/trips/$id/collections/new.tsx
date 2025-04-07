@@ -7,7 +7,7 @@ import {
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useGeoLocation } from "@/contexts/location"
 import { useCollectionCreate } from "@/hooks/useCollectionCreate"
@@ -22,6 +22,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
 import { Collection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
+import { PhotoUploadField } from "@/components/collection/PhotoUploadField"
+import { useCollectionPhotosMutate } from "@/hooks/useCollectionPhotosMutate"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -42,27 +44,38 @@ type CollectionFormData = {
   plants_sampled_estimate: number | null
 }
 
+const stringToNumber = z.preprocess(
+  (val) => {
+    if (typeof val === "string" && val.trim() === "") return null
+    const num = Number(val)
+    return isNaN(num) ? undefined : num
+  },
+  z.number({ message: "Please enter a valid number" }).nullable(),
+)
+
 const schema = z
   .object({
     species_id: z.string().nullable(),
     species_uncertain: z.boolean(),
-    field_name: z.string(),
+    field_name: z
+      .string()
+      .optional()
+      .transform((val) => val || ""),
     specimen_collected: z.boolean(),
-    description: z.string(),
-    weight_estimate_kg: z.coerce
-      .number({ message: "Please enter a valid number" })
-      .nullable(),
-    plants_sampled_estimate: z.coerce
-      .number({ message: "Please enter a valid number" })
-      .nullable(),
+    description: z
+      .string()
+      .optional()
+      .transform((val) => val || ""),
+    weight_estimate_kg: stringToNumber,
+    plants_sampled_estimate: stringToNumber,
   })
   .refine(
     (data) => {
-      // If species_id is not specified, field_name should be specified
-      if (!data.species_id) {
-        return data.field_name.trim().length > 0
-      }
-      return true
+      // Form is valid if either species_id OR field_name is provided
+      return (
+        Boolean(data.species_id) ||
+        (data.field_name && data.field_name.trim().length > 0)
+      )
     },
     {
       message: "Field name is required when no species is selected",
@@ -91,6 +104,11 @@ function AddCollection() {
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutate: createCollection } = useCollectionCreate({ tripId })
+  const collectionIdRef = useRef<string>(crypto.randomUUID())
+  const { createPhotoMutation } = useCollectionPhotosMutate({
+    collectionId: collectionIdRef.current,
+    tripId,
+  })
 
   const {
     watch,
@@ -103,13 +121,15 @@ function AddCollection() {
     defaultValues: { ...defaultValues, species_id: initialSpeciesId },
     resolver: zodResolver(schema),
     mode: "all",
-    criteriaMode: "all",
     reValidateMode: "onChange",
+    shouldUnregister: true,
   })
 
   const speciesId = watch("species_id")
+  console.log({ isValid, errors })
 
   const [enterFieldName, setEnterFieldName] = useState(false)
+  const [photos, setPhotos] = useState<File[]>([])
 
   const { user, org } = useAuth()
 
@@ -127,7 +147,7 @@ function AddCollection() {
         ...data,
         species_uncertain:
           data.species_uncertain || data.field_name.trim().length > 0,
-        id: crypto.randomUUID(),
+        id: collectionIdRef.current,
         created_by: user.id,
         created_at: new Date().toISOString(),
         location: locationPoint,
@@ -135,10 +155,19 @@ function AddCollection() {
         trip_id: tripId,
       }
       createCollection(newCollection)
+      photos.map((photo) =>
+        createPhotoMutation.mutate(
+          { file: photo, caption: "" },
+          { onError: console.error },
+        ),
+      )
 
-      navigate({ to: "/trips/$id", params: { id: tripId } })
+      console.log({ createPhotoMutation })
+      if (createPhotoMutation.isError) {
+        console.error(createPhotoMutation.error)
+      } else navigate({ to: "/trips/$id", params: { id: tripId } })
     },
-    [user, tripId, location, createCollection, navigate],
+    [user, tripId, location, createCollection, createPhotoMutation, navigate],
   )
 
   const handleSetEnterFieldName = useCallback(() => {
@@ -165,7 +194,10 @@ function AddCollection() {
                 <SpeciesSelectInput
                   onClickFieldName={handleSetEnterFieldName}
                   onSelectSpecies={(speciesId) =>
-                    setValue("species_id", speciesId)
+                    setValue("species_id", speciesId, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
                   }
                   tripId={tripId}
                   selectedSpeciesId={speciesId ?? undefined}
@@ -176,11 +208,13 @@ function AddCollection() {
           {enterFieldName && (
             <div>
               <Label>Field Name</Label>
-              <div className="flex w-full max-w-sm items-center space-x-2">
+              <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
                   className="h-12 text-lg"
                   autoComplete="off"
+                  tabIndex={1}
+                  autoFocus
                 />
                 <Button
                   onClick={handleResetEnterFieldName}
@@ -334,6 +368,7 @@ function AddCollection() {
               </div>
             )}
           </div>
+          <PhotoUploadField onPhotosChange={(files) => setPhotos(files)} />
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">
