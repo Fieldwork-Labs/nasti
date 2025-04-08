@@ -1,14 +1,20 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useMutationState } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
 import { TripDetails } from "./useHydrateTripDetails"
 import { queryClient } from "@/lib/queryClient"
+import { CollectionPhotoSignedUrl } from "@nasti/common/types"
+import { useCallback } from "react"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
   file: File
   caption?: string
+}
+
+export type PendingCollectionPhoto = UploadPhotoVariables & {
+  collection_id: string
 }
 
 interface CollectionPhoto {
@@ -37,6 +43,7 @@ export const useCollectionPhotosMutate = ({
       if (!collectionId) throw new Error("No collection id specified")
       const photoId = crypto.randomUUID()
       const fileExt = file.name.split(".").pop()
+
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
 
@@ -47,12 +54,11 @@ export const useCollectionPhotosMutate = ({
         .from("collection-photos")
         .upload(filePath, file, {
           cacheControl: "3600",
-          upsert: false,
+          upsert: true,
           metadata: { collectionId, photoId },
         })
 
       if (storageError) throw storageError
-
       // Create database record
       const { data, error } = await supabase
         .from("collection_photo")
@@ -68,9 +74,15 @@ export const useCollectionPhotosMutate = ({
         .single()
 
       if (error) throw error
-      return data as CollectionPhoto
+      return {
+        ...data,
+        // have to manually add this here to get the file path into the query cache
+        // for use until the file is uploaded and we get a real signedUrl
+        signedUrl: URL.createObjectURL(file),
+      } as CollectionPhotoSignedUrl
     },
     onMutate: (variable) => {
+      console.log("muitating photo", variable)
       // Get the trip details data blob
       const queryKey = ["trip", "details", tripId]
       const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
@@ -78,21 +90,31 @@ export const useCollectionPhotosMutate = ({
 
       queryClient.setQueryData(queryKey, {
         ...tripQuery,
-        collectionPhotos: [...tripQuery.collectionPhotos, variable],
+        collectionPhotos: [
+          ...tripQuery.collectionPhotos,
+          { ...variable, collection_id: collectionId },
+        ],
       })
     },
-    onSettled: (createdItem) => {
+    onSettled: async (createdItem, _, { file }) => {
+      console.log("settling photo", createdItem)
       if (!createdItem) return
       // Get and set the trip details data blob
       const queryKey = ["trip", "details", tripId]
       const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
       if (!tripQuery) throw new Error("Unknown trip")
 
+      const { data } = await supabase.storage
+        .from("collection-photos")
+        .createSignedUrl(createdItem.url, 60 * 60)
+
       queryClient.setQueryData(queryKey, {
         ...tripQuery,
         collectionPhotos: [
-          ...tripQuery.collectionPhotos.filter((c) => c.id !== createdItem.id),
-          createdItem,
+          ...tripQuery.collectionPhotos.filter(
+            (c) => "file" in c && c.file !== file,
+          ),
+          { ...createdItem, signedUrl: data?.signedUrl },
         ],
       })
     },
@@ -179,9 +201,44 @@ export const useCollectionPhotosMutate = ({
     },
   })
 
+  const isMutating = useMutationState({
+    filters: {
+      mutationKey: ["collectionPhotos", "create", collectionId],
+      status: "pending",
+    },
+  })
+
+  /*
+   * function getIsMutating
+   * Returns a function that returns whether a photo is currently being mutated (ie, in process of uploading to server)
+   * @param id - The id of the photo to check
+   */
+  const getIsMutating = useCallback(
+    ({ id }: { id: string }) =>
+      isMutating.find(
+        ({ variables, isPaused }) =>
+          !isPaused && (variables as CollectionPhoto).id === id,
+      ),
+    [isMutating],
+  )
+  /*
+   * function getIsPending
+   * Returns a function that returns whether a collection is pending update (ie, will upload to server on network availability)
+   * @param id - The id of the collection to check
+   */
+  const getIsPending = useCallback(
+    ({ id }: { id: string }) =>
+      isMutating.find(
+        ({ variables }) => (variables as CollectionPhoto).id === id,
+      ),
+    [isMutating],
+  )
+
   return {
     createPhotoMutation,
     deletePhotoMutation,
     updateCaptionMutation,
+    getIsPending,
+    getIsMutating,
   }
 }

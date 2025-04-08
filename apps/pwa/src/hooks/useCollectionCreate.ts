@@ -105,26 +105,30 @@ export const useCollectionCreate = ({ tripId }: { tripId: string }) => {
   })
 
   const isMutating = useMutationState({
-    filters: { mutationKey: getMutationKey(tripId) },
+    filters: { mutationKey: getMutationKey(tripId), status: "pending" },
   })
 
+  /*
+   * function getIsMutating
+   * Returns a function that returns whether a collection is currently being mutated (ie, in process of uploading to server)
+   * @param id - The id of the collection to check
+   */
   const getIsMutating = useCallback(
     ({ id }: { id: string }) =>
       isMutating.find(
-        ({ status, variables, isPaused }) =>
-          status === "pending" &&
-          !isPaused &&
-          (variables as Collection).id === id,
+        ({ variables, isPaused }) =>
+          !isPaused && (variables as Collection).id === id,
       ),
     [isMutating],
   )
-
+  /*
+   * function getIsPending
+   * Returns a function that returns whether a collection is pending update (ie, will upload to server on network availability)
+   * @param id - The id of the collection to check
+   */
   const getIsPending = useCallback(
     ({ id }: { id: string }) =>
-      isMutating.find(
-        ({ status, variables }) =>
-          status === "pending" && (variables as Collection).id === id,
-      ),
+      isMutating.find(({ variables }) => (variables as Collection).id === id),
     [isMutating],
   )
 

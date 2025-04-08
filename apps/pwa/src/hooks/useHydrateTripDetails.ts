@@ -10,10 +10,11 @@ import { useMutationState, useQuery } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
 import { getMutationKey } from "./useCollectionCreate"
 import { parsePostGISPoint } from "@nasti/common/utils"
+import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
 
 export type TripDetails = Trip & {
   collections: Array<CollectionWithCoord>
-  collectionPhotos: CollectionPhotoSignedUrl[]
+  collectionPhotos: CollectionPhotoSignedUrl[] | PendingCollectionPhoto[]
   species:
     | {
         id: string

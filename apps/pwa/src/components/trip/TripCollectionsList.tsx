@@ -36,6 +36,12 @@ import { useGeoLocation } from "@/contexts/location"
 import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 import { Input } from "@nasti/ui/input"
 import "mapbox-gl/dist/mapbox-gl.css"
+import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
+
+const photoTypeGuard = (
+  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null,
+): photo is CollectionPhotoSignedUrl =>
+  Boolean(photo && "signedUrl" in photo && photo.signedUrl)
 
 const CollectionListItem = ({
   collection,
@@ -44,12 +50,17 @@ const CollectionListItem = ({
   person,
 }: {
   collection: CollectionWithCoord
-  photo: CollectionPhotoSignedUrl | null
+  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null
   species?: Species | null
   person?: Person | null
 }) => {
+  if (photo) console.log({ photo })
   const image = useALASpeciesImage({ guid: species?.ala_guid })
-  const collPhoto = photo?.signedUrl ?? image
+  const collPhoto = photoTypeGuard(photo)
+    ? photo.signedUrl
+    : photo?.file
+      ? URL.createObjectURL(photo.file)
+      : image
   const { getDistanceKm } = useGeoLocation()
   const { getIsMutating, getIsPending } = useCollectionCreate({
     tripId: collection.trip_id ?? "",
@@ -147,7 +158,10 @@ export const TripCollectionList = ({ id }: { id: string }) => {
         acc[photo.collection_id].push(photo)
         return acc
       },
-      {} as Record<string, CollectionPhotoSignedUrl[]>,
+      {} as Record<
+        string,
+        Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
+      >,
     )
   }, [data.trip?.collectionPhotos])
 

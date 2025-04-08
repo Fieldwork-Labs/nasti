@@ -23,7 +23,10 @@ import { InfoIcon, X } from "lucide-react"
 import { Collection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { PhotoUploadField } from "@/components/collection/PhotoUploadField"
-import { useCollectionPhotosMutate } from "@/hooks/useCollectionPhotosMutate"
+import {
+  UploadPhotoVariables,
+  useCollectionPhotosMutate,
+} from "@/hooks/useCollectionPhotosMutate"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -126,10 +129,9 @@ function AddCollection() {
   })
 
   const speciesId = watch("species_id")
-  console.log({ isValid, errors })
 
   const [enterFieldName, setEnterFieldName] = useState(false)
-  const [photos, setPhotos] = useState<File[]>([])
+  const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
 
   const { user, org } = useAuth()
 
@@ -156,13 +158,9 @@ function AddCollection() {
       }
       createCollection(newCollection)
       photos.map((photo) =>
-        createPhotoMutation.mutate(
-          { file: photo, caption: "" },
-          { onError: console.error },
-        ),
+        createPhotoMutation.mutate(photo, { onError: console.error }),
       )
 
-      console.log({ createPhotoMutation })
       if (createPhotoMutation.isError) {
         console.error(createPhotoMutation.error)
       } else navigate({ to: "/trips/$id", params: { id: tripId } })
@@ -368,7 +366,9 @@ function AddCollection() {
               </div>
             )}
           </div>
-          <PhotoUploadField onPhotosChange={(files) => setPhotos(files)} />
+          <PhotoUploadField
+            onPhotosChange={(newPhotos) => setPhotos(newPhotos)}
+          />
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">

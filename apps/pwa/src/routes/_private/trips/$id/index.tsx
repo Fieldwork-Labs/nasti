@@ -15,7 +15,6 @@ import {
   useSpeciesDrawer,
 } from "@/components/trip/TripSpeciesDrawer"
 import { ButtonLink } from "@nasti/ui/button-link"
-import "mapbox-gl/dist/mapbox-gl.css"
 
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
