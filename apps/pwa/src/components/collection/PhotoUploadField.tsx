@@ -6,8 +6,10 @@ import { UploadPhotoVariables } from "@/hooks/useCollectionPhotosMutate"
 import { PencilIcon } from "lucide-react"
 import { Input } from "@nasti/ui/input"
 import { useForm } from "react-hook-form"
+import { fileDB } from "@/lib/persistFiles"
 
-type Photos = Record<string, UploadPhotoVariables>
+type NewPhoto = { file: File; caption?: string; id: string }
+type Photos = Record<string, NewPhoto>
 
 // New PhotoThumbnail component
 type PhotoThumbnailProps = {
@@ -58,10 +60,12 @@ function PhotoThumbnail({
             {...register("caption")}
             placeholder="Enter caption"
             className="h-6 text-xs"
+            autoFocus
+            autoComplete="off"
           />
           <div className="flex justify-between">
             <Button
-              className="text-xs"
+              className="h-6 text-xs"
               size={"sm"}
               variant="secondary"
               onClick={() => setIsUpdatingCaption(false)}
@@ -70,7 +74,7 @@ function PhotoThumbnail({
             </Button>
             <Button
               size={"sm"}
-              className="text-xs"
+              className="h-6 text-xs"
               variant="default"
               onClick={handleSubmit(submit)}
             >
@@ -100,7 +104,7 @@ function PhotoThumbnail({
 
 type PhotoUploadFieldProps = {
   label?: string
-  onPhotosChange?: (files: UploadPhotoVariables[]) => void
+  onPhotosChange?: (photos: UploadPhotoVariables[]) => void
   className?: string
 }
 
@@ -112,28 +116,37 @@ export function PhotoUploadField({
   const [photoMap, setPhotoMap] = useState<Photos>({})
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newEntries: Photos = {}
-      Array.from(e.target.files).forEach((file) => {
-        const url = URL.createObjectURL(file)
-        newEntries[url] = { file }
-      })
+      await Promise.all(
+        Array.from(e.target.files).map(async (file) => {
+          const url = URL.createObjectURL(file)
+          const id = crypto.randomUUID()
+          newEntries[url] = { file, id }
+          const db = await fileDB
+          await db.put("files", file, id)
+        }),
+      )
       setPhotoMap((prev) => ({ ...prev, ...newEntries }))
     }
   }
 
-  const removePhoto = (url: string) => {
+  const removePhoto = async (url: string) => {
+    const db = await fileDB
     setPhotoMap((prev) => {
-      const newMap = { ...prev }
-      delete newMap[url]
+      const { [url]: file, ...newMap } = prev
+      db.delete("files", file.id)
       URL.revokeObjectURL(url)
       return newMap
     })
   }
 
   useEffect(() => {
-    onPhotosChange?.(Object.values(photoMap))
+    const photos = Object.values(photoMap).map((photo) => {
+      return { caption: photo.caption, id: photo.id }
+    })
+    onPhotosChange?.(photos)
   }, [photoMap])
 
   useEffect(() => {

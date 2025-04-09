@@ -76,6 +76,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.0.12
         version: 4.0.12(vite@6.2.1)
+      '@tanstack/query-async-storage-persister':
+        specifier: ^5.72.1
+        version: 5.72.1
       '@tanstack/query-sync-storage-persister':
         specifier: ^5.67.2
         version: 5.67.2
@@ -94,6 +97,9 @@ importers:
       '@uidotdev/usehooks':
         specifier: ^2.4.1
         version: 2.4.1(react-dom@18.3.1)(react@18.3.1)
+      idb:
+        specifier: ^8.0.2
+        version: 8.0.2
       lucide-react:
         specifier: ^0.453.0
         version: 0.453.0(react@18.3.1)
@@ -3863,14 +3869,30 @@ packages:
     resolution: {integrity: sha512-+EPOvUtnA3PnIBF2oUhggdy7UrVimLZd1SpULhV1UiesNgKtmLjArO7ZdGPrRq7pRXhc8V0ZAWTI9vfplhZfeA==}
     engines: {node: '>=12'}
 
+  /@tanstack/query-async-storage-persister@5.72.1:
+    resolution: {integrity: sha512-5l6NuV1GMz0Y2qGJ9B1JYgpDmLb92fs4c56/cxgNACwwi+bWyzEySQZocyXxiEW4ZG8fSQ/la57nAAw+OSsp0w==}
+    dependencies:
+      '@tanstack/query-persist-client-core': 5.72.1
+    dev: false
+
   /@tanstack/query-core@5.67.2:
     resolution: {integrity: sha512-+iaFJ/pt8TaApCk6LuZ0WHS/ECVfTzrxDOEL9HH9Dayyb5OVuomLzDXeSaI2GlGT/8HN7bDGiRXDts3LV+u6ww==}
+    dev: false
+
+  /@tanstack/query-core@5.72.1:
+    resolution: {integrity: sha512-nOu0EEkZuJ0BZnYgeaEfo44+psq1jBO7/zp3KudixD4dvgOVerrhAhDEKsWx2N7MxB59mjO4r0ddP/VqWGPK+Q==}
     dev: false
 
   /@tanstack/query-persist-client-core@5.67.2:
     resolution: {integrity: sha512-Kaon0gIERkuhFV27lEcrlLataqRHT66rOX0d559tCZKDVGHnQ7n4CsRCvmiOLAwqWf7aS0o0owmPNjNJWq+ZLQ==}
     dependencies:
       '@tanstack/query-core': 5.67.2
+    dev: false
+
+  /@tanstack/query-persist-client-core@5.72.1:
+    resolution: {integrity: sha512-sceggk1lnJVNlvAUFoWZgaC1SVPgxyhoShHGczlAZHZIn7uLkEJcICXUQlvTSeJn4nr8XdFxBSW8ie/6YPmr6A==}
+    dependencies:
+      '@tanstack/query-core': 5.72.1
     dev: false
 
   /@tanstack/query-sync-storage-persister@5.67.2:
@@ -7452,6 +7474,10 @@ packages:
   /idb@7.1.1:
     resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
     dev: true
+
+  /idb@8.0.2:
+    resolution: {integrity: sha512-CX70rYhx7GDDQzwwQMDwF6kDRQi5vVs6khHUumDrMecBylKkwvZ8HWvKV08AGb7VbpoGCWUQ4aHzNDgoUiOIUg==}
+    dev: false
 
   /ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}

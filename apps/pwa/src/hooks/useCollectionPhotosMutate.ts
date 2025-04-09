@@ -6,10 +6,11 @@ import { TripDetails } from "./useHydrateTripDetails"
 import { queryClient } from "@/lib/queryClient"
 import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { useCallback } from "react"
+import { deleteFile, fileDB } from "@/lib/persistFiles"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
-  file: File
+  id: string
   caption?: string
 }
 
@@ -39,9 +40,10 @@ export const useCollectionPhotosMutate = ({
     UploadPhotoVariables
   >({
     mutationKey: ["collectionPhotos", "create", collectionId],
-    mutationFn: async ({ file, caption }) => {
+    mutationFn: async ({ id: photoId, caption }) => {
       if (!collectionId) throw new Error("No collection id specified")
-      const photoId = crypto.randomUUID()
+      const db = await fileDB
+      const file = await db.get("files", photoId)
       const fileExt = file.name.split(".").pop()
 
       if (!fileExt)
@@ -96,7 +98,7 @@ export const useCollectionPhotosMutate = ({
         ],
       })
     },
-    onSettled: async (createdItem, _, { file }) => {
+    onSettled: async (createdItem, _, { id }) => {
       console.log("settling photo", createdItem)
       if (!createdItem) return
       // Get and set the trip details data blob
@@ -111,12 +113,12 @@ export const useCollectionPhotosMutate = ({
       queryClient.setQueryData(queryKey, {
         ...tripQuery,
         collectionPhotos: [
-          ...tripQuery.collectionPhotos.filter(
-            (c) => "file" in c && c.file !== file,
-          ),
+          ...tripQuery.collectionPhotos.filter((c) => c.id !== id),
           { ...createdItem, signedUrl: data?.signedUrl },
         ],
       })
+      // delete from DB
+      await deleteFile(id)
     },
   })
 
