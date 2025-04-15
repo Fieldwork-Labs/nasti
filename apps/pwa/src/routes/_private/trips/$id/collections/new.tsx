@@ -125,7 +125,6 @@ function AddCollection() {
     resolver: zodResolver(schema),
     mode: "all",
     reValidateMode: "onChange",
-    shouldUnregister: true,
   })
 
   const speciesId = watch("species_id")
