@@ -57,7 +57,7 @@ export const useAuth = () => {
     },
     onMutate: () => {
       // regardless of online state, we want to clear the user data
-      queryClient.setQueryData(["auth"], null)
+      queryClient.setQueriesData({ queryKey: ["auth"] }, null)
     },
     networkMode: "online",
   })

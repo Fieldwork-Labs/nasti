@@ -147,9 +147,6 @@ export function PhotoUploadField({
       return { caption: photo.caption, id: photo.id }
     })
     onPhotosChange?.(photos)
-  }, [photoMap])
-
-  useEffect(() => {
     return () => {
       Object.keys(photoMap).forEach((url) => URL.revokeObjectURL(url))
     }
@@ -165,7 +162,7 @@ export function PhotoUploadField({
 
   return (
     <div className={cn(className)}>
-      <div className="mb-1 flex justify-between">
+      <div className="mb-1 flex flex-col gap-1">
         <Label className="block text-lg">{label}</Label>
 
         {/* Hidden file input */}

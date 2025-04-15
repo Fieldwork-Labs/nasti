@@ -38,7 +38,7 @@ export const useCollectionUpdate = () => {
       if (!tripQuery) throw new Error("Unknown trip")
 
       tripQuery.collections = tripQuery.collections.map((item) =>
-        item.id === updatedItem.id ? updatedItem : item,
+        item.id === updatedItem.id ? { ...item, ...updatedItem } : item,
       )
 
       queryClient.setQueryData(["trip", "details", variables.trip_id], {

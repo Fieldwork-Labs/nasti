@@ -7,6 +7,7 @@ import { queryClient } from "@/lib/queryClient"
 import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { useCallback } from "react"
 import { deleteFile, fileDB } from "@/lib/persistFiles"
+import { TripCollectionPhotos } from "./useCollectionPhotos"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -86,37 +87,33 @@ export const useCollectionPhotosMutate = ({
     onMutate: (variable) => {
       console.log("muitating photo", variable)
       // Get the trip details data blob
-      const queryKey = ["trip", "details", tripId]
-      const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
-      if (!tripQuery) throw new Error("Unknown trip")
+      const queryKey = ["collectionPhotos", "byTrip", tripId]
+      const tripPhotosQuery =
+        queryClient.getQueryData<TripCollectionPhotos>(queryKey)
+      if (!tripPhotosQuery) throw new Error("Unknown trip")
 
-      queryClient.setQueryData(queryKey, {
-        ...tripQuery,
-        collectionPhotos: [
-          ...tripQuery.collectionPhotos,
-          { ...variable, collection_id: collectionId },
-        ],
-      })
+      queryClient.setQueryData(queryKey, [
+        ...tripPhotosQuery,
+        { ...variable, collection_id: collectionId },
+      ])
     },
     onSettled: async (createdItem, _, { id }) => {
       console.log("settling photo", createdItem)
       if (!createdItem) return
       // Get and set the trip details data blob
-      const queryKey = ["trip", "details", tripId]
-      const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
-      if (!tripQuery) throw new Error("Unknown trip")
+      const queryKey = ["collectionPhotos", "byTrip", tripId]
+      const photosQuery =
+        queryClient.getQueryData<TripCollectionPhotos>(queryKey)
+      if (!photosQuery) throw new Error("Unknown trip")
 
       const { data } = await supabase.storage
         .from("collection-photos")
         .createSignedUrl(createdItem.url, 60 * 60)
 
-      queryClient.setQueryData(queryKey, {
-        ...tripQuery,
-        collectionPhotos: [
-          ...tripQuery.collectionPhotos.filter((c) => c.id !== id),
-          { ...createdItem, signedUrl: data?.signedUrl },
-        ],
-      })
+      queryClient.setQueryData(queryKey, [
+        ...photosQuery?.filter((c) => c.id !== id),
+        { ...createdItem, signedUrl: data?.signedUrl },
+      ])
       // delete from DB
       await deleteFile(id)
     },

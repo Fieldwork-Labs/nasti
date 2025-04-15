@@ -10,11 +10,18 @@ import { useMutationState, useQuery } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
 import { getMutationKey } from "./useCollectionCreate"
 import { parsePostGISPoint } from "@nasti/common/utils"
+import {
+  TripCollectionPhotos,
+  useCollectionPhotos,
+} from "./useCollectionPhotos"
 import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
 
+export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
+  photos: TripCollectionPhotos
+}
+
 export type TripDetails = Trip & {
-  collections: Array<CollectionWithCoord>
-  collectionPhotos: CollectionPhotoSignedUrl[] | PendingCollectionPhoto[]
+  collections: Array<CollectionWithCoordAndPhotos>
   species:
     | {
         id: string
@@ -35,6 +42,23 @@ export type TripDetails = Trip & {
 
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
+  const { data: collectionPhotos, refetch: collectionPhotosRefetch } =
+    useCollectionPhotos({ id })
+
+  const collectionPhotosMap = useMemo(() => {
+    if (!collectionPhotos) return {}
+    return collectionPhotos.reduce(
+      (acc, photo) => {
+        if (!acc[photo.collection_id]) acc[photo.collection_id] = []
+        acc[photo.collection_id].push(photo)
+        return acc
+      },
+      {} as Record<
+        string,
+        Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
+      >,
+    )
+  }, [collectionPhotos])
 
   const pendingCollections = useMutationState<Collection>({
     filters: {
@@ -81,79 +105,59 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         .order("created_at", { ascending: false })
       if (collections.error) throw new Error(collections.error.message)
 
-      const collectionPhotos = await supabase
-        .from("collection_photo")
-        .select(
-          `
-          *,
-          collection!inner (
-            id,
-            trip_id
-          )
-        `,
-        )
-        .eq("collection.trip_id", id)
-      if (collectionPhotos.error)
-        throw new Error(collectionPhotos.error.message)
-
-      // Get public URL
-      const photoPaths = collectionPhotos?.data.map(({ url }) => url)
-      let signedPhotos: CollectionPhotoSignedUrl[] | undefined = undefined
-      // request to supabase storage for an empty array throws an error
-      if (photoPaths && photoPaths.length > 0) {
-        const { data } = await supabase.storage
-          .from("collection-photos")
-          .createSignedUrls(photoPaths, 60 * 60)
-
-        signedPhotos = (data?.map(({ signedUrl }, i) => ({
-          ...collectionPhotos?.data?.[i],
-          signedUrl,
-        })) ?? []) as CollectionPhotoSignedUrl[]
-      }
-
-      const collectionsWithCoord: CollectionWithCoord[] = (
-        collections.data as Collection[]
-      ).map((coll) => {
-        if (!coll.location) return coll
-        return {
-          ...coll,
-          locationCoord: parsePostGISPoint(coll.location),
-        }
-      })
-
-      const pendingCollectionsWithCoord: CollectionWithCoord[] =
-        pendingCollections.map((coll) => {
+      const collectionsWithCoord = (collections.data as Collection[]).map(
+        (coll) => {
           if (!coll.location) return coll
-          // coll.location is a string with the format `POINT(lng lat)`
-          const innerString = coll.location.substring(
-            7,
-            coll.location.length - 1,
-          )
-          const [lng, lat] = innerString.split(" ")
           return {
             ...coll,
-            locationCoord: {
-              latitude: parseFloat(lat),
-              longitude: parseFloat(lng),
-            },
+            locationCoord: parsePostGISPoint(coll.location),
           }
-        })
+        },
+      )
+
+      const pendingCollectionsWithCoord = pendingCollections.map((coll) => {
+        if (!coll.location) return coll
+        // coll.location is a string with the format `POINT(lng lat)`
+        const innerString = coll.location.substring(7, coll.location.length - 1)
+        const [lng, lat] = innerString.split(" ")
+        return {
+          ...coll,
+          locationCoord: {
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lng),
+          },
+        }
+      })
 
       const collectionsData = [
         ...collectionsWithCoord,
         ...pendingCollectionsWithCoord,
       ]
 
-      const result: TripDetails = {
+      const result = {
         ...(trip.data as Trip),
         collections: collectionsData,
-        collectionPhotos: signedPhotos ?? [],
         species: tripSpecies.data,
         members: tripMembers.data,
       }
       return result
     },
   })
+
+  const tripDetailsData = useMemo(() => {
+    if (!tripDetailsQuery.data) return null
+    const { collections, ...rest } = tripDetailsQuery.data
+    const result: TripDetails = {
+      ...rest,
+      collections: collections.map((coll) => {
+        return {
+          ...coll,
+          photos: collectionPhotosMap[coll.id] ?? [],
+        }
+      }),
+    }
+    return result
+  }, [tripDetailsQuery.data, collectionPhotosMap])
 
   const peopleQuery = useQuery({
     queryKey: ["people", "list"],
@@ -191,13 +195,14 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     await tripDetailsQuery.refetch()
     await speciesQuery.refetch()
     await peopleQuery.refetch()
+    await collectionPhotosRefetch()
     setIsRefetching(false)
-  }, [tripDetailsQuery, speciesQuery, peopleQuery])
+  }, [tripDetailsQuery, speciesQuery, peopleQuery, collectionPhotosRefetch])
 
   const resultData = useMemo(
     () => ({
       data: {
-        trip: tripDetailsQuery.data,
+        trip: tripDetailsData,
         species: speciesQuery.data?.data,
         people: peopleQuery.data?.data,
       },

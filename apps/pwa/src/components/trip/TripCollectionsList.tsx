@@ -1,4 +1,7 @@
-import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
+import {
+  CollectionWithCoordAndPhotos,
+  useHydrateTripDetails,
+} from "@/hooks/useHydrateTripDetails"
 import {
   Card,
   CardContent,
@@ -45,6 +48,7 @@ import { Input } from "@nasti/ui/input"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
 import { getFile } from "@/lib/persistFiles"
+import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 
 const existingPhotoTypeGuard = (
   photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null,
@@ -55,10 +59,11 @@ const existingPhotoTypeGuard = (
 const photoPromiseCache = new Map()
 
 const getPhotoUrl = (
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null,
+  photos: Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>,
   image: string | null | undefined,
 ) => {
   // For existing photos or fallbacks, return immediately
+  const photo = photos.length > 0 ? photos[0] : null
   if (!photo) {
     if (image) return { read: () => image }
     else return { read: () => null }
@@ -89,23 +94,16 @@ const getPhotoUrl = (
     // Start loading asynchronously
     ;(async () => {
       try {
-        console.log("looking for file")
         const file = await getFile(photoId)
-        console.log("file", file)
         if (!file) throw new Error("Photo file not found")
 
         const objectUrl = URL.createObjectURL(file)
-        console.log("url", objectUrl)
 
         // Update our cache and resolve the promise
         cache.url = objectUrl
         cache.status = "success"
         resolvePromise(objectUrl)
       } catch (e) {
-        console.log("Error loading photo")
-        console.log(e)
-        console.log(photo)
-
         // Fall back to image if available
         const fallback = image || null
         cache.url = fallback
@@ -129,19 +127,27 @@ const getPhotoUrl = (
 }
 
 const Photo = ({
-  photo,
+  photos,
   species,
+  tripId,
 }: {
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null
+  photos: Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
+  tripId?: string
   species?: Species | null
 }) => {
   const image = useALASpeciesImage({ guid: species?.ala_guid })
-  const collPhoto = getPhotoUrl(photo, image).read()
+  const collPhoto = getPhotoUrl(photos, image).read()
+  const { refetch } = useCollectionPhotos({ id: tripId })
 
   return (
     <span className="flex h-24 w-24 content-center justify-center">
       <img
         src={collPhoto ?? undefined}
+        onError={(e) => {
+          e.preventDefault()
+          console.log("error", e)
+          refetch()
+        }}
         alt={`${species?.name} Image`}
         className="w-24 object-cover text-sm"
       />
@@ -151,12 +157,10 @@ const Photo = ({
 
 const CollectionListItem = ({
   collection,
-  photo,
   species,
   person,
 }: {
-  collection: CollectionWithCoord
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null
+  collection: CollectionWithCoordAndPhotos
   species?: Species | null
   person?: Person | null
 }) => {
@@ -194,7 +198,13 @@ const CollectionListItem = ({
           </span>
         }
       >
-        <Photo photo={photo} species={species} />
+        {
+          <Photo
+            photos={collection.photos}
+            species={species}
+            tripId={collection.trip_id ?? undefined}
+          />
+        }
       </Suspense>
 
       <div className="flex flex-grow flex-col">
@@ -232,7 +242,9 @@ const CollectionListItem = ({
   )
 }
 
-type CollectionWithSpecies = CollectionWithCoord & { species?: Species }
+type CollectionWithSpecies = CollectionWithCoordAndPhotos & {
+  species?: Species
+}
 
 export const TripCollectionList = ({ id }: { id: string }) => {
   const [sortMode, setSortMode] = useState<
@@ -244,21 +256,6 @@ export const TripCollectionList = ({ id }: { id: string }) => {
   const { getDistanceKm } = useGeoLocation()
 
   const miniSearchRef = useRef<MiniSearch<CollectionWithSpecies> | null>(null)
-
-  const collectionPhotosMap = useMemo(() => {
-    if (!data.trip?.collectionPhotos) return {}
-    return data.trip.collectionPhotos.reduce(
-      (acc, photo) => {
-        if (!acc[photo.collection_id]) acc[photo.collection_id] = []
-        acc[photo.collection_id].push(photo)
-        return acc
-      },
-      {} as Record<
-        string,
-        Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
-      >,
-    )
-  }, [data.trip?.collectionPhotos])
 
   const searchableCollections: CollectionWithSpecies[] = useMemo(() => {
     const collections = data.trip?.collections ?? []
@@ -449,7 +446,6 @@ export const TripCollectionList = ({ id }: { id: string }) => {
             <CollectionListItem
               key={coll.id}
               collection={coll}
-              photo={collectionPhotosMap[coll.id]?.[0]}
               species={coll.species}
               person={person}
             />
