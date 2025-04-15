@@ -58,7 +58,10 @@ const stringToNumber = z.preprocess(
 
 const schema = z
   .object({
-    species_id: z.string().nullable(),
+    species_id: z.preprocess((val) => {
+      if (val === "" || val === undefined) return null
+      return val
+    }, z.string().nullable()),
     species_uncertain: z.boolean(),
     field_name: z
       .string()
@@ -174,7 +177,7 @@ function AddCollection() {
 
   const handleResetEnterFieldName = useCallback(() => {
     setEnterFieldName(false)
-    setValue("field_name", "")
+    setValue("field_name", "", { shouldValidate: true })
   }, [setEnterFieldName, setValue])
 
   const [descriptionFocus, setDescriptionFocus] = useState(false)

@@ -32,7 +32,6 @@ export const Route = createFileRoute("/_private")({
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      console.log("gettgin session ", session)
       if (!session) {
         throw redirect({
           to: "/auth/login",

@@ -24,12 +24,7 @@ import {
 import { cn } from "@nasti/ui/utils"
 
 import { useALASpeciesImage } from "@nasti/common/hooks"
-import {
-  CollectionPhotoSignedUrl,
-  CollectionWithCoord,
-  Person,
-  Species,
-} from "@nasti/common/types"
+import { CollectionPhotoSignedUrl, Person, Species } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { ChevronRight, LeafIcon, SortAsc, SortDesc, X } from "lucide-react"
 import MiniSearch from "minisearch"
@@ -56,16 +51,21 @@ const existingPhotoTypeGuard = (
   Boolean(photo && "signedUrl" in photo && photo.signedUrl)
 
 // Create a cache to store promises by photo ID to prevent re-rendering issues
-const photoPromiseCache = new Map()
+type PhotoPromiseCache = {
+  promise: Promise<string | null>
+  status: string
+  url: string | null
+}
+const photoPromiseCache = new Map<string, PhotoPromiseCache>()
 
 const getPhotoUrl = (
   photos: Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>,
-  image: string | null | undefined,
+  fallbackImage: string | null | undefined,
 ) => {
   // For existing photos or fallbacks, return immediately
   const photo = photos.length > 0 ? photos[0] : null
   if (!photo) {
-    if (image) return { read: () => image }
+    if (fallbackImage) return { read: () => fallbackImage }
     else return { read: () => null }
   } else if (existingPhotoTypeGuard(photo)) {
     return { read: () => photo.signedUrl }
@@ -83,10 +83,10 @@ const getPhotoUrl = (
     })
 
     // Store both the promise and its status in our cache
-    const cache = {
+    const cache: PhotoPromiseCache = {
       promise,
       status: "pending",
-      url: null as string | null,
+      url: null,
     }
 
     photoPromiseCache.set(photoId, cache)
@@ -105,7 +105,7 @@ const getPhotoUrl = (
         resolvePromise(objectUrl)
       } catch (e) {
         // Fall back to image if available
-        const fallback = image || null
+        const fallback = fallbackImage ?? null
         cache.url = fallback
         cache.status = "error"
         resolvePromise(fallback)
@@ -118,6 +118,7 @@ const getPhotoUrl = (
 
   return {
     read() {
+      if (!cachedItem) return null
       if (cachedItem.status === "pending") {
         throw cachedItem.promise
       }
@@ -141,16 +142,23 @@ const Photo = ({
 
   return (
     <span className="flex h-24 w-24 content-center justify-center">
-      <img
-        src={collPhoto ?? undefined}
-        onError={(e) => {
-          e.preventDefault()
-          console.log("error", e)
-          refetch()
-        }}
-        alt={`${species?.name} Image`}
-        className="w-24 object-cover text-sm"
-      />
+      {collPhoto && (
+        <img
+          src={collPhoto}
+          onError={(e) => {
+            e.preventDefault()
+            console.log("error", e)
+            refetch()
+          }}
+          alt={`${species?.name} Image`}
+          className="w-24 object-cover text-sm"
+        />
+      )}
+      {!collPhoto && (
+        <span className="flex h-24 w-24 items-center justify-center bg-slate-500">
+          <LeafIcon className="h-8 w-8" />
+        </span>
+      )}
     </span>
   )
 }

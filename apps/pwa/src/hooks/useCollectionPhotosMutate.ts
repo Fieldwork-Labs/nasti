@@ -2,7 +2,6 @@ import { useMutation, useMutationState } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
-import { TripDetails } from "./useHydrateTripDetails"
 import { queryClient } from "@/lib/queryClient"
 import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { useCallback } from "react"
