@@ -138,17 +138,43 @@ const Photo = ({
 }) => {
   const image = useALASpeciesImage({ guid: species?.ala_guid })
   const collPhoto = getPhotoUrl(photos, image).read()
-  const { refetch } = useCollectionPhotos({ id: tripId })
+  const { refreshSignedUrl } = useCollectionPhotos({ id: tripId })
+
+  const existingPhoto = useMemo(() => {
+    if (!photos || photos.length === 0) return null
+    const photo = photos[0]
+    const isExistingPhoto = existingPhotoTypeGuard(photo)
+    if (isExistingPhoto) return photo
+  }, [photos])
+
+  const checkSignedUrl = useCallback(async () => {
+    if (!existingPhoto) return
+    try {
+      const result = await fetch(existingPhoto.signedUrl, {
+        headers: { Accept: "application/json" },
+      })
+      const json = await result.json()
+      return json
+    } catch (e) {
+      return null
+    }
+  }, [existingPhoto])
 
   return (
     <span className="flex h-24 w-24 content-center justify-center">
       {collPhoto && (
         <img
           src={collPhoto}
-          onError={(e) => {
+          onError={async (e) => {
             e.preventDefault()
-            console.log("error", e)
-            refetch()
+            if (!existingPhoto) return
+            // check if photo needs to be refreshSignedUrled
+            const errorJson = await checkSignedUrl()
+            if (errorJson?.error === "InvalidJWT") {
+              refreshSignedUrl(existingPhoto.url)
+            } else {
+              console.log({ errorJson })
+            }
           }}
           alt={`${species?.name} Image`}
           className="w-24 object-cover text-sm"

@@ -1,16 +1,16 @@
 import { supabase } from "@nasti/common/supabase"
 import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useMemo } from "react"
 import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
-import debounce from "lodash/debounce"
 
 export type TripCollectionPhotos = Array<
   CollectionPhotoSignedUrl | PendingCollectionPhoto
 >
 
 export const useCollectionPhotos = ({ id }: { id?: string }) => {
+  const queryClient = useQueryClient()
   const collectionPhotosQuery = useQuery({
     queryKey: ["collectionPhotos", "byTrip", id],
     enabled: Boolean(id),
@@ -51,14 +51,33 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
     },
   })
 
-  const refetch = useCallback(() => {
-    return debounce(() => collectionPhotosQuery.refetch(), 1000)
-  }, [collectionPhotosQuery])
+  const refreshSignedUrl = useCallback(
+    async (url: string) => {
+      const { data } = await supabase.storage
+        .from("collection-photos")
+        .createSignedUrl(url, 60 * 60)
+
+      if (data?.signedUrl) {
+        queryClient.setQueryData(
+          ["collectionPhotos", "byTrip", id],
+          (oldData: TripCollectionPhotos) => {
+            if (!oldData || oldData.length === 0) return []
+            return oldData.map((item) =>
+              "url" in item && item.url === url
+                ? { ...item, signedUrl: data.signedUrl }
+                : item,
+            )
+          },
+        )
+      }
+    },
+    [collectionPhotosQuery],
+  )
 
   const resultData = useMemo(
     () => ({
       ...collectionPhotosQuery,
-      refetch,
+      refreshSignedUrl,
     }),
     [collectionPhotosQuery],
   )
