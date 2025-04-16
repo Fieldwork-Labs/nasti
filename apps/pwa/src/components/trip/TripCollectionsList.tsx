@@ -44,6 +44,8 @@ import "mapbox-gl/dist/mapbox-gl.css"
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
 import { getFile } from "@/lib/persistFiles"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
+import { Link } from "@tanstack/react-router"
+import { useDisplayDistance } from "@/hooks/useDisplayDistance"
 
 const existingPhotoTypeGuard = (
   photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null,
@@ -140,6 +142,12 @@ const Photo = ({
   const collPhoto = getPhotoUrl(photos, image).read()
   const { refreshSignedUrl } = useCollectionPhotos({ id: tripId })
 
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    setPhotoUrl(collPhoto)
+  }, [collPhoto])
+
   const existingPhoto = useMemo(() => {
     if (!photos || photos.length === 0) return null
     const photo = photos[0]
@@ -160,27 +168,32 @@ const Photo = ({
     }
   }, [existingPhoto])
 
+  const handleError = useCallback(
+    async (e: React.ChangeEvent<HTMLImageElement>) => {
+      e.preventDefault()
+      if (!existingPhoto) return
+      // check if photo needs to be refreshSignedUrled
+      const errorJson = await checkSignedUrl()
+      if (errorJson?.error === "InvalidJWT") {
+        refreshSignedUrl(existingPhoto.url)
+      } else {
+        setPhotoUrl(null)
+      }
+    },
+    [existingPhoto, refreshSignedUrl, checkSignedUrl],
+  )
+
   return (
     <span className="flex h-24 w-24 content-center justify-center">
-      {collPhoto && (
+      {photoUrl && (
         <img
-          src={collPhoto}
-          onError={async (e) => {
-            e.preventDefault()
-            if (!existingPhoto) return
-            // check if photo needs to be refreshSignedUrled
-            const errorJson = await checkSignedUrl()
-            if (errorJson?.error === "InvalidJWT") {
-              refreshSignedUrl(existingPhoto.url)
-            } else {
-              console.log({ errorJson })
-            }
-          }}
+          src={photoUrl}
+          onError={handleError}
           alt={`${species?.name} Image`}
           className="w-24 object-cover text-sm"
         />
       )}
-      {!collPhoto && (
+      {!photoUrl && (
         <span className="flex h-24 w-24 items-center justify-center bg-slate-500">
           <LeafIcon className="h-8 w-8" />
         </span>
@@ -198,81 +211,85 @@ const CollectionListItem = ({
   species?: Species | null
   person?: Person | null
 }) => {
-  const { getDistanceKm } = useGeoLocation()
   const { getIsMutating, getIsPending } = useCollectionCreate({
     tripId: collection.trip_id ?? "",
   })
 
-  const displayDistance = useMemo(() => {
-    const collLocation = collection?.locationCoord
-    const distance = collLocation ? getDistanceKm(collLocation) : undefined
-    if (distance === undefined) return undefined
-    return distance > 10 ? distance?.toFixed(0) : distance.toFixed(2)
-  }, [getDistanceKm, collection])
+  const displayDistance = useDisplayDistance(collection.locationCoord ?? {})
 
   const isMutating = getIsMutating({ id: collection.id })
   const isPending = getIsPending({ id: collection.id })
 
-  if (!collection) return <></>
+  if (!collection || !collection.trip_id) return <></>
 
   return (
-    <Card
-      className={cn(
-        "flex max-h-[98px] flex-row rounded-none bg-inherit p-0",
-        isPending && "border-green-500 bg-gray-400/10",
-        isMutating &&
-          "animate-pulse border-green-600 bg-amber-50/20 dark:bg-amber-950/10",
-      )}
-      key={collection.id}
+    <Link
+      to={"/trips/$id/collections/$collectionId"}
+      params={{
+        id: collection.trip_id,
+        collectionId: collection.id,
+      }}
     >
-      <Suspense
-        fallback={
-          <span className="flex h-24 w-24 items-center justify-center bg-slate-500">
-            <LeafIcon className="h-8 w-8" />
-          </span>
-        }
+      <Card
+        className={cn(
+          "flex max-h-[98px] flex-row rounded-none bg-inherit p-0",
+          isPending && "border-green-500 bg-gray-400/10",
+          isMutating &&
+            "animate-pulse border-green-600 bg-amber-50/20 dark:bg-amber-950/10",
+        )}
+        key={collection.id}
       >
-        {
-          <Photo
-            photos={collection.photos}
-            species={species}
-            tripId={collection.trip_id ?? undefined}
-          />
-        }
-      </Suspense>
+        <Suspense
+          fallback={
+            <span className="flex h-24 w-24 items-center justify-center bg-slate-500">
+              <LeafIcon className="h-8 w-8" />
+            </span>
+          }
+        >
+          {
+            <Photo
+              photos={collection.photos}
+              species={species}
+              tripId={collection.trip_id ?? undefined}
+            />
+          }
+        </Suspense>
 
-      <div className="flex flex-grow flex-col">
-        <CardHeader className="p-2">
-          <CardTitle className="m-0 w-52 truncate overflow-ellipsis text-lg md:w-96">
-            {species?.name ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <i>{species.name}</i>
-                  </TooltipTrigger>
-                  <TooltipContent>{species.name}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : collection.field_name && collection.field_name !== "" ? (
-              collection.field_name
-            ) : (
-              "Uknown species"
+        <div className="flex flex-grow flex-col">
+          <CardHeader className="p-2">
+            <CardTitle className="m-0 w-52 truncate overflow-ellipsis text-lg md:w-96">
+              {species?.name ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <i>{species.name}</i>
+                    </TooltipTrigger>
+                    <TooltipContent>{species.name}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : collection.field_name && collection.field_name !== "" ? (
+                collection.field_name
+              ) : (
+                "Uknown species"
+              )}
+            </CardTitle>
+            <CardDescription>
+              {person?.name || "Unknown person"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="w-60 truncate overflow-ellipsis px-3 pb-3 text-xs">
+            {collection.created_at &&
+              new Date(collection.created_at).toLocaleString()}{" "}
+            {displayDistance && (
+              <span className="text-secondary">{displayDistance} km away</span>
             )}
-          </CardTitle>
-          <CardDescription>{person?.name || "Unknown person"}</CardDescription>
-        </CardHeader>
-        <CardContent className="w-60 truncate overflow-ellipsis px-3 pb-3 text-xs">
-          {collection.created_at &&
-            new Date(collection.created_at).toLocaleString()}{" "}
-          {displayDistance && (
-            <span className="text-secondary">{displayDistance} km away</span>
-          )}
-        </CardContent>
-      </div>
-      <div className="text-secondary flex shrink flex-col justify-center pr-2">
-        <ChevronRight height={45} width={45} />
-      </div>
-    </Card>
+          </CardContent>
+        </div>
+        <div className="text-secondary flex shrink flex-col justify-center pr-2">
+          <ChevronRight height={45} width={45} />
+        </div>
+      </Card>
+    </Link>
   )
 }
 

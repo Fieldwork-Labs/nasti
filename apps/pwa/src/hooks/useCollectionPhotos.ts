@@ -61,12 +61,12 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
         queryClient.setQueryData(
           ["collectionPhotos", "byTrip", id],
           (oldData: TripCollectionPhotos) => {
-            if (!oldData || oldData.length === 0) return []
-            return oldData.map((item) =>
-              "url" in item && item.url === url
-                ? { ...item, signedUrl: data.signedUrl }
-                : item,
-            )
+            if (!oldData || oldData.length === 0) return [data]
+            return oldData.map((item) => {
+              if ("url" in item && item.url === url)
+                return { ...item, signedUrl: data.signedUrl }
+              return item
+            })
           },
         )
       }
