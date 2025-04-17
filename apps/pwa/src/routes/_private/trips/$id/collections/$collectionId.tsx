@@ -7,10 +7,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionMap } from "@/components/collection/CollectionMap"
 import { useState } from "react"
-import {
-  CollectionPhoto,
-  getPhotoUrl,
-} from "@/components/collection/CollectionPhoto"
+import { CollectionPhoto } from "@/components/collection/CollectionPhoto"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 
 const CollectionDetail = () => {
