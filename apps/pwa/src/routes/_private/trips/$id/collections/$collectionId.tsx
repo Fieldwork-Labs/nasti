@@ -1,9 +1,17 @@
 import { useCollection } from "@/hooks/useCollection"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { ChevronLeft, PencilIcon } from "lucide-react"
+import { ChevronLeft, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useAuth } from "@/hooks/useAuth"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
+import { CollectionMap } from "@/components/collection/CollectionMap"
+import { useState } from "react"
+import {
+  CollectionPhoto,
+  getPhotoUrl,
+} from "@/components/collection/CollectionPhoto"
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 
 const CollectionDetail = () => {
   const { user } = useAuth()
@@ -21,7 +29,7 @@ const CollectionDetail = () => {
     navigate({ to: "/trips/$id" })
   }
 
-  console.log({ collection })
+  const [fullScreenPhoto, setFullScreenPhoto] = useState<string | null>(null)
 
   const displayDistance = useDisplayDistance(collection.locationCoord ?? {})
   return (
@@ -77,7 +85,7 @@ const CollectionDetail = () => {
       {Boolean(
         collection.plants_sampled_estimate || collection.weight_estimate_kg,
       ) && (
-        <>
+        <div>
           <hr />
           <table className="table-fixed">
             <thead>
@@ -113,7 +121,47 @@ const CollectionDetail = () => {
               </>
             )}
           </table>
-        </>
+        </div>
+      )}
+      <Tabs defaultValue="photos">
+        <TabsList className="bg-secondary-background mb-2 w-full">
+          <TabsTrigger className="w-full" value="photos">
+            Photos
+          </TabsTrigger>
+          <TabsTrigger className="w-full" value="map">
+            Map
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="photos" className="grid grid-cols-2 gap-2">
+          {collection.photos.map((photo) => (
+            <CollectionPhoto
+              photo={photo}
+              onClick={setFullScreenPhoto}
+              key={photo.id}
+            />
+          ))}
+        </TabsContent>
+        <TabsContent value="map" className="">
+          <CollectionMap tripId={tripId} collectionId={collectionId} />
+        </TabsContent>
+      </Tabs>
+
+      {/* Full-screen overlay */}
+      {fullScreenPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-2">
+          <button
+            onClick={() => setFullScreenPhoto(null)}
+            className="absolute right-4 top-4 p-2"
+            aria-label="Close photo"
+          >
+            <X size={28} className="text-white" />
+          </button>
+          <TransformWrapper>
+            <TransformComponent wrapperClass="overflow-visible">
+              <img src={fullScreenPhoto} alt="Full screen" />
+            </TransformComponent>
+          </TransformWrapper>
+        </div>
       )}
     </div>
   )

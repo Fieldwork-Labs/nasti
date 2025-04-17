@@ -7,8 +7,34 @@ import { useEffect, useRef, useState } from "react"
 
 import { useGeoLocation } from "@/contexts/location"
 import mapboxgl from "mapbox-gl"
+import Map, { MapRef, Marker, Popup } from "react-map-gl"
+import { Link } from "@tanstack/react-router"
+import { useCollection } from "@/hooks/useCollection"
 import "mapbox-gl/dist/mapbox-gl.css"
-import Map, { Marker, Popup } from "react-map-gl"
+
+const CollectionPopup = ({
+  collectionId,
+  tripId,
+  onClose,
+}: {
+  collectionId: string
+  tripId: string
+  onClose: () => void
+}) => {
+  const collection = useCollection({ collectionId, tripId })
+  if (!collection || !collection.locationCoord) return <></>
+  return (
+    <Popup onClose={onClose} {...collection.locationCoord}>
+      <Link
+        to={"/trips/$id/collections/$collectionId"}
+        params={{ id: tripId, collectionId: collection.id }}
+        className="text-primary"
+      >
+        {collection?.species?.name || collection.field_name} collection
+      </Link>
+    </Popup>
+  )
+}
 
 export const TripCollectionsMap = ({ id }: { id: string }) => {
   const { data } = useHydrateTripDetails({ id })
@@ -17,6 +43,7 @@ export const TripCollectionsMap = ({ id }: { id: string }) => {
   const [showPopup, setShowPopup] = useState<CollectionWithCoord | null>(null)
   const [mapHeight, setMapHeight] = useState("calc(100vh - 100px)")
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<MapRef>(null)
 
   useEffect(() => {
     const updateMapHeight = () => {
@@ -46,11 +73,29 @@ export const TripCollectionsMap = ({ id }: { id: string }) => {
   )
 
   if (location) {
-    console.log({ location })
     initialCollectionCoords.push([location.longitude, location.latitude])
   }
   // Calculate bounds based on all trip coordinates
   const initialViewState = useViewState(initialCollectionCoords)
+
+  useEffect(() => {
+    if (!mapRef.current || initialCollectionCoords.length === 0) return
+
+    mapRef.current.resize()
+
+    const bounds = initialCollectionCoords.reduce(
+      (bounds, coord) => bounds.extend(coord),
+      new mapboxgl.LngLatBounds(
+        initialCollectionCoords[0],
+        initialCollectionCoords[0],
+      ),
+    )
+
+    mapRef.current.fitBounds(bounds, {
+      padding: 120,
+      duration: 200,
+    })
+  }, [initialCollectionCoords, mapHeight])
 
   return (
     <div ref={mapContainerRef} className="w-full" style={{ height: mapHeight }}>
@@ -80,18 +125,11 @@ export const TripCollectionsMap = ({ id }: { id: string }) => {
           </Marker>
         ))}
         {showPopup && (
-          <Popup
+          <CollectionPopup
+            tripId={id}
+            collectionId={showPopup.id}
             onClose={() => setShowPopup(null)}
-            {...showPopup.locationCoord!}
-          >
-            {/* <Link
-              to={"/trips/$id"}
-              params={{ id: showPopup.id }}
-              className="text-primary"
-            >
-              {showPopup?.name} trip
-            </Link> */}
-          </Popup>
+          />
         )}
       </Map>
     </div>
