@@ -6,7 +6,11 @@ import { queryClient } from "@/lib/queryClient"
 import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { useCallback } from "react"
 import { deleteFile, fileDB } from "@/lib/persistFiles"
-import { TripCollectionPhotos } from "./useCollectionPhotos"
+import {
+  getCollectionPhotosByTripQueryKey,
+  getSignedUrl,
+  TripCollectionPhotos,
+} from "./useCollectionPhotos"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -84,7 +88,6 @@ export const useCollectionPhotosMutate = ({
       } as CollectionPhotoSignedUrl
     },
     onMutate: (variable) => {
-      console.log("muitating photo", variable)
       // Get the trip details data blob
       const queryKey = ["collectionPhotos", "byTrip", tripId]
       const tripPhotosQuery =
@@ -105,13 +108,11 @@ export const useCollectionPhotosMutate = ({
         queryClient.getQueryData<TripCollectionPhotos>(queryKey)
       if (!photosQuery) throw new Error("Unknown trip")
 
-      const { data } = await supabase.storage
-        .from("collection-photos")
-        .createSignedUrl(createdItem.url, 60 * 60)
+      const signedUrl = await getSignedUrl(createdItem.url)
 
       queryClient.setQueryData(queryKey, [
         ...photosQuery?.filter((c) => c.id !== id),
-        { ...createdItem, signedUrl: data?.signedUrl },
+        { ...createdItem, signedUrl },
       ])
       // delete from DB
       await deleteFile(id)
@@ -137,6 +138,14 @@ export const useCollectionPhotosMutate = ({
 
       if (storageError) throw storageError
 
+      // delete record from supabase
+      const { error: deleteError } = await supabase
+        .from("collection_photo")
+        .delete()
+        .eq("id", photoId)
+
+      if (deleteError) throw deleteError
+
       // Delete record from database
       const { error: dbError } = await supabase
         .from("collection_photo")
@@ -146,23 +155,29 @@ export const useCollectionPhotosMutate = ({
       if (dbError) throw dbError
       return photoId
     },
-    onSuccess: (photoId) => {
-      // just delete that guy from the query cache
-      const queries = queryClient.getQueriesData({
-        queryKey: ["collectionPhotos", "byCollection", collectionId],
-      })
-      // update query data
-      queries.forEach(([queryKey]) => {
-        queryClient.setQueryData<CollectionPhoto[]>(queryKey, (oldData) => {
+    onError: (error) => {
+      console.log("error deleting photo", error)
+    },
+    onMutate: (photoId) => {
+      queryClient.setQueryData<CollectionPhoto[]>(
+        ["collectionPhotos", "byCollection", collectionId],
+        (oldData) => {
           if (!oldData || oldData.length === 0) return []
           return oldData.filter((item) => item.id !== photoId)
-        })
-      })
+        },
+      )
+      queryClient.setQueryData<CollectionPhoto[]>(
+        getCollectionPhotosByTripQueryKey(tripId),
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+          return oldData.filter((item) => item.id !== photoId)
+        },
+      )
     },
   })
 
   type UpdateCaptionPayload = {
-    caption?: string
+    caption?: string | null
     photoId: string
   }
   // Update photo caption
@@ -182,20 +197,58 @@ export const useCollectionPhotosMutate = ({
       if (error) throw error
       return data
     },
-    onSuccess: (updatedPhoto) => {
-      const queries = queryClient.getQueriesData({
-        queryKey: ["collectionPhotos", "byCollection", collectionId],
-      })
+    onMutate: (variables) => {
       // update query data
-      queries.forEach(([queryKey]) => {
-        queryClient.setQueryData<CollectionPhoto[]>(queryKey, (oldData) => {
-          if (!oldData || oldData.length === 0) return [updatedPhoto]
+      queryClient.setQueryData<CollectionPhoto[]>(
+        ["collectionPhotos", "byCollection", collectionId],
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
 
           return oldData.map((item) =>
-            item.id === updatedPhoto.id ? updatedPhoto : item,
+            item.id === variables.photoId
+              ? { ...item, caption: variables.caption || null }
+              : item,
           )
-        })
-      })
+        },
+      )
+      queryClient.setQueryData<CollectionPhoto[]>(
+        getCollectionPhotosByTripQueryKey(tripId),
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+
+          return oldData.map((item) =>
+            item.id === variables.photoId
+              ? { ...item, caption: variables.caption || null }
+              : item,
+          )
+        },
+      )
+    },
+    async onSettled(data, error, variables) {
+      if (error) throw error
+      if (!data)
+        throw new Error("No data returned from collection photo update")
+      // Get the trip details data blob
+      const signedUrl = await getSignedUrl(data.url)
+
+      queryClient.setQueryData<CollectionPhoto[]>(
+        ["collectionPhotos", "byCollection", collectionId],
+
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return [data]
+          return oldData.map((item) =>
+            item.id === variables.photoId ? { ...data, signedUrl } : item,
+          )
+        },
+      )
+      queryClient.setQueryData<CollectionPhoto[]>(
+        getCollectionPhotosByTripQueryKey(tripId),
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+
+          return oldData.map((item) => (item.id === data.id ? data : item))
+        },
+      )
     },
   })
 

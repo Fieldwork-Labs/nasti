@@ -115,24 +115,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         },
       )
 
-      const pendingCollectionsWithCoord = pendingCollections.map((coll) => {
-        if (!coll.location) return coll
-        // coll.location is a string with the format `POINT(lng lat)`
-        const innerString = coll.location.substring(7, coll.location.length - 1)
-        const [lng, lat] = innerString.split(" ")
-        return {
-          ...coll,
-          locationCoord: {
-            latitude: parseFloat(lat),
-            longitude: parseFloat(lng),
-          },
-        }
-      })
-
-      const collectionsData = [
-        ...collectionsWithCoord,
-        ...pendingCollectionsWithCoord,
-      ]
+      const collectionsData = [...collectionsWithCoord]
 
       const result = {
         ...(trip.data as Trip),
@@ -147,9 +130,34 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const tripDetailsData = useMemo(() => {
     if (!tripDetailsQuery.data) return null
     const { collections, ...rest } = tripDetailsQuery.data
+
+    const pendingCollectionsWithCoord = pendingCollections.map((coll) => {
+      if (!coll.location) return coll
+      // coll.location is a string with the format `POINT(lng lat)`
+      const innerString = coll.location.substring(6, coll.location.length - 1)
+      const [lng, lat] = innerString.split(" ")
+      return {
+        ...coll,
+        locationCoord: {
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng),
+        },
+      }
+    })
+
+    // Add the pending collections to the collections array
+    // filter out the pending collections from the collections array to prevent duplicates
+    // pending collections have more recently updated data so should override
+    const newCollections = [
+      ...collections.filter(
+        ({ id }) => !pendingCollections.find((c) => c.id === id),
+      ),
+      ...pendingCollectionsWithCoord,
+    ]
+
     const result: TripDetails = {
       ...rest,
-      collections: collections.map((coll) => {
+      collections: newCollections.map((coll) => {
         return {
           ...coll,
           photos: collectionPhotosMap[coll.id] ?? [],
@@ -157,7 +165,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       }),
     }
     return result
-  }, [tripDetailsQuery.data, collectionPhotosMap])
+  }, [tripDetailsQuery.data, collectionPhotosMap, pendingCollections])
 
   const peopleQuery = useQuery({
     queryKey: ["people", "list"],

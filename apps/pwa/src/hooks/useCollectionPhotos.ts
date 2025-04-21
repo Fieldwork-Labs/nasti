@@ -9,10 +9,21 @@ export type TripCollectionPhotos = Array<
   CollectionPhotoSignedUrl | PendingCollectionPhoto
 >
 
+export const getSignedUrl = async (url: string) => {
+  const { data } = await supabase.storage
+    .from("collection-photos")
+    .createSignedUrl(url, 60 * 60)
+
+  return data?.signedUrl
+}
+
+export const getCollectionPhotosByTripQueryKey = (tripId?: string) =>
+  tripId ? ["collectionPhotos", "byTrip", tripId] : []
+
 export const useCollectionPhotos = ({ id }: { id?: string }) => {
   const queryClient = useQueryClient()
   const collectionPhotosQuery = useQuery({
-    queryKey: ["collectionPhotos", "byTrip", id],
+    queryKey: getCollectionPhotosByTripQueryKey(id),
     enabled: Boolean(id),
     queryFn: async () => {
       if (!id) return []
@@ -53,18 +64,16 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
 
   const refreshSignedUrl = useCallback(
     async (url: string) => {
-      const { data } = await supabase.storage
-        .from("collection-photos")
-        .createSignedUrl(url, 60 * 60)
+      const signedUrl = await getSignedUrl(url)
 
-      if (data?.signedUrl) {
+      if (signedUrl) {
         queryClient.setQueryData(
           ["collectionPhotos", "byTrip", id],
           (oldData: TripCollectionPhotos) => {
-            if (!oldData || oldData.length === 0) return [data]
+            if (!oldData || oldData.length === 0) return []
             return oldData.map((item) => {
               if ("url" in item && item.url === url)
-                return { ...item, signedUrl: data.signedUrl }
+                return { ...item, signedUrl }
               return item
             })
           },

@@ -22,11 +22,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
 import { Collection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
-import { PhotoUploadField } from "@/components/collection/PhotoUploadField"
 import {
   UploadPhotoVariables,
   useCollectionPhotosMutate,
 } from "@/hooks/useCollectionPhotosMutate"
+import { CollectionPhotosForm } from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -368,9 +368,7 @@ function AddCollection() {
               </div>
             )}
           </div>
-          <PhotoUploadField
-            onPhotosChange={(newPhotos) => setPhotos(newPhotos)}
-          />
+          <CollectionPhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">

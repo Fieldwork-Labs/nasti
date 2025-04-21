@@ -1,12 +1,11 @@
-import { Button } from "@nasti/ui/button"
-import { Label } from "@nasti/ui/label"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables } from "@/hooks/useCollectionPhotosMutate"
-import { PencilIcon } from "lucide-react"
-import { Input } from "@nasti/ui/input"
-import { useForm } from "react-hook-form"
 import { fileDB } from "@/lib/persistFiles"
+import { Button } from "@nasti/ui/button"
+import { Input } from "@nasti/ui/input"
+import { cn } from "@nasti/ui/utils"
+import { PencilIcon } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { useForm } from "react-hook-form"
 
 type NewPhoto = { file: File; caption?: string; id: string }
 type Photos = Record<string, NewPhoto>
@@ -103,17 +102,16 @@ function PhotoThumbnail({
 }
 
 type PhotoUploadFieldProps = {
-  label?: string
   onPhotosChange?: (photos: UploadPhotoVariables[]) => void
   className?: string
 }
 
-export function PhotoUploadField({
-  label = "Photos",
+export function CollectionPhotosUploadField({
   onPhotosChange,
   className,
 }: PhotoUploadFieldProps) {
   const [photoMap, setPhotoMap] = useState<Photos>({})
+
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,9 +160,7 @@ export function PhotoUploadField({
 
   return (
     <div className={cn(className)}>
-      <div className="mb-1 flex flex-col gap-1">
-        <Label className="block text-lg">{label}</Label>
-
+      <div className="mb-1 flex flex-col gap-2">
         {/* Hidden file input */}
         <input
           type="file"
@@ -175,29 +171,23 @@ export function PhotoUploadField({
           style={{ display: "none" }}
         />
 
+        {/* Thumbnails */}
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(photoMap).map(([url, { caption }]) => (
+            <div key={url} className="relative">
+              <PhotoThumbnail
+                url={url}
+                caption={caption}
+                onRemove={removePhoto}
+                onUpdateCaption={handleUpdateCaption}
+              />
+            </div>
+          ))}
+        </div>
         {/* Custom trigger button */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={openFilePicker}
-          className="mb-2"
-        >
+        <Button type="button" variant="outline" onClick={openFilePicker}>
           Select Photos
         </Button>
-      </div>
-
-      {/* Thumbnails */}
-      <div className="grid grid-cols-2 gap-2">
-        {Object.entries(photoMap).map(([url, { caption }]) => (
-          <div key={url} className="relative">
-            <PhotoThumbnail
-              url={url}
-              caption={caption}
-              onRemove={removePhoto}
-              onUpdateCaption={handleUpdateCaption}
-            />
-          </div>
-        ))}
       </div>
     </div>
   )

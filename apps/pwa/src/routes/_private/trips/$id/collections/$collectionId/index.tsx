@@ -1,7 +1,12 @@
 import { useCollection } from "@/hooks/useCollection"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { ChevronLeft, X } from "lucide-react"
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useParams,
+} from "@tanstack/react-router"
+import { ChevronLeft, Pencil, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useAuth } from "@/hooks/useAuth"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
@@ -9,11 +14,12 @@ import { CollectionMap } from "@/components/collection/CollectionMap"
 import { useState } from "react"
 import { CollectionPhoto } from "@/components/collection/CollectionPhoto"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
+import { Button } from "@nasti/ui/button"
 
 const CollectionDetail = () => {
   const { user } = useAuth()
   const { collectionId, id: tripId } = useParams({
-    from: "/_private/trips/$id/collections/$collectionId",
+    from: "/_private/trips/$id/collections/$collectionId/",
   })
 
   const collection = useCollection({ collectionId, tripId })
@@ -36,6 +42,14 @@ const CollectionDetail = () => {
           <ChevronLeft onClick={handleBackClick} width={36} height={36} />{" "}
           {collection?.species?.name || collection.field_name}
         </div>
+        <Link
+          to={`/trips/$id/collections/$collectionId/edit`}
+          params={{ id: tripId, collectionId }}
+        >
+          <Button variant="ghost" size={"icon"}>
+            <Pencil className="h-5 w-5" />
+          </Button>
+        </Link>
       </div>
       <table>
         <thead>
@@ -80,25 +94,31 @@ const CollectionDetail = () => {
         </tbody>
       </table>
       {Boolean(
-        collection.plants_sampled_estimate || collection.weight_estimate_kg,
+        collection.plants_sampled_estimate ||
+          collection.weight_estimate_kg ||
+          collection.description,
       ) && (
         <div>
           <hr />
           <table className="table-fixed">
             <thead>
               <tr className="text-muted-foreground text-left">
-                {collection.plants_sampled_estimate && <th>Plants Sampled</th>}
-                {collection.weight_estimate_kg && <th>Weight Estimate</th>}
+                {Boolean(collection.plants_sampled_estimate) && (
+                  <th>Plants Sampled</th>
+                )}
+                {Boolean(collection.weight_estimate_kg) && (
+                  <th>Weight Estimate</th>
+                )}
               </tr>
             </thead>
             <tbody>
               <tr>
-                {collection.plants_sampled_estimate && (
+                {Boolean(collection.plants_sampled_estimate) && (
                   <td className="w-1/2">
                     {collection.plants_sampled_estimate}
                   </td>
                 )}
-                {collection.weight_estimate_kg && (
+                {Boolean(collection.weight_estimate_kg) && (
                   <td>{collection.weight_estimate_kg} kg</td>
                 )}
               </tr>
@@ -165,7 +185,7 @@ const CollectionDetail = () => {
 }
 
 export const Route = createFileRoute(
-  "/_private/trips/$id/collections/$collectionId",
+  "/_private/trips/$id/collections/$collectionId/",
 )({
   component: CollectionDetail,
 })

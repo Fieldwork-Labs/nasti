@@ -118,6 +118,13 @@ export const CollectionPhoto = ({
     if (isExistingPhoto) return photo
   }, [photo])
 
+  useEffect(() => {
+    // if existing photo but does not have a signedUrl, refresh it
+    if (existingPhoto && !existingPhoto.signedUrl) {
+      refreshSignedUrl(existingPhoto.url)
+    }
+  }, [existingPhoto, refreshSignedUrl])
+
   const checkSignedUrl = useCallback(async () => {
     if (!existingPhoto) return
     try {
@@ -158,15 +165,10 @@ export const CollectionPhoto = ({
             className="aspect-square object-cover text-sm"
           />
           {photo.caption && <span className="text-sm">{photo.caption}</span>}
-          {!photo.caption && (
-            <span className="text-sm">
-              <i>Add caption</i>
-            </span>
-          )}
         </span>
       )}
       {!photoUrl && (
-        <span className="flex items-center justify-center bg-slate-500">
+        <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
           <LeafIcon className="h-8 w-8" />
         </span>
       )}
