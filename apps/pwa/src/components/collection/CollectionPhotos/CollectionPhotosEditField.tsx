@@ -6,7 +6,7 @@ import { cn } from "@nasti/ui/utils"
 import { PencilIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
-import { getPhotoUrl } from "../CollectionPhoto"
+import { usePhotoUrl } from "../CollectionPhoto"
 
 export type ExistingPhoto = CollectionPhotoSignedUrl | PendingCollectionPhoto
 
@@ -37,7 +37,7 @@ function PhotoThumbnail({
     [onUpdateCaption, photo.id],
   )
 
-  const url = getPhotoUrl({ photo, fallbackImage: null }).read()
+  const { url } = usePhotoUrl(photo, null)
   if (!url) return null
   return (
     <div className="relative">

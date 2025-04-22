@@ -62,26 +62,29 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
     },
   })
 
-  const refreshSignedUrl = useCallback(
-    async (url: string) => {
-      const signedUrl = await getSignedUrl(url)
+  const refreshSignedUrl = useCallback(async (url: string) => {
+    const signedUrl = await getSignedUrl(url)
 
-      if (signedUrl) {
-        queryClient.setQueryData(
-          ["collectionPhotos", "byTrip", id],
-          (oldData: TripCollectionPhotos) => {
-            if (!oldData || oldData.length === 0) return []
-            return oldData.map((item) => {
-              if ("url" in item && item.url === url)
-                return { ...item, signedUrl }
-              return item
-            })
-          },
-        )
-      }
-    },
-    [collectionPhotosQuery],
-  )
+    queryClient.setQueryData(
+      getCollectionPhotosByTripQueryKey(id),
+      (oldData: TripCollectionPhotos) => {
+        if (!oldData || oldData.length === 0) return []
+        return oldData.map((item) => {
+          if ("url" in item && item.url === url) {
+            if (signedUrl) {
+              return { ...item, signedUrl }
+            } else {
+              // no signed url is available, probably because the user is offline
+              // so remove the property from the item which prevents attempts to refresh
+              const { signedUrl, ...rest } = item
+              return rest
+            }
+          }
+          return item
+        })
+      },
+    )
+  }, [])
 
   const resultData = useMemo(
     () => ({

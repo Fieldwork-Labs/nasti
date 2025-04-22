@@ -1,176 +1,147 @@
 import { useALASpeciesImage } from "@nasti/common/hooks"
 import { CollectionPhotoSignedUrl, Species } from "@nasti/common/types"
 import { LeafIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
 import { getFile } from "@/lib/persistFiles"
-import "mapbox-gl/dist/mapbox-gl.css"
+import { Spinner } from "@nasti/ui/spinner"
 
-const existingPhotoTypeGuard = (
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null,
-): photo is CollectionPhotoSignedUrl =>
-  Boolean(photo && "signedUrl" in photo && photo.signedUrl)
+export function usePhotoUrl(
+  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | undefined | null,
+  fallback?: string | null,
+) {
+  const [state, setState] = useState<{
+    url: string | null
+    status: "idle" | "loading" | "success" | "error"
+  }>({ url: null, status: "idle" })
 
-// Create a cache to store promises by photo ID to prevent re-rendering issues
-type PhotoPromiseCache = {
-  promise: Promise<string | null>
-  status: string
-  url: string | null
-}
-const photoPromiseCache = new Map<string, PhotoPromiseCache>()
+  useEffect(() => {
+    let cancelled = false
 
-export const getPhotoUrl = ({
-  photo,
-  fallbackImage,
-}: {
-  photo?: CollectionPhotoSignedUrl | PendingCollectionPhoto
-  fallbackImage: string | null | undefined
-}) => {
-  // For existing photos or fallbacks, return immediately
-  if (!photo) {
-    if (fallbackImage) return { read: () => fallbackImage }
-    else return { read: () => null }
-  } else if (existingPhotoTypeGuard(photo)) {
-    return { read: () => photo.signedUrl }
-  }
+    async function load() {
+      if (!photo) {
+        setState({ url: fallback ?? null, status: "success" })
+        return
+      }
+      if (isRemotePhoto(photo)) {
+        setState({ url: photo.signedUrl, status: "success" })
+        return
+      }
 
-  // For IndexedDB photos, use our cache
-  const photoId = photo.id
+      setState((s) => ({ ...s, status: "loading" }))
 
-  // Check if we already have this photo in our cache
-  if (!photoPromiseCache.has(photoId)) {
-    let resolvePromise: (value: string | null) => void = () => {}
-    // Create a promise that we can resolve later
-    const promise = new Promise<string | null>((resolve) => {
-      resolvePromise = resolve
-    })
+      try {
+        const file = await getFile(photo.id)
+        if (!file) throw new Error("not found")
+        const objectUrl = URL.createObjectURL(file)
+        if (!cancelled) setState({ url: objectUrl, status: "success" })
 
-    // Store both the promise and its status in our cache
-    const cache: PhotoPromiseCache = {
-      promise,
-      status: "pending",
-      url: null,
+        return () => URL.revokeObjectURL(objectUrl)
+      } catch {
+        if (!cancelled) setState({ url: fallback ?? null, status: "error" })
+      }
     }
 
-    photoPromiseCache.set(photoId, cache)
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [photo, fallback])
 
-    // Start loading asynchronously
-    ;(async () => {
-      try {
-        const file = await getFile(photoId)
-        if (!file) throw new Error("Photo file not found")
-
-        const objectUrl = URL.createObjectURL(file)
-
-        // Update our cache and resolve the promise
-        cache.url = objectUrl
-        cache.status = "success"
-        resolvePromise(objectUrl)
-      } catch (e) {
-        // Fall back to image if available
-        const fallback = fallbackImage ?? null
-        cache.url = fallback
-        cache.status = "error"
-        resolvePromise(fallback)
-      }
-    })()
-  }
-
-  // Get our cached item
-  const cachedItem = photoPromiseCache.get(photoId)
-
-  return {
-    read() {
-      if (!cachedItem) return null
-      if (cachedItem.status === "pending") {
-        throw cachedItem.promise
-      }
-      return cachedItem.url
-    },
-  }
+  return state
 }
 
-export const CollectionPhoto = ({
-  photo,
-  species,
-  tripId,
-  onClick,
-}: {
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto
-  onClick: (photoUrl: string) => void
-  tripId?: string
-  species?: Species | null
-}) => {
-  const fallbackImage = useALASpeciesImage({ guid: species?.ala_guid })
-  const collPhoto = getPhotoUrl({ photo, fallbackImage }).read()
+const isRemotePhoto = (
+  p: CollectionPhotoSignedUrl | PendingCollectionPhoto | null | undefined,
+): p is CollectionPhotoSignedUrl => Boolean(p && "signedUrl" in p)
+
+export function useRefreshableSignedUrl(
+  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null | undefined,
+  tripId?: string,
+) {
   const { refreshSignedUrl } = useCollectionPhotos({ id: tripId })
 
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  /* 1. Ping the signedUrl to see whether the token is still valid */
+  const isExpired = useCallback(async (signedUrl?: string | null) => {
+    if (!signedUrl) return false
 
-  useEffect(() => {
-    setPhotoUrl(collPhoto)
-  }, [collPhoto])
-
-  const existingPhoto = useMemo(() => {
-    const isExistingPhoto = existingPhotoTypeGuard(photo)
-    if (isExistingPhoto) return photo
-  }, [photo])
-
-  useEffect(() => {
-    // if existing photo but does not have a signedUrl, refresh it
-    if (existingPhoto && !existingPhoto.signedUrl) {
-      refreshSignedUrl(existingPhoto.url)
-    }
-  }, [existingPhoto, refreshSignedUrl])
-
-  const checkSignedUrl = useCallback(async () => {
-    if (!existingPhoto) return
     try {
-      const result = await fetch(existingPhoto.signedUrl, {
+      const res = await fetch(signedUrl, {
         headers: { Accept: "application/json" },
       })
-      const json = await result.json()
-      return json
-    } catch (e) {
-      return null
-    }
-  }, [existingPhoto])
+      if (res.ok) return false
 
-  const handleError = useCallback(
-    async (e: React.ChangeEvent<HTMLImageElement>) => {
-      e.preventDefault()
-      if (!existingPhoto) return
-      // check if photo needs to be refreshSignedUrled
-      const errorJson = await checkSignedUrl()
-      if (errorJson?.error === "InvalidJWT") {
-        refreshSignedUrl(existingPhoto.url)
-      } else {
-        setPhotoUrl(null)
+      const json = await res.json().catch(() => ({}))
+      return json?.error === "InvalidJWT"
+    } catch {
+      return true
+    }
+  }, [])
+
+  const refresh = useCallback(async () => {
+    if (!isRemotePhoto(photo)) return
+    await refreshSignedUrl(photo.url)
+  }, [photo, refreshSignedUrl])
+
+  const checkAndRefresh = useCallback(async () => {
+    if (isRemotePhoto(photo)) {
+      if (await isExpired(photo.signedUrl)) {
+        refresh()
       }
-    },
-    [existingPhoto, refreshSignedUrl, checkSignedUrl],
+    }
+  }, [isExpired, photo, refresh])
+
+  return { checkAndRefresh }
+}
+
+type Props = {
+  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null
+  onClick: (url: string) => void
+  tripId?: string
+  species?: Species | null
+}
+
+export function CollectionPhoto({ photo, onClick, tripId, species }: Props) {
+  /* image source (remote / local / fallback) --------------------------------- */
+  const fallback = useALASpeciesImage({ guid: species?.ala_guid })
+  const { url, status } = usePhotoUrl(photo, fallback) // status: 'loading' | 'success' | 'error'
+
+  /* signed‑URL housekeeping --------------------------------------------------- */
+  const { checkAndRefresh } = useRefreshableSignedUrl(
+    isRemotePhoto(photo) ? photo : null,
+    tripId,
   )
 
+  /* -------------------------------------------------------------------------- */
   return (
-    <span className="flex content-center justify-center">
-      {photoUrl && (
-        <span className="flex flex-col gap-1">
-          <img
-            src={photoUrl}
-            onError={handleError}
-            alt={`${species?.name} Image`}
-            onClick={() => onClick(photoUrl)}
-            className="aspect-square object-cover text-sm"
-          />
-          {photo.caption && <span className="text-sm">{photo.caption}</span>}
+    <span className="flex w-full flex-col items-center justify-center gap-1">
+      {/* Image area ----------------------------------------------------------- */}
+      {status === "loading" ? (
+        <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
+          <Spinner className="h-8 w-8" />
         </span>
-      )}
-      {!photoUrl && (
+      ) : status === "success" && url ? (
+        <img
+          src={url}
+          alt={species?.name || "collection photo"}
+          onError={checkAndRefresh}
+          onClick={() => onClick(url)}
+          className="aspect-square w-full cursor-pointer object-cover"
+          role="button"
+          tabIndex={0}
+        />
+      ) : (
+        /* status === "error" OR no url --------------------------------------- */
         <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
           <LeafIcon className="h-8 w-8" />
         </span>
+      )}
+
+      {/* Optional caption ----------------------------------------------------- */}
+      {photo && "caption" in photo && photo.caption && status === "success" && (
+        <span className="text-sm">{photo.caption}</span>
       )}
     </span>
   )
