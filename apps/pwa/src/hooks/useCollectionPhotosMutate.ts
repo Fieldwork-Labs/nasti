@@ -7,10 +7,9 @@ import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { useCallback } from "react"
 import { deleteFile, fileDB } from "@/lib/persistFiles"
 import {
-  getCollectionPhotosByTripQueryKey,
   getSignedUrl,
   TripCollectionPhotos,
-} from "./useCollectionPhotos"
+} from "./useCollectionPhotosForTrip"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -32,14 +31,12 @@ interface CollectionPhoto {
 
 export const useCollectionPhotosMutate = ({
   collectionId,
-  tripId,
 }: {
   collectionId: string
-  tripId?: string
 }) => {
   const { org } = useAuth()
   const createPhotoMutation = useMutation<
-    CollectionPhoto,
+    CollectionPhotoSignedUrl,
     Error,
     UploadPhotoVariables
   >({
@@ -80,40 +77,40 @@ export const useCollectionPhotosMutate = ({
         .single()
 
       if (error) throw error
+
+      const signedUrl = await getSignedUrl(filePath)
+
       return {
         ...data,
-        // have to manually add this here to get the file path into the query cache
-        // for use until the file is uploaded and we get a real signedUrl
-        signedUrl: URL.createObjectURL(file),
+        signedUrl,
       } as CollectionPhotoSignedUrl
     },
     onMutate: (variable) => {
       // Get the trip details data blob
-      const queryKey = ["collectionPhotos", "byTrip", tripId]
-      const tripPhotosQuery =
-        queryClient.getQueryData<TripCollectionPhotos>(queryKey)
-      if (!tripPhotosQuery) throw new Error("Unknown trip")
-
-      queryClient.setQueryData(queryKey, [
-        ...tripPhotosQuery,
-        { ...variable, collection_id: collectionId },
-      ])
+      const pendingItem = { ...variable, collection_id: collectionId }
+      queryClient.setQueriesData<TripCollectionPhotos>(
+        { queryKey: ["collectionPhotos"] },
+        (oldData) => {
+          return [...(oldData || []), pendingItem]
+        },
+      )
     },
     onSettled: async (createdItem, _, { id }) => {
-      console.log("settling photo", createdItem)
       if (!createdItem) return
       // Get and set the trip details data blob
-      const queryKey = ["collectionPhotos", "byTrip", tripId]
-      const photosQuery =
-        queryClient.getQueryData<TripCollectionPhotos>(queryKey)
-      if (!photosQuery) throw new Error("Unknown trip")
+      // const queryKey = ["collectionPhotos", "byTrip", tripId]
+      // const photosQuery =
+      //   queryClient.getQueryData<TripCollectionPhotos>(queryKey)
+      // if (!photosQuery) throw new Error("Unknown trip")
 
-      const signedUrl = await getSignedUrl(createdItem.url)
+      queryClient.setQueriesData<TripCollectionPhotos>(
+        { queryKey: ["collectionPhotos"] },
+        (oldData) => {
+          if (!oldData) return [createdItem]
+          return [...oldData?.filter((c) => c.id !== id), createdItem]
+        },
+      )
 
-      queryClient.setQueryData(queryKey, [
-        ...photosQuery?.filter((c) => c.id !== id),
-        { ...createdItem, signedUrl },
-      ])
       // delete from DB
       await deleteFile(id)
     },
@@ -159,15 +156,8 @@ export const useCollectionPhotosMutate = ({
       console.log("error deleting photo", error)
     },
     onMutate: (photoId) => {
-      queryClient.setQueryData<CollectionPhoto[]>(
-        ["collectionPhotos", "byCollection", collectionId],
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-          return oldData.filter((item) => item.id !== photoId)
-        },
-      )
-      queryClient.setQueryData<CollectionPhoto[]>(
-        getCollectionPhotosByTripQueryKey(tripId),
+      queryClient.setQueriesData<CollectionPhoto[]>(
+        { queryKey: ["collectionPhotos"] },
         (oldData) => {
           if (!oldData || oldData.length === 0) return []
           return oldData.filter((item) => item.id !== photoId)
@@ -199,20 +189,8 @@ export const useCollectionPhotosMutate = ({
     },
     onMutate: (variables) => {
       // update query data
-      queryClient.setQueryData<CollectionPhoto[]>(
-        ["collectionPhotos", "byCollection", collectionId],
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-
-          return oldData.map((item) =>
-            item.id === variables.photoId
-              ? { ...item, caption: variables.caption || null }
-              : item,
-          )
-        },
-      )
-      queryClient.setQueryData<CollectionPhoto[]>(
-        getCollectionPhotosByTripQueryKey(tripId),
+      queryClient.setQueriesData<CollectionPhoto[]>(
+        { queryKey: ["collectionPhotos"] },
         (oldData) => {
           if (!oldData || oldData.length === 0) return []
 
@@ -228,25 +206,17 @@ export const useCollectionPhotosMutate = ({
       if (error) throw error
       if (!data)
         throw new Error("No data returned from collection photo update")
-      // Get the trip details data blob
+
       const signedUrl = await getSignedUrl(data.url)
 
-      queryClient.setQueryData<CollectionPhoto[]>(
-        ["collectionPhotos", "byCollection", collectionId],
+      queryClient.setQueriesData<CollectionPhoto[]>(
+        { queryKey: ["collectionPhotos"] },
 
         (oldData) => {
           if (!oldData || oldData.length === 0) return [data]
           return oldData.map((item) =>
             item.id === variables.photoId ? { ...data, signedUrl } : item,
           )
-        },
-      )
-      queryClient.setQueryData<CollectionPhoto[]>(
-        getCollectionPhotosByTripQueryKey(tripId),
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-
-          return oldData.map((item) => (item.id === data.id ? data : item))
         },
       )
     },

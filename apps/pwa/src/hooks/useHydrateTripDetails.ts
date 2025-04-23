@@ -12,8 +12,8 @@ import { getMutationKey } from "./useCollectionCreate"
 import { parsePostGISPoint } from "@nasti/common/utils"
 import {
   TripCollectionPhotos,
-  useCollectionPhotos,
-} from "./useCollectionPhotos"
+  useCollectionPhotosForTrip,
+} from "./useCollectionPhotosForTrip"
 import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
 
 export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
@@ -43,7 +43,7 @@ export type TripDetails = Trip & {
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
   const { data: collectionPhotos, refetch: collectionPhotosRefetch } =
-    useCollectionPhotos({ id })
+    useCollectionPhotosForTrip({ tripId: id })
 
   const collectionPhotosMap = useMemo(() => {
     if (!collectionPhotos) return {}
@@ -164,6 +164,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         }
       }),
     }
+
     return result
   }, [tripDetailsQuery.data, collectionPhotosMap, pendingCollections])
 

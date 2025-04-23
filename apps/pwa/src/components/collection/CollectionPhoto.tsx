@@ -1,12 +1,13 @@
 import { useALASpeciesImage } from "@nasti/common/hooks"
 import { CollectionPhotoSignedUrl, Species } from "@nasti/common/types"
 import { LeafIcon } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
-import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
+import { useCollectionPhotosForTrip } from "@/hooks/useCollectionPhotosForTrip"
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
 import { getFile } from "@/lib/persistFiles"
 import { Spinner } from "@nasti/ui/spinner"
+import { useCollectionPhoto } from "@/hooks/useCollectionPhoto"
 
 export function usePhotoUrl(
   photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | undefined | null,
@@ -28,6 +29,7 @@ export function usePhotoUrl(
       if (isRemotePhoto(photo)) {
         setState({ url: photo.signedUrl, status: "success" })
         return
+      } else {
       }
 
       setState((s) => ({ ...s, status: "loading" }))
@@ -61,7 +63,7 @@ export function useRefreshableSignedUrl(
   photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null | undefined,
   tripId?: string,
 ) {
-  const { refreshSignedUrl } = useCollectionPhotos({ id: tripId })
+  const { refreshSignedUrl } = useCollectionPhotosForTrip({ tripId })
 
   /* 1. Ping the signedUrl to see whether the token is still valid */
   const isExpired = useCallback(async (signedUrl?: string | null) => {
@@ -88,7 +90,7 @@ export function useRefreshableSignedUrl(
   const checkAndRefresh = useCallback(async () => {
     if (isRemotePhoto(photo)) {
       if (await isExpired(photo.signedUrl)) {
-        refresh()
+        await refresh()
       }
     }
   }, [isExpired, photo, refresh])
@@ -97,26 +99,30 @@ export function useRefreshableSignedUrl(
 }
 
 type Props = {
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null
+  id: string
   onClick: (url: string) => void
   tripId?: string
   species?: Species | null
 }
 
-export function CollectionPhoto({ photo, onClick, tripId, species }: Props) {
-  /* image source (remote / local / fallback) --------------------------------- */
+export function CollectionPhoto({ id, onClick, tripId, species }: Props) {
+  const photo = useCollectionPhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
   const { url, status } = usePhotoUrl(photo, fallback) // status: 'loading' | 'success' | 'error'
 
-  /* signed‑URL housekeeping --------------------------------------------------- */
   const { checkAndRefresh } = useRefreshableSignedUrl(
     isRemotePhoto(photo) ? photo : null,
     tripId,
   )
 
-  /* -------------------------------------------------------------------------- */
+  const handleError = useCallback(() => {
+    if (isRemotePhoto(photo)) {
+      checkAndRefresh()
+    }
+  }, [checkAndRefresh, photo])
+
   return (
-    <span className="flex w-full flex-col items-center justify-center gap-1">
+    <span className="flex w-full flex-col items-start gap-1">
       {/* Image area ----------------------------------------------------------- */}
       {status === "loading" ? (
         <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
@@ -126,7 +132,7 @@ export function CollectionPhoto({ photo, onClick, tripId, species }: Props) {
         <img
           src={url}
           alt={species?.name || "collection photo"}
-          onError={checkAndRefresh}
+          onError={handleError}
           onClick={() => onClick(url)}
           className="aspect-square w-full cursor-pointer object-cover"
           role="button"
@@ -141,7 +147,7 @@ export function CollectionPhoto({ photo, onClick, tripId, species }: Props) {
 
       {/* Optional caption ----------------------------------------------------- */}
       {photo && "caption" in photo && photo.caption && status === "success" && (
-        <span className="text-sm">{photo.caption}</span>
+        <div className="text-sm">{photo.caption}</div>
       )}
     </span>
   )

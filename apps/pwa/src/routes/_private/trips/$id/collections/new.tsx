@@ -113,7 +113,6 @@ function AddCollection() {
   const collectionIdRef = useRef<string>(crypto.randomUUID())
   const { createPhotoMutation } = useCollectionPhotosMutate({
     collectionId: collectionIdRef.current,
-    tripId,
   })
 
   const {

@@ -43,7 +43,7 @@ import { Input } from "@nasti/ui/input"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
 import { getFile } from "@/lib/persistFiles"
-import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
+import { useCollectionPhotosForTrip } from "@/hooks/useCollectionPhotosForTrip"
 import { Link } from "@tanstack/react-router"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
 
@@ -140,7 +140,7 @@ const Photo = ({
 }) => {
   const image = useALASpeciesImage({ guid: species?.ala_guid })
   const collPhoto = getPhotoUrl(photos, image).read()
-  const { refreshSignedUrl } = useCollectionPhotos({ id: tripId })
+  const { refreshSignedUrl } = useCollectionPhotosForTrip({ tripId })
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
@@ -175,7 +175,7 @@ const Photo = ({
       // check if photo needs to be refreshSignedUrled
       const errorJson = await checkSignedUrl()
       if (errorJson?.error === "InvalidJWT") {
-        refreshSignedUrl(existingPhoto.url)
+        await refreshSignedUrl(existingPhoto.url)
       } else {
         setPhotoUrl(null)
       }
@@ -308,19 +308,33 @@ export const TripCollectionList = ({ id }: { id: string }) => {
 
   const miniSearchRef = useRef<MiniSearch<CollectionWithSpecies> | null>(null)
 
-  const searchableCollections: CollectionWithSpecies[] = useMemo(() => {
+  const previousCollectionsRef = useRef<CollectionWithSpecies[]>([])
+  const searchableCollections = useMemo(() => {
     const collections = data.trip?.collections ?? []
     if (collections.length === 0) return []
-    return collections.map((coll) => {
-      if (coll.species_id && data.species)
+
+    // Use a stable reference check to avoid unnecessary recalculations
+    if (
+      previousCollectionsRef.current?.length === collections.length &&
+      JSON.stringify(previousCollectionsRef.current) ===
+        JSON.stringify(collections)
+    ) {
+      return previousCollectionsRef.current
+    }
+
+    const result = collections.map((coll) => {
+      if (coll.species_id && data.species) {
         return {
           ...coll,
-          // add the species for ease of searching
           species: data.species.find((sp) => sp.id === coll.species_id),
         }
+      }
       return coll
     })
-  }, [data.trip?.collections])
+
+    previousCollectionsRef.current = result
+    return result
+  }, [data.trip?.collections, data.species])
 
   const [searchResults, setSearchResults] = useState<
     Array<CollectionWithSpecies>
@@ -346,7 +360,7 @@ export const TripCollectionList = ({ id }: { id: string }) => {
 
     if (sortMode.split("-")[1] === "desc") return sorted.reverse()
     return sorted
-  }, [searchResults, sortMode, getDistanceKm])
+  }, [searchResults, sortMode])
 
   // Initialize miniSearch
   useEffect(() => {
@@ -370,14 +384,20 @@ export const TripCollectionList = ({ id }: { id: string }) => {
     }
   }, [])
 
-  // Update search index and results when collections change
+  // Effect for updating the search index when collections change
   useEffect(() => {
     if (!miniSearchRef.current) return
 
     miniSearchRef.current.removeAll()
     miniSearchRef.current.addAll(searchableCollections)
 
-    // If there's a search in progress, update the results
+    // Don't update search results here - let the second effect handle that
+  }, [searchableCollections])
+
+  // Separate effect for updating search results when search value changes
+  useEffect(() => {
+    if (!miniSearchRef.current || !searchableCollections.length) return
+
     if (searchValue.length > 0) {
       const searchMatches = miniSearchRef.current
         .search(searchValue, { prefix: true })
@@ -387,10 +407,9 @@ export const TripCollectionList = ({ id }: { id: string }) => {
         searchableCollections.filter((coll) => searchMatches.includes(coll.id)),
       )
     } else {
-      // If no search is active, show all collections
       setSearchResults(searchableCollections)
     }
-  }, [searchableCollections, searchValue])
+  }, [searchValue]) // Only depend on searchValue, not searchableCollections
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -424,7 +443,7 @@ export const TripCollectionList = ({ id }: { id: string }) => {
 
   useEffect(() => {
     if (isSearching.current && searchValue.length === 0) resetSearch()
-  }, [searchValue, resetSearch, isSearching.current])
+  }, [searchValue, resetSearch, searchableCollections])
 
   if (!data) return <></>
   return (

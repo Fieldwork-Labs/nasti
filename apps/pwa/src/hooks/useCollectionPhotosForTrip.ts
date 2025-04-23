@@ -10,23 +10,23 @@ export type TripCollectionPhotos = Array<
 >
 
 export const getSignedUrl = async (url: string) => {
-  const { data } = await supabase.storage
+  const { data, error } = await supabase.storage
     .from("collection-photos")
     .createSignedUrl(url, 60 * 60)
-
+  if (error) console.log("Error getting 1 signed url", error)
   return data?.signedUrl
 }
 
 export const getCollectionPhotosByTripQueryKey = (tripId?: string) =>
   tripId ? ["collectionPhotos", "byTrip", tripId] : []
 
-export const useCollectionPhotos = ({ id }: { id?: string }) => {
+export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
   const queryClient = useQueryClient()
   const collectionPhotosQuery = useQuery({
-    queryKey: getCollectionPhotosByTripQueryKey(id),
-    enabled: Boolean(id),
+    queryKey: getCollectionPhotosByTripQueryKey(tripId),
+    enabled: Boolean(tripId),
     queryFn: async () => {
-      if (!id) return []
+      if (!tripId) return []
       const collectionPhotos = await supabase
         .from("collection_photo")
         .select(
@@ -38,7 +38,7 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
           )
         `,
         )
-        .eq("collection.trip_id", id)
+        .eq("collection.trip_id", tripId)
       if (collectionPhotos.error)
         throw new Error(collectionPhotos.error.message)
 
@@ -47,7 +47,7 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
       let signedPhotos: CollectionPhotoSignedUrl[] | undefined = undefined
       // request to supabase storage for an empty array throws an error
       if (photoPaths && photoPaths.length > 0) {
-        const { data } = await supabase.storage
+        const { data, error } = await supabase.storage
           .from("collection-photos")
           .createSignedUrls(photoPaths, 60 * 60)
 
@@ -55,29 +55,33 @@ export const useCollectionPhotos = ({ id }: { id?: string }) => {
           ...collectionPhotos?.data?.[i],
           signedUrl,
         })) ?? []) as CollectionPhotoSignedUrl[]
+
+        if (error) console.log("Error when gettings signed photos", { error })
       }
       const result: TripCollectionPhotos = signedPhotos ?? []
 
       return result
     },
+    refetchInterval: 1000 * 60 * 59, // every 59 minutes
   })
 
   const refreshSignedUrl = useCallback(async (url: string) => {
     const signedUrl = await getSignedUrl(url)
+    queryClient.setQueriesData(
+      {
+        queryKey: ["collectionPhotos"],
+      },
+      async (oldData: TripCollectionPhotos) => {
+        if (!oldData || oldData.length === 0) {
+          // since we are here, we know that the trip does have photos
+          await collectionPhotosQuery.refetch()
+          return []
+        }
 
-    queryClient.setQueryData(
-      getCollectionPhotosByTripQueryKey(id),
-      (oldData: TripCollectionPhotos) => {
-        if (!oldData || oldData.length === 0) return []
         return oldData.map((item) => {
           if ("url" in item && item.url === url) {
             if (signedUrl) {
               return { ...item, signedUrl }
-            } else {
-              // no signed url is available, probably because the user is offline
-              // so remove the property from the item which prevents attempts to refresh
-              const { signedUrl, ...rest } = item
-              return rest
             }
           }
           return item

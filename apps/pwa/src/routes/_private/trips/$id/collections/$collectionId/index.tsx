@@ -150,13 +150,15 @@ const CollectionDetail = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="photos" className="grid grid-cols-2 gap-2">
-          {collection.photos.map((photo) => (
-            <CollectionPhoto
-              photo={photo}
-              onClick={setFullScreenPhoto}
-              key={photo.id}
-            />
-          ))}
+          {collection.photos.map((photo) => {
+            return (
+              <CollectionPhoto
+                id={photo.id}
+                onClick={setFullScreenPhoto}
+                key={photo.id}
+              />
+            )
+          })}
         </TabsContent>
         <TabsContent value="map" className="">
           <CollectionMap tripId={tripId} collectionId={collectionId} />

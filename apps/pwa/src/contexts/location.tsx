@@ -9,6 +9,7 @@ import React, {
 } from "react"
 
 import { point, distance } from "@turf/turf"
+import debounce from "lodash/debounce"
 
 // Type definitions
 type GeolocationData = Omit<GeolocationCoordinates, "toJSON">
@@ -46,7 +47,7 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
   useEffect(() => {
     let watchId: number
 
-    const onSuccess: PositionCallback = ({ coords }) => {
+    const onSuccess: PositionCallback = debounce(({ coords }) => {
       setLocation({
         accuracy: coords.accuracy,
         altitude: coords.altitude,
@@ -56,7 +57,7 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
         longitude: coords.longitude,
         speed: coords.speed,
       })
-    }
+    }, 1000)
 
     const onError: PositionErrorCallback = ({ code }) => setWarning(code)
 
