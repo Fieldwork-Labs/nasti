@@ -42,11 +42,14 @@ export type TripDetails = Trip & {
 
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
-  const { data: collectionPhotos, refetch: collectionPhotosRefetch } =
-    useCollectionPhotosForTrip({ tripId: id })
+  const {
+    data: collectionPhotos,
+    refetch: collectionPhotosRefetch,
+    error: collectionPhotosError,
+  } = useCollectionPhotosForTrip({ tripId: id })
 
   const collectionPhotosMap = useMemo(() => {
-    if (!collectionPhotos) return {}
+    if (!collectionPhotos || collectionPhotosError) return {}
     return collectionPhotos.reduce(
       (acc, photo) => {
         if (!acc[photo.collection_id]) acc[photo.collection_id] = []

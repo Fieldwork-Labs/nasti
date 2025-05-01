@@ -6,14 +6,10 @@ import { Species } from "@nasti/common/types"
 export const useSpeciesSearch = (searchTerm: string = "", tripId?: string) => {
   const searchSpecies = useCallback(
     async (term: string): Promise<Species[]> => {
-      if (!term.trim()) {
-        return []
-      }
+      let query = supabase.from("species").select("*, trip_species!inner(*)")
 
-      let query = supabase
-        .from("species")
-        .select("*, trip_species!inner(*)")
-        .or(`name.ilike.%${term}%,indigenous_name.ilike.%${term}%`)
+      if (searchTerm !== "")
+        query = query.or(`name.ilike.%${term}%,indigenous_name.ilike.%${term}%`)
 
       if (tripId) {
         query = query.eq("trip_species.trip_id", tripId)
@@ -27,15 +23,14 @@ export const useSpeciesSearch = (searchTerm: string = "", tripId?: string) => {
 
       return data || []
     },
-    [tripId],
+    [searchTerm, tripId],
   )
 
   const { data, isLoading, error } = useQuery({
     queryKey: tripId
-      ? ["speciesSearch", searchTerm]
-      : ["speciesSearch", "byTrip", tripId, searchTerm],
+      ? ["speciesSearch", "byTrip", tripId, searchTerm]
+      : ["speciesSearch", searchTerm],
     queryFn: () => searchSpecies(searchTerm),
-    enabled: searchTerm.length > 0,
   })
 
   return {

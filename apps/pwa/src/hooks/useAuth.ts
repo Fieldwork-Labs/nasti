@@ -40,6 +40,7 @@ export const useAuth = () => {
         // Update auth data in query client cache
         queryClient.setQueryData(["auth", "user"], data.user)
         queryClient.setQueryData(["auth", "orgUser"], orgData)
+        queryClient.setQueryData(["auth", "loggedIn"], true)
         // Prefetch necessary data for offline use
         queryClient.prefetchQuery({
           queryKey: ["trips", "list"],
@@ -89,13 +90,16 @@ export const useAuth = () => {
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 
+  const isLoggedIn =
+    queryClient.getQueryData<boolean>(["auth", "loggedIn"]) ?? false
+
   return {
     user,
     org,
     getSession: () => supabase.auth.getSession(),
     login,
     logout,
-    isLoggedIn: Boolean(user),
+    isLoggedIn,
   }
 }
 

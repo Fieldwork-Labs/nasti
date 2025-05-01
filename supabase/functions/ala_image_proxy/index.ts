@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       },
     })
   } catch (error) {
-    return new Response(`Error fetching image: ${error.message}`, {
+    return new Response(`Error fetching image: ${(error as Error).message}`, {
       status: 500,
       headers: {
         "Access-Control-Allow-Origin": "*",

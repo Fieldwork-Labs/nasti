@@ -65,30 +65,41 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
     refetchInterval: 1000 * 60 * 59, // every 59 minutes
   })
 
-  const refreshSignedUrl = useCallback(async (url: string) => {
-    const signedUrl = await getSignedUrl(url)
-    queryClient.setQueriesData(
-      {
-        queryKey: ["collectionPhotos"],
-      },
-      async (oldData: TripCollectionPhotos) => {
-        if (!oldData || oldData.length === 0) {
-          // since we are here, we know that the trip does have photos
-          await collectionPhotosQuery.refetch()
-          return []
-        }
+  const refreshSignedUrl = useCallback(
+    async (url: string) => {
+      const signedUrl = await getSignedUrl(url)
+      const existingPhotos = queryClient.getQueryData<TripCollectionPhotos>(
+        getCollectionPhotosByTripQueryKey(tripId),
+      )
+      // First, handle the empty data case separately
+      if (!existingPhotos || existingPhotos.length === 0) {
+        await collectionPhotosQuery.refetch()
+        return
+      }
 
-        return oldData.map((item) => {
-          if ("url" in item && item.url === url) {
-            if (signedUrl) {
-              return { ...item, signedUrl }
+      // Then update the data synchronously
+      queryClient.setQueriesData(
+        {
+          // we use the base query key here because we want to update any collectionPhotos query in the cache,
+          // the item itself is matched by url below so only querykeys that contain the particular item will be updated
+          queryKey: ["collectionPhotos"],
+        },
+        (oldData: TripCollectionPhotos) => {
+          if (!oldData) return []
+
+          return oldData.map((item) => {
+            if ("url" in item && item.url === url) {
+              if (signedUrl) {
+                return { ...item, signedUrl }
+              }
             }
-          }
-          return item
-        })
-      },
-    )
-  }, [])
+            return item
+          })
+        },
+      )
+    },
+    [collectionPhotosQuery, queryClient],
+  )
 
   const resultData = useMemo(
     () => ({

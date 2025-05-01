@@ -8,17 +8,20 @@ import {
   useNavigate,
   redirect,
 } from "@tanstack/react-router"
-import { Suspense } from "react"
+import { Suspense, useEffect } from "react"
 
 function AuthLayout() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
-  if (!isLoggedIn) {
-    navigate({
-      to: "/auth/login",
-    })
-    return <Spinner />
-  }
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate({
+        to: "/auth/login",
+      })
+    }
+  }, [isLoggedIn])
+
   return (
     <GeoLocationProvider>
       <Outlet />

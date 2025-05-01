@@ -88,7 +88,7 @@ export const TripsMap = ({ trips }: { trips: Trip[] }) => {
               params={{ id: showPopup.id }}
               className="text-primary"
             >
-              {showPopup?.name} trip
+              {showPopup?.name}
             </Link>
           </Popup>
         )}

@@ -16,10 +16,14 @@ type FormData = {
 }
 
 const LoginForm = () => {
-  const navigate = useNavigate()
-  const { login, user } = useAuth()
+  const navigate = useNavigate({ from: "/auth/login" })
+  const { login, isLoggedIn } = useAuth()
   // to prevent flash of "Already logged in" state after submitting
   const hasLoggedIn = useRef(false)
+
+  useEffect(() => {
+    if (isLoggedIn) navigate({ to: "/trips" })
+  }, [isLoggedIn, navigate])
 
   const {
     register,
@@ -39,7 +43,7 @@ const LoginForm = () => {
       hasLoggedIn.current = true
       clearErrors()
       const { email, password } = values
-      await login.mutateAsync({
+      login.mutate({
         email,
         password,
       })
@@ -62,7 +66,7 @@ const LoginForm = () => {
   return (
     <div className="flex h-full flex-col justify-center">
       <div className="relative -top-20 flex flex-col items-center justify-center md:px-2">
-        {user && !hasLoggedIn.current ? (
+        {isLoggedIn && !hasLoggedIn.current ? (
           <div className="bg-secondary-background w-full max-w-md rounded-lg p-8 text-center shadow-md">
             <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">
               You're already logged in

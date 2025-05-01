@@ -36,11 +36,13 @@ export const SpeciesSearchCombobox = ({
   tripId,
 }: SpeciesComboboxProps) => {
   const [searchTerm, setSearchTerm] = useState("")
+
   const {
-    data: species,
+    data: speciesList,
     isLoading,
     error: searchError,
   } = useSpeciesSearch(searchTerm, tripId)
+
   const { data: selectedSpecies } = useSpecies(value)
   const { data } = useALASpeciesDetail(selectedSpecies?.ala_guid)
   const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
@@ -111,7 +113,7 @@ export const SpeciesSearchCombobox = ({
                     "focus:outline-hidden focus:ring-0",
                   )}
                   displayValue={(id: string) =>
-                    species?.find((s) => s.id === id)?.name ?? ""
+                    speciesList?.find((s) => s.id === id)?.name ?? ""
                   }
                   placeholder="Select species..."
                   onChange={(event) => setSearchTerm(event.target.value)}
@@ -139,12 +141,12 @@ export const SpeciesSearchCombobox = ({
                     Error: {searchError.message}
                   </div>
                 )}
-                {!isLoading && !searchError && species?.length === 0 && (
+                {!isLoading && !searchError && speciesList?.length === 0 && (
                   <div className="relative cursor-default select-none px-4 py-2 text-gray-700">
                     No species found.
                   </div>
                 )}
-                {species?.map((species) => (
+                {speciesList?.map((species) => (
                   <ComboboxOption
                     key={species.id}
                     value={species.id}
@@ -163,7 +165,7 @@ export const SpeciesSearchCombobox = ({
                             selected ? "font-medium" : "font-normal",
                           )}
                         >
-                          {species.name}
+                          <i>{species.name}</i>
                           {species.indigenous_name && (
                             <span
                               className={cn(
