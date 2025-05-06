@@ -31,23 +31,10 @@ export const TripLocationModal = ({
     [updateTrip, close, invalidate],
   )
 
-  const {
-    inputValue,
-    showSearch,
-    error,
-    locationName,
-    locationCoords,
-    viewState,
-    results,
-    isLoading,
-    selectedLocation,
-    handleInputChange,
-    handleResultClick,
-    handleSubmit,
-    setUseCustomName,
-    setShowSearch,
-    setViewState,
-  } = useTripLocationForm({ trip, onSave: handleSave })
+  const { handleSubmit, ...props } = useTripLocationForm({
+    trip,
+    onSave: handleSave,
+  })
 
   return (
     <Modal
@@ -56,23 +43,7 @@ export const TripLocationModal = ({
       onCancel={close}
       title="Edit Location"
     >
-      <TripLocationForm
-        inputValue={inputValue}
-        showSearch={showSearch}
-        selectedLocation={selectedLocation}
-        error={error}
-        locationName={locationName}
-        locationCoords={locationCoords}
-        viewState={viewState}
-        results={results}
-        isLoading={isLoading}
-        handleInputChange={handleInputChange}
-        handleResultClick={handleResultClick}
-        handleSubmit={handleSubmit}
-        setUseCustomName={setUseCustomName}
-        setShowSearch={setShowSearch}
-        setViewState={setViewState}
-      />
+      <TripLocationForm handleSubmit={handleSubmit} {...props} />
     </Modal>
   )
 }

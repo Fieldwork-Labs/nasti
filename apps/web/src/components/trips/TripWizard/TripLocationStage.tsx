@@ -17,23 +17,10 @@ export const TripLocationStage = () => {
     [saveTrip, setCurrentStep],
   )
 
-  const {
-    inputValue,
-    showSearch,
-    error,
-    locationName,
-    locationCoords,
-    viewState,
-    results,
-    isLoading,
-    selectedLocation,
-    handleInputChange,
-    handleResultClick,
-    handleSubmit,
-    setUseCustomName,
-    setShowSearch,
-    setViewState,
-  } = useTripLocationForm({ trip, onSave: handleSave })
+  const { handleSubmit, ...locationProps } = useTripLocationForm({
+    trip,
+    onSave: handleSave,
+  })
 
   const handleSkip = useCallback(() => {
     setCurrentStep(2)
@@ -50,23 +37,7 @@ export const TripLocationStage = () => {
       onSkip={handleSkip}
       onCancel={() => setCurrentStep(0)}
     >
-      <TripLocationForm
-        inputValue={inputValue}
-        showSearch={showSearch}
-        selectedLocation={selectedLocation}
-        error={error}
-        locationName={locationName}
-        locationCoords={locationCoords}
-        viewState={viewState}
-        results={results}
-        isLoading={isLoading}
-        handleInputChange={handleInputChange}
-        handleResultClick={handleResultClick}
-        handleSubmit={handleSubmit}
-        setUseCustomName={setUseCustomName}
-        setShowSearch={setShowSearch}
-        setViewState={setViewState}
-      />
+      <TripLocationForm handleSubmit={handleSubmit} {...locationProps} />
     </TripWizardStage>
   )
 }

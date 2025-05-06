@@ -1,16 +1,14 @@
-import { Button } from "@nasti/ui/button"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { LocationSelectorMap } from "@/components/common/LocationSelectorMap"
 import { Trip } from "@nasti/common/types"
+import { parsePostGISPoint } from "@nasti/common/utils"
+import { Button } from "@nasti/ui/button"
 import debounce from "lodash/debounce"
-import { MapPin, XIcon } from "lucide-react"
-import mapboxgl from "mapbox-gl"
+import { XIcon } from "lucide-react"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import Map, { Marker } from "react-map-gl"
 import CreatableSelect from "react-select/creatable"
 import { useLocationSearch } from "./useLocationSearch"
 
-// Types
 export type TripLocationDetails = Partial<
   Pick<Trip, "location_coordinate" | "location_name">
 >
@@ -28,10 +26,10 @@ export function useTripLocationForm({ trip, onSave }: TripLocationFormProps) {
     debounce((input) => setSearchQuery(input), 300),
   ).current
   const isDirty = useRef(false)
+  const [selectionMode, setSelectionMode] = useState<"search" | "map">("search")
 
-  const [showSearch, setShowSearch] = useState(!trip?.location_name)
   const [error, setError] = useState<string | null>(null)
-  const [useCustomName, setUseCustomName] = useState(false)
+  const [selectOnMap, setSelectOnMap] = useState(false)
 
   const existingCoords = useMemo(() => {
     if (!trip?.location_coordinate) return
@@ -60,18 +58,18 @@ export function useTripLocationForm({ trip, onSave }: TripLocationFormProps) {
     selectLocation,
   } = useLocationSearch(searchQuery)
 
+  const clearLocationName = useCallback(() => {
+    setLocationName(undefined)
+    selectLocation(null)
+    setInputValue("")
+    setLocationCoords(undefined)
+    setError(null)
+  }, [selectLocation])
+
   useEffect(() => {
     if (searchError) setError(searchError.message)
     else if (retrieveError) setError(retrieveError.message)
   }, [searchError, retrieveError])
-
-  useEffect(() => {
-    if (locationCoords)
-      setViewState({
-        ...locationCoords,
-        zoom: 4.2,
-      })
-  }, [locationCoords])
 
   const handleResultClick = useCallback(
     (newValue: { value: string | undefined } | null) => {
@@ -92,48 +90,61 @@ export function useTripLocationForm({ trip, onSave }: TripLocationFormProps) {
     [handleSearchDebounced],
   )
 
+  const handleSelectCoords = useCallback(
+    (coords: { longitude: number; latitude: number }) => {
+      isDirty.current = true
+      setLocationCoords(coords)
+    },
+    [],
+  )
+
   useEffect(() => {
     if (selectedLocation) {
       setLocationCoords(selectedLocation.coordinates)
       setLocationName(selectedLocation.name)
-      setShowSearch(false)
+      setViewState({
+        latitude: selectedLocation.coordinates.latitude,
+        longitude: selectedLocation.coordinates.longitude,
+        zoom: 4.2,
+      })
     }
   }, [selectedLocation])
 
   const handleSubmit = useCallback(async () => {
     try {
       if (isDirty.current) {
-        const newTripDetails: TripLocationDetails = useCustomName
-          ? { location_name: searchQuery }
-          : {
-              location_coordinate: locationCoords
-                ? `POINT(${locationCoords.longitude} ${locationCoords.latitude})`
-                : null,
-              location_name: locationName ?? null,
-            }
-        onSave(newTripDetails)
+        onSave({
+          location_coordinate: locationCoords
+            ? `POINT(${locationCoords.longitude} ${locationCoords.latitude})`
+            : null,
+          location_name: locationName ?? null,
+        })
       } else onSave()
     } catch (error) {
       setError((error as Error).message)
     }
-  }, [onSave, useCustomName, searchQuery, locationCoords, locationName])
+  }, [onSave, locationCoords, locationName])
 
   return {
     inputValue,
-    showSearch,
     error,
     locationName,
+    setLocationName,
     locationCoords,
+    clearLocationName,
     viewState,
     results,
     isLoading,
     selectedLocation,
     handleInputChange,
     handleResultClick,
-    setUseCustomName,
     handleSubmit,
-    setShowSearch,
     setViewState,
+    selectOnMap,
+    setSelectOnMap,
+    handleSelectCoords,
+    selectionMode,
+    setSelectionMode,
   }
 }
 
@@ -145,27 +156,26 @@ export type TripLocationFormStateAndHandlers = ReturnType<
 // Presentational Component
 export const TripLocationForm = ({
   inputValue,
-  showSearch,
   error,
   locationName,
+  setLocationName,
   locationCoords,
+  clearLocationName,
   viewState,
   results,
   isLoading,
   handleInputChange,
   handleResultClick,
-  handleSubmit,
-  setUseCustomName,
-  setShowSearch,
   setViewState,
+  handleSelectCoords,
 }: TripLocationFormStateAndHandlers) => {
   return (
     <div className="relative flex flex-col gap-4">
-      {!showSearch && (
+      {locationName && (
         <div className="flex justify-between rounded-md border p-2">
           <div className="flex flex-col justify-around">
             <span className="text-sm font-medium leading-none">
-              Selected Location
+              Location Name
             </span>
             <span className="font-bold">{locationName}</span>
           </div>
@@ -173,83 +183,85 @@ export const TripLocationForm = ({
             variant="secondary"
             size="icon"
             title="Clear"
-            onClick={() => setShowSearch(true)}
+            onClick={clearLocationName}
           >
             <XIcon className="h-4 w-4" />
           </Button>
         </div>
       )}
 
-      {showSearch && (
-        <CreatableSelect
-          isClearable
-          escapeClearsValue
-          inputValue={inputValue}
-          onInputChange={(newValue, { action }) => {
-            if (action === "input-change") handleInputChange(newValue)
-            return newValue
-          }}
-          value={{ value: locationCoords?.longitude.toString() }}
-          onChange={handleResultClick}
-          options={results.map(({ id, name }) => ({
-            value: id,
-            label: name,
-          }))}
-          isLoading={isLoading}
-          placeholder="Search location"
-          allowCreateWhileLoading
-          formatCreateLabel={(inputValue) =>
-            `Use ${inputValue} as a custom location`
-          }
-          onCreateOption={() => {
-            setUseCustomName(true)
-            handleSubmit()
-          }}
-          classNames={{
-            control: (state) =>
-              "border rounded-lg! bg-secondary-background! " +
-              (state.isFocused
-                ? "shadow-xs! shadow-gray-200!"
-                : "border-gray-300!"),
-            valueContainer: () => "gap-1! px-3! py-1!",
-            placeholder: () => "text-gray-400!",
-            input: () => "text-sm! text-primary-foreground!",
-            menu: () =>
-              "bg-white! mt-1! border! border-gray-200! rounded-lg! shadow-md! bg-secondary-background!",
-            menuList: () => "py-1!",
-            option: (state) =>
-              "px-3! py-2! text-sm! text-primary!" +
-              (state.isSelected
-                ? "bg-blue-600! text-white!"
-                : state.isFocused
-                  ? "bg-secondary! text-gray-900!"
-                  : "text-gray-700!"),
-            noOptionsMessage: () => "text-gray-400! text-sm! p-2!",
-          }}
-        />
+      {!locationName && (
+        <>
+          <span className="text-sm font-medium leading-none">
+            Location Name
+          </span>
+          <CreatableSelect
+            isClearable
+            escapeClearsValue
+            inputValue={inputValue}
+            onInputChange={(newValue, { action }) => {
+              if (action === "input-change") handleInputChange(newValue)
+              return newValue
+            }}
+            onChange={handleResultClick}
+            options={results.map(({ id, name, ...rest }) => ({
+              value: id,
+              label: `${name}, ${rest.details.region}`,
+            }))}
+            isLoading={isLoading}
+            placeholder="Search location"
+            allowCreateWhileLoading
+            formatCreateLabel={(inputValue) =>
+              `Use ${inputValue} as a custom location`
+            }
+            onCreateOption={(value) => {
+              setLocationName(value)
+            }}
+            classNames={{
+              control: (state) =>
+                "border rounded-lg! bg-secondary-background! " +
+                (state.isFocused
+                  ? "shadow-xs! shadow-gray-200!"
+                  : "border-gray-300!"),
+              valueContainer: () => "gap-1! px-3! py-1!",
+              placeholder: () => "text-gray-400!",
+              input: () => "text-sm! text-primary-foreground!",
+              menu: () =>
+                "bg-white! mt-1! border! border-gray-200! rounded-lg! shadow-md! bg-secondary-background! z-20",
+              menuList: () => "py-1!",
+              option: (state) =>
+                "px-3! py-2! text-sm! text-primary!" +
+                (state.isSelected
+                  ? "bg-blue-600! text-white!"
+                  : state.isFocused
+                    ? "bg-secondary! text-gray-900!"
+                    : "text-gray-700!"),
+              noOptionsMessage: () => "text-gray-400! text-sm! p-2!",
+            }}
+          />
+        </>
       )}
 
       {error && <div className="text-red-500">{error}</div>}
-
-      <Map
-        mapLib={mapboxgl as never}
-        mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
-        {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
-        style={{ height: 460 }}
-        mapStyle="mapbox://styles/mapbox/satellite-v9"
-      >
-        {locationCoords && (
-          <Marker
-            latitude={locationCoords.latitude}
-            longitude={locationCoords.longitude}
-          >
-            <div className="rounded-full bg-white/50 p-2">
-              <MapPin className="text-primary h-5 w-5" />
-            </div>
-          </Marker>
-        )}
-      </Map>
+      <span className="text-sm font-medium leading-none">
+        Location Coordinates
+      </span>
+      <LocationSelectorMap
+        viewState={viewState}
+        setViewState={setViewState}
+        location={
+          locationCoords && {
+            lat: locationCoords.latitude,
+            lng: locationCoords.longitude,
+          }
+        }
+        onLocationSelected={(location) => {
+          handleSelectCoords({
+            latitude: location.lat,
+            longitude: location.lng,
+          })
+        }}
+      />
     </div>
   )
 }
