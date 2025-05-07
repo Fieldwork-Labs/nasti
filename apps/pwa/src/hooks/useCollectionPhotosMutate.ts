@@ -3,93 +3,97 @@ import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
 import { queryClient } from "@/lib/queryClient"
-import { CollectionPhotoSignedUrl } from "@nasti/common/types"
+import { CollectionPhoto } from "@nasti/common/types"
 import { useCallback } from "react"
-import { deleteFile, fileDB } from "@/lib/persistFiles"
+import { deleteImage, fileToBase64, putImage } from "@/lib/persistFiles"
 import {
-  getSignedUrl,
+  getCollectionPhotosByTripQueryKey,
   TripCollectionPhotos,
 } from "./useCollectionPhotosForTrip"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
   id: string
+  file: File
   caption?: string
 }
 
-export type PendingCollectionPhoto = UploadPhotoVariables & {
-  collection_id: string
-}
-
-interface CollectionPhoto {
-  id: string
+export type PendingCollectionPhoto = Omit<UploadPhotoVariables, "file"> & {
   collection_id: string
   url: string
-  caption: string | null
-  uploaded_at: string | null
 }
 
 export const useCollectionPhotosMutate = ({
   collectionId,
+  tripId,
 }: {
   collectionId: string
+  tripId: string
 }) => {
   const { org } = useAuth()
-  const createPhotoMutation = useMutation<
-    CollectionPhotoSignedUrl,
-    Error,
-    UploadPhotoVariables
-  >({
-    mutationKey: ["collectionPhotos", "create", collectionId],
-    mutationFn: async ({ id: photoId, caption }) => {
-      if (!collectionId) throw new Error("No collection id specified")
-      const db = await fileDB
-      const file = await db.get("files", photoId)
+
+  const getFilePath = useCallback(
+    (file: File, photoId: string) => {
       const fileExt = file.name.split(".").pop()
 
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
 
-      const filePath = `${org?.organisation_id}/collections/${collectionId}/${photoId}.${fileExt}`
+      return `${org?.organisation_id}/collections/${collectionId}/${photoId}.${fileExt}`
+    },
+    [org, tripId, collectionId],
+  )
 
-      // Upload file to Supabase Storage
-      const { error: storageError } = await supabase.storage
-        .from("collection-photos")
-        .upload(filePath, file, {
+  const createPhotoMutation = useMutation<
+    CollectionPhoto,
+    Error,
+    UploadPhotoVariables
+  >({
+    mutationKey: ["collectionPhotos", "create", collectionId],
+    mutationFn: async ({ id: photoId, caption, file }) => {
+      if (!collectionId) throw new Error("No collection id specified")
+
+      if (!file) throw new Error(`No file found for ${photoId}`)
+
+      const filePath = getFilePath(file, photoId)
+
+      const [{ error: storageError }, { data, error }] = await Promise.all([
+        // Upload file to Supabase Storage
+        supabase.storage.from("collection-photos").upload(filePath, file, {
           cacheControl: "3600",
           upsert: true,
           metadata: { collectionId, photoId },
-        })
-
+        }),
+        // upload to supabase database table
+        supabase
+          .from("collection_photo")
+          .insert([
+            {
+              id: photoId,
+              collection_id: collectionId,
+              url: filePath,
+              caption: caption || null,
+            },
+          ])
+          .select()
+          .single(),
+      ])
       if (storageError) throw storageError
-      // Create database record
-      const { data, error } = await supabase
-        .from("collection_photo")
-        .insert([
-          {
-            id: photoId,
-            collection_id: collectionId,
-            url: filePath,
-            caption: caption || null,
-          },
-        ])
-        .select()
-        .single()
-
       if (error) throw error
-
-      const signedUrl = await getSignedUrl(filePath)
-
-      return {
-        ...data,
-        signedUrl,
-      } as CollectionPhotoSignedUrl
+      return data as CollectionPhoto
     },
-    onMutate: (variable) => {
+    onMutate: async ({ file, ...variables }) => {
+      // store locally in indexedDB
+      await putImage(variables.id, await fileToBase64(file))
+
       // Get the trip details data blob
-      const pendingItem = { ...variable, collection_id: collectionId }
+      const pendingItem: PendingCollectionPhoto = {
+        ...variables,
+        collection_id: collectionId,
+        url: getFilePath(file, variables.id),
+      }
       queryClient.setQueriesData<TripCollectionPhotos>(
-        { queryKey: ["collectionPhotos"] },
+        { queryKey: getCollectionPhotosByTripQueryKey(tripId) },
         (oldData) => {
           return [...(oldData || []), pendingItem]
         },
@@ -97,22 +101,14 @@ export const useCollectionPhotosMutate = ({
     },
     onSettled: async (createdItem, _, { id }) => {
       if (!createdItem) return
-      // Get and set the trip details data blob
-      // const queryKey = ["collectionPhotos", "byTrip", tripId]
-      // const photosQuery =
-      //   queryClient.getQueryData<TripCollectionPhotos>(queryKey)
-      // if (!photosQuery) throw new Error("Unknown trip")
 
       queryClient.setQueriesData<TripCollectionPhotos>(
         { queryKey: ["collectionPhotos"] },
         (oldData) => {
-          if (!oldData) return [createdItem]
+          if (!oldData) return []
           return [...oldData?.filter((c) => c.id !== id), createdItem]
         },
       )
-
-      // delete from DB
-      await deleteFile(id)
     },
   })
 
@@ -120,6 +116,7 @@ export const useCollectionPhotosMutate = ({
   const deletePhotoMutation = useMutation({
     mutationFn: async (photoId: string) => {
       // Get the photo first to get the URL
+      // TODO this is going to fail/throw error if the photo is pending
       const { data: photo, error: fetchError } = await supabase
         .from("collection_photo")
         .select("url")
@@ -164,6 +161,10 @@ export const useCollectionPhotosMutate = ({
         },
       )
     },
+    onSettled: async (id) => {
+      if (!id) return
+      await deleteImage(id)
+    },
   })
 
   type UpdateCaptionPayload = {
@@ -207,15 +208,13 @@ export const useCollectionPhotosMutate = ({
       if (!data)
         throw new Error("No data returned from collection photo update")
 
-      const signedUrl = await getSignedUrl(data.url)
-
       queryClient.setQueriesData<CollectionPhoto[]>(
         { queryKey: ["collectionPhotos"] },
 
         (oldData) => {
-          if (!oldData || oldData.length === 0) return [data]
+          if (!oldData || oldData.length === 0) return []
           return oldData.map((item) =>
-            item.id === variables.photoId ? { ...data, signedUrl } : item,
+            item.id === variables.photoId ? { ...data } : item,
           )
         },
       )

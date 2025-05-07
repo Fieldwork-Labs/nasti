@@ -1,5 +1,5 @@
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
-import { CollectionPhotoSignedUrl } from "@nasti/common/types"
+import { CollectionPhoto } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { cn } from "@nasti/ui/utils"
@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { usePhotoUrl } from "../CollectionPhoto"
 
-export type ExistingPhoto = CollectionPhotoSignedUrl | PendingCollectionPhoto
+export type ExistingPhoto = CollectionPhoto | PendingCollectionPhoto
 
 type PhotoThumbnailProps = {
   photo: ExistingPhoto

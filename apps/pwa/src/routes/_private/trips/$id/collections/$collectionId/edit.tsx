@@ -95,7 +95,7 @@ function CollectionForm() {
 
   const { mutate: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
-    useCollectionPhotosMutate({ collectionId })
+    useCollectionPhotosMutate({ collectionId, tripId })
 
   const navigate = useNavigate({
     from: "/trips/$id/collections/$collectionId/edit",

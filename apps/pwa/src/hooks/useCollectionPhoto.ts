@@ -1,15 +1,15 @@
-import { CollectionPhotoSignedUrl } from "@nasti/common/types"
+import { CollectionPhoto } from "@nasti/common/types"
 
 import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
 import { queryClient } from "@/lib/queryClient"
 
 export const useCollectionPhoto = ({ id }: { id?: string }) => {
   const queries = queryClient.getQueriesData<
-    Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
+    Array<CollectionPhoto | PendingCollectionPhoto>
   >({
     queryKey: ["collectionPhotos", "byTrip"],
   })
-  let photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | undefined
+  let photo: CollectionPhoto | PendingCollectionPhoto | undefined
   while (!photo && queries.length > 0) {
     //
     const query = queries.pop()

@@ -16,10 +16,6 @@ export type CollectionWithCoord = Collection & {
 }
 export type NewCollection = Collection & { photos: { new: File[] } }
 export type CollectionPhoto = Table<"collection_photo">
-export type CollectionPhotoSignedUrl = Table<"collection_photo"> & {
-  signedUrl: string
-}
-
 export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">
 export type Person = GetOrgUsers["Returns"][number]

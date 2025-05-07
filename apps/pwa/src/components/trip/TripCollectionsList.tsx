@@ -24,7 +24,7 @@ import {
 import { cn } from "@nasti/ui/utils"
 
 import { useALASpeciesImage } from "@nasti/common/hooks"
-import { CollectionPhotoSignedUrl, Person, Species } from "@nasti/common/types"
+import { CollectionPhoto, Person, Species } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { ChevronRight, LeafIcon, SortAsc, SortDesc, X } from "lucide-react"
 import MiniSearch from "minisearch"
@@ -42,15 +42,9 @@ import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 import { Input } from "@nasti/ui/input"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
-import { getFile } from "@/lib/persistFiles"
-import { useCollectionPhotosForTrip } from "@/hooks/useCollectionPhotosForTrip"
+import { getImage } from "@/lib/persistFiles"
 import { Link } from "@tanstack/react-router"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
-
-const existingPhotoTypeGuard = (
-  photo: CollectionPhotoSignedUrl | PendingCollectionPhoto | null,
-): photo is CollectionPhotoSignedUrl =>
-  Boolean(photo && "signedUrl" in photo && photo.signedUrl)
 
 // Create a cache to store promises by photo ID to prevent re-rendering issues
 type PhotoPromiseCache = {
@@ -61,7 +55,7 @@ type PhotoPromiseCache = {
 const photoPromiseCache = new Map<string, PhotoPromiseCache>()
 
 const getPhotoUrl = (
-  photos: Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>,
+  photos: Array<CollectionPhoto | PendingCollectionPhoto>,
   fallbackImage: string | null | undefined,
 ) => {
   // For existing photos or fallbacks, return immediately
@@ -69,8 +63,6 @@ const getPhotoUrl = (
   if (!photo) {
     if (fallbackImage) return { read: () => fallbackImage }
     else return { read: () => null }
-  } else if (existingPhotoTypeGuard(photo)) {
-    return { read: () => photo.signedUrl }
   }
 
   // For IndexedDB photos, use our cache
@@ -96,15 +88,13 @@ const getPhotoUrl = (
     // Start loading asynchronously
     ;(async () => {
       try {
-        const file = await getFile(photoId)
+        const file = await getImage(photoId)
         if (!file) throw new Error("Photo file not found")
 
-        const objectUrl = URL.createObjectURL(file)
-
         // Update our cache and resolve the promise
-        cache.url = objectUrl
+        cache.url = file.image
         cache.status = "success"
-        resolvePromise(objectUrl)
+        resolvePromise(file.image)
       } catch (e) {
         // Fall back to image if available
         const fallback = fallbackImage ?? null
@@ -132,15 +122,13 @@ const getPhotoUrl = (
 const Photo = ({
   photos,
   species,
-  tripId,
 }: {
-  photos: Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
+  photos: Array<CollectionPhoto | PendingCollectionPhoto>
   tripId?: string
   species?: Species | null
 }) => {
   const image = useALASpeciesImage({ guid: species?.ala_guid })
   const collPhoto = getPhotoUrl(photos, image).read()
-  const { refreshSignedUrl } = useCollectionPhotosForTrip({ tripId })
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
@@ -148,47 +136,11 @@ const Photo = ({
     setPhotoUrl(collPhoto)
   }, [collPhoto])
 
-  const existingPhoto = useMemo(() => {
-    if (!photos || photos.length === 0) return null
-    const photo = photos[0]
-    const isExistingPhoto = existingPhotoTypeGuard(photo)
-    if (isExistingPhoto) return photo
-  }, [photos])
-
-  const checkSignedUrl = useCallback(async () => {
-    if (!existingPhoto) return
-    try {
-      const result = await fetch(existingPhoto.signedUrl, {
-        headers: { Accept: "application/json" },
-      })
-      const json = await result.json()
-      return json
-    } catch (e) {
-      return null
-    }
-  }, [existingPhoto])
-
-  const handleError = useCallback(
-    async (e: React.ChangeEvent<HTMLImageElement>) => {
-      e.preventDefault()
-      if (!existingPhoto) return
-      // check if photo needs to be refreshSignedUrled
-      const errorJson = await checkSignedUrl()
-      if (errorJson?.error === "InvalidJWT") {
-        await refreshSignedUrl(existingPhoto.url)
-      } else {
-        setPhotoUrl(null)
-      }
-    },
-    [existingPhoto, refreshSignedUrl, checkSignedUrl],
-  )
-
   return (
     <span className="flex h-24 w-24 content-center justify-center">
       {photoUrl && (
         <img
           src={photoUrl}
-          onError={handleError}
           alt={`${species?.name} Image`}
           className="w-24 object-cover text-sm"
         />

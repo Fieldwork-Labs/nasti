@@ -1,7 +1,7 @@
 import { supabase } from "@nasti/common/supabase"
 import {
   Collection,
-  CollectionPhotoSignedUrl,
+  CollectionPhoto,
   CollectionWithCoord,
   Trip,
 } from "@nasti/common/types"
@@ -56,10 +56,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         acc[photo.collection_id].push(photo)
         return acc
       },
-      {} as Record<
-        string,
-        Array<CollectionPhotoSignedUrl | PendingCollectionPhoto>
-      >,
+      {} as Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
     )
   }, [collectionPhotos])
 

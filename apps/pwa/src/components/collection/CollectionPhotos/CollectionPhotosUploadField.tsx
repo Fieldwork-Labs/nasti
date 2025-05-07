@@ -1,5 +1,4 @@
 import { UploadPhotoVariables } from "@/hooks/useCollectionPhotosMutate"
-import { fileDB } from "@/lib/persistFiles"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { cn } from "@nasti/ui/utils"
@@ -122,8 +121,6 @@ export function CollectionPhotosUploadField({
           const url = URL.createObjectURL(file)
           const id = crypto.randomUUID()
           newEntries[url] = { file, id }
-          const db = await fileDB
-          await db.put("files", file, id)
         }),
       )
       setPhotoMap((prev) => ({ ...prev, ...newEntries }))
@@ -131,10 +128,8 @@ export function CollectionPhotosUploadField({
   }
 
   const removePhoto = async (url: string) => {
-    const db = await fileDB
     setPhotoMap((prev) => {
       const { [url]: file, ...newMap } = prev
-      db.delete("files", file.id)
       URL.revokeObjectURL(url)
       return newMap
     })
@@ -142,7 +137,7 @@ export function CollectionPhotosUploadField({
 
   useEffect(() => {
     const photos = Object.values(photoMap).map((photo) => {
-      return { caption: photo.caption, id: photo.id }
+      return { caption: photo.caption, id: photo.id, file: photo.file }
     })
     onPhotosChange?.(photos)
     return () => {

@@ -1,27 +1,34 @@
 import { supabase } from "@nasti/common/supabase"
-import { CollectionPhotoSignedUrl } from "@nasti/common/types"
+import { CollectionPhoto } from "@nasti/common/types"
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useCallback, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
+import { getImage, putImage } from "@/lib/persistFiles"
 
 export type TripCollectionPhotos = Array<
-  CollectionPhotoSignedUrl | PendingCollectionPhoto
+  CollectionPhoto | PendingCollectionPhoto
 >
 
-export const getSignedUrl = async (url: string) => {
-  const { data, error } = await supabase.storage
-    .from("collection-photos")
-    .createSignedUrl(url, 60 * 60)
-  if (error) console.log("Error getting 1 signed url", error)
-  return data?.signedUrl
+const imageUrlToBase64 = async (url: string): Promise<string> => {
+  const response = await fetch(url)
+  const blob = await response.blob()
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader()
+      reader.onload = function () {
+        resolve(this.result as string)
+      }
+      reader.readAsDataURL(blob)
+    } catch (e) {
+      reject(e)
+    }
+  })
 }
 
 export const getCollectionPhotosByTripQueryKey = (tripId?: string) =>
   tripId ? ["collectionPhotos", "byTrip", tripId] : []
 
 export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
-  const queryClient = useQueryClient()
   const collectionPhotosQuery = useQuery({
     queryKey: getCollectionPhotosByTripQueryKey(tripId),
     enabled: Boolean(tripId),
@@ -42,71 +49,38 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
       if (collectionPhotos.error)
         throw new Error(collectionPhotos.error.message)
 
-      // Get public URL
-      const photoPaths = collectionPhotos?.data.map(({ url }) => url)
-      let signedPhotos: CollectionPhotoSignedUrl[] | undefined = undefined
+      // Get photos that we need to fetch
+      type MissingPhotos = { id: string; url: string }
+      const missingPhotos = (
+        await Promise.all(
+          collectionPhotos?.data.map(({ id, url }) =>
+            getImage(id).then((file) => (Boolean(file) ? null : { id, url })),
+          ),
+        )
+      ).filter(Boolean) as MissingPhotos[]
+
       // request to supabase storage for an empty array throws an error
-      if (photoPaths && photoPaths.length > 0) {
+      if (missingPhotos && missingPhotos.length > 0) {
         const { data, error } = await supabase.storage
           .from("collection-photos")
-          .createSignedUrls(photoPaths, 60 * 60)
+          .createSignedUrls(
+            missingPhotos.map(({ url }) => url),
+            60 * 10,
+          )
 
-        signedPhotos = (data?.map(({ signedUrl }, i) => ({
-          ...collectionPhotos?.data?.[i],
-          signedUrl,
-        })) ?? []) as CollectionPhotoSignedUrl[]
+        data?.map(async ({ signedUrl }, i) => {
+          const base64 = await imageUrlToBase64(signedUrl)
+          await putImage(missingPhotos[i].id, base64)
+        })
 
-        if (error) console.log("Error when gettings signed photos", { error })
+        if (error) console.log("Error when getting signed photos", { error })
       }
-      const result: TripCollectionPhotos = signedPhotos ?? []
+      const result: TripCollectionPhotos = collectionPhotos?.data ?? []
 
       return result
     },
     refetchInterval: 1000 * 60 * 59, // every 59 minutes
   })
 
-  const refreshSignedUrl = useCallback(
-    async (url: string) => {
-      const signedUrl = await getSignedUrl(url)
-      const existingPhotos = queryClient.getQueryData<TripCollectionPhotos>(
-        getCollectionPhotosByTripQueryKey(tripId),
-      )
-      // First, handle the empty data case separately
-      if (!existingPhotos || existingPhotos.length === 0) {
-        await collectionPhotosQuery.refetch()
-        return
-      }
-
-      // Then update the data synchronously
-      queryClient.setQueriesData(
-        {
-          // we use the base query key here because we want to update any collectionPhotos query in the cache,
-          // the item itself is matched by url below so only querykeys that contain the particular item will be updated
-          queryKey: ["collectionPhotos"],
-        },
-        (oldData: TripCollectionPhotos) => {
-          if (!oldData) return []
-
-          return oldData.map((item) => {
-            if ("url" in item && item.url === url) {
-              if (signedUrl) {
-                return { ...item, signedUrl }
-              }
-            }
-            return item
-          })
-        },
-      )
-    },
-    [collectionPhotosQuery, queryClient],
-  )
-
-  const resultData = useMemo(
-    () => ({
-      ...collectionPhotosQuery,
-      refreshSignedUrl,
-    }),
-    [collectionPhotosQuery],
-  )
-  return resultData
+  return collectionPhotosQuery
 }

@@ -2,8 +2,19 @@ import { useEffect, useState } from "react"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import useUserStore from "@/store/userStore"
-import { CollectionPhotoSignedUrl } from "@nasti/common/types"
 import { queryClient } from "@nasti/common/utils"
+
+interface CollectionPhoto {
+  id: string
+  collection_id: string
+  url: string
+  caption: string | null
+  uploaded_at: string | null
+}
+
+export type CollectionPhotoSignedUrl = CollectionPhoto & {
+  signedUrl: string
+}
 
 export const useCollectionPhotos = (collectionId?: string) => {
   const [isUploading, setIsUploading] = useState(false)
@@ -65,14 +76,6 @@ export const useCollectionPhotos = (collectionId?: string) => {
   interface UploadPhotoVariables {
     file: File
     caption?: string
-  }
-
-  interface CollectionPhoto {
-    id: string
-    collection_id: string
-    url: string
-    caption: string | null
-    uploaded_at: string | null
   }
 
   const uploadPhotoMutation = useMutation<
