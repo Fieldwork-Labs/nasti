@@ -109,7 +109,7 @@ function AddCollection() {
   })
 
   const { location, locationDisplay } = useGeoLocation()
-  const { mutate: createCollection } = useCollectionCreate({ tripId })
+  const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
   const collectionIdRef = useRef<string>(crypto.randomUUID())
   const { createPhotoMutation } = useCollectionPhotosMutate({
     collectionId: collectionIdRef.current,
@@ -158,9 +158,11 @@ function AddCollection() {
         organisation_id: org.organisation_id,
         trip_id: tripId,
       }
-      createCollection(newCollection)
-      photos.map((photo) =>
-        createPhotoMutation.mutate(photo, { onError: console.error }),
+      await createCollection(newCollection)
+      await Promise.all(
+        photos.map((photo) =>
+          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+        ),
       )
 
       if (createPhotoMutation.isError) {

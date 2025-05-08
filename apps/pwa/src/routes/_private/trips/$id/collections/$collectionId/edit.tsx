@@ -8,6 +8,7 @@ import { useCollection } from "@/hooks/useCollection"
 import { useCollectionPhotosMutate } from "@/hooks/useCollectionPhotosMutate"
 import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { ROLE } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -110,7 +111,7 @@ function CollectionForm() {
 
   // Unique ID: use provided or generate new
   const collectionIdRef = useRef<string>(
-    (initialValues as any)?.id || crypto.randomUUID(),
+    initialValues?.id || crypto.randomUUID(),
   )
 
   // Photo state
@@ -154,7 +155,7 @@ function CollectionForm() {
 
       const { latitude, longitude, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
-
+      console.log({ locationPoint })
       const payload = {
         id: collectionIdRef.current,
         trip_id: tripId,
@@ -209,6 +210,13 @@ function CollectionForm() {
 
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
+
+  // You shouldn't be here
+  if (initialValues.created_by !== user?.id || org?.role !== ROLE.ADMIN)
+    return navigate({
+      to: "/trips/$id/collections/$collectionId",
+      params: { id: tripId, collectionId },
+    })
 
   return (
     <div className="flex h-full flex-col">

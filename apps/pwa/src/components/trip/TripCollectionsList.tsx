@@ -23,8 +23,7 @@ import {
 } from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
 
-import { useALASpeciesImage } from "@nasti/common/hooks"
-import { CollectionPhoto, Person, Species } from "@nasti/common/types"
+import type { Person, Species } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { ChevronRight, LeafIcon, SortAsc, SortDesc, X } from "lucide-react"
 import MiniSearch from "minisearch"
@@ -41,118 +40,9 @@ import { useGeoLocation } from "@/contexts/location"
 import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 import { Input } from "@nasti/ui/input"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
-import { getImage } from "@/lib/persistFiles"
 import { Link } from "@tanstack/react-router"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
-
-// Create a cache to store promises by photo ID to prevent re-rendering issues
-type PhotoPromiseCache = {
-  promise: Promise<string | null>
-  status: string
-  url: string | null
-}
-const photoPromiseCache = new Map<string, PhotoPromiseCache>()
-
-const getPhotoUrl = (
-  photos: Array<CollectionPhoto | PendingCollectionPhoto>,
-  fallbackImage: string | null | undefined,
-) => {
-  // For existing photos or fallbacks, return immediately
-  const photo = photos.length > 0 ? photos[0] : null
-  if (!photo) {
-    if (fallbackImage) return { read: () => fallbackImage }
-    else return { read: () => null }
-  }
-
-  // For IndexedDB photos, use our cache
-  const photoId = photo.id
-
-  // Check if we already have this photo in our cache
-  if (!photoPromiseCache.has(photoId)) {
-    let resolvePromise: (value: string | null) => void = () => {}
-    // Create a promise that we can resolve later
-    const promise = new Promise<string | null>((resolve) => {
-      resolvePromise = resolve
-    })
-
-    // Store both the promise and its status in our cache
-    const cache: PhotoPromiseCache = {
-      promise,
-      status: "pending",
-      url: null,
-    }
-
-    photoPromiseCache.set(photoId, cache)
-
-    // Start loading asynchronously
-    ;(async () => {
-      try {
-        const file = await getImage(photoId)
-        if (!file) throw new Error("Photo file not found")
-
-        // Update our cache and resolve the promise
-        cache.url = file.image
-        cache.status = "success"
-        resolvePromise(file.image)
-      } catch (e) {
-        // Fall back to image if available
-        const fallback = fallbackImage ?? null
-        cache.url = fallback
-        cache.status = "error"
-        resolvePromise(fallback)
-      }
-    })()
-  }
-
-  // Get our cached item
-  const cachedItem = photoPromiseCache.get(photoId)
-
-  return {
-    read() {
-      if (!cachedItem) return null
-      if (cachedItem.status === "pending") {
-        throw cachedItem.promise
-      }
-      return cachedItem.url
-    },
-  }
-}
-
-const Photo = ({
-  photos,
-  species,
-}: {
-  photos: Array<CollectionPhoto | PendingCollectionPhoto>
-  tripId?: string
-  species?: Species | null
-}) => {
-  const image = useALASpeciesImage({ guid: species?.ala_guid })
-  const collPhoto = getPhotoUrl(photos, image).read()
-
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    setPhotoUrl(collPhoto)
-  }, [collPhoto])
-
-  return (
-    <span className="flex h-24 w-24 content-center justify-center">
-      {photoUrl && (
-        <img
-          src={photoUrl}
-          alt={`${species?.name} Image`}
-          className="w-24 object-cover text-sm"
-        />
-      )}
-      {!photoUrl && (
-        <span className="flex h-24 w-24 items-center justify-center bg-slate-500">
-          <LeafIcon className="h-8 w-8" />
-        </span>
-      )}
-    </span>
-  )
-}
+import { CollectionPhoto as Photo } from "../collection/CollectionPhotos/CollectionPhoto"
 
 const CollectionListItem = ({
   collection,
@@ -172,6 +62,10 @@ const CollectionListItem = ({
   const isMutating = getIsMutating({ id: collection.id })
   const isPending = getIsPending({ id: collection.id })
 
+  const firstPhoto =
+    collection.photos && collection.photos.length > 0
+      ? collection.photos[0]
+      : null
   if (!collection || !collection.trip_id) return <></>
 
   return (
@@ -198,13 +92,7 @@ const CollectionListItem = ({
             </span>
           }
         >
-          {
-            <Photo
-              photos={collection.photos}
-              species={species}
-              tripId={collection.trip_id ?? undefined}
-            />
-          }
+          <Photo id={firstPhoto?.id} species={species} className="h-24 w-24" />
         </Suspense>
 
         <div className="flex flex-grow flex-col">

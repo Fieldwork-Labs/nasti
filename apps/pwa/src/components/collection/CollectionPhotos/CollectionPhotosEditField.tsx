@@ -6,7 +6,7 @@ import { cn } from "@nasti/ui/utils"
 import { PencilIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
-import { usePhotoUrl } from "../CollectionPhoto"
+import { usePhotoUrl } from "./CollectionPhoto"
 
 export type ExistingPhoto = CollectionPhoto | PendingCollectionPhoto
 

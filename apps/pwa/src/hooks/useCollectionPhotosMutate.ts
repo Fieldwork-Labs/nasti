@@ -140,13 +140,6 @@ export const useCollectionPhotosMutate = ({
 
       if (deleteError) throw deleteError
 
-      // Delete record from database
-      const { error: dbError } = await supabase
-        .from("collection_photo")
-        .delete()
-        .eq("id", photoId)
-
-      if (dbError) throw dbError
       return photoId
     },
     onError: (error) => {

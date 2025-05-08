@@ -7,6 +7,7 @@ import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
 import { getImage } from "@/lib/persistFiles"
 import { Spinner } from "@nasti/ui/spinner"
 import { useCollectionPhoto } from "@/hooks/useCollectionPhoto"
+import { cn } from "@nasti/ui/utils"
 
 export function usePhotoUrl(
   photo: CollectionPhoto | PendingCollectionPhoto | undefined | null,
@@ -48,17 +49,25 @@ export function usePhotoUrl(
 }
 
 type Props = {
-  id: string
-  onClick: (url: string) => void
+  id?: string
+  onClick?: (url: string) => void
   species?: Species | null
+  withCaption?: boolean
+  className?: string
 }
 
-export function CollectionPhoto({ id, onClick, species }: Props) {
+export function CollectionPhoto({
+  id,
+  onClick,
+  species,
+  withCaption,
+  className,
+}: Props) {
   const photo = useCollectionPhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
   const { url, status } = usePhotoUrl(photo, fallback) // status: 'loading' | 'success' | 'error'
   return (
-    <span className="flex w-full flex-col items-start gap-1">
+    <span className={cn("flex flex-col items-start gap-1", className)}>
       {/* Image area ----------------------------------------------------------- */}
       {status === "loading" ? (
         <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
@@ -68,8 +77,8 @@ export function CollectionPhoto({ id, onClick, species }: Props) {
         <img
           src={url}
           alt={species?.name || "collection photo"}
-          onClick={() => onClick(url)}
-          className="aspect-square w-full cursor-pointer object-cover"
+          onClick={onClick ? () => onClick(url) : undefined}
+          className={`aspect-square w-full object-cover ${onClick ? "cursor-pointer" : "cursor-default"}`}
           role="button"
           tabIndex={0}
         />
@@ -81,9 +90,11 @@ export function CollectionPhoto({ id, onClick, species }: Props) {
       )}
 
       {/* Optional caption ----------------------------------------------------- */}
-      {photo && "caption" in photo && photo.caption && status === "success" && (
-        <div className="text-sm">{photo.caption}</div>
-      )}
+      {withCaption &&
+        photo &&
+        "caption" in photo &&
+        photo.caption &&
+        status === "success" && <div className="text-sm">{photo.caption}</div>}
     </span>
   )
 }

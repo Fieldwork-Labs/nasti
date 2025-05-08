@@ -12,12 +12,13 @@ import { useAuth } from "@/hooks/useAuth"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionMap } from "@/components/collection/CollectionMap"
 import { useState } from "react"
-import { CollectionPhoto } from "@/components/collection/CollectionPhoto"
+import { CollectionPhoto } from "@/components/collection/CollectionPhotos/CollectionPhoto"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 import { Button } from "@nasti/ui/button"
+import { ROLE } from "@nasti/common/types"
 
 const CollectionDetail = () => {
-  const { user } = useAuth()
+  const { user, org } = useAuth()
   const { collectionId, id: tripId } = useParams({
     from: "/_private/trips/$id/collections/$collectionId/",
   })
@@ -35,6 +36,9 @@ const CollectionDetail = () => {
   const [fullScreenPhoto, setFullScreenPhoto] = useState<string | null>(null)
 
   const displayDistance = useDisplayDistance(collection.locationCoord ?? {})
+
+  const canEdit = collection.created_by === user?.id || org?.role === ROLE.ADMIN
+
   return (
     <div className="flex flex-col gap-3 px-2">
       <div className="flex items-center justify-between align-middle">
@@ -42,14 +46,16 @@ const CollectionDetail = () => {
           <ChevronLeft onClick={handleBackClick} width={36} height={36} />{" "}
           {collection?.species?.name || collection.field_name}
         </div>
-        <Link
-          to={`/trips/$id/collections/$collectionId/edit`}
-          params={{ id: tripId, collectionId }}
-        >
-          <Button variant="ghost" size={"icon"}>
-            <Pencil className="h-5 w-5" />
-          </Button>
-        </Link>
+        {canEdit && (
+          <Link
+            to={`/trips/$id/collections/$collectionId/edit`}
+            params={{ id: tripId, collectionId }}
+          >
+            <Button variant="ghost" size={"icon"}>
+              <Pencil className="h-5 w-5" />
+            </Button>
+          </Link>
+        )}
       </div>
       <table>
         <thead>
@@ -156,6 +162,7 @@ const CollectionDetail = () => {
                 id={photo.id}
                 onClick={setFullScreenPhoto}
                 key={photo.id}
+                withCaption
               />
             )
           })}
