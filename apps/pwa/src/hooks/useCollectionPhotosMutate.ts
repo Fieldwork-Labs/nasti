@@ -5,11 +5,12 @@ import { useAuth } from "./useAuth"
 import { queryClient } from "@/lib/queryClient"
 import { CollectionPhoto } from "@nasti/common/types"
 import { useCallback } from "react"
-import { deleteImage, fileToBase64, putImage } from "@/lib/persistFiles"
+import { deleteImage } from "@/lib/persistFiles"
 import {
   getCollectionPhotosByTripQueryKey,
   TripCollectionPhotos,
 } from "./useCollectionPhotosForTrip"
+import { Upload } from "tus-js-client"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -22,6 +23,65 @@ export type PendingCollectionPhoto = Omit<UploadPhotoVariables, "file"> & {
   collection_id: string
   url: string
 }
+
+async function uploadFile(
+  bucketName: string,
+  fileName: string,
+  file: File,
+  metadata: Record<string, string> = {},
+  onProgressUpdate?: (percentageComplete: number) => void,
+) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  return new Promise(async (resolve, reject) => {
+    if (!session) throw new Error("No session")
+
+    const upload = new Upload(file, {
+      endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      headers: {
+        authorization: `Bearer ${session.access_token}`,
+        "x-upsert": "true", // optionally set upsert to true to overwrite existing files
+      },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true, // Important if you want to allow re-uploading the same file https://github.com/tus/tus-js-client/blob/main/docs/api.md#removefingerprintonsuccess
+      metadata: {
+        bucketName: bucketName,
+        objectName: fileName,
+        contentType: "image/png",
+        cacheControl: "3600",
+        ...metadata,
+      },
+      chunkSize: 6 * 1024 * 1024, // NOTE: it must be set to 6MB (for now) do not change it
+      onError: function (error) {
+        console.log("Failed because: " + error)
+        reject(error)
+      },
+      onProgress: function (bytesUploaded, bytesTotal) {
+        var percentage = (bytesUploaded / bytesTotal) * 100
+        onProgressUpdate?.(percentage)
+      },
+      onSuccess: function () {
+        resolve(upload.file)
+      },
+    })
+
+    // Check if there are any previous uploads to continue.
+    const previousUploads = await upload.findPreviousUploads()
+    // Found previous uploads so we select the first one.
+    if (previousUploads.length) {
+      upload.resumeFromPreviousUpload(previousUploads[0])
+    }
+    upload.start()
+  })
+}
+
+export const getUploadProgressQueryKey = (photoId: string) => [
+  "photoUploads",
+  photoId,
+]
 
 export const useCollectionPhotosMutate = ({
   collectionId,
@@ -44,6 +104,19 @@ export const useCollectionPhotosMutate = ({
     [org, tripId, collectionId],
   )
 
+  const updateUploadProgress = useCallback(
+    (photoId: string, percentage: number) => {
+      const queryKey = getUploadProgressQueryKey(photoId)
+      if (percentage !== 100)
+        queryClient.setQueryData<number>(queryKey, percentage)
+      else
+        queryClient.removeQueries({
+          queryKey,
+        })
+    },
+    [collectionId],
+  )
+
   const createPhotoMutation = useMutation<
     CollectionPhoto,
     Error,
@@ -57,13 +130,18 @@ export const useCollectionPhotosMutate = ({
 
       const filePath = getFilePath(file, photoId)
 
-      const [{ error: storageError }, { data, error }] = await Promise.all([
+      const [, { data, error }] = await Promise.all([
         // Upload file to Supabase Storage
-        supabase.storage.from("collection-photos").upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-          metadata: { collectionId, photoId },
-        }),
+        uploadFile(
+          "collection-photos",
+          filePath,
+          file,
+          {
+            collectionId,
+            photoId,
+          },
+          (percentage) => updateUploadProgress(photoId, percentage),
+        ),
         // upload to supabase database table
         supabase
           .from("collection_photo")
@@ -77,14 +155,14 @@ export const useCollectionPhotosMutate = ({
           ])
           .select()
           .single(),
-      ])
-      if (storageError) throw storageError
+      ]).catch((error) => {
+        throw error
+      })
       if (error) throw error
       return data as CollectionPhoto
     },
     onMutate: async ({ file, ...variables }) => {
-      // store locally in indexedDB
-      await putImage(variables.id, await fileToBase64(file))
+      // IndexedDB Put is not done here because it needs to be awaited regardless of online state
 
       // Get the trip details data blob
       const pendingItem: PendingCollectionPhoto = {
@@ -254,4 +332,10 @@ export const useCollectionPhotosMutate = ({
     getIsPending,
     getIsMutating,
   }
+}
+
+export const useCollectionPhotoUploadProgress = (photoId?: string) => {
+  return queryClient.getQueryData<number>(
+    getUploadProgressQueryKey(photoId ?? ""),
+  )
 }

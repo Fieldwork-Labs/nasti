@@ -59,7 +59,7 @@ const CollectionListItem = ({
 
   const displayDistance = useDisplayDistance(collection.locationCoord ?? {})
 
-  const isMutating = getIsMutating({ id: collection.id })
+  const isMutating = getIsMutating({ id: collection.id, includeChildren: true })
   const isPending = getIsPending({ id: collection.id })
 
   const firstPhoto =

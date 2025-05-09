@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth"
 import { useCollection } from "@/hooks/useCollection"
 import { useCollectionPhotosMutate } from "@/hooks/useCollectionPhotosMutate"
 import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
+import { useNetwork } from "@/hooks/useNetwork"
+import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ROLE } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
@@ -94,9 +96,11 @@ function CollectionForm() {
     ...initialValues
   } = useCollection({ collectionId, tripId })
 
-  const { mutate: updateCollection } = useCollectionUpdate({ tripId })
+  const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
     useCollectionPhotosMutate({ collectionId, tripId })
+
+  const { isOnline } = useNetwork()
 
   const navigate = useNavigate({
     from: "/trips/$id/collections/$collectionId/edit",
@@ -165,17 +169,30 @@ function CollectionForm() {
         location: locationPoint,
         ...rest,
       }
-      if (isDirty) updateCollection(payload)
+      if (!isDirty && photoChanges.add.length === 0)
+        navigate({
+          to: "/trips/$id/collections/$collectionId",
+          params: { id: tripId, collectionId },
+        })
 
+      const updatePromise = updateCollection(payload)
+      if (isOnline) await updatePromise
       photoChanges.add.map((photo) =>
-        createPhotoMutation.mutate(photo, { onError: console.error }),
+        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+      )
+      // even if the device is offline, we need to await the photo being stored in the DB so we do this
+      // separately to the mutation
+      await Promise.all(
+        photoChanges.add.map(async (photo) =>
+          putImage(photo.id, await fileToBase64(photo.file)),
+        ),
       )
       // find which photos have been removed from the initial list
       const removedPhotos = initialPhotos.filter(
         (photo) => !photoChanges.keep.find((p) => p.id === photo.id),
       )
-      removedPhotos.map((photo) =>
-        deletePhotoMutation.mutate(photo.id, { onError: console.error }),
+      const deletePhotoPromises = removedPhotos.map((photo) =>
+        deletePhotoMutation.mutateAsync(photo.id, { onError: console.error }),
       )
 
       // for the remaining photos, update captions if they have changed
@@ -184,18 +201,26 @@ function CollectionForm() {
         return existing?.caption !== kept.caption
       })
 
-      changedPhotos.forEach((photo) =>
-        updateCaptionMutation.mutate({
+      const changePhotoPromises = changedPhotos.map((photo) =>
+        updateCaptionMutation.mutateAsync({
           photoId: photo.id,
           caption: photo.caption,
         }),
       )
+
+      if (isOnline) {
+        // do not await the add photo Promises - they're slower and can happen in parallel
+        // await Promise.all(addPhotoPromises)
+        await Promise.all(deletePhotoPromises)
+        await Promise.all(changePhotoPromises)
+      }
+
       navigate({
         to: "/trips/$id/collections/$collectionId",
         params: { id: tripId, collectionId },
       })
     },
-    [user, org, tripId, location, photoChanges, isDirty],
+    [user, org, tripId, location, photoChanges, isDirty, isOnline],
   )
 
   const handleSetFieldName = useCallback(() => {

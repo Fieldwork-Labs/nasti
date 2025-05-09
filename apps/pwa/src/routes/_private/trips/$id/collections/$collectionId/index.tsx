@@ -162,7 +162,8 @@ const CollectionDetail = () => {
                 id={photo.id}
                 onClick={setFullScreenPhoto}
                 key={photo.id}
-                withCaption
+                showCaption
+                showUploadProgress
               />
             )
           })}

@@ -27,6 +27,8 @@ import {
   useCollectionPhotosMutate,
 } from "@/hooks/useCollectionPhotosMutate"
 import { CollectionPhotosForm } from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
+import { useNetwork } from "@/hooks/useNetwork"
+import { fileToBase64, putImage } from "@/lib/persistFiles"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -107,6 +109,7 @@ function AddCollection() {
   const { speciesId: initialSpeciesId } = useSearch({
     from: "/_private/trips/$id/collections/new",
   })
+  const { isOnline } = useNetwork()
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
@@ -158,10 +161,19 @@ function AddCollection() {
         organisation_id: org.organisation_id,
         trip_id: tripId,
       }
-      await createCollection(newCollection)
+      const collectionPromise = createCollection(newCollection)
+      // The UI will get stuck here when offline so only await if online
+      if (isOnline) await collectionPromise
+      // We need the collection to be created before we can create the photos
+      const photoPromises = photos.map((photo) =>
+        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+      )
+      if (isOnline) await Promise.all(photoPromises)
+      // even if the device is offline, we need to await the photo being stored in the DB so we do this
+      // separately to the mutation
       await Promise.all(
-        photos.map((photo) =>
-          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+        photos.map(async (photo) =>
+          putImage(photo.id, await fileToBase64(photo.file)),
         ),
       )
 
@@ -169,7 +181,15 @@ function AddCollection() {
         console.error(createPhotoMutation.error)
       } else navigate({ to: "/trips/$id", params: { id: tripId } })
     },
-    [user, tripId, location, createCollection, createPhotoMutation, navigate],
+    [
+      user,
+      tripId,
+      location,
+      createCollection,
+      createPhotoMutation,
+      navigate,
+      isOnline,
+    ],
   )
 
   const handleSetEnterFieldName = useCallback(() => {

@@ -105,20 +105,34 @@ export const useCollectionCreate = ({ tripId }: { tripId: string }) => {
   })
 
   const isMutating = useMutationState({
-    filters: { mutationKey: getMutationKey(tripId), status: "pending" },
+    filters: {
+      mutationKey: getMutationKey(tripId),
+      status: "pending",
+      predicate: ({ state }) => !state.isPaused,
+    },
   })
 
   /*
    * function getIsMutating
    * Returns a function that returns whether a collection is currently being mutated (ie, in process of uploading to server)
    * @param id - The id of the collection to check
+   * @param includeChildren - Whether to include photo mutations in the check
    */
   const getIsMutating = useCallback(
-    ({ id }: { id: string }) =>
-      isMutating.find(
-        ({ variables, isPaused }) =>
-          !isPaused && (variables as Collection).id === id,
-      ),
+    ({ id, includeChildren }: { id: string; includeChildren?: boolean }) => {
+      const isItemMutating = isMutating.find(
+        ({ variables }) => (variables as Collection).id === id,
+      )
+      if (includeChildren) {
+        const photos = queryClient.getMutationCache().findAll({
+          mutationKey: ["collectionPhotos", "create", id],
+          status: "pending",
+          predicate: ({ state }) => !state.isPaused,
+        })
+        return isItemMutating || (photos && photos.length > 0)
+      }
+      return isItemMutating
+    },
     [isMutating],
   )
   /*

@@ -46,6 +46,9 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
         `,
         )
         .eq("collection.trip_id", tripId)
+        .order("collection_id", { ascending: false })
+        .order("uploaded_at", { ascending: false })
+
       if (collectionPhotos.error)
         throw new Error(collectionPhotos.error.message)
 

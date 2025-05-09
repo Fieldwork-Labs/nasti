@@ -3,11 +3,15 @@ import type { CollectionPhoto, Species } from "@nasti/common/types"
 import { LeafIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
+import {
+  PendingCollectionPhoto,
+  useCollectionPhotoUploadProgress,
+} from "@/hooks/useCollectionPhotosMutate"
 import { getImage } from "@/lib/persistFiles"
 import { Spinner } from "@nasti/ui/spinner"
 import { useCollectionPhoto } from "@/hooks/useCollectionPhoto"
 import { cn } from "@nasti/ui/utils"
+import { Progress } from "@nasti/ui/progress"
 
 export function usePhotoUrl(
   photo: CollectionPhoto | PendingCollectionPhoto | undefined | null,
@@ -52,20 +56,25 @@ type Props = {
   id?: string
   onClick?: (url: string) => void
   species?: Species | null
-  withCaption?: boolean
+  showCaption?: boolean
   className?: string
+  showUploadProgress?: boolean
 }
 
 export function CollectionPhoto({
   id,
   onClick,
   species,
-  withCaption,
+  showCaption,
   className,
+  showUploadProgress,
 }: Props) {
   const photo = useCollectionPhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
   const { url, status } = usePhotoUrl(photo, fallback) // status: 'loading' | 'success' | 'error'
+  const progress = useCollectionPhotoUploadProgress(id)
+  const displayProgress = showUploadProgress && progress && progress >= 0
+
   return (
     <span className={cn("flex flex-col items-start gap-1", className)}>
       {/* Image area ----------------------------------------------------------- */}
@@ -74,14 +83,23 @@ export function CollectionPhoto({
           <Spinner className="h-8 w-8" />
         </span>
       ) : status === "success" && url ? (
-        <img
-          src={url}
-          alt={species?.name || "collection photo"}
-          onClick={onClick ? () => onClick(url) : undefined}
-          className={`aspect-square w-full object-cover ${onClick ? "cursor-pointer" : "cursor-default"}`}
-          role="button"
-          tabIndex={0}
-        />
+        <>
+          <div className="relative">
+            <img
+              src={url}
+              alt={species?.name || "collection photo"}
+              onClick={onClick ? () => onClick(url) : undefined}
+              className={`aspect-square w-full object-cover ${onClick ? "cursor-pointer" : "cursor-default"} ${displayProgress ? "animate-pulse" : ""}`}
+              role="button"
+              tabIndex={0}
+            />
+            {displayProgress && (
+              <div className="absolute bottom-1 left-1 right-1 z-10">
+                <Progress value={progress} className="w-full" />
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         /* status === "error" OR no url --------------------------------------- */
         <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
@@ -90,7 +108,7 @@ export function CollectionPhoto({
       )}
 
       {/* Optional caption ----------------------------------------------------- */}
-      {withCaption &&
+      {showCaption &&
         photo &&
         "caption" in photo &&
         photo.caption &&
