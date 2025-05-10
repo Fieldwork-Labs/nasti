@@ -25,7 +25,7 @@ export const getImage = async (id: string) => {
 
 export const putImage = async (id: string, image: Base64URLString) => {
   const db = await imageDB
-  await db.put("images", { image, id, timestamp: Date.now() }, id)
+  await db.put("images", { image, id, timestamp: Date.now() })
 }
 
 export const deleteImage = async (id: string) => {
