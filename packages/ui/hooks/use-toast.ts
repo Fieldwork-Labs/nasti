@@ -10,6 +10,7 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+  showDismiss?: boolean
 }
 
 const ADD_TOAST = "ADD_TOAST"

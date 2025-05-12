@@ -9,3 +9,14 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Extend WindowEventMap to include our custom events
+declare global {
+  type ServiceWorkerUpdateEvent = CustomEvent<ServiceWorkerRegistration>
+  interface WindowEventMap {
+    "sw-updated": ServiceWorkerUpdateEvent
+    "sw-ready": CustomEvent
+  }
+}
+
+export {}

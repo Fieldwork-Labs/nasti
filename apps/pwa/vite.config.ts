@@ -35,7 +35,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       srcDir: "./src",
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: [
         "assets/favicon.ico",
         "pwa-64x64.png",

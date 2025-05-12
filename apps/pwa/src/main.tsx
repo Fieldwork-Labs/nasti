@@ -7,6 +7,7 @@ import { routeTree } from "./routeTree.gen"
 import { ThemeProvider } from "./contexts/theme"
 import { NastiPersistQueryClientProvider } from "./lib/queryClient"
 import { useAuth } from "./hooks/useAuth"
+import { SwStatusProvider } from "./contexts/swStatus"
 
 // Create a new router instance
 const router = createRouter({
@@ -37,7 +38,9 @@ const App = () => {
   const { isLoggedIn, getSession } = useAuth()
   return (
     <ThemeProvider>
-      <RouterProvider router={router} context={{ isLoggedIn, getSession }} />
+      <SwStatusProvider>
+        <RouterProvider router={router} context={{ isLoggedIn, getSession }} />
+      </SwStatusProvider>
     </ThemeProvider>
   )
 }

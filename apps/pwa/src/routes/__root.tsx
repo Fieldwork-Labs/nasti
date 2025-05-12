@@ -1,5 +1,5 @@
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router"
-import { CircleAlert, LeafIcon } from "lucide-react"
+import { CircleAlert, CircleCheck, LeafIcon } from "lucide-react"
 import { useOpenClose } from "@nasti/ui/hooks"
 import { SettingsMenuModal } from "@/components/app/SettingsMenu"
 import { Button } from "@nasti/ui/button"
@@ -8,6 +8,9 @@ import React from "react"
 import { SupabaseAuthClient } from "@supabase/supabase-js/dist/module/lib/SupabaseAuthClient"
 import { useAuth } from "@/hooks/useAuth"
 import { useNetwork } from "@/hooks/useNetwork"
+import { useSwStatus } from "@/contexts/swStatus"
+import { UpdateNotification } from "@/components/app/UpdateNotification"
+import { Toaster } from "@nasti/ui/toaster"
 
 const TanStackRouterDevtools = import.meta.env.DEV
   ? React.lazy(() =>
@@ -20,8 +23,12 @@ const TanStackRouterDevtools = import.meta.env.DEV
     )
   : () => null // Render nothing in production
 
-const OfflineIndicator = () => {
+/*
+ * Indicator that the app is ready to go offline or is offline
+ */
+const OfflineStateIndicator = () => {
   const { isOnline } = useNetwork()
+  const { offlineReady } = useSwStatus()
 
   if (!isOnline) {
     return (
@@ -39,6 +46,20 @@ const OfflineIndicator = () => {
       </Popover>
     )
   }
+  if (offlineReady)
+    return (
+      <Popover>
+        <PopoverTrigger>
+          <div className="bg-secondary-background text-muted-foreground flex h-6 items-center gap-1 rounded-lg px-2 py-1 text-center align-middle text-xs">
+            <CircleCheck size={10} />
+            <span>Ready</span>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent side="bottom" className="mr-5 w-60 text-sm">
+          The app is ready to work offline
+        </PopoverContent>
+      </Popover>
+    )
   return null
 }
 
@@ -55,7 +76,7 @@ export const Route = createRootRouteWithContext<{
       <div className="h-screen">
         {isLoggedIn && (
           <div className="flex items-center justify-end gap-4 py-2 pr-2">
-            <OfflineIndicator />
+            <OfflineStateIndicator />
             <Button
               onClick={open}
               className="bg-secondary-background h-9 w-9 rounded-xl p-2"
@@ -66,8 +87,10 @@ export const Route = createRootRouteWithContext<{
           </div>
         )}
         <Outlet />
+        <UpdateNotification />
         <TanStackRouterDevtools />
         <SettingsMenuModal isOpen={isOpen} close={close} />
+        <Toaster />
       </div>
     )
   },

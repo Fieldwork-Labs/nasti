@@ -10,7 +10,8 @@
     },
     "noEmit": true,
     "composite": false,
-    "incremental": false
+    "incremental": false,
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "references": []
 }

@@ -35,6 +35,7 @@
     "./progress": "./components/progress.tsx",
     "./skeleton": "./components/skeleton.tsx",
     "./toast": "./components/toast.tsx",
+    "./toaster": "./components/toaster.tsx",
     "./button-link": "./components/button-link.tsx",
     "./combobox": "./components/combobox.tsx",
     "./formField": "./components/formField.tsx",
@@ -43,7 +44,6 @@
     "./spinner": "./components/spinner.tsx",
     "./textarea": "./components/textarea.tsx",
     "./switch": "./components/switch.tsx",
-    "./toaster": "./components/toaster.tsx",
     "./hooks": "./hooks/index.ts",
     "./styles/globals.css": "./styles/globals.css",
     "./utils": "./utils/index.ts"
