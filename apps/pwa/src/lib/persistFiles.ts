@@ -23,6 +23,19 @@ export const getImage = async (id: string) => {
   return db.get("images", id)
 }
 
+export const getImages = async (ids: string[]) => {
+  const db = await imageDB
+  const tx = db.transaction("images", "readonly")
+  const store = tx.objectStore("images")
+
+  const promises = ids.map((id) => store.get(id))
+  const results = await Promise.all(promises)
+
+  await tx.done
+
+  return results.filter((image) => image !== undefined)
+}
+
 export const putImage = async (id: string, image: Base64URLString) => {
   const db = await imageDB
   await db.put("images", { image, id, timestamp: Date.now() })
