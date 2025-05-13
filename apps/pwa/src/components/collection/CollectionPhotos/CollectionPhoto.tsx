@@ -1,56 +1,13 @@
 import { useALASpeciesImage } from "@nasti/common/hooks"
 import type { CollectionPhoto, Species } from "@nasti/common/types"
 import { LeafIcon } from "lucide-react"
-import { useEffect, useState } from "react"
 
-import {
-  PendingCollectionPhoto,
-  useCollectionPhotoUploadProgress,
-} from "@/hooks/useCollectionPhotosMutate"
-import { getImage } from "@/lib/persistFiles"
+import { useCollectionPhotoUploadProgress } from "@/hooks/useCollectionPhotosMutate"
 import { Spinner } from "@nasti/ui/spinner"
 import { useCollectionPhoto } from "@/hooks/useCollectionPhoto"
 import { cn } from "@nasti/ui/utils"
 import { Progress } from "@nasti/ui/progress"
-
-export function usePhotoUrl(
-  photo: CollectionPhoto | PendingCollectionPhoto | undefined | null,
-  fallback?: string | null,
-) {
-  const [state, setState] = useState<{
-    url: string | null
-    status: "idle" | "loading" | "success" | "error"
-  }>({ url: null, status: "idle" })
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      if (!photo) {
-        setState({ url: fallback ?? null, status: "success" })
-        return
-      }
-
-      setState((s) => ({ ...s, status: "loading" }))
-
-      try {
-        const imageBase64 = await getImage(photo.id)
-        if (!imageBase64) throw new Error("not found")
-
-        if (!cancelled) setState({ url: imageBase64.image, status: "success" })
-      } catch {
-        if (!cancelled) setState({ url: fallback ?? null, status: "error" })
-      }
-    }
-
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [photo, fallback])
-
-  return state
-}
+import { usePhotoUrl } from "@/hooks/usePhotoUrl"
 
 type Props = {
   id?: string
@@ -71,14 +28,14 @@ export function CollectionPhoto({
 }: Props) {
   const photo = useCollectionPhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
-  const { url, status } = usePhotoUrl(photo, fallback) // status: 'loading' | 'success' | 'error'
+  const { data: url, status } = usePhotoUrl({ photoId: id, fallback })
   const progress = useCollectionPhotoUploadProgress(id)
   const displayProgress = showUploadProgress && progress && progress >= 0
 
   return (
     <span className={cn("flex flex-col items-start gap-1", className)}>
       {/* Image area ----------------------------------------------------------- */}
-      {status === "loading" ? (
+      {status === "pending" ? (
         <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
           <Spinner className="h-8 w-8" />
         </span>

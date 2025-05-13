@@ -1,9 +1,14 @@
 import { openDB, DBSchema } from "idb"
 
+type ImageRecord = {
+  id: string
+  image: Base64URLString
+  timestamp: number
+}
 interface PhotosDB extends DBSchema {
   images: {
     key: string
-    value: { id: string; image: Base64URLString; timestamp: number }
+    value: ImageRecord
     indexes: {
       timestamp: number
     }
@@ -17,10 +22,23 @@ export const imageDB = openDB<PhotosDB>("image-store", 1, {
     imageStore.createIndex("timestamp", "timestamp")
   },
 })
+export const getImage = (id: string) => {
+  return new Promise<ImageRecord | undefined>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error("IndexedDB operation timed out"))
+    }, 2000)
 
-export const getImage = async (id: string) => {
-  const db = await imageDB
-  return db.get("images", id)
+    imageDB
+      .then((db) => db.get("images", id))
+      .then((image) => {
+        clearTimeout(timeoutId)
+        resolve(image)
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId)
+        reject(error)
+      })
+  })
 }
 
 export const getImages = async (ids: string[]) => {

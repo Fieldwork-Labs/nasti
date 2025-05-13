@@ -234,6 +234,7 @@ export const useCollectionPhotosMutate = ({
     },
     onSettled: async (id) => {
       if (!id) return
+      queryClient.removeQueries({ queryKey: ["photo", "url", id] })
       await deleteImage(id)
     },
   })

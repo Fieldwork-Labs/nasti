@@ -11,6 +11,11 @@ export const queryClient = new QueryClient({
       retry: false,
       gcTime: Infinity,
     },
+    dehydrate: {
+      shouldDehydrateQuery: (query) => {
+        return query.meta?.persisted !== false
+      },
+    },
   },
 })
 
