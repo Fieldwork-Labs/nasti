@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react"
+import { createContext, useCallback, useContext, useState } from "react"
 import { useRegisterSW } from "virtual:pwa-register/react"
 
 type SwStatusProviderProps = {
@@ -11,6 +11,7 @@ type SwStatusProviderState = {
   updateServiceWorker: () => Promise<void>
   ignoreUpdate: boolean
   setIgnoreUpdate: (ignore: boolean) => void
+  isUpdating: boolean
 }
 
 const initialState: SwStatusProviderState = {
@@ -19,6 +20,7 @@ const initialState: SwStatusProviderState = {
   updateServiceWorker: () => Promise.resolve(),
   ignoreUpdate: false,
   setIgnoreUpdate: (_: boolean) => {},
+  isUpdating: false,
 }
 
 const SwStatusProviderContext =
@@ -51,6 +53,7 @@ export function SwStatusProvider({
   ...props
 }: SwStatusProviderProps) {
   const [ignoreUpdate, setIgnoreUpdate] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const period = 60 * 5 * 1000 // 5 minutes
 
@@ -65,12 +68,17 @@ export function SwStatusProvider({
       } else if (r?.installing) {
         r.installing.addEventListener("statechange", (e) => {
           const sw = e.target as ServiceWorker
-          console.log("statechange", { state: sw.state, something: "changed" })
           if (sw.state === "activated") registerPeriodicSync(period, swUrl, r)
         })
       }
     },
   })
+
+  const wrappedUpdateServiceWorker = useCallback(async () => {
+    setIsUpdating(true)
+    await updateServiceWorker()
+    setIsUpdating(false)
+  }, [updateServiceWorker])
 
   return (
     <SwStatusProviderContext.Provider
@@ -80,7 +88,8 @@ export function SwStatusProvider({
         ignoreUpdate,
         setIgnoreUpdate,
         updateAvailable: needRefresh,
-        updateServiceWorker,
+        updateServiceWorker: wrappedUpdateServiceWorker,
+        isUpdating,
       }}
     >
       {children}

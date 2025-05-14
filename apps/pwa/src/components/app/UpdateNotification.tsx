@@ -18,6 +18,7 @@ export function UpdateNotification() {
     ignoreUpdate,
     setIgnoreUpdate,
     updateServiceWorker,
+    isUpdating,
   } = useSwStatus()
   const { isOnline } = useNetwork()
 
@@ -40,8 +41,12 @@ export function UpdateNotification() {
           >
             Ignore
           </AlertDialogCancel>
-          <AlertDialogAction onClick={updateServiceWorker}>
-            Update
+          <AlertDialogAction
+            onClick={updateServiceWorker}
+            disabled={isUpdating}
+          >
+            {!isUpdating && "Update"}
+            {isUpdating && "Updating..."}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
