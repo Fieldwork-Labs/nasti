@@ -1,34 +1,21 @@
 import { getImage } from "@/lib/persistFiles"
 import { useQuery } from "@tanstack/react-query"
 
-export const usePhotoUrl = ({
-  photoId,
-  fallback,
-}: {
-  photoId?: string
-  fallback?: string | null
-}) => {
+export const usePhotoUrl = ({ photoId }: { photoId?: string }) => {
   return useQuery({
-    queryKey: [
-      "photo",
-      "url",
-      photoId,
-      Boolean(fallback) ? "hasFallback" : undefined,
-    ],
+    queryKey: ["photo", "url", photoId],
     queryFn: async () => {
-      if (!photoId) return fallback ?? null
+      if (!photoId) return null
 
       try {
         const imageRecord = await getImage(photoId)
 
         if (!imageRecord) {
-          if (!fallback) throw new Error("Not found")
-          return fallback
+          return null
         }
 
         return imageRecord.image
       } catch (error) {
-        if (fallback) return fallback
         throw error
       }
     },

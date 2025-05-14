@@ -28,7 +28,8 @@ export function CollectionPhoto({
 }: Props) {
   const photo = useCollectionPhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
-  const { data: url, status } = usePhotoUrl({ photoId: id, fallback })
+  const { data: url, status } = usePhotoUrl({ photoId: id })
+  const displayUrl = Boolean(url) ? url : fallback
   const progress = useCollectionPhotoUploadProgress(id)
   const displayProgress = Boolean(
     showUploadProgress && progress && progress >= 0,
@@ -41,13 +42,13 @@ export function CollectionPhoto({
         <span className="flex aspect-square w-full items-center justify-center bg-slate-500">
           <Spinner className="h-8 w-8" />
         </span>
-      ) : status === "success" && url ? (
+      ) : status === "success" && displayUrl ? (
         <>
           <div className="relative">
             <img
-              src={url}
+              src={displayUrl}
               alt={species?.name || "collection photo"}
-              onClick={onClick ? () => onClick(url) : undefined}
+              onClick={onClick ? () => onClick(displayUrl) : undefined}
               className={`aspect-square w-full object-cover ${onClick ? "cursor-pointer" : "cursor-default"} ${displayProgress ? "animate-pulse" : ""}`}
               role="button"
               tabIndex={0}

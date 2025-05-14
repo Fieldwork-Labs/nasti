@@ -76,6 +76,28 @@ export default defineConfig({
         globPatterns: ["**/*.{ts,tsx,js,css,html,svg,png,jpg,ico}"],
         cleanupOutdatedCaches: true,
         navigateFallback: "index.html",
+        runtimeCaching: [
+          {
+            // match   /functions/v1/ala_image_proxy?url=…
+            urlPattern: /^\/functions\/v1\/ala_image_proxy.*$/,
+            handler: "CacheFirst", // serve from cache when offline
+            method: "GET",
+            options: {
+              cacheName: "ala-remote-images",
+              expiration: {
+                maxEntries: 300, // keep at most 300 images
+                maxAgeSeconds: 60 * 60 * 24 * 7, // …for 7 days
+              },
+              cacheableResponse: {
+                // opaque responses from CORS proxies come back with status 0
+                statuses: [0, 200],
+              },
+              matchOptions: {
+                ignoreSearch: false, // each unique ?url=… gets its own entry
+              },
+            },
+          },
+        ],
       },
 
       devOptions: {
