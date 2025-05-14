@@ -9,7 +9,12 @@ export const usePhotoUrl = ({
   fallback?: string | null
 }) => {
   return useQuery({
-    queryKey: ["photo", "url", photoId],
+    queryKey: [
+      "photo",
+      "url",
+      photoId,
+      Boolean(fallback) ? "hasFallback" : undefined,
+    ],
     queryFn: async () => {
       if (!photoId) return fallback ?? null
 

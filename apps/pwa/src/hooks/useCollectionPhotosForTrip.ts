@@ -72,10 +72,12 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
           )
 
         await Promise.all(
-          data?.map(async ({ signedUrl }, i) => {
-            const base64 = await imageUrlToBase64(signedUrl)
-            await putImage(missingPhotos[i].id, base64)
-          }) ?? [],
+          data
+            ?.filter((d) => d.signedUrl)
+            .map(async ({ signedUrl }, i) => {
+              const base64 = await imageUrlToBase64(signedUrl)
+              await putImage(missingPhotos[i].id, base64)
+            }) ?? [],
         )
 
         if (error) console.log("Error when getting signed photos", { error })

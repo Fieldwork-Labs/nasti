@@ -30,7 +30,9 @@ export function CollectionPhoto({
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
   const { data: url, status } = usePhotoUrl({ photoId: id, fallback })
   const progress = useCollectionPhotoUploadProgress(id)
-  const displayProgress = showUploadProgress && progress && progress >= 0
+  const displayProgress = Boolean(
+    showUploadProgress && progress && progress >= 0,
+  )
 
   return (
     <span className={cn("flex flex-col items-start gap-1", className)}>
