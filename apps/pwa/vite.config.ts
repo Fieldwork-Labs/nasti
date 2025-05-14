@@ -79,7 +79,9 @@ export default defineConfig({
         runtimeCaching: [
           {
             // match   /functions/v1/ala_image_proxy?url=…
-            urlPattern: /^\/functions\/v1\/ala_image_proxy.*$/,
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith("/functions/v1/ala_image_proxy"),
+
             handler: "CacheFirst", // serve from cache when offline
             method: "GET",
             options: {
