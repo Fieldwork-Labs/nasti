@@ -46,6 +46,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     data: collectionPhotos,
     refetch: collectionPhotosRefetch,
     error: collectionPhotosError,
+    isFetching: collectionPhotosIsFetching,
   } = useCollectionPhotosForTrip({ tripId: id })
 
   const collectionPhotosMap = useMemo(() => {
@@ -193,6 +194,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const isFetching =
     !isRefetching &&
     (tripDetailsQuery.isFetching ||
+      collectionPhotosIsFetching ||
       speciesQuery.isFetching ||
       peopleQuery.isFetching)
 

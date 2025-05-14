@@ -1,11 +1,5 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react"
-import { registerSW } from "virtual:pwa-register"
+import { createContext, useContext, useState } from "react"
+import { useRegisterSW } from "virtual:pwa-register/react"
 
 type SwStatusProviderProps = {
   children: React.ReactNode
@@ -30,100 +24,65 @@ const initialState: SwStatusProviderState = {
 const SwStatusProviderContext =
   createContext<SwStatusProviderState>(initialState)
 
+const registerPeriodicSync = (
+  period: number,
+  swUrl: string,
+  r: ServiceWorkerRegistration,
+) => {
+  if (period <= 0) return
+
+  setInterval(async () => {
+    if ("onLine" in navigator && !navigator.onLine) return
+
+    const resp = await fetch(swUrl, {
+      cache: "no-store",
+      headers: {
+        cache: "no-store",
+        "cache-control": "no-cache",
+      },
+    })
+
+    if (resp?.status === 200) await r.update()
+  }, period)
+}
+
 export function SwStatusProvider({
   children,
   ...props
 }: SwStatusProviderProps) {
-  const [updateAvailable, setUpdateAvailable] = useState(false)
-  const [offlineReady, setOfflineReady] = useState(false)
-  const [registration, setRegistration] = useState<
-    ServiceWorkerRegistration | undefined
-  >()
   const [ignoreUpdate, setIgnoreUpdate] = useState(false)
 
-  useEffect(() => {
-    const intervalMS = 10 * 60 * 1000 // every 10 min
+  const period = 60 * 5 * 1000 // 5 minutes
 
-    registerSW({
-      onRegistered(registration) {
-        // When registered, dispatch a custom event
-        if (registration) {
-          // Check for updates periodically
-          setInterval(() => {
-            registration.update().catch(console.error)
-          }, intervalMS)
-
-          // Dispatch a ready event
-          window.dispatchEvent(
-            new CustomEvent("sw-ready", { detail: registration }),
-          )
-        }
-      },
-      onNeedRefresh() {
-        // When an update is available, dispatch a custom event
-        if (!navigator.serviceWorker?.controller) return
-
-        navigator.serviceWorker.getRegistration().then((registration) => {
-          if (registration) {
-            window.dispatchEvent(
-              new CustomEvent("sw-updated", { detail: registration }),
-            )
-          }
-        })
-      },
-      onOfflineReady() {
-        window.dispatchEvent(new CustomEvent("sw-ready"))
-      },
-    })
-
-    return () => {
-      // Cleanup if needed
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return
-
-    // Add event listeners for the PWA lifecycle events
-    const handleSWUpdated = (event: ServiceWorkerUpdateEvent) => {
-      const registration = event.detail
-      setRegistration(registration)
-      setUpdateAvailable(true)
-    }
-
-    const handleSWReady = () => {
-      setOfflineReady(true)
-    }
-
-    window.addEventListener("sw-updated", handleSWUpdated, { once: true })
-    window.addEventListener("sw-ready", handleSWReady)
-
-    // Cleanup listeners
-    return () => {
-      window.removeEventListener("sw-updated", handleSWUpdated)
-      window.removeEventListener("sw-ready", handleSWReady)
-    }
-  }, [])
-
-  const updateServiceWorker = useCallback(async () => {
-    if (!registration?.waiting) return
-    // Send a message to the waiting service worker to skip waiting and become active
-    registration.waiting.postMessage({ type: "SKIP_WAITING" })
-    setUpdateAvailable(false)
-    // Reload the page to activate the new service worker
-    window.location.reload()
-  }, [])
-
-  const value = {
-    offlineReady,
-    updateAvailable,
+  const {
+    needRefresh: [needRefresh],
     updateServiceWorker,
-    setIgnoreUpdate,
-    ignoreUpdate,
-  }
+  } = useRegisterSW({
+    onRegisteredSW(swUrl, r) {
+      if (period <= 0) return
+      if (r?.active?.state === "activated") {
+        registerPeriodicSync(period, swUrl, r)
+      } else if (r?.installing) {
+        r.installing.addEventListener("statechange", (e) => {
+          const sw = e.target as ServiceWorker
+          console.log("statechange", { state: sw.state, something: "changed" })
+          if (sw.state === "activated") registerPeriodicSync(period, swUrl, r)
+        })
+      }
+    },
+  })
 
   return (
-    <SwStatusProviderContext.Provider {...props} value={value}>
+    <SwStatusProviderContext.Provider
+      {...props}
+      value={{
+        offlineReady: Boolean(navigator.serviceWorker.controller),
+        ignoreUpdate,
+        setIgnoreUpdate,
+        updateAvailable: needRefresh,
+        updateServiceWorker,
+      }}
+    >
       {children}
     </SwStatusProviderContext.Provider>
   )

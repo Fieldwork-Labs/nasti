@@ -7,7 +7,7 @@ const getTrips = async (): Promise<Trip[]> => {
   const { data: trips, error } = await supabase
     .from("trip")
     .select("*")
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: true })
 
   if (error) throw new Error(error.message)
 

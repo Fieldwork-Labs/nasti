@@ -71,10 +71,12 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
             60 * 10,
           )
 
-        data?.map(async ({ signedUrl }, i) => {
-          const base64 = await imageUrlToBase64(signedUrl)
-          await putImage(missingPhotos[i].id, base64)
-        })
+        await Promise.all(
+          data?.map(async ({ signedUrl }, i) => {
+            const base64 = await imageUrlToBase64(signedUrl)
+            await putImage(missingPhotos[i].id, base64)
+          }) ?? [],
+        )
 
         if (error) console.log("Error when getting signed photos", { error })
       }
@@ -82,7 +84,7 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
 
       return result
     },
-    refetchInterval: 1000 * 60 * 59, // every 59 minutes
+    refetchInterval: 1000 * 60 * 60, // every 1 hour
   })
 
   return collectionPhotosQuery

@@ -22,15 +22,12 @@ export function UpdateNotification() {
   const { isOnline } = useNetwork()
 
   return (
-    <AlertDialog
-      open={updateAvailable && !ignoreUpdate && isOnline}
-      onOpenChange={close}
-    >
+    <AlertDialog open={updateAvailable && !ignoreUpdate && isOnline}>
       <AlertDialogContent className="space-y-2">
         <AlertDialogHeader className="text-left">
-          <AlertDialogTitle>New Version Available</AlertDialogTitle>
+          <AlertDialogTitle>New Version Available!</AlertDialogTitle>
           <AlertDialogDescription>
-            Choose to update or ignore this update for now
+            Choose to update, or ignore this update for now
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-row justify-end space-x-2">
