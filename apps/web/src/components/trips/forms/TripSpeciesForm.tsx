@@ -1,4 +1,4 @@
-import { XIcon } from "lucide-react"
+import { Globe, XIcon } from "lucide-react"
 import { Badge } from "@nasti/ui/badge"
 import { Button } from "@nasti/ui/button"
 import {
@@ -17,7 +17,10 @@ import {
   useALASpeciesSearch,
 } from "@nasti/common/hooks/useALASpeciesSearch"
 import { useTripSpecies } from "@/hooks/useTripSpecies"
+import { useALAOccurrencesByLocation } from "@nasti/common/hooks"
+import { withTooltip } from "@nasti/ui/tooltip"
 import { Trip } from "@nasti/common/types"
+import { getTripCoordinates } from "../utils"
 
 export type GUID = string
 export type SpeciesName = string
@@ -37,17 +40,73 @@ type TripSpeciesFormArgs = {
   close: () => void
 }
 
+const useSpeciesForLocation = (trip?: Trip) => {
+  // const location = trip ? getTripCoordinates(trip) : undefined
+  let location: ReturnType<typeof getTripCoordinates> | undefined
+  try {
+    location = trip ? getTripCoordinates(trip) : undefined
+  } catch (e) {
+    /* nooop */
+  }
+
+  const { occurrences, fetchAll, isLoading, isFetching, isError, error } =
+    useALAOccurrencesByLocation({
+      lat: location?.latitude,
+      lng: location?.longitude,
+    })
+
+  useEffect(() => {
+    if (location) {
+      fetchAll()
+    }
+  }, [location, fetchAll])
+
+  const uniqueSpecies = useMemo(() => {
+    return new Set(occurrences ?? [])
+  }, [occurrences])
+
+  const data = useMemo(() => {
+    return Object.fromEntries(
+      Array.from(uniqueSpecies).map(({ taxonConceptID, scientificName }) => [
+        taxonConceptID,
+        scientificName,
+      ]),
+    )
+  }, [uniqueSpecies])
+
+  return {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+  }
+}
+
 export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState("")
-
+  const { data: knownSpecies } = useSpeciesForLocation(trip)
   const debouncedSearch = useDebounce(searchValue, 300)
   const {
-    data: alaSpecies,
+    data: unsortedAlaSpecies,
     isLoading: isLoadingSpeciesSearch,
     error: searchError,
-  } = useALASpeciesSearch(debouncedSearch)
+  } = useALASpeciesSearch(debouncedSearch, { limit: 100 })
+
+  const alaSpecies = useMemo(
+    // sort by whether or not the species is known
+    () =>
+      unsortedAlaSpecies?.sort((a, b) => {
+        const aKnown = Boolean(knownSpecies?.[a.guid])
+        const bKnown = Boolean(knownSpecies?.[b.guid])
+        if (aKnown && !bKnown) return -1
+        if (!aKnown && bKnown) return 1
+        return 0
+      }),
+    [unsortedAlaSpecies, knownSpecies],
+  )
 
   useEffect(() => {
     if (searchError) setError(searchError.message)
@@ -86,6 +145,7 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
   const handleSelectSpecies = useCallback(
     (guid: string) => {
       const thisSpecies = alaSpecies?.find((s) => s.guid === guid)
+
       setSelectedSpecies((selected) =>
         thisSpecies ? { ...selected, [guid]: thisSpecies.name } : selected,
       )
@@ -200,6 +260,7 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
 
   return {
     selectedSpecies,
+    localKnownSpecies: knownSpecies,
     searchValue,
     isSubmitting,
     isLoading,
@@ -215,6 +276,7 @@ export const useTripSpeciesForm = ({ trip, close }: TripSpeciesFormArgs) => {
 
 export interface TripSpeciesFormProps {
   selectedSpecies: SelectedSpecies
+  localKnownSpecies: Record<string, string> // {guid: name}
   isLoading: boolean
   error: string | null
   searchResults: AlaSpeciesSearchResult[] | undefined
@@ -224,9 +286,11 @@ export interface TripSpeciesFormProps {
   onSearchClose: () => void
 }
 
+const GlobeWithTooltip = withTooltip(<Globe className="h-4 w-4 text-xs" />)
+
 export const TripSpeciesForm = ({
   selectedSpecies,
-  isLoading,
+  localKnownSpecies,
   error,
   searchResults,
   onSearchChange,
@@ -256,12 +320,9 @@ export const TripSpeciesForm = ({
           </Badge>
         ))}
       </div>
-      <Combobox
-        onChange={onSelectSpecies}
-        onClose={onSearchClose}
-        disabled={isLoading}
-      >
+      <Combobox onChange={onSelectSpecies} onClose={onSearchClose}>
         <ComboboxInput
+          autoFocus
           aria-label="Species Search"
           displayValue={(species: AlaSpeciesSearchResult) => species?.name}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -273,7 +334,14 @@ export const TripSpeciesForm = ({
               value={species.guid}
               className="z-100 flex justify-between"
             >
-              <span className="italic">{species.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="italic">{species.name}</span>
+                {localKnownSpecies[species.guid] && (
+                  <GlobeWithTooltip>
+                    Known from within 50km of trip location
+                  </GlobeWithTooltip>
+                )}
+              </div>
               {species.commonName && <span>{species.commonName}</span>}
             </ComboboxOption>
           ))}

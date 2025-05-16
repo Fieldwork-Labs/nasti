@@ -1,7 +1,3 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
-
-const BASE_URL = "https://api.ala.org.au/occurrences"
-
 interface ImageMetadata {
   [key: string]: Record<string, unknown>
 }
@@ -86,26 +82,26 @@ export interface Occurrence {
   occurrenceYear: string
 }
 
-interface FacetResult {
+export interface FacetResult {
   label: string
   i18nCode: string
   count: number
   fq: string
 }
 
-interface FacetField {
+export interface FacetField {
   fieldName: string
   fieldResult: FacetResult[]
   count: number
 }
 
-interface ActiveFacet {
+export interface ActiveFacet {
   name: string
   displayName: string
   value: string
 }
 
-interface QueryResponse {
+export interface OccurrencesQueryResponse {
   pageSize: number
   startIndex: number
   totalRecords: number
@@ -126,7 +122,7 @@ interface QueryResponse {
   }
 }
 
-interface UseALAOccurrencesResult {
+export interface UseALAOccurrencesResult {
   occurrences: Occurrence[]
   isLoading: boolean
   isError: boolean
@@ -135,79 +131,5 @@ interface UseALAOccurrencesResult {
   isFetching: boolean
   isFetchingNextPage: boolean
   fetchNextPage: () => void
-}
-
-const ITEMS_PER_PAGE = 100 // ALA's default page size
-
-export const useALAOccurrences = (
-  guid?: string | null,
-  maxResults?: number,
-): UseALAOccurrencesResult => {
-  const {
-    data,
-    isLoading,
-    isFetching,
-    isError,
-    error,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  } = useInfiniteQuery({
-    queryKey: ["alaOccurrences", guid, maxResults],
-    queryFn: async ({ pageParam = 0 }) => {
-      if (!guid) return null
-      const params = new URLSearchParams({
-        q: `taxonConceptID:${guid}`,
-        fq: `decimalLatitude:[* TO *]`, // Only return records with coordinates
-        start: pageParam.toString(),
-        pageSize: ITEMS_PER_PAGE.toString(),
-      })
-      params.append("fq", "country:Australia")
-
-      const response = await fetch(
-        `${BASE_URL}/occurrences/search/?${params.toString()}`,
-      )
-
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
-      }
-
-      const result: QueryResponse = await response.json()
-      return {
-        ...result,
-        // ala returns some records with no coordinates
-        occurrences: result.occurrences.filter(
-          (occ) => occ.decimalLatitude && occ.decimalLongitude,
-        ),
-      }
-    },
-    getNextPageParam: (lastPage) => {
-      if (!lastPage) return undefined
-      const nextStartIndex = lastPage.startIndex + lastPage.pageSize
-      return nextStartIndex < (maxResults ? maxResults : lastPage.totalRecords)
-        ? nextStartIndex
-        : undefined
-    },
-    initialPageParam: 0,
-    enabled: Boolean(guid),
-    refetchOnMount: false,
-  })
-
-  // Combine all occurrences from all fetched pages
-  const occurrences =
-    data?.pages.reduce<Occurrence[]>(
-      (acc, page) => [...acc, ...(page ? page.occurrences : [])],
-      [],
-    ) ?? []
-
-  return {
-    occurrences,
-    isLoading,
-    isFetching,
-    isError,
-    error: error as Error | null,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  }
+  fetchAll: () => void
 }

@@ -10,8 +10,10 @@ import { useTripFormWizard } from "./useTripFormWizard"
 export const TripLocationStage = () => {
   const { setCurrentStep, saveTrip, trip } = useTripFormWizard()
   const handleSave = useCallback(
-    (tripLocationDetails?: TripLocationDetails) => {
-      if (tripLocationDetails) saveTrip(tripLocationDetails)
+    async (tripLocationDetails?: TripLocationDetails) => {
+      if (tripLocationDetails) {
+        await saveTrip(tripLocationDetails)
+      }
       setCurrentStep(2)
     },
     [saveTrip, setCurrentStep],

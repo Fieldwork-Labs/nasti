@@ -9,10 +9,11 @@ import {
 
 import { useOpenClose, type UseOpenClose } from "@nasti/ui/hooks"
 import { useUpdateTrip } from "../forms/useUpdateTrip"
+import { useTripDetail } from "@/hooks/useTripDetail"
 
 type TripFormWizardContext = UseOpenClose & {
   trip: Trip | undefined
-  setTrip: (trip: Trip) => void
+  setTripId: (id: string) => void
   currentStep: number
   setCurrentStep: (step: number) => void
   saveTrip: (newTripDetails: Partial<Trip>) => Promise<Trip>
@@ -20,7 +21,7 @@ type TripFormWizardContext = UseOpenClose & {
 
 const tripFormDefault = {
   trip: undefined,
-  setTrip: (_: Trip) => {},
+  setTripId: (_: string) => {},
   saveTrip: () => {},
   currentStep: 0,
   setCurrentStep: () => {},
@@ -32,14 +33,15 @@ const TripFormProviderContext = createContext<TripFormWizardContext>(
 
 export const TripFormProvider = ({ children }: { children: ReactNode }) => {
   const [currentStep, setCurrentStep] = useState(0)
-  const [trip, setTrip] = useState<Trip | undefined>(undefined)
+  const [tripId, setTripId] = useState<string | undefined>(undefined)
+  const { data: trip } = useTripDetail(tripId)
   const { close, ...openClose } = useOpenClose()
 
   const handleClose = useCallback(() => {
     setCurrentStep(0)
-    setTrip(undefined)
+    setTripId(undefined)
     close()
-  }, [setCurrentStep, setTrip, close])
+  }, [setCurrentStep, setTripId, close])
 
   const saveTrip = useUpdateTrip(trip)
 
@@ -52,7 +54,7 @@ export const TripFormProvider = ({ children }: { children: ReactNode }) => {
         currentStep,
         setCurrentStep,
         trip,
-        setTrip,
+        setTripId,
         saveTrip: saveTrip.mutateAsync,
       }}
     >

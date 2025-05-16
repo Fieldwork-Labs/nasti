@@ -28,7 +28,7 @@ import {
 import { Modal } from "@nasti/ui/modal"
 import { useALAImage } from "@nasti/common/hooks/useALAImage"
 import { useALAImages } from "@nasti/common/hooks/useALAImages"
-import { useALAOccurrences } from "@nasti/common/hooks/useALAOccurrences"
+import { useALASpeciesOccurrences } from "@nasti/common/hooks/useALASpeciesOccurrences"
 import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
 import { useTripsForSpecies } from "@/hooks/useTripsForSpecies"
 import { getViewState, type PartialViewState } from "@nasti/common/hooks"
@@ -52,13 +52,16 @@ const OccurrencesLayer = ({
 }) => {
   const { data: species } = useSpecies(id)
 
-  const { occurrences, hasNextPage, isFetching, fetchNextPage } =
-    useALAOccurrences(species?.ala_guid, 1000)
+  const { occurrences, fetchAll } = useALASpeciesOccurrences(
+    species?.ala_guid,
+    1000,
+  )
 
   useEffect(() => {
-    // keep fetching em
-    if (hasNextPage && !isFetching) fetchNextPage()
-  }, [hasNextPage, isFetching, fetchNextPage])
+    if (species?.ala_guid) {
+      fetchAll()
+    }
+  }, [species?.ala_guid, fetchAll])
 
   const occurencesCoords: Array<[number, number]> = useMemo(
     () =>
