@@ -46,10 +46,10 @@ export const CollectionListItem = ({
   const creator = people?.find((person) => person.id === collection.created_by)
   const details = [
     collection.plants_sampled_estimate
-      ? `${collection.plants_sampled_estimate} kg`
+      ? `${collection.plants_sampled_estimate} plants`
       : undefined,
     collection.weight_estimate_kg
-      ? `${collection.weight_estimate_kg} plants`
+      ? `${collection.weight_estimate_kg} kg`
       : undefined,
   ]
     .filter(Boolean)
