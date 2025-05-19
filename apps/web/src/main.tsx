@@ -6,6 +6,12 @@ import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 import useUserStore from "./store/userStore"
 import { ThemeProvider } from "./contexts/theme"
+import * as Sentry from "@sentry/react"
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  sendDefaultPii: true,
+})
 
 // Create a new router instance
 const router = createRouter({

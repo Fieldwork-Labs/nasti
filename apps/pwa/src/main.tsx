@@ -8,6 +8,12 @@ import { ThemeProvider } from "./contexts/theme"
 import { NastiPersistQueryClientProvider } from "./lib/queryClient"
 import { useAuth } from "./hooks/useAuth"
 import { SwStatusProvider } from "./contexts/swStatus"
+import * as Sentry from "@sentry/react"
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  sendDefaultPii: true,
+})
 
 // Create a new router instance
 const router = createRouter({

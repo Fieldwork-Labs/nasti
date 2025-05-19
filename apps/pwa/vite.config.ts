@@ -1,3 +1,4 @@
+import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { VitePWA } from "vite-plugin-pwa"
 import { defineConfig } from "vite"
 import tailwindcss from "@tailwindcss/vite"
@@ -21,13 +22,16 @@ export default defineConfig({
     ],
     cors: true,
   },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
+
   // Use no envDir in production, default behavior works with Cloudflare
   envDir: isProd ? undefined : path.resolve(__dirname, "../.."),
+
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react(),
@@ -106,7 +110,16 @@ export default defineConfig({
         enabled: true,
         navigateFallback: "/",
         type: "module",
+        suppressWarnings: true,
       },
     }),
+    sentryVitePlugin({
+      org: "fieldworklabs",
+      project: "nasti-pwa",
+    }),
   ],
+
+  build: {
+    sourcemap: true,
+  },
 })

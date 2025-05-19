@@ -16,6 +16,8 @@
     "@nasti/ui": "workspace:*",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-dialog": "^1.1.6",
+    "@sentry/react": "^9.19.0",
+    "@sentry/vite-plugin": "^3.4.0",
     "@supabase/supabase-js": "^2.45.4",
     "@tailwindcss/vite": "^4.0.12",
     "@tanstack/query-async-storage-persister": "^5.72.1",
