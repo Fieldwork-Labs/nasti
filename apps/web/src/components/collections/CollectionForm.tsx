@@ -243,6 +243,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
             </span>
           }
           {...register("field_name")}
+          autoComplete="off"
           error={errors.field_name}
         />
 
@@ -278,6 +279,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
             label="Latitude"
             type="number"
             step="any"
+            autoComplete="off"
             {...register("latitude", {
               valueAsNumber: true, // Transform string to number
             })}
@@ -288,6 +290,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
             label="Longitude"
             type="number"
             step="any"
+            autoComplete="off"
             {...register("longitude", {
               valueAsNumber: true, // Transform string to number
             })}
@@ -299,6 +302,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         {/* Description */}
         <FormField
           label="Description"
+          autoComplete="off"
           {...register("description")}
           error={errors.description}
         />
@@ -308,6 +312,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           label="Weight Estimate (kg)"
           type="number"
           step="any"
+          autoComplete="off"
           {...register("weight_estimate_kg", {
             valueAsNumber: true, // Transform string to number
           })}
@@ -318,6 +323,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         <FormField
           label="Plants Sampled Estimate"
           type="number"
+          autoComplete="off"
           step="1"
           {...register("plants_sampled_estimate", {
             valueAsNumber: true, // Transform string to number

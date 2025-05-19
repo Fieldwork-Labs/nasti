@@ -125,7 +125,7 @@ const TripDetail = () => {
                 size={"icon"}
                 onClick={() => openModal("details")}
                 title="Edit trip details"
-                className="bg-transparent"
+                className="hover:text-primary-foreground cursor-pointer bg-transparent text-black"
               >
                 <PencilIcon className="h-4 w-4" />
               </Button>
