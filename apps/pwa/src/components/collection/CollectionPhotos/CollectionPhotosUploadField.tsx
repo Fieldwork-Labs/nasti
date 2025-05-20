@@ -159,7 +159,7 @@ export function CollectionPhotosUploadField({
         {/* Hidden file input */}
         <input
           type="file"
-          accept="image/*"
+          accept="image/*,android/force-camera-workaround"
           multiple
           onChange={handleUpload}
           ref={fileInputRef}
