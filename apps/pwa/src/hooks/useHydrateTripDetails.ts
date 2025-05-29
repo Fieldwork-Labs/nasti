@@ -15,6 +15,7 @@ import {
   useCollectionPhotosForTrip,
 } from "./useCollectionPhotosForTrip"
 import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
+import { useNetwork } from "./useNetwork"
 
 export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
   photos: TripCollectionPhotos
@@ -201,7 +202,10 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const isError =
     tripDetailsQuery.isError || speciesQuery.isError || peopleQuery.isError
 
+  const { isOnline } = useNetwork()
+
   const refetch = useCallback(async () => {
+    if (!isOnline) return
     setIsRefetching(true)
     await tripDetailsQuery.refetch()
     await speciesQuery.refetch()
