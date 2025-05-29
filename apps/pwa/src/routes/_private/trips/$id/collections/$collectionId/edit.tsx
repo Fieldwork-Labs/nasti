@@ -215,7 +215,7 @@ function CollectionForm() {
         await Promise.all(changePhotoPromises)
       }
 
-      navigate({
+      return navigate({
         to: "/trips/$id/collections/$collectionId",
         params: { id: tripId, collectionId },
       })

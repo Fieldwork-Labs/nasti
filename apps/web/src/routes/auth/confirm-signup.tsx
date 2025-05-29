@@ -1,11 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { buttonVariants } from "@nasti/ui/button"
+import { Button } from "@nasti/ui/button"
 import { useConfirmationUrl } from "@/hooks/useConfirmationUrl"
+import { useCallback, useState } from "react"
 
 const ConfirmSignupPage = () => {
   const confirmationUrl = useConfirmationUrl({
     redirectPath: "/auth/set-password",
   })
+
+  const [isClicked, setIsClicked] = useState(false)
+  const handleConfirm = useCallback(() => {
+    if (isClicked) return // Prevent double-click
+
+    setIsClicked(true)
+    if (!confirmationUrl) return
+    window.location.href = confirmationUrl
+  }, [isClicked, confirmationUrl])
 
   if (!confirmationUrl) return null
 
@@ -15,10 +25,9 @@ const ConfirmSignupPage = () => {
         <h4 className="mb-2 text-xl font-bold">Confirm Signup</h4>
         <p>Click the button to confirm signing up to NASTI.</p>
       </div>
-
-      <a href={confirmationUrl} className={buttonVariants()}>
-        Confirm
-      </a>
+      <Button onClick={handleConfirm} disabled={isClicked}>
+        {isClicked ? "Processing..." : "Confirm"}
+      </Button>
     </div>
   )
 }
