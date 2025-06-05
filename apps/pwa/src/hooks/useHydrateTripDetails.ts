@@ -41,6 +41,55 @@ export type TripDetails = Trip & {
     | null
 }
 
+function getPhotoMap(
+  photos: Array<CollectionPhoto | PendingCollectionPhoto> | undefined,
+  error: unknown,
+): Record<string, Array<CollectionPhoto | PendingCollectionPhoto>> {
+  if (!photos || error) return {}
+  return photos.reduce(
+    (acc, photo) => {
+      if (!acc[photo.collection_id]) acc[photo.collection_id] = []
+      acc[photo.collection_id].push(photo)
+      return acc
+    },
+    {} as Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
+  )
+}
+
+function parseLocation(coll: Collection): CollectionWithCoord {
+  if (!coll.location) return coll
+  return {
+    ...coll,
+    locationCoord: parsePostGISPoint(coll.location),
+  }
+}
+
+function parsePendingLocation(
+  coll: Collection & { isPending: boolean },
+): CollectionWithCoord {
+  if (!coll.location) return coll
+  // coll.location is a string with the format `POINT(lng lat)`
+  const innerString = coll.location.substring(6, coll.location.length - 1)
+  const [lng, lat] = innerString.split(" ")
+  return {
+    ...coll,
+    locationCoord: {
+      latitude: parseFloat(lat),
+      longitude: parseFloat(lng),
+    },
+  }
+}
+
+function attachPhotos(
+  coll: CollectionWithCoord,
+  photosMap: Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
+): CollectionWithCoordAndPhotos {
+  return {
+    ...coll,
+    photos: photosMap[coll.id] ?? [],
+  }
+}
+
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
   const {
@@ -50,17 +99,10 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     isFetching: collectionPhotosIsFetching,
   } = useCollectionPhotosForTrip({ tripId: id })
 
-  const collectionPhotosMap = useMemo(() => {
-    if (!collectionPhotos || collectionPhotosError) return {}
-    return collectionPhotos.reduce(
-      (acc, photo) => {
-        if (!acc[photo.collection_id]) acc[photo.collection_id] = []
-        acc[photo.collection_id].push(photo)
-        return acc
-      },
-      {} as Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
-    )
-  }, [collectionPhotos])
+  const collectionPhotosMap = useMemo(
+    () => getPhotoMap(collectionPhotos, collectionPhotosError),
+    [collectionPhotos],
+  )
 
   const pendingCollections = useMutationState<Collection>({
     filters: {
@@ -108,13 +150,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       if (collections.error) throw new Error(collections.error.message)
 
       const collectionsWithCoord = (collections.data as Collection[]).map(
-        (coll) => {
-          if (!coll.location) return coll
-          return {
-            ...coll,
-            locationCoord: parsePostGISPoint(coll.location),
-          }
-        },
+        parseLocation,
       )
 
       const collectionsData = [...collectionsWithCoord]
@@ -133,38 +169,24 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     if (!tripDetailsQuery.data) return null
     const { collections, ...rest } = tripDetailsQuery.data
 
-    const pendingCollectionsWithCoord = pendingCollections.map((coll) => {
-      if (!coll.location) return coll
-      // coll.location is a string with the format `POINT(lng lat)`
-      const innerString = coll.location.substring(6, coll.location.length - 1)
-      const [lng, lat] = innerString.split(" ")
-      return {
-        ...coll,
-        locationCoord: {
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-        },
-      }
-    })
+    const pendingCollectionsWithCoord =
+      pendingCollections.map(parsePendingLocation)
 
     // Add the pending collections to the collections array
     // filter out the pending collections from the collections array to prevent duplicates
     // pending collections have more recently updated data so should override
     const newCollections = [
       ...collections.filter(
-        ({ id }) => !pendingCollections.find((c) => c.id === id),
+        ({ id }) => !pendingCollectionsWithCoord.find((c) => c.id === id),
       ),
       ...pendingCollectionsWithCoord,
     ]
 
     const result: TripDetails = {
       ...rest,
-      collections: newCollections.map((coll) => {
-        return {
-          ...coll,
-          photos: collectionPhotosMap[coll.id] ?? [],
-        }
-      }),
+      collections: newCollections.map((col) =>
+        attachPhotos(col, collectionPhotosMap),
+      ),
     }
 
     return result

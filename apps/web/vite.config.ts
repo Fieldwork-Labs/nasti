@@ -1,5 +1,5 @@
 import { sentryVitePlugin } from "@sentry/vite-plugin"
-import { defineConfig } from "vite"
+import { defineConfig } from "vitest/config"
 import react from "@vitejs/plugin-react"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import { nodePolyfills } from "vite-plugin-node-polyfills"
@@ -13,7 +13,23 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-
+  test: {
+    setupFiles: ["vitest-localstorage-mock"],
+    mockReset: false,
+    environment: "jsdom",
+    deps: {
+      // since v0.34 you can also do:
+      optimizer: {
+        web: {
+          include: [
+            "vite-plugin-node-polyfills/shims/buffer",
+            "vite-plugin-node-polyfills/shims/global",
+          ],
+          enabled: true,
+        },
+      },
+    },
+  },
   // Use no envDir in production, default behavior works with Cloudflare
   envDir: isProd ? undefined : path.resolve(__dirname, "../.."),
 
@@ -25,6 +41,7 @@ export default defineConfig({
     sentryVitePlugin({
       org: "fieldworklabs",
       project: "nasti-web",
+      telemetry: isProd,
     }),
   ],
 

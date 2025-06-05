@@ -1,6 +1,6 @@
 import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { VitePWA } from "vite-plugin-pwa"
-import { defineConfig } from "vite"
+import { defineConfig } from "vitest/config"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
@@ -12,6 +12,23 @@ const isProd = process.env.CF_PAGES === "1"
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  test: {
+    setupFiles: ["vitest-localstorage-mock"],
+    mockReset: false,
+    environment: "jsdom",
+    deps: {
+      // since v0.34 you can also do:
+      optimizer: {
+        web: {
+          include: [
+            "vite-plugin-node-polyfills/shims/buffer",
+            "vite-plugin-node-polyfills/shims/global",
+          ],
+          enabled: true,
+        },
+      },
+    },
+  },
   server: {
     host: "0.0.0.0", // Listen on all network interfaces
     allowedHosts: [
@@ -35,7 +52,7 @@ export default defineConfig({
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react(),
-    nodePolyfills({ globals: { Buffer: true } }),
+    nodePolyfills({ globals: { Buffer: true }, include: ["buffer"] }),
     tailwindcss(),
     VitePWA({
       srcDir: "./src",
@@ -116,6 +133,7 @@ export default defineConfig({
     sentryVitePlugin({
       org: "fieldworklabs",
       project: "nasti-pwa",
+      telemetry: isProd,
     }),
   ],
 

@@ -26,12 +26,6 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
     mutationKey: getMutationKey(tripId),
     mutationFn: (updatedItem) => updateCollection(updatedItem),
     onMutate: (variables) => {
-      // Update the individual item cache
-      queryClient.setQueryData(
-        ["collections", "detail", variables.id],
-        variables,
-      )
-
       // Get the trip details data blob
       const tripQuery = queryClient.getQueryData<TripDetails>([
         "trip",
@@ -48,6 +42,12 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
         ...tripQuery,
         collections: newCollections,
       })
+
+      // Update the individual item cache
+      queryClient.setQueryData(
+        ["collections", "detail", variables.id],
+        variables,
+      )
 
       if (variables.species_id) {
         queryClient.setQueryData<Collection[]>(

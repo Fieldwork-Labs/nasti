@@ -3,7 +3,7 @@ import nastiLogo from "@/assets/nasti-logo.png"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useAuth } from "@/hooks/useAuth"
 
-const HomePage = () => {
+export const HomePage = () => {
   const { isLoggedIn } = useAuth()
   return (
     <div className="flex h-full flex-col justify-center">

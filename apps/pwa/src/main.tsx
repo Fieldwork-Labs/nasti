@@ -40,7 +40,7 @@ declare module "@tanstack/react-router" {
   }
 }
 
-const App = () => {
+export const App = () => {
   const { isLoggedIn, getSession } = useAuth()
   return (
     <ThemeProvider>

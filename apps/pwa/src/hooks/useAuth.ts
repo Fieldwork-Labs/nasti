@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
-import { AuthRetryableFetchError } from "@supabase/supabase-js"
+import { isAuthRetryableFetchError } from "@supabase/supabase-js"
+
+export const getOrgUser = async (userId: string) => {
+  return await supabase
+    .from("org_user")
+    .select("*, organisation(id, name)")
+    .eq("user_id", userId)
+    .single()
+}
 
 export const useAuth = () => {
   const queryClient = useQueryClient()
-
   const login = useMutation({
     mutationFn: async ({
       email,
@@ -18,7 +25,7 @@ export const useAuth = () => {
         password,
       })
       if (error) {
-        if (error instanceof AuthRetryableFetchError)
+        if (isAuthRetryableFetchError(error))
           throw new Error("Unable to connect to server")
         else throw error
       }
@@ -28,11 +35,7 @@ export const useAuth = () => {
     retry: false,
     onSuccess: async (data) => {
       // Fetch organization and role
-      const { data: orgData, error: orgError } = await supabase
-        .from("org_user")
-        .select("*, organisation(id, name)")
-        .eq("user_id", data.user.id)
-        .single()
+      const { data: orgData, error: orgError } = await getOrgUser(data.user.id)
 
       if (orgError) {
         throw new Error("Unable to fetch organisation")
@@ -77,11 +80,7 @@ export const useAuth = () => {
     queryKey: ["auth", "orgUser"],
     queryFn: async () => {
       if (!user) return null
-      const { data: orgData, error: orgError } = await supabase
-        .from("org_user")
-        .select("*, organisation(id, name)")
-        .eq("user_id", user.id)
-        .single()
+      const { data: orgData, error: orgError } = await getOrgUser(user.id)
       if (orgError) throw new Error("Unable to fetch organisation")
       return orgData
     },
