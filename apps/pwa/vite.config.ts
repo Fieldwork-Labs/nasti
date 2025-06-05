@@ -16,6 +16,7 @@ export default defineConfig({
     setupFiles: ["vitest-localstorage-mock"],
     mockReset: false,
     environment: "jsdom",
+    coverage: { provider: "istanbul" },
     deps: {
       // since v0.34 you can also do:
       optimizer: {
