@@ -56,7 +56,7 @@ function getPhotoMap(
   )
 }
 
-function parseLocation(coll: Collection): CollectionWithCoord {
+export function parseLocation(coll: Collection): CollectionWithCoord {
   if (!coll.location) return coll
   return {
     ...coll,
@@ -64,7 +64,7 @@ function parseLocation(coll: Collection): CollectionWithCoord {
   }
 }
 
-function parsePendingLocation(
+export function parsePendingLocation(
   coll: Collection & { isPending: boolean },
 ): CollectionWithCoord {
   if (!coll.location) return coll
@@ -90,23 +90,31 @@ function attachPhotos(
   }
 }
 
-export const useHydrateTripDetails = ({ id }: { id: string }) => {
-  const [isRefetching, setIsRefetching] = useState(false)
+export const useCollectionPhotosMap = ({ tripId }: { tripId: string }) => {
   const {
-    data: collectionPhotos,
+    data,
     refetch: collectionPhotosRefetch,
     error: collectionPhotosError,
     isFetching: collectionPhotosIsFetching,
-  } = useCollectionPhotosForTrip({ tripId: id })
+  } = useCollectionPhotosForTrip({ tripId })
 
   const collectionPhotosMap = useMemo(
-    () => getPhotoMap(collectionPhotos, collectionPhotosError),
-    [collectionPhotos],
+    () => getPhotoMap(data, collectionPhotosError),
+    [data],
   )
 
-  const pendingCollections = useMutationState<Collection>({
+  return {
+    collectionPhotosMap,
+    collectionPhotosRefetch,
+    collectionPhotosError,
+    collectionPhotosIsFetching,
+  }
+}
+
+export const usePendingCollections = ({ tripId }: { tripId: string }) => {
+  return useMutationState<Collection>({
     filters: {
-      mutationKey: getMutationKey(id),
+      mutationKey: getMutationKey(tripId),
       status: "pending",
     },
     select: (mutation) => mutation.state.variables as Collection,
@@ -114,39 +122,38 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     ...coll,
     isPending: true,
   }))
+}
 
-  const tripDetailsQuery = useQuery({
-    queryKey: ["trip", "details", id],
+export const getTrip = (tripId: string) =>
+  supabase.from("trip").select("*").eq("id", tripId).single()
+
+export const getTripSpecies = (tripId: string) =>
+  supabase.from("trip_species").select("*").eq("trip_id", tripId)
+
+export const getTripMembers = (tripId: string) =>
+  supabase.from("trip_member").select("*").eq("trip_id", tripId)
+
+export const getTripCollections = (tripId: string) =>
+  supabase
+    .from("collection")
+    .select("*")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
+
+export const useTripDetailsQuery = ({ tripId }: { tripId: string }) =>
+  useQuery({
+    queryKey: ["trip", "details", tripId],
     queryFn: async () => {
-      const tripPromise = supabase
-        .from("trip")
-        .select("*")
-        .eq("id", id)
-        .single()
-
-      const tripSpeciesPromise = supabase
-        .from("trip_species")
-        .select("*")
-        .eq("trip_id", id)
-
-      const tripMembersPromise = supabase
-        .from("trip_member")
-        .select("*")
-        .eq("trip_id", id)
-
       const [trip, tripSpecies, tripMembers] = await Promise.all([
-        tripPromise,
-        tripSpeciesPromise,
-        tripMembersPromise,
+        getTrip(tripId),
+        getTripSpecies(tripId),
+        getTripMembers(tripId),
       ])
 
       if (!trip.data) return null
 
-      const collections = await supabase
-        .from("collection")
-        .select("*")
-        .eq("trip_id", id)
-        .order("created_at", { ascending: false })
+      const collections = await getTripCollections(tripId)
+
       if (collections.error) throw new Error(collections.error.message)
 
       const collectionsWithCoord = (collections.data as Collection[]).map(
@@ -164,6 +171,18 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       return result
     },
   })
+
+export const useHydrateTripDetails = ({ id }: { id: string }) => {
+  const [isRefetching, setIsRefetching] = useState(false)
+  const {
+    collectionPhotosMap,
+    collectionPhotosRefetch,
+    collectionPhotosIsFetching,
+  } = useCollectionPhotosMap({ tripId: id })
+
+  const pendingCollections = usePendingCollections({ tripId: id })
+
+  const tripDetailsQuery = useTripDetailsQuery({ tripId: id })
 
   const tripDetailsData = useMemo(() => {
     if (!tripDetailsQuery.data) return null
