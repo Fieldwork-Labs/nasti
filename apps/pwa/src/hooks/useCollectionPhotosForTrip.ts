@@ -83,7 +83,6 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
         if (error) console.log("Error when getting signed photos", { error })
       }
       const result: TripCollectionPhotos = collectionPhotos?.data ?? []
-      console.log({ result })
       return result
     },
     refetchInterval: 1000 * 60 * 60, // every 1 hour

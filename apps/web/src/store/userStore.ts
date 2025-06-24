@@ -35,7 +35,7 @@ const useUserStore = create<UserState>((set) => ({
   setOrgId: (orgId: string) => set({ orgId }),
   setRole: (role: Role) => {
     set({ role })
-    if (role === ROLE.ADMIN || role === ROLE.OWNER) set({ isAdmin: true })
+    if (role === ROLE.ADMIN) set({ isAdmin: true })
   },
   getUser: async () => {
     const {

@@ -20,7 +20,7 @@ export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">
 export type Person = GetOrgUsers["Returns"][number]
 
-export type Role = "Admin" | "Member" | "Owner"
+export type Role = Database["public"]["Enums"]["org_user_types"]
 
 export enum ROLE {
   ADMIN = "Admin",
