@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { useCallback, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { useToast } from "@nasti/ui/hooks"
@@ -24,6 +24,10 @@ const PeopleList = () => {
   const { data, isLoading, isError, error } = usePeople()
   const [personToDelete, setPersonToDelete] = useState<string>()
   const [isDeleting, setIsDeleting] = useState<string>()
+
+  const activeUsers = useMemo(() => {
+    return data?.filter((user) => user.is_active)
+  }, [data])
 
   // Handle disabling a user
   const handleDisable = useCallback(
@@ -95,8 +99,8 @@ const PeopleList = () => {
           </span>
         )}
       </div>
-      {!data || data.length === 0 ? (
-        <p>No people found.</p>
+      {!activeUsers || activeUsers.length === 0 ? (
+        <p>No active users found.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full overflow-hidden rounded-lg">
@@ -110,14 +114,8 @@ const PeopleList = () => {
               </tr>
             </thead>
             <tbody>
-              {data.map((user) => (
-                <tr
-                  key={user.id}
-                  className={cn(
-                    "h-14 border-t",
-                    !user.is_active && "text-muted-foreground",
-                  )}
-                >
+              {activeUsers.map((user) => (
+                <tr key={user.id} className={cn("h-14 border-t")}>
                   <td className="px-4 py-2">{user.name}</td>
                   <td className="px-4 py-2">{user.email}</td>
                   <td className="px-4 py-2">{user.role}</td>
