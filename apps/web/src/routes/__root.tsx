@@ -25,6 +25,7 @@ import {
   LeafIcon,
   Moon,
   PersonStandingIcon,
+  SettingsIcon,
   Sun,
   User as UserIcon,
 } from "lucide-react"
@@ -61,7 +62,7 @@ const ThemeToggle = () => {
 }
 
 const UserMenu = () => {
-  const { logout, isAdmin, user } = useUserStore()
+  const { logout, isAdmin, user, orgName } = useUserStore()
   const navigate = useNavigate()
 
   const handleSignout = useCallback(async () => {
@@ -84,6 +85,9 @@ const UserMenu = () => {
 
         {isAdmin && (
           <>
+            <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+              <SettingsIcon className="mr-2 h-4 w-4" /> {orgName}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate({ to: "/species" })}>
               <LeafIcon className="mr-2 h-4 w-4" /> Species
             </DropdownMenuItem>

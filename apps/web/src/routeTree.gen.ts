@@ -20,6 +20,7 @@ import { Route as AuthResetPasswordConfirmImport } from "./routes/auth/reset-pas
 import { Route as AuthResetPasswordImport } from "./routes/auth/reset-password"
 import { Route as AuthLoginImport } from "./routes/auth/login"
 import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
+import { Route as PrivateSettingsImport } from "./routes/_private/settings"
 import { Route as PrivateLayoutImport } from "./routes/_private/layout"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
@@ -83,6 +84,12 @@ const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
   id: "/auth/confirm-signup",
   path: "/auth/confirm-signup",
   getParentRoute: () => rootRoute,
+} as any)
+
+const PrivateSettingsRoute = PrivateSettingsImport.update({
+  id: "/settings",
+  path: "/settings",
+  getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateLayoutRoute = PrivateLayoutImport.update({
@@ -162,6 +169,13 @@ declare module "@tanstack/react-router" {
       path: "/layout"
       fullPath: "/layout"
       preLoaderRoute: typeof PrivateLayoutImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/settings": {
+      id: "/_private/settings"
+      path: "/settings"
+      fullPath: "/settings"
+      preLoaderRoute: typeof PrivateSettingsImport
       parentRoute: typeof PrivateImport
     }
     "/auth/confirm-signup": {
@@ -276,6 +290,7 @@ declare module "@tanstack/react-router" {
 
 interface PrivateRouteChildren {
   PrivateLayoutRoute: typeof PrivateLayoutRoute
+  PrivateSettingsRoute: typeof PrivateSettingsRoute
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
   PrivatePeopleIndexRoute: typeof PrivatePeopleIndexRoute
@@ -288,6 +303,7 @@ interface PrivateRouteChildren {
 
 const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateLayoutRoute: PrivateLayoutRoute,
+  PrivateSettingsRoute: PrivateSettingsRoute,
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
   PrivatePeopleIndexRoute: PrivatePeopleIndexRoute,
@@ -305,6 +321,7 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
   "/layout": typeof PrivateLayoutRoute
+  "/settings": typeof PrivateSettingsRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -326,6 +343,7 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
   "/layout": typeof PrivateLayoutRoute
+  "/settings": typeof PrivateSettingsRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -348,6 +366,7 @@ export interface FileRoutesById {
   "/": typeof IndexRoute
   "/_private": typeof PrivateRouteWithChildren
   "/_private/layout": typeof PrivateLayoutRoute
+  "/_private/settings": typeof PrivateSettingsRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -371,6 +390,7 @@ export interface FileRouteTypes {
     | "/"
     | ""
     | "/layout"
+    | "/settings"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -391,6 +411,7 @@ export interface FileRouteTypes {
     | "/"
     | ""
     | "/layout"
+    | "/settings"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -411,6 +432,7 @@ export interface FileRouteTypes {
     | "/"
     | "/_private"
     | "/_private/layout"
+    | "/_private/settings"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -481,6 +503,7 @@ export const routeTree = rootRoute
       "filePath": "_private.tsx",
       "children": [
         "/_private/layout",
+        "/_private/settings",
         "/_private/invitations/new",
         "/_private/invitations/",
         "/_private/people/",
@@ -493,6 +516,10 @@ export const routeTree = rootRoute
     },
     "/_private/layout": {
       "filePath": "_private/layout.tsx",
+      "parent": "/_private"
+    },
+    "/_private/settings": {
+      "filePath": "_private/settings.tsx",
       "parent": "/_private"
     },
     "/auth/confirm-signup": {

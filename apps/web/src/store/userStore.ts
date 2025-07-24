@@ -13,6 +13,7 @@ type UserState = {
   user: User | null
   session: Session | null
   orgId: string | null
+  orgName: string | null
   role: Role | null
   isAdmin: boolean
   setUser: (user: User) => void
@@ -28,6 +29,7 @@ const useUserStore = create<UserState>((set) => ({
   user: null,
   session: null,
   orgId: null,
+  orgName: null,
   role: null,
   isAdmin: false,
   setUser: (user: User) => set({ user }),
@@ -44,19 +46,24 @@ const useUserStore = create<UserState>((set) => ({
     if (user) {
       set({ user })
       // Fetch organization and role
-      const { data: orgData, error: orgError } = await supabase
+      const { data: orgUserData, error: orgError } = await supabase
         .from("org_user")
-        .select("*")
+        .select(`*, organisation("name")`)
         .eq("user_id", user.id)
         .single()
 
       if (orgError) {
-        console.error("Error fetching organization:", orgError)
+        console.error("Error fetching org user data:", orgError)
       } else {
-        const { role, organisation_id: orgId } = orgData
+        const {
+          role,
+          organisation_id: orgId,
+          organisation: { name: orgName },
+        } = orgUserData
 
         set({
           orgId,
+          orgName,
           role,
           isAdmin: role === ROLE.ADMIN,
         })
@@ -80,6 +87,7 @@ const useUserStore = create<UserState>((set) => ({
       user: null,
       session: null,
       orgId: null,
+      orgName: null,
       role: null,
       isAdmin: false,
     })
