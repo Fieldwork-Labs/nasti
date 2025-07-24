@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@nasti/ui/dropdown-menu"
 import { Session } from "@supabase/supabase-js"
 import { QueryClientProvider } from "@tanstack/react-query"
@@ -20,6 +21,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router"
 import {
+  DoorOpenIcon,
   LeafIcon,
   Moon,
   PersonStandingIcon,
@@ -59,7 +61,7 @@ const ThemeToggle = () => {
 }
 
 const UserMenu = () => {
-  const { logout, isAdmin } = useUserStore()
+  const { logout, isAdmin, user } = useUserStore()
   const navigate = useNavigate()
 
   const handleSignout = useCallback(async () => {
@@ -75,6 +77,11 @@ const UserMenu = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuLabel className="bg-background flex items-center">
+          {user?.email}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
         {isAdmin && (
           <>
             <DropdownMenuItem onClick={() => navigate({ to: "/species" })}>
@@ -86,7 +93,9 @@ const UserMenu = () => {
             <DropdownMenuSeparator />
           </>
         )}
-        <DropdownMenuItem onClick={handleSignout}>Logout</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignout}>
+          <DoorOpenIcon className="mr-2 h-4 w-4" /> Logout
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )
