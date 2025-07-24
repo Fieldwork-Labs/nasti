@@ -106,7 +106,7 @@ const UserMenu = () => {
 }
 
 const RootComponent = () => {
-  const { getSession, session } = useUserStore()
+  const { getSession, session, orgName } = useUserStore()
 
   useEffect(() => {
     // Listen for auth state changes
@@ -128,7 +128,11 @@ const RootComponent = () => {
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
                 <Link to="/" className="flex shrink-0 items-center">
-                  <img src={logo} alt="Seed Log Logo" width={200} />
+                  {orgName ? (
+                    <span className="text-3xl font-semibold">{orgName}</span>
+                  ) : (
+                    <img src={logo} alt="Seed Log Logo" width={200} />
+                  )}
                 </Link>
                 {session && (
                   <Link to="/trips" className="text-lead">
