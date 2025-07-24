@@ -41,6 +41,7 @@
     "./formField": "./components/formField.tsx",
     "./modal": "./components/modal.tsx",
     "./popover": "./components/popover.tsx",
+    "./search": "./components/search.tsx",
     "./spinner": "./components/spinner.tsx",
     "./textarea": "./components/textarea.tsx",
     "./switch": "./components/switch.tsx",

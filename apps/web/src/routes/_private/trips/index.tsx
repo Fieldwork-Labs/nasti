@@ -16,10 +16,14 @@ import {
   TripWithLocation,
   tripWithLocationFilter,
 } from "@/components/trips/utils"
-import { getTripsQueryOptions, useViewState } from "@nasti/common/hooks"
+import {
+  getTripsSearchInfiniteQueryOptions,
+  useTripsSearch,
+} from "@/hooks/useTripSearch"
+import { useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@nasti/common/utils"
+import { Search } from "@nasti/ui/search"
 import { Spinner } from "@nasti/ui/spinner"
-import { useSuspenseQuery } from "@tanstack/react-query"
 
 interface TripsMapProps {
   trips: Trip[]
@@ -105,22 +109,31 @@ const TripTableRow = ({ trip }: { trip: Trip }) => {
 
 const TripsList = () => {
   // TODO pagination
-  // TODO search function
-  const { data } = useSuspenseQuery(getTripsQueryOptions())
+  const [search, setSearch] = useState("")
+  const { trips, isLoading, isEmpty } = useTripsSearch({
+    search,
+    pageSize: 10,
+  })
   const { isAdmin } = useUserStore()
 
   return (
     <TripFormProvider>
-      <div>
+      <div className="flex flex-col gap-4">
         <div className="flex justify-between">
-          <h2 className="mb-4 text-2xl font-semibold">Trips</h2>
+          <h2 className="text-2xl font-semibold">Trips</h2>
           {isAdmin && <NewTripButton />}
         </div>
-        {!data || data.length === 0 ? (
+        <Search
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search"
+          isSearching={isLoading}
+        />
+        {isEmpty ? (
           <p>No trips found.</p>
         ) : (
           <>
-            <TripsMap trips={data} />
+            <TripsMap trips={trips} />
 
             <div className="overflow-x-auto">
               <table className="min-w-full overflow-hidden rounded-lg">
@@ -133,7 +146,7 @@ const TripsList = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((trip) => (
+                  {trips.map((trip) => (
                     <TripTableRow key={trip.id} trip={trip} />
                   ))}
                 </tbody>
@@ -156,6 +169,8 @@ export const Route = createFileRoute("/_private/trips/")({
     </div>
   ),
   loader: async () => {
-    return queryClient.ensureQueryData<Trip[] | null>(getTripsQueryOptions())
+    return queryClient.ensureInfiniteQueryData(
+      getTripsSearchInfiniteQueryOptions(),
+    )
   },
 })

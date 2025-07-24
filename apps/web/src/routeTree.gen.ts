@@ -20,7 +20,6 @@ import { Route as AuthResetPasswordConfirmImport } from "./routes/auth/reset-pas
 import { Route as AuthResetPasswordImport } from "./routes/auth/reset-password"
 import { Route as AuthLoginImport } from "./routes/auth/login"
 import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
-import { Route as PrivateLayoutImport } from "./routes/_private/layout"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
 import { Route as PrivateSettingsIndexImport } from "./routes/_private/settings/index"
@@ -85,12 +84,6 @@ const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
   id: "/auth/confirm-signup",
   path: "/auth/confirm-signup",
   getParentRoute: () => rootRoute,
-} as any)
-
-const PrivateLayoutRoute = PrivateLayoutImport.update({
-  id: "/layout",
-  path: "/layout",
-  getParentRoute: () => PrivateRoute,
 } as any)
 
 const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
@@ -171,13 +164,6 @@ declare module "@tanstack/react-router" {
       fullPath: ""
       preLoaderRoute: typeof PrivateImport
       parentRoute: typeof rootRoute
-    }
-    "/_private/layout": {
-      id: "/_private/layout"
-      path: "/layout"
-      fullPath: "/layout"
-      preLoaderRoute: typeof PrivateLayoutImport
-      parentRoute: typeof PrivateImport
     }
     "/auth/confirm-signup": {
       id: "/auth/confirm-signup"
@@ -304,7 +290,6 @@ declare module "@tanstack/react-router" {
 // Create and export the route tree
 
 interface PrivateRouteChildren {
-  PrivateLayoutRoute: typeof PrivateLayoutRoute
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
   PrivateSettingsOrganisationDetailsRoute: typeof PrivateSettingsOrganisationDetailsRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
@@ -318,7 +303,6 @@ interface PrivateRouteChildren {
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
-  PrivateLayoutRoute: PrivateLayoutRoute,
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
   PrivateSettingsOrganisationDetailsRoute:
     PrivateSettingsOrganisationDetailsRoute,
@@ -338,7 +322,6 @@ const PrivateRouteWithChildren =
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
-  "/layout": typeof PrivateLayoutRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -361,7 +344,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
-  "/layout": typeof PrivateLayoutRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -385,7 +367,6 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   "/": typeof IndexRoute
   "/_private": typeof PrivateRouteWithChildren
-  "/_private/layout": typeof PrivateLayoutRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -410,7 +391,6 @@ export interface FileRouteTypes {
   fullPaths:
     | "/"
     | ""
-    | "/layout"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -432,7 +412,6 @@ export interface FileRouteTypes {
   to:
     | "/"
     | ""
-    | "/layout"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -454,7 +433,6 @@ export interface FileRouteTypes {
     | "__root__"
     | "/"
     | "/_private"
-    | "/_private/layout"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -526,7 +504,6 @@ export const routeTree = rootRoute
     "/_private": {
       "filePath": "_private.tsx",
       "children": [
-        "/_private/layout",
         "/_private/invitations/new",
         "/_private/settings/organisation-details",
         "/_private/invitations/",
@@ -538,10 +515,6 @@ export const routeTree = rootRoute
         "/_private/species/$id/",
         "/_private/trips/$id/"
       ]
-    },
-    "/_private/layout": {
-      "filePath": "_private/layout.tsx",
-      "parent": "/_private"
     },
     "/auth/confirm-signup": {
       "filePath": "auth/confirm-signup.tsx"

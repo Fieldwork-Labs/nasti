@@ -1,7 +1,6 @@
 import { supabase } from "../supabase"
 import { Trip } from "../types"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useCallback } from "react"
+import { useQuery } from "@tanstack/react-query"
 
 const getTrips = async (): Promise<Trip[]> => {
   const { data: trips, error } = await supabase
@@ -24,12 +23,6 @@ export const useTrips = () => {
   const { data, isLoading, isError, error, isPending } = useQuery(
     getTripsQueryOptions(),
   )
-  const queryClient = useQueryClient()
-  const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: ["trips", "list"],
-    })
-  }, [queryClient])
 
-  return { data, isLoading, isError, error, isPending, invalidate }
+  return { data, isLoading, isError, error, isPending }
 }
