@@ -20,12 +20,13 @@ import { Route as AuthResetPasswordConfirmImport } from "./routes/auth/reset-pas
 import { Route as AuthResetPasswordImport } from "./routes/auth/reset-password"
 import { Route as AuthLoginImport } from "./routes/auth/login"
 import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
-import { Route as PrivateSettingsImport } from "./routes/_private/settings"
 import { Route as PrivateLayoutImport } from "./routes/_private/layout"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
+import { Route as PrivateSettingsIndexImport } from "./routes/_private/settings/index"
 import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/index"
 import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
+import { Route as PrivateSettingsOrganisationDetailsImport } from "./routes/_private/settings/organisation-details"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
 import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
 import { Route as PrivateSpeciesIdIndexImport } from "./routes/_private/species/$id/index"
@@ -86,12 +87,6 @@ const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const PrivateSettingsRoute = PrivateSettingsImport.update({
-  id: "/settings",
-  path: "/settings",
-  getParentRoute: () => PrivateRoute,
-} as any)
-
 const PrivateLayoutRoute = PrivateLayoutImport.update({
   id: "/layout",
   path: "/layout",
@@ -110,6 +105,12 @@ const PrivateSpeciesIndexRoute = PrivateSpeciesIndexImport.update({
   getParentRoute: () => PrivateRoute,
 } as any)
 
+const PrivateSettingsIndexRoute = PrivateSettingsIndexImport.update({
+  id: "/settings/",
+  path: "/settings/",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
 const PrivatePeopleIndexRoute = PrivatePeopleIndexImport.update({
   id: "/people/",
   path: "/people/",
@@ -121,6 +122,13 @@ const PrivateInvitationsIndexRoute = PrivateInvitationsIndexImport.update({
   path: "/invitations/",
   getParentRoute: () => PrivateRoute,
 } as any)
+
+const PrivateSettingsOrganisationDetailsRoute =
+  PrivateSettingsOrganisationDetailsImport.update({
+    id: "/settings/organisation-details",
+    path: "/settings/organisation-details",
+    getParentRoute: () => PrivateRoute,
+  } as any)
 
 const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
   id: "/invitations/new",
@@ -169,13 +177,6 @@ declare module "@tanstack/react-router" {
       path: "/layout"
       fullPath: "/layout"
       preLoaderRoute: typeof PrivateLayoutImport
-      parentRoute: typeof PrivateImport
-    }
-    "/_private/settings": {
-      id: "/_private/settings"
-      path: "/settings"
-      fullPath: "/settings"
-      preLoaderRoute: typeof PrivateSettingsImport
       parentRoute: typeof PrivateImport
     }
     "/auth/confirm-signup": {
@@ -234,6 +235,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateInvitationsNewImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/settings/organisation-details": {
+      id: "/_private/settings/organisation-details"
+      path: "/settings/organisation-details"
+      fullPath: "/settings/organisation-details"
+      preLoaderRoute: typeof PrivateSettingsOrganisationDetailsImport
+      parentRoute: typeof PrivateImport
+    }
     "/_private/invitations/": {
       id: "/_private/invitations/"
       path: "/invitations"
@@ -246,6 +254,13 @@ declare module "@tanstack/react-router" {
       path: "/people"
       fullPath: "/people"
       preLoaderRoute: typeof PrivatePeopleIndexImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/settings/": {
+      id: "/_private/settings/"
+      path: "/settings"
+      fullPath: "/settings"
+      preLoaderRoute: typeof PrivateSettingsIndexImport
       parentRoute: typeof PrivateImport
     }
     "/_private/species/": {
@@ -290,10 +305,11 @@ declare module "@tanstack/react-router" {
 
 interface PrivateRouteChildren {
   PrivateLayoutRoute: typeof PrivateLayoutRoute
-  PrivateSettingsRoute: typeof PrivateSettingsRoute
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
+  PrivateSettingsOrganisationDetailsRoute: typeof PrivateSettingsOrganisationDetailsRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
   PrivatePeopleIndexRoute: typeof PrivatePeopleIndexRoute
+  PrivateSettingsIndexRoute: typeof PrivateSettingsIndexRoute
   PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
   PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
   PrivateTripsIdEditRoute: typeof PrivateTripsIdEditRoute
@@ -303,10 +319,12 @@ interface PrivateRouteChildren {
 
 const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateLayoutRoute: PrivateLayoutRoute,
-  PrivateSettingsRoute: PrivateSettingsRoute,
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
+  PrivateSettingsOrganisationDetailsRoute:
+    PrivateSettingsOrganisationDetailsRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
   PrivatePeopleIndexRoute: PrivatePeopleIndexRoute,
+  PrivateSettingsIndexRoute: PrivateSettingsIndexRoute,
   PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
   PrivateTripsIdEditRoute: PrivateTripsIdEditRoute,
@@ -321,7 +339,6 @@ export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
   "/layout": typeof PrivateLayoutRoute
-  "/settings": typeof PrivateSettingsRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -330,8 +347,10 @@ export interface FileRoutesByFullPath {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
+  "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/people": typeof PrivatePeopleIndexRoute
+  "/settings": typeof PrivateSettingsIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
@@ -343,7 +362,6 @@ export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
   "/layout": typeof PrivateLayoutRoute
-  "/settings": typeof PrivateSettingsRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -352,8 +370,10 @@ export interface FileRoutesByTo {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
+  "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/people": typeof PrivatePeopleIndexRoute
+  "/settings": typeof PrivateSettingsIndexRoute
   "/species": typeof PrivateSpeciesIndexRoute
   "/trips": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
@@ -366,7 +386,6 @@ export interface FileRoutesById {
   "/": typeof IndexRoute
   "/_private": typeof PrivateRouteWithChildren
   "/_private/layout": typeof PrivateLayoutRoute
-  "/_private/settings": typeof PrivateSettingsRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -375,8 +394,10 @@ export interface FileRoutesById {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
+  "/_private/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/_private/invitations/": typeof PrivateInvitationsIndexRoute
   "/_private/people/": typeof PrivatePeopleIndexRoute
+  "/_private/settings/": typeof PrivateSettingsIndexRoute
   "/_private/species/": typeof PrivateSpeciesIndexRoute
   "/_private/trips/": typeof PrivateTripsIndexRoute
   "/_private/trips/$id/edit": typeof PrivateTripsIdEditRoute
@@ -390,7 +411,6 @@ export interface FileRouteTypes {
     | "/"
     | ""
     | "/layout"
-    | "/settings"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -399,8 +419,10 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/invitations/new"
+    | "/settings/organisation-details"
     | "/invitations"
     | "/people"
+    | "/settings"
     | "/species"
     | "/trips"
     | "/trips/$id/edit"
@@ -411,7 +433,6 @@ export interface FileRouteTypes {
     | "/"
     | ""
     | "/layout"
-    | "/settings"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -420,8 +441,10 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/invitations/new"
+    | "/settings/organisation-details"
     | "/invitations"
     | "/people"
+    | "/settings"
     | "/species"
     | "/trips"
     | "/trips/$id/edit"
@@ -432,7 +455,6 @@ export interface FileRouteTypes {
     | "/"
     | "/_private"
     | "/_private/layout"
-    | "/_private/settings"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -441,8 +463,10 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/_private/invitations/new"
+    | "/_private/settings/organisation-details"
     | "/_private/invitations/"
     | "/_private/people/"
+    | "/_private/settings/"
     | "/_private/species/"
     | "/_private/trips/"
     | "/_private/trips/$id/edit"
@@ -503,10 +527,11 @@ export const routeTree = rootRoute
       "filePath": "_private.tsx",
       "children": [
         "/_private/layout",
-        "/_private/settings",
         "/_private/invitations/new",
+        "/_private/settings/organisation-details",
         "/_private/invitations/",
         "/_private/people/",
+        "/_private/settings/",
         "/_private/species/",
         "/_private/trips/",
         "/_private/trips/$id/edit",
@@ -516,10 +541,6 @@ export const routeTree = rootRoute
     },
     "/_private/layout": {
       "filePath": "_private/layout.tsx",
-      "parent": "/_private"
-    },
-    "/_private/settings": {
-      "filePath": "_private/settings.tsx",
       "parent": "/_private"
     },
     "/auth/confirm-signup": {
@@ -547,12 +568,20 @@ export const routeTree = rootRoute
       "filePath": "_private/invitations/new.tsx",
       "parent": "/_private"
     },
+    "/_private/settings/organisation-details": {
+      "filePath": "_private/settings/organisation-details.tsx",
+      "parent": "/_private"
+    },
     "/_private/invitations/": {
       "filePath": "_private/invitations/index.tsx",
       "parent": "/_private"
     },
     "/_private/people/": {
       "filePath": "_private/people/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/settings/": {
+      "filePath": "_private/settings/index.tsx",
       "parent": "/_private"
     },
     "/_private/species/": {

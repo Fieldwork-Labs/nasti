@@ -2,10 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { Card } from "@nasti/ui/card"
 import { Button } from "@nasti/ui/button"
-import { Settings, Leaf, Users } from "lucide-react"
+import { Settings, Leaf, Users, SettingsIcon } from "lucide-react"
 import useUserStore from "@/store/userStore"
 
-export const Route = createFileRoute("/_private/settings")({
+export const Route = createFileRoute("/_private/settings/")({
   component: SettingsDashboard,
 })
 
@@ -14,6 +14,13 @@ function SettingsDashboard() {
   const { orgName } = useUserStore()
 
   const settingsCards = [
+    {
+      title: "Organisation Details",
+      description: "Update organisation details",
+      icon: SettingsIcon,
+      href: "/settings/organisation-details",
+      color: "bg-blue-500",
+    },
     {
       title: "Species list",
       description: "See all species and their associated collections",
