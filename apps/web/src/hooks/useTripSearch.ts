@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { useQuery, UseQueryOptions } from "@tanstack/react-query"
 import { useMemo } from "react"
 import { Trip } from "@nasti/common/types"
 import { supabase } from "@nasti/common/supabase"
@@ -52,75 +52,61 @@ const searchTrips = async ({
   }
 }
 
-export const getTripsSearchInfiniteQueryOptions = (
+export const getTripsSearchQueryOptions = (
   search: string = "",
   pageSize: number = 20,
-) => ({
-  queryKey: ["trips", "search", search, pageSize],
-  queryFn: ({ pageParam }: { pageParam: number }) =>
-    searchTrips({ search, pageParam, pageSize }),
-  initialPageParam: 1,
-  getNextPageParam: (lastPage: TripsSearchPage) => lastPage.nextPage,
-  getPreviousPageParam: (
-    firstPage: TripsSearchPage,
-    allPages: TripsSearchPage[],
-  ) => {
-    return allPages.length > 1 ? allPages.length - 1 : undefined
-  },
+  page: number = 1,
+): UseQueryOptions<TripsSearchPage> => ({
+  queryKey: ["trips", "search", search, page, pageSize],
+  queryFn: () => searchTrips({ search, pageParam: page, pageSize }),
+  placeholderData: (previousData) => previousData,
 })
 
 interface UseTripsSearchOptions {
   search: string
   pageSize?: number
+  page?: number
   debounceMs?: number
 }
 
 export const useTripsSearch = ({
   search,
   pageSize = 20,
+  page = 1,
   debounceMs = 300,
 }: UseTripsSearchOptions) => {
   // Debounce the search term
   const debouncedSearch = useDebounce(search, debounceMs)
+  const qOptions = getTripsSearchQueryOptions(debouncedSearch, pageSize, page)
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    isPending,
-    isFetching,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    refetch,
-  } = useInfiniteQuery(
-    getTripsSearchInfiniteQueryOptions(debouncedSearch, pageSize),
-  )
+  const { data, isLoading, isError, error, isPending, isFetching, refetch } =
+    useQuery(qOptions)
 
   // Flatten all pages into a single array
-  const trips = useMemo(() => {
-    return data?.pages.flatMap((page) => page.trips) || []
-  }, [data?.pages])
+  const trips = data?.trips || []
 
   // Get total count from the first page
-  const totalCount = data?.pages[0]?.totalCount || 0
+  const { totalPages, totalCount } = useMemo(() => {
+    const totalCount = data?.totalCount || 0
+    return {
+      totalPages: Math.ceil(totalCount / pageSize),
+      totalCount,
+    }
+  }, [data?.totalCount, pageSize])
 
   return {
     trips,
-    totalCount,
-    hasNextPage: hasNextPage || false,
     isLoading,
     isError,
     error,
     isPending,
     isFetching,
-    isFetchingNextPage,
-    fetchNextPage,
     refetch,
     // Convenience properties
+    totalCount,
+    totalPages,
     isSearching: Boolean(debouncedSearch.trim()),
     isEmpty: !isLoading && trips.length === 0,
-    canLoadMore: hasNextPage && !isFetchingNextPage,
+    canLoadMore: totalPages > page,
   }
 }

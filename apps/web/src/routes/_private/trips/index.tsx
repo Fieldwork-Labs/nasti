@@ -17,13 +17,14 @@ import {
   tripWithLocationFilter,
 } from "@/components/trips/utils"
 import {
-  getTripsSearchInfiniteQueryOptions,
+  getTripsSearchQueryOptions,
   useTripsSearch,
 } from "@/hooks/useTripSearch"
 import { useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@nasti/common/utils"
 import { Search } from "@nasti/ui/search"
 import { Spinner } from "@nasti/ui/spinner"
+import { Pagination, usePagination } from "@/components/common/pagination"
 
 interface TripsMapProps {
   trips: Trip[]
@@ -107,12 +108,17 @@ const TripTableRow = ({ trip }: { trip: Trip }) => {
   )
 }
 
+const PAGE_SIZE = 10
+
 const TripsList = () => {
   // TODO pagination
   const [search, setSearch] = useState("")
-  const { trips, isLoading, isEmpty } = useTripsSearch({
+  const { nextPage, prevPage, setPage, page } = usePagination(1, PAGE_SIZE)
+
+  const { trips, isLoading, isEmpty, totalPages } = useTripsSearch({
     search,
-    pageSize: 10,
+    pageSize: PAGE_SIZE,
+    page,
   })
   const { isAdmin } = useUserStore()
 
@@ -129,6 +135,18 @@ const TripsList = () => {
           placeholder="Search"
           isSearching={isLoading}
         />
+        <div className="flex justify-end">
+          <div className="flex justify-end md:w-fit">
+            <Pagination
+              pageCount={totalPages}
+              page={page}
+              nextPage={nextPage}
+              prevPage={prevPage}
+              setPage={setPage}
+              className="mx-0 justify-end"
+            />
+          </div>
+        </div>
         {isEmpty ? (
           <p>No trips found.</p>
         ) : (
@@ -169,8 +187,6 @@ export const Route = createFileRoute("/_private/trips/")({
     </div>
   ),
   loader: async () => {
-    return queryClient.ensureInfiniteQueryData(
-      getTripsSearchInfiniteQueryOptions(),
-    )
+    return queryClient.ensureQueryData(getTripsSearchQueryOptions())
   },
 })
