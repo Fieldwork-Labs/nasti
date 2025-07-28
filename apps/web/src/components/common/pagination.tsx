@@ -8,7 +8,7 @@ import {
   PaginationPrevious,
 } from "@nasti/ui/pagination"
 import { cn } from "@nasti/ui/utils"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 type PaginationProps = {
   page: number
@@ -27,11 +27,18 @@ export const usePagination = (
 ) => {
   const [page, setPage] = useState(initialPage)
 
-  const nextPage = () => setPage((prev) => prev + 1)
-  const prevPage = () => setPage((prev) => Math.max(prev - 1, 1))
+  const nextPage = useCallback(() => setPage((prev) => prev + 1), [])
+  const prevPage = useCallback(
+    () => setPage((prev) => Math.max(prev - 1, 1)),
+    [],
+  )
+  const goToPage = useCallback(
+    (newPage: number) => setPage(Math.max(1, newPage)),
+    [],
+  )
 
   useEffect(() => {
-    if (onPageChange) onPageChange(page)
+    onPageChange?.(page)
   }, [page, onPageChange])
 
   return {
@@ -39,7 +46,7 @@ export const usePagination = (
     pageSize,
     nextPage,
     prevPage,
-    setPage,
+    setPage: goToPage,
   }
 }
 
@@ -51,56 +58,89 @@ export const Pagination = ({
   setPage,
   className,
 }: PaginationProps) => {
+  const canGoNext = page < pageCount
+  const canGoPrev = page > 1
+
+  // Generate the range of pages to show around current page
+  const visiblePages = useMemo(() => {
+    const delta = 2 // Show 2 pages on each side of current page
+    const rangeWithDots = []
+
+    // Calculate start and end of the range around current page
+    const start = Math.max(1, page - delta)
+    const end = Math.min(pageCount, page + delta)
+
+    // Always show first page
+    if (start > 1) {
+      rangeWithDots.push(1)
+      if (start > 2) {
+        rangeWithDots.push("ellipsis-start")
+      }
+    }
+
+    // Add pages in range
+    for (let i = start; i <= end; i++) {
+      rangeWithDots.push(i)
+    }
+
+    // Always show last page
+    if (end < pageCount) {
+      if (end < pageCount - 1) {
+        rangeWithDots.push("ellipsis-end")
+      }
+      rangeWithDots.push(pageCount)
+    }
+
+    return rangeWithDots
+  }, [page, pageCount])
+
   if (pageCount < 1) return null
+
   return (
-    <ShadCnPagination className={cn("w-fit", className)}>
+    <ShadCnPagination
+      className={cn("w-fit", className)}
+      role="navigation"
+      aria-label="Pagination"
+    >
       <PaginationContent>
-        {page > pageCount && (
-          <PaginationItem>
-            <PaginationPrevious disabled={page === 1} onClick={prevPage} />
-          </PaginationItem>
-        )}
-        {page > 2 && (
-          <PaginationItem>
-            <PaginationLink from="" onClick={() => setPage(page - 2)}>
-              {page - 2}
-            </PaginationLink>
-          </PaginationItem>
-        )}
-        {page > 1 && (
-          <PaginationItem>
-            <PaginationLink onClick={() => setPage(page - 1)}>
-              {page - 1}
-            </PaginationLink>
-          </PaginationItem>
-        )}
         <PaginationItem>
-          <PaginationLink isActive>{page}</PaginationLink>
+          <PaginationPrevious
+            disabled={!canGoPrev}
+            onClick={prevPage}
+            aria-label="Go to previous page"
+          />
         </PaginationItem>
-        {pageCount - page > 1 && (
-          <PaginationItem>
-            <PaginationLink onClick={() => setPage(page + 1)}>
-              {page + 1}
-            </PaginationLink>
-          </PaginationItem>
-        )}
-        {pageCount - page > 2 && (
-          <PaginationItem>
-            <PaginationLink onClick={() => setPage(page + 2)}>
-              {page + 2}
-            </PaginationLink>
-          </PaginationItem>
-        )}
-        {pageCount - page > 3 && (
-          <PaginationItem>
-            <PaginationEllipsis />
-          </PaginationItem>
-        )}
-        {page < pageCount && (
-          <PaginationItem>
-            <PaginationNext disabled={page === pageCount} onClick={nextPage} />
-          </PaginationItem>
-        )}
+
+        {visiblePages.map((pageNum, index) => {
+          if (pageNum === "ellipsis-start" || pageNum === "ellipsis-end") {
+            return (
+              <PaginationItem key={`ellipsis-${index}`}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )
+          }
+
+          return (
+            <PaginationItem key={pageNum}>
+              <PaginationLink
+                isActive={pageNum === page}
+                onClick={() => setPage(pageNum as number)}
+                aria-label={`Go to page ${pageNum}`}
+                aria-current={pageNum === page ? "page" : undefined}
+              >
+                {pageNum}
+              </PaginationLink>
+            </PaginationItem>
+          )
+        })}
+
+        <PaginationItem>
+          <PaginationNext
+            disabled={!canGoNext}
+            onClick={nextPage}
+            aria-label="Go to next page"
+          />
+        </PaginationItem>
       </PaginationContent>
     </ShadCnPagination>
   )

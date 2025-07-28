@@ -5,7 +5,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { MapPin, PlusIcon } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import Map, { Marker, Popup } from "react-map-gl"
 
 import { TripFormProvider, TripFormWizard } from "@/components/trips/TripWizard"
@@ -124,6 +124,24 @@ const TripsList = () => {
     ...searchDetails,
     options: { pageSize: PAGE_SIZE, page },
   })
+
+  const handleNextPage = useCallback(() => {
+    if (page < totalPages) nextPage()
+  }, [page, totalPages, nextPage])
+
+  const handlePrevPage = useCallback(() => {
+    if (page > 1) prevPage()
+  }, [page, prevPage])
+
+  const handleSetPage = useCallback(
+    (newPage: number) => {
+      if (newPage >= 1 && newPage <= totalPages) {
+        setPage(newPage)
+      }
+    },
+    [totalPages, setPage],
+  )
+
   const { isAdmin } = useUserStore()
 
   return (
@@ -142,9 +160,9 @@ const TripsList = () => {
             <Pagination
               pageCount={totalPages}
               page={page}
-              nextPage={nextPage}
-              prevPage={prevPage}
-              setPage={setPage}
+              nextPage={handleNextPage}
+              prevPage={handlePrevPage}
+              setPage={handleSetPage}
               className="mx-0 justify-end"
             />
           </div>

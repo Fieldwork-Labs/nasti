@@ -64,7 +64,6 @@ export const TripFilterForm = ({
     handleSubmit,
     formState: { isValid },
     setValue,
-    watch,
     control,
   } = useForm<TripFilterInputData>({
     resolver: zodResolver(tripFilterInputSchema),
@@ -75,8 +74,6 @@ export const TripFilterForm = ({
       dateTo: undefined,
     },
   })
-  const data = watch()
-  console.log({ data })
 
   const handleClear = () => {
     // Explicitly set each field
