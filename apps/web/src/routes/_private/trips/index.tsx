@@ -10,6 +10,11 @@ import Map, { Marker, Popup } from "react-map-gl"
 
 import { TripFormProvider, TripFormWizard } from "@/components/trips/TripWizard"
 
+import { Pagination, usePagination } from "@/components/common/pagination"
+import {
+  TripFilterData,
+  TripFilterForm,
+} from "@/components/trips/TripFilterForm"
 import { useTripFormWizard } from "@/components/trips/TripWizard/useTripFormWizard"
 import {
   getTripCoordinates,
@@ -22,9 +27,7 @@ import {
 } from "@/hooks/useTripSearch"
 import { useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@nasti/common/utils"
-import { Search } from "@nasti/ui/search"
 import { Spinner } from "@nasti/ui/spinner"
-import { Pagination, usePagination } from "@/components/common/pagination"
 
 interface TripsMapProps {
   trips: Trip[]
@@ -111,14 +114,15 @@ const TripTableRow = ({ trip }: { trip: Trip }) => {
 const PAGE_SIZE = 10
 
 const TripsList = () => {
-  // TODO pagination
-  const [search, setSearch] = useState("")
+  const [searchDetails, setSearchDetails] = useState<
+    TripFilterData | undefined
+  >()
+
   const { nextPage, prevPage, setPage, page } = usePagination(1, PAGE_SIZE)
 
   const { trips, isLoading, isEmpty, totalPages } = useTripsSearch({
-    search,
-    pageSize: PAGE_SIZE,
-    page,
+    ...searchDetails,
+    options: { pageSize: PAGE_SIZE, page },
   })
   const { isAdmin } = useUserStore()
 
@@ -129,11 +133,9 @@ const TripsList = () => {
           <h2 className="text-2xl font-semibold">Trips</h2>
           {isAdmin && <NewTripButton />}
         </div>
-        <Search
-          value={search}
-          onValueChange={setSearch}
-          placeholder="Search"
-          isSearching={isLoading}
+        <TripFilterForm
+          isLoading={isLoading}
+          onSetSearchDetails={setSearchDetails}
         />
         <div className="flex justify-end">
           <div className="flex justify-end md:w-fit">
@@ -187,6 +189,7 @@ export const Route = createFileRoute("/_private/trips/")({
     </div>
   ),
   loader: async () => {
-    return queryClient.ensureQueryData(getTripsSearchQueryOptions())
+    const qOptions = getTripsSearchQueryOptions()
+    return queryClient.ensureQueryData(qOptions)
   },
 })

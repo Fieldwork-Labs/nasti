@@ -2,10 +2,11 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query"
 import { useMemo } from "react"
 import { Trip } from "@nasti/common/types"
 import { supabase } from "@nasti/common/supabase"
-import { useDebounce } from "@uidotdev/usehooks"
 
 interface TripsSearchParams {
   search?: string
+  dateFrom?: Date
+  dateTo?: Date
   pageParam?: number
   pageSize?: number
 }
@@ -18,6 +19,8 @@ interface TripsSearchPage {
 
 const searchTrips = async ({
   search,
+  dateFrom,
+  dateTo,
   pageParam = 1,
   pageSize = 20,
 }: TripsSearchParams): Promise<TripsSearchPage> => {
@@ -33,7 +36,8 @@ const searchTrips = async ({
   if (search?.trim()) {
     query = query.or(`name.ilike.%${search}%,location_name.ilike.%${search}%`)
   }
-
+  if (dateFrom) query = query.gte("start_date", dateFrom.toDateString())
+  if (dateTo) query = query.lte("end_date", dateTo.toDateString())
   // Apply pagination
   query = query.range(from, to)
 
@@ -54,36 +58,45 @@ const searchTrips = async ({
 
 export const getTripsSearchQueryOptions = (
   search: string = "",
+  dateFrom?: Date | undefined,
+  dateTo?: Date | undefined,
   pageSize: number = 20,
   page: number = 1,
 ): UseQueryOptions<TripsSearchPage> => ({
-  queryKey: ["trips", "search", search, page, pageSize],
-  queryFn: () => searchTrips({ search, pageParam: page, pageSize }),
+  queryKey: ["trips", "search", search, dateFrom, dateTo, page, pageSize],
+  queryFn: () =>
+    searchTrips({ search, pageParam: page, pageSize, dateFrom, dateTo }),
   placeholderData: (previousData) => previousData,
 })
 
 interface UseTripsSearchOptions {
-  search: string
-  pageSize?: number
-  page?: number
-  debounceMs?: number
+  search?: string
+  dateFrom?: Date
+  dateTo?: Date
+  options: {
+    pageSize?: number
+    page?: number
+    debounceMs?: number
+  }
 }
 
 export const useTripsSearch = ({
   search,
-  pageSize = 20,
-  page = 1,
-  debounceMs = 300,
+  dateFrom,
+  dateTo,
+  options: { pageSize = 20, page = 1 },
 }: UseTripsSearchOptions) => {
   // Debounce the search term
-  const debouncedSearch = useDebounce(search, debounceMs)
-  const qOptions = getTripsSearchQueryOptions(debouncedSearch, pageSize, page)
+  const qOptions = getTripsSearchQueryOptions(
+    search,
+    dateFrom,
+    dateTo,
+    pageSize,
+    page,
+  )
 
   const { data, isLoading, isError, error, isPending, isFetching, refetch } =
     useQuery(qOptions)
-
-  // Flatten all pages into a single array
-  const trips = data?.trips || []
 
   // Get total count from the first page
   const { totalPages, totalCount } = useMemo(() => {
@@ -93,6 +106,8 @@ export const useTripsSearch = ({
       totalCount,
     }
   }, [data?.totalCount, pageSize])
+
+  const trips = data?.trips || []
 
   return {
     trips,
@@ -105,7 +120,7 @@ export const useTripsSearch = ({
     // Convenience properties
     totalCount,
     totalPages,
-    isSearching: Boolean(debouncedSearch.trim()),
+    isSearching: Boolean(search?.trim()),
     isEmpty: !isLoading && trips.length === 0,
     canLoadMore: totalPages > page,
   }

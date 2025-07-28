@@ -1,4 +1,4 @@
-import React, { useState, forwardRef } from "react"
+import React, { forwardRef } from "react"
 import { SearchIcon, X } from "lucide-react"
 import { cn } from "../utils"
 import { Spinner } from "./spinner"
@@ -19,32 +19,30 @@ const Search = forwardRef<HTMLInputElement, SearchInputProps>(
     {
       className,
       onClear,
+      onChange,
       onValueChange,
       isSearching,
       showClearButton = true,
+      value = "", // Default to empty string if no value provided
       ...props
     },
     ref,
   ) => {
-    const [value, setValue] = useState(props.value || props.defaultValue || "")
-
     const handleClear = () => {
-      setValue("")
       onClear?.()
       // If there's an onChange handler, call it with empty value
-      if (props.onChange) {
+      if (onChange) {
         const syntheticEvent = {
           target: { value: "" },
           currentTarget: { value: "" },
         } as React.ChangeEvent<HTMLInputElement>
-        props.onChange(syntheticEvent)
+        onChange(syntheticEvent)
       }
       onValueChange?.("")
     }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setValue(e.target.value)
-      if (props.onChange) props.onChange(e)
+      if (onChange) onChange(e)
       onValueChange?.(e.target.value)
     }
 
@@ -91,7 +89,5 @@ const Search = forwardRef<HTMLInputElement, SearchInputProps>(
     )
   },
 )
-
-Search.displayName = "Search"
 
 export { Search }
