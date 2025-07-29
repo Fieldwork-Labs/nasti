@@ -2,7 +2,7 @@ import useUserStore from "@/store/userStore"
 import { Trip } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { MapPin, PlusIcon } from "lucide-react"
+import { ChevronDownIcon, ChevronUpIcon, MapPin, PlusIcon } from "lucide-react"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { useCallback, useState } from "react"
@@ -111,6 +111,34 @@ const TripTableRow = ({ trip }: { trip: Trip }) => {
   )
 }
 
+const SortableTableHeader = ({
+  children,
+  sortParam,
+  sortOrder,
+  onSort,
+}: {
+  children: React.ReactNode
+  sortParam: keyof Trip
+  sortOrder: "asc" | "desc"
+  onSort: (param: keyof Trip, order: "asc" | "desc") => void
+}) => {
+  return (
+    <th
+      className="cursor-pointer px-4 py-2 text-left"
+      onClick={() => onSort(sortParam, sortOrder === "asc" ? "desc" : "asc")}
+    >
+      <span className="flex items-center gap-1">
+        {children}
+        {sortOrder === "asc" ? (
+          <ChevronUpIcon className="size-4" />
+        ) : (
+          <ChevronDownIcon className="size-4" />
+        )}
+      </span>
+    </th>
+  )
+}
+
 const PAGE_SIZE = 10
 
 const TripsList = () => {
@@ -141,6 +169,14 @@ const TripsList = () => {
     },
     [totalPages, setPage],
   )
+
+  const handleSort = useCallback((param: keyof Trip, order: "asc" | "desc") => {
+    setSearchDetails((prev) => ({
+      ...prev,
+      sortParam: param,
+      sortOrder: order,
+    }))
+  }, [])
 
   const { isAdmin } = useUserStore()
 
@@ -175,12 +211,52 @@ const TripsList = () => {
 
             <div className="overflow-x-auto">
               <table className="min-w-full overflow-hidden rounded-lg">
-                <thead className="">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left">Name</th>
-                    <th className="px-4 py-2 text-left">Start Date</th>
-                    <th className="px-4 py-2 text-left">End Date</th>
-                    <th className="px-4 py-2 text-left">Location</th>
+                    <SortableTableHeader
+                      onSort={handleSort}
+                      sortParam="name"
+                      sortOrder={
+                        (searchDetails?.sortParam === "name" &&
+                          searchDetails?.sortOrder) ||
+                        "asc"
+                      }
+                    >
+                      Name
+                    </SortableTableHeader>
+                    <SortableTableHeader
+                      onSort={handleSort}
+                      sortParam="start_date"
+                      sortOrder={
+                        (searchDetails?.sortParam === "start_date" &&
+                          searchDetails?.sortOrder) ||
+                        "asc"
+                      }
+                    >
+                      Start Date
+                    </SortableTableHeader>
+                    <SortableTableHeader
+                      onSort={handleSort}
+                      sortParam="end_date"
+                      sortOrder={
+                        (searchDetails?.sortParam === "end_date" &&
+                          searchDetails?.sortOrder) ||
+                        "asc"
+                      }
+                    >
+                      End Date
+                    </SortableTableHeader>
+                    <SortableTableHeader
+                      onSort={handleSort}
+                      sortParam="location_name"
+                      sortOrder={
+                        (searchDetails?.sortParam === "location_name" &&
+                          searchDetails?.sortOrder) ||
+                        "asc"
+                      }
+                    >
+                      Location Name
+                    </SortableTableHeader>
                   </tr>
                 </thead>
                 <tbody>

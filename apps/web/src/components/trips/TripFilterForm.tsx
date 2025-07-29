@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Trip } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -48,7 +49,10 @@ const tripFilterOutputSchema = tripFilterInputSchema
   )
 
 type TripFilterInputData = z.infer<typeof tripFilterInputSchema>
-export type TripFilterData = z.infer<typeof tripFilterOutputSchema>
+export type TripFilterData = z.infer<typeof tripFilterOutputSchema> & {
+  sortParam?: keyof Trip
+  sortOrder?: "asc" | "desc"
+}
 
 type TripFilterFormProps = {
   isLoading: boolean

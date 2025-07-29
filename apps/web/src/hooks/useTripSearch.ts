@@ -7,6 +7,8 @@ interface TripsSearchParams {
   search?: string
   dateFrom?: Date
   dateTo?: Date
+  sortParam?: keyof Trip
+  sortOrder?: string
   pageParam?: number
   pageSize?: number
 }
@@ -21,6 +23,8 @@ const searchTrips = async ({
   search,
   dateFrom,
   dateTo,
+  sortParam = "created_at",
+  sortOrder,
   pageParam = 1,
   pageSize = 20,
 }: TripsSearchParams): Promise<TripsSearchPage> => {
@@ -30,7 +34,7 @@ const searchTrips = async ({
   let query = supabase
     .from("trip")
     .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
+    .order(sortParam, { ascending: sortOrder === "asc" })
 
   // Apply search filters if search term exists
   if (search?.trim()) {
@@ -60,12 +64,32 @@ export const getTripsSearchQueryOptions = (
   search: string = "",
   dateFrom?: Date | undefined,
   dateTo?: Date | undefined,
+  sortParam?: keyof Trip,
+  sortOrder?: string,
   pageSize: number = 20,
   page: number = 1,
 ): UseQueryOptions<TripsSearchPage> => ({
-  queryKey: ["trips", "search", search, dateFrom, dateTo, page, pageSize],
+  queryKey: [
+    "trips",
+    "search",
+    search,
+    dateFrom,
+    dateTo,
+    sortParam,
+    sortOrder,
+    page,
+    pageSize,
+  ],
   queryFn: () =>
-    searchTrips({ search, pageParam: page, pageSize, dateFrom, dateTo }),
+    searchTrips({
+      search,
+      pageParam: page,
+      pageSize,
+      dateFrom,
+      dateTo,
+      sortParam,
+      sortOrder,
+    }),
   placeholderData: (previousData) => previousData,
 })
 
@@ -73,6 +97,8 @@ interface UseTripsSearchOptions {
   search?: string
   dateFrom?: Date
   dateTo?: Date
+  sortParam?: keyof Trip
+  sortOrder?: "asc" | "desc"
   options: {
     pageSize?: number
     page?: number
@@ -84,6 +110,8 @@ export const useTripsSearch = ({
   search,
   dateFrom,
   dateTo,
+  sortParam,
+  sortOrder,
   options: { pageSize = 20, page = 1 },
 }: UseTripsSearchOptions) => {
   // Debounce the search term
@@ -91,6 +119,8 @@ export const useTripsSearch = ({
     search,
     dateFrom,
     dateTo,
+    sortParam,
+    sortOrder,
     pageSize,
     page,
   )
