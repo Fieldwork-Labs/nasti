@@ -17,7 +17,7 @@ const PeopleList = () => {
   // TODO pagination
   // TODO search function
 
-  const { orgId, isAdmin, session, user: currentUser } = useUserStore()
+  const { organisation, isAdmin, session, user: currentUser } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -56,7 +56,7 @@ const PeopleList = () => {
       } else {
         toast({ description: "User disabled successfully." })
         queryClient.setQueryData<GetOrgUsers["Returns"]>(
-          ["users", orgId],
+          ["users", organisation?.id],
           (oldData) => {
             if (!oldData || oldData.length === 0) return []
             return oldData.map((item) =>
@@ -66,7 +66,7 @@ const PeopleList = () => {
         )
       }
     },
-    [orgId, queryClient, session?.access_token, toast],
+    [organisation, queryClient, session?.access_token, toast],
   )
 
   if (isLoading) {

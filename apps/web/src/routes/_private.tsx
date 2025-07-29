@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_private")({
     let orgId = context.orgId
     if (!orgId) {
       const authDetails = await context.getUser()
-      orgId = authDetails?.orgId ?? null
+      orgId = authDetails?.organisation?.id ?? null
       if (!orgId)
         throw redirect({
           to: "/auth/login",

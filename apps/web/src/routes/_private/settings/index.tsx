@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_private/settings/")({
 
 function SettingsDashboard() {
   useAdminOnly()
-  const { orgName } = useUserStore()
+  const { organisation } = useUserStore()
 
   const settingsCards = [
     {
@@ -42,7 +42,7 @@ function SettingsDashboard() {
       <div className="mb-8 mt-2">
         <div className="mb-2 flex items-center gap-3">
           <Settings className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">{orgName} Settings</h1>
+          <h1 className="text-3xl font-bold">{organisation?.name} Settings</h1>
         </div>
         <p className="text-gray-600">
           Manage your organisation configuration and preferences

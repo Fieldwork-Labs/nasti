@@ -116,7 +116,7 @@ const TripDeleteModalContent = ({
   onCancel: () => void
   onSuccess: () => void
 }) => {
-  const { orgId, isAdmin, session } = useUserStore()
+  const { organisation, isAdmin, session } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -154,13 +154,13 @@ const TripDeleteModalContent = ({
       })
     } else {
       toast({ description: "Trip deleted successfully." })
-      queryClient.invalidateQueries({ queryKey: ["trips", orgId] })
+      queryClient.invalidateQueries({ queryKey: ["trips", organisation?.id] })
       onSuccess()
       navigate({ to: "/trips" })
     }
     setIsDeleting(false)
   }, [
-    orgId,
+    organisation,
     queryClient,
     toast,
     trip,

@@ -20,7 +20,7 @@ export const useCollectionPhotos = (collectionId?: string) => {
   const [isUploading, setIsUploading] = useState(false)
   // TODO: use this to show progress - use TUS
   const [uploadProgress] = useState<Record<string, number>>({})
-  const { orgId } = useUserStore()
+  const { organisation } = useUserStore()
 
   // Fetch photos for a specific collection
   const {
@@ -85,13 +85,14 @@ export const useCollectionPhotos = (collectionId?: string) => {
   >({
     mutationFn: async ({ file, caption }) => {
       if (!collectionId) throw new Error("No collection id specified")
+      if (!organisation?.id) throw new Error("No organisation id")
       const photoId = crypto.randomUUID()
       const fileExt = file.name.split(".").pop()
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
       setIsUploading(true)
 
-      const filePath = `${orgId}/collections/${collectionId}/${photoId}.${fileExt}`
+      const filePath = `${organisation.id}/collections/${collectionId}/${photoId}.${fileExt}`
 
       // Upload file to Supabase Storage
       const { error: storageError } = await supabase.storage

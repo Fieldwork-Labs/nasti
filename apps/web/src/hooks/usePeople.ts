@@ -5,24 +5,24 @@ import { queryClient } from "@nasti/common/utils"
 import { useCallback } from "react"
 
 export const usePeople = () => {
-  const { orgId } = useUserStore()
+  const { organisation } = useUserStore()
 
   // Fetch people
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["users", orgId],
+    queryKey: ["users", organisation?.id],
     queryFn: async () => {
-      if (!orgId) {
+      if (!organisation?.id) {
         throw new Error("Organisation not found")
       }
       return getUsers()
     },
-    enabled: Boolean(orgId),
+    enabled: Boolean(organisation?.id),
   })
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({
-      queryKey: ["users", orgId],
+      queryKey: ["users", organisation?.id],
     })
-  }, [orgId])
+  }, [organisation])
 
   return { data, isLoading, isError, error, invalidate }
 }

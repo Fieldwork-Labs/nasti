@@ -40,10 +40,13 @@ const getSpecies = async (alaGuid: string, orgId: string) =>
     .eq("ala_guid", alaGuid)
 
 const useDoesSpeciesExist = (alaGuid?: string) => {
-  const { orgId } = useUserStore()
+  const { organisation } = useUserStore()
   const { data } = useQuery({
     queryKey: ["speciesAlaGuid", alaGuid],
-    queryFn: () => (alaGuid && orgId ? getSpecies(alaGuid, orgId) : undefined),
+    queryFn: () =>
+      alaGuid && organisation?.id
+        ? getSpecies(alaGuid, organisation.id)
+        : undefined,
     enabled: Boolean(alaGuid),
   })
 
@@ -54,7 +57,7 @@ export const useSpeciesForm = ({ onCreate }: SpeciesFormArgs) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchValue, setSearchValue] = useState("")
-  const { orgId } = useUserStore()
+  const { organisation } = useUserStore()
 
   const debouncedSearch = useDebounce(searchValue, 300)
   const {
@@ -84,7 +87,7 @@ export const useSpeciesForm = ({ onCreate }: SpeciesFormArgs) => {
 
   const handleSubmit = useCallback(async () => {
     try {
-      if (!orgId || !selectedSpecies?.guid) return null
+      if (!organisation?.id || !selectedSpecies?.guid) return null
       if (alreadyExists) throw new Error("Species already added")
 
       setIsSubmitting(true)
@@ -93,7 +96,7 @@ export const useSpeciesForm = ({ onCreate }: SpeciesFormArgs) => {
         .from("species")
         .insert({
           ala_guid: selectedSpecies.guid,
-          organisation_id: orgId,
+          organisation_id: organisation.id,
           name: selectedSpecies.name,
           indigenous_name: indigName,
         })
@@ -107,7 +110,7 @@ export const useSpeciesForm = ({ onCreate }: SpeciesFormArgs) => {
       setIsSubmitting(false)
       setError((err as Error).message)
     }
-  }, [selectedSpecies, orgId, alreadyExists, indigName, onCreate])
+  }, [selectedSpecies, organisation, alreadyExists, indigName, onCreate])
 
   return {
     selectedSpecies,

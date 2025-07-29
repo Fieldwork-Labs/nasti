@@ -15,29 +15,29 @@ import { Spinner } from "@nasti/ui/spinner"
 
 const InvitationsList = () => {
   useAdminOnly()
-  const { orgId, session } = useUserStore()
+  const { organisation, session } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [isResending, setIsResending] = useState<string>()
 
   // Fetch invitations
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["invitations", orgId],
+    queryKey: ["invitations", organisation?.id],
     queryFn: async () => {
-      if (!orgId) {
+      if (!organisation?.id) {
         throw new Error("Organisation not found")
       }
       const { data: invitations, error } = await supabase
         .from("invitation")
         .select("*")
-        .eq("organisation_id", orgId)
+        .eq("organisation_id", organisation.id)
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
 
       return invitations as Invitation[]
     },
-    enabled: Boolean(orgId), // Only run if org
+    enabled: Boolean(organisation?.id), // Only run if org
   })
 
   const [invitationToDelete, setInvitationToDelete] = useState<Invitation>()
@@ -63,11 +63,13 @@ const InvitationsList = () => {
         })
       } else {
         toast({ description: "Invitation deleted successfully." })
-        queryClient.invalidateQueries({ queryKey: ["invitations", orgId] })
+        queryClient.invalidateQueries({
+          queryKey: ["invitations", organisation?.id],
+        })
       }
       setInvitationToDelete(undefined) // Close modal after deletion
     },
-    [orgId, queryClient, toast],
+    [organisation, queryClient, toast],
   )
   // Handle resending an invitation
   const handleResend = useCallback(
@@ -89,7 +91,9 @@ const InvitationsList = () => {
       if (response.ok) {
         toast({ description: "Invitation resent successfully." })
 
-        queryClient.invalidateQueries({ queryKey: ["invitations", orgId] })
+        queryClient.invalidateQueries({
+          queryKey: ["invitations", organisation?.id],
+        })
       } else {
         const errorText = await response.text()
         toast({
@@ -98,7 +102,7 @@ const InvitationsList = () => {
         })
       }
     },
-    [orgId, queryClient, session, toast],
+    [organisation, queryClient, session, toast],
   )
 
   if (isLoading) {

@@ -23,7 +23,7 @@ export const useTripForm = ({
   onSuccess,
   onError,
 }: TripFormOptions) => {
-  const { orgId, user } = useUserStore()
+  const { organisation, user } = useUserStore()
 
   const {
     register,
@@ -44,7 +44,7 @@ export const useTripForm = ({
 
   const onSubmit = useCallback(
     async ({ name, startDate, endDate }: TripFormData) => {
-      if (!orgId) throw new Error("No organisation available")
+      if (!organisation?.id) throw new Error("No organisation available")
       if (!isDirty) {
         onSuccess?.()
         return
@@ -54,7 +54,7 @@ export const useTripForm = ({
         name,
         start_date: startDate,
         end_date: endDate,
-        organisation_id: orgId,
+        organisation_id: organisation.id,
         created_by: user?.id,
       })
 
@@ -64,7 +64,7 @@ export const useTripForm = ({
         onSuccess?.(sbresponse)
       }
     },
-    [orgId, isDirty, instance, user?.id, onError, onSuccess, saveTrip],
+    [organisation, isDirty, instance, user?.id, onError, onSuccess, saveTrip],
   )
 
   return {

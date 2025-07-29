@@ -24,7 +24,7 @@ export const useSpeciesIndigNameForm = ({
   onSuccess,
   onError,
 }: SpeciesIndigNameFormOptions) => {
-  const { orgId } = useUserStore()
+  const { organisation } = useUserStore()
 
   const {
     register,
@@ -43,7 +43,7 @@ export const useSpeciesIndigNameForm = ({
 
   const onSubmit = useCallback(
     async ({ indigenous_name }: SpeciesIndigNameFormData) => {
-      if (!orgId) throw new Error("No organisation available")
+      if (!organisation?.id) throw new Error("No organisation available")
       if (!instance) throw new Error("No species available")
       if (!isDirty) {
         onSuccess?.()
@@ -59,7 +59,7 @@ export const useSpeciesIndigNameForm = ({
         onError?.((error as Error).message)
       }
     },
-    [orgId, instance, isDirty, onSuccess, updateSpecies, onError],
+    [organisation, instance, isDirty, onSuccess, updateSpecies, onError],
   )
 
   return {

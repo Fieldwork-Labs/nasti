@@ -1,7 +1,7 @@
 import { useAdminOnly } from "@/hooks/useAdminOnly"
-import { useOrganisation } from "@/hooks/useOrganisation"
 import { useOrganisationForm } from "@/hooks/useOrganisationForm"
 import { useUpdateOrganisation } from "@/hooks/useUpdateOrganisation"
+import useUserStore from "@/store/userStore"
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_private/settings/organisation-details")(
 
 function OrganisationFormPage() {
   useAdminOnly()
-  const { data: org } = useOrganisation()
+  const { organisation } = useUserStore()
   const navigate = useNavigate({
     from: "/settings/organisation-details",
   })
@@ -27,10 +27,10 @@ function OrganisationFormPage() {
     errors,
     formState: { isValid },
   } = useOrganisationForm({
-    defaultValues: org ?? {},
+    defaultValues: organisation ?? {},
     onSubmit: async (data) => {
       await updateOrganisation({
-        id: org?.id,
+        id: organisation?.id,
         data: {
           name: data.name,
           contact_name: data.contact_name,

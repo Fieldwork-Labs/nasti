@@ -62,7 +62,7 @@ const ThemeToggle = () => {
 }
 
 const UserMenu = () => {
-  const { logout, isAdmin, user, orgName } = useUserStore()
+  const { logout, isAdmin, user, organisation } = useUserStore()
   const navigate = useNavigate()
 
   const handleSignout = useCallback(async () => {
@@ -86,7 +86,7 @@ const UserMenu = () => {
         {isAdmin && (
           <>
             <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
-              <SettingsIcon className="mr-2 h-4 w-4" /> {orgName}
+              <SettingsIcon className="mr-2 h-4 w-4" /> {organisation?.name}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate({ to: "/species" })}>
               <LeafIcon className="mr-2 h-4 w-4" /> Species
@@ -106,7 +106,7 @@ const UserMenu = () => {
 }
 
 const RootComponent = () => {
-  const { getSession, session, orgName } = useUserStore()
+  const { getSession, session, organisation } = useUserStore()
 
   useEffect(() => {
     // Listen for auth state changes
@@ -128,8 +128,10 @@ const RootComponent = () => {
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
                 <Link to="/" className="flex shrink-0 items-center">
-                  {orgName ? (
-                    <span className="text-3xl font-semibold">{orgName}</span>
+                  {organisation?.name ? (
+                    <span className="text-3xl font-semibold">
+                      {organisation.name}
+                    </span>
                   ) : (
                     <img src={logo} alt="Seed Log Logo" width={200} />
                   )}

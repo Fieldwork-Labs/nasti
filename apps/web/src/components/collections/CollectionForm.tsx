@@ -74,7 +74,7 @@ export const useCollectionForm = ({
   tripId?: string
   onSuccess: (collection: Collection) => void
 }) => {
-  const { orgId, user } = useUserStore()
+  const { organisation, user } = useUserStore()
   const [collection, setCollection] = useState<Collection | undefined>(instance)
 
   const defaultValues = useMemo(() => {
@@ -132,7 +132,7 @@ export const useCollectionForm = ({
 
   const onSubmit = useCallback(
     async (data: CollectionFormData) => {
-      if (!user || !orgId) throw new Error("Not logged in")
+      if (!user || !organisation?.id) throw new Error("Not logged in")
 
       if (!tripId && !collection?.trip_id)
         throw new Error(
@@ -149,7 +149,7 @@ export const useCollectionForm = ({
         id: collection?.id,
         created_by: user.id,
         location,
-        organisation_id: orgId,
+        organisation_id: organisation.id,
         trip_id,
       }
       const updatedRecord = await updateCollection(newCollection)
@@ -159,7 +159,7 @@ export const useCollectionForm = ({
         onSuccess(updatedRecord)
       }
     },
-    [user, orgId, tripId, collection, updateCollection, onSuccess],
+    [user, organisation, tripId, collection, updateCollection, onSuccess],
   )
 
   return {

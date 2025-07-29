@@ -1,24 +1,34 @@
 import { create } from "zustand"
 import { supabase } from "@nasti/common/supabase"
 import { Session, User } from "@supabase/supabase-js"
-import { Role, ROLE } from "@nasti/common/types"
+import { Organisation, Role, ROLE } from "@nasti/common/types"
+
+type OrgFields = [
+  "id",
+  "name",
+  "contact_address",
+  "contact_email",
+  "contact_name",
+  "contact_phone",
+]
+
+type OrgData = Pick<Organisation, OrgFields[number]>
 
 export type AuthDetails = {
   user: User | null
-  orgId: string | null
+  organisation: OrgData | null
   isAdmin: boolean | null
 }
 
 type UserState = {
   user: User | null
   session: Session | null
-  orgId: string | null
-  orgName: string | null
+  organisation: OrgData | null
   role: Role | null
   isAdmin: boolean
   setUser: (user: User) => void
   setSession: (session: Session) => void
-  setOrgId: (orgId: string) => void
+  setOrg: (organisation: OrgData) => void
   setRole: (role: Role) => void
   getUser: () => Promise<AuthDetails | null>
   getSession: () => Promise<Session | null>
@@ -29,12 +39,12 @@ const useUserStore = create<UserState>((set) => ({
   user: null,
   session: null,
   orgId: null,
-  orgName: null,
+  organisation: null,
   role: null,
   isAdmin: false,
   setUser: (user: User) => set({ user }),
   setSession: (session: Session) => set({ session }),
-  setOrgId: (orgId: string) => set({ orgId }),
+  setOrg: (organisation: OrgData) => set({ organisation }),
   setRole: (role: Role) => {
     set({ role })
     if (role === ROLE.ADMIN) set({ isAdmin: true })
@@ -48,29 +58,33 @@ const useUserStore = create<UserState>((set) => ({
       // Fetch organization and role
       const { data: orgUserData, error: orgError } = await supabase
         .from("org_user")
-        .select(`*, organisation("name")`)
+        .select(
+          `*, organisation(
+            "id",
+            "name",
+            "contact_address",
+            "contact_email",
+            "contact_name",
+            "contact_phone"
+          )`,
+        )
         .eq("user_id", user.id)
         .single()
 
       if (orgError) {
         console.error("Error fetching org user data:", orgError)
       } else {
-        const {
-          role,
-          organisation_id: orgId,
-          organisation: { name: orgName },
-        } = orgUserData
+        const { role, organisation } = orgUserData
 
         set({
-          orgId,
-          orgName,
+          organisation,
           role,
           isAdmin: role === ROLE.ADMIN,
         })
-        return { user, orgId, isAdmin: role === ROLE.ADMIN }
+        return { user, organisation, isAdmin: role === ROLE.ADMIN }
       }
     }
-    return { user, orgId: null, isAdmin: null }
+    return { user, organisation: null, isAdmin: null }
   },
   getSession: async () => {
     const {
@@ -86,8 +100,7 @@ const useUserStore = create<UserState>((set) => ({
     set({
       user: null,
       session: null,
-      orgId: null,
-      orgName: null,
+      organisation: null,
       role: null,
       isAdmin: false,
     })

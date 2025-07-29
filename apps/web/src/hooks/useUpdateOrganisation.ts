@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import type { OrganisationFormData } from "./useOrganisationForm"
 import { Organisation } from "@nasti/common/types"
+import useUserStore from "@/store/userStore"
 
 interface UpdateOrganisationParams {
   id?: string
@@ -45,18 +46,13 @@ interface UseUpdateOrganisationOptions {
 export const useUpdateOrganisation = (
   options?: UseUpdateOrganisationOptions,
 ) => {
-  const queryClient = useQueryClient()
+  const { setOrg } = useUserStore()
 
   return useMutation({
     mutationFn: updateOrganisation,
     onSuccess: (data) => {
       // Invalidate and refetch organisation queries
-      queryClient.invalidateQueries({
-        queryKey: ["organisation", data.id],
-      })
-
-      // Optionally update the cache directly
-      queryClient.setQueryData(["organisation", data.id], data)
+      setOrg(data)
 
       options?.onSuccess?.(data)
     },
