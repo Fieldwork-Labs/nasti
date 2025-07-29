@@ -6,7 +6,9 @@ import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 import useUserStore from "./store/userStore"
 import { ThemeProvider } from "./contexts/theme"
+import { PostHogProvider } from "posthog-js/react"
 import * as Sentry from "@sentry/react"
+import { PostHogConfig } from "posthog-js"
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
@@ -51,6 +53,26 @@ const App = () => {
     </ThemeProvider>
   )
 }
+const posthogOptions: Partial<PostHogConfig> = {
+  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+  defaults: "2025-05-24",
+}
+
+const ProductionPostHogProvider = ({
+  children,
+}: {
+  children: React.ReactNode
+}) => {
+  if (!import.meta.env.VITE_PUBLIC_POSTHOG_KEY) return <>{children}</>
+  return (
+    <PostHogProvider
+      options={posthogOptions}
+      apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+    >
+      {children}
+    </PostHogProvider>
+  )
+}
 
 const rootElement = document.getElementById("root")
 if (!rootElement) throw new Error("No root element found")
@@ -58,7 +80,9 @@ if (!rootElement.innerHTML) {
   const root = createRoot(rootElement)
   root.render(
     <StrictMode>
-      <App />
+      <ProductionPostHogProvider>
+        <App />
+      </ProductionPostHogProvider>
     </StrictMode>,
   )
 }
