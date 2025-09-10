@@ -21,6 +21,7 @@ export type AuthDetails = {
 }
 
 type UserState = {
+  isInitialized: boolean
   user: User | null
   session: Session | null
   organisation: OrgData | null
@@ -36,6 +37,7 @@ type UserState = {
 }
 
 const useUserStore = create<UserState>((set) => ({
+  isInitialized: false,
   user: null,
   session: null,
   orgId: null,
@@ -73,17 +75,22 @@ const useUserStore = create<UserState>((set) => ({
 
       if (orgError) {
         console.error("Error fetching org user data:", orgError)
+        // No user found - still set initialized
+        set({ isInitialized: true })
       } else {
         const { role, organisation } = orgUserData
 
         set({
           organisation,
           role,
+          isInitialized: true,
           isAdmin: role === ROLE.ADMIN,
         })
         return { user, organisation, isAdmin: role === ROLE.ADMIN }
       }
     }
+    // No user found - still set initialized
+    set({ isInitialized: true })
     return { user, organisation: null, isAdmin: null }
   },
   getSession: async () => {
