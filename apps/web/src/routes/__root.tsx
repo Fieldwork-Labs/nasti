@@ -1,4 +1,4 @@
-import logo from "@/assets/logo.svg"
+import logo from "@/assets/seedguy.png"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@nasti/common/supabase"
@@ -128,12 +128,11 @@ const RootComponent = () => {
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
                 <Link to="/" className="flex shrink-0 items-center">
-                  {organisation?.name ? (
-                    <span className="text-3xl font-semibold">
-                      {organisation.name}
-                    </span>
+                  <img src={logo} alt="Seed Log Logo" width={50} />{" "}
+                  {session ? (
+                    <span className="text-3xl">{organisation?.name}</span>
                   ) : (
-                    <img src={logo} alt="Seed Log Logo" width={200} />
+                    <span className="text-4xl">Seed Log</span>
                   )}
                 </Link>
                 {session && (

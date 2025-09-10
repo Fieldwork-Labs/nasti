@@ -32,3 +32,12 @@ export enum ROLE {
   MEMBER = "Member",
   OWNER = "Owner",
 }
+
+export type Batch = Table<"batches">
+export type BatchCustody = Table<"batch_custody">
+export type BatchSplit = Table<"batch_splits">
+export type BatchMerge = Table<"batch_merges">
+export type BatchStorage = Table<"batch_storage">
+export type StorageLocation = Table<"storage_locations">
+export type Treatment = Table<"treatments">
+export type Test = Table<"tests">
