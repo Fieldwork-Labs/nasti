@@ -26,6 +26,21 @@ export type BatchStorageWithLocation = BatchStorage & {
 }
 
 // Query: Get detailed view of a storage location
+export const useStorageLocations = () => {
+  return useQuery({
+    queryKey: ["storageLocations", "list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("storage_locations")
+        .select(`*`)
+
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+}
+
+// Query: Get detailed view of a storage location
 export const useStorageLocationDetail = (locationId: string) => {
   return useQuery({
     queryKey: ["storageLocations", "detail", locationId],
@@ -83,16 +98,12 @@ export const useCurrentBatchStorage = (batchId: string) => {
     queryKey: ["batches", "currentStorage", batchId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("current_batch_storage")
+        .from("batch_storage")
         .select(
           `
-          *,
-          location:storage_locations!current_batch_storage_location_id_fkey(
-            id,
-            name,
-            description
-          )
-        `,
+            *,
+            location:storage_locations(id, name, description)
+          `,
         )
         .eq("batch_id", batchId)
         .single()
