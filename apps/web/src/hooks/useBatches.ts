@@ -42,6 +42,49 @@ export const useBatchesByCollection = (collectionId: string) => {
   })
 }
 
+// Query: Get batches for a filter object
+type BatchFilter = {
+  collectionId?: string
+  speciesId?: string
+  locationId?: string
+  search: string
+  sort: string
+  order: string
+}
+
+export const useBatchesByFilter = (batchFilter: BatchFilter) => {
+  return useQuery({
+    queryKey: ["batches", "byFilter", batchFilter],
+    queryFn: async () => {
+      let q = supabase.from("batches").select(
+        `
+          *,
+          current_location:current_batch_storage(
+            batch_id,
+            location_id,
+            notes,
+            stored_at
+          )
+        `,
+      )
+      if (batchFilter.collectionId) {
+        q = q.eq("collection_id", batchFilter.collectionId)
+      }
+      if (batchFilter.speciesId) {
+        q = q.eq("species_id", batchFilter.speciesId)
+      }
+      if (batchFilter.locationId) {
+        q = q.eq("location_id", batchFilter.locationId)
+      }
+
+      const { data, error } = await q.order("created_at", { ascending: false })
+
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+}
+
 // Query: Get batch details with full custody history
 export const useBatchDetail = (batchId: string) => {
   return useQuery({
