@@ -25,6 +25,7 @@ import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/in
 import { Route as PrivateSettingsIndexImport } from "./routes/_private/settings/index"
 import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/index"
 import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
+import { Route as PrivateSettingsStorageLocationsImport } from "./routes/_private/settings/storage-locations"
 import { Route as PrivateSettingsOrganisationDetailsImport } from "./routes/_private/settings/organisation-details"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
 import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
@@ -115,6 +116,13 @@ const PrivateInvitationsIndexRoute = PrivateInvitationsIndexImport.update({
   path: "/invitations/",
   getParentRoute: () => PrivateRoute,
 } as any)
+
+const PrivateSettingsStorageLocationsRoute =
+  PrivateSettingsStorageLocationsImport.update({
+    id: "/settings/storage-locations",
+    path: "/settings/storage-locations",
+    getParentRoute: () => PrivateRoute,
+  } as any)
 
 const PrivateSettingsOrganisationDetailsRoute =
   PrivateSettingsOrganisationDetailsImport.update({
@@ -228,6 +236,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateSettingsOrganisationDetailsImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/settings/storage-locations": {
+      id: "/_private/settings/storage-locations"
+      path: "/settings/storage-locations"
+      fullPath: "/settings/storage-locations"
+      preLoaderRoute: typeof PrivateSettingsStorageLocationsImport
+      parentRoute: typeof PrivateImport
+    }
     "/_private/invitations/": {
       id: "/_private/invitations/"
       path: "/invitations"
@@ -292,6 +307,7 @@ declare module "@tanstack/react-router" {
 interface PrivateRouteChildren {
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
   PrivateSettingsOrganisationDetailsRoute: typeof PrivateSettingsOrganisationDetailsRoute
+  PrivateSettingsStorageLocationsRoute: typeof PrivateSettingsStorageLocationsRoute
   PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
   PrivatePeopleIndexRoute: typeof PrivatePeopleIndexRoute
   PrivateSettingsIndexRoute: typeof PrivateSettingsIndexRoute
@@ -306,6 +322,7 @@ const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
   PrivateSettingsOrganisationDetailsRoute:
     PrivateSettingsOrganisationDetailsRoute,
+  PrivateSettingsStorageLocationsRoute: PrivateSettingsStorageLocationsRoute,
   PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
   PrivatePeopleIndexRoute: PrivatePeopleIndexRoute,
   PrivateSettingsIndexRoute: PrivateSettingsIndexRoute,
@@ -331,6 +348,7 @@ export interface FileRoutesByFullPath {
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
+  "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/people": typeof PrivatePeopleIndexRoute
   "/settings": typeof PrivateSettingsIndexRoute
@@ -353,6 +371,7 @@ export interface FileRoutesByTo {
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
+  "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/people": typeof PrivatePeopleIndexRoute
   "/settings": typeof PrivateSettingsIndexRoute
@@ -376,6 +395,7 @@ export interface FileRoutesById {
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
   "/_private/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
+  "/_private/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/_private/invitations/": typeof PrivateInvitationsIndexRoute
   "/_private/people/": typeof PrivatePeopleIndexRoute
   "/_private/settings/": typeof PrivateSettingsIndexRoute
@@ -400,6 +420,7 @@ export interface FileRouteTypes {
     | "/invitations/accept"
     | "/invitations/new"
     | "/settings/organisation-details"
+    | "/settings/storage-locations"
     | "/invitations"
     | "/people"
     | "/settings"
@@ -421,6 +442,7 @@ export interface FileRouteTypes {
     | "/invitations/accept"
     | "/invitations/new"
     | "/settings/organisation-details"
+    | "/settings/storage-locations"
     | "/invitations"
     | "/people"
     | "/settings"
@@ -442,6 +464,7 @@ export interface FileRouteTypes {
     | "/invitations/accept"
     | "/_private/invitations/new"
     | "/_private/settings/organisation-details"
+    | "/_private/settings/storage-locations"
     | "/_private/invitations/"
     | "/_private/people/"
     | "/_private/settings/"
@@ -506,6 +529,7 @@ export const routeTree = rootRoute
       "children": [
         "/_private/invitations/new",
         "/_private/settings/organisation-details",
+        "/_private/settings/storage-locations",
         "/_private/invitations/",
         "/_private/people/",
         "/_private/settings/",
@@ -543,6 +567,10 @@ export const routeTree = rootRoute
     },
     "/_private/settings/organisation-details": {
       "filePath": "_private/settings/organisation-details.tsx",
+      "parent": "/_private"
+    },
+    "/_private/settings/storage-locations": {
+      "filePath": "_private/settings/storage-locations.tsx",
       "parent": "/_private"
     },
     "/_private/invitations/": {

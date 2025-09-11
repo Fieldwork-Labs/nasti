@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { Card } from "@nasti/ui/card"
 import { Button } from "@nasti/ui/button"
-import { Settings, Leaf, Users, SettingsIcon } from "lucide-react"
+import { Settings, Leaf, Users, SettingsIcon, MapPin } from "lucide-react"
 import useUserStore from "@/store/userStore"
 
 export const Route = createFileRoute("/_private/settings/")({
@@ -20,6 +20,13 @@ function SettingsDashboard() {
       icon: SettingsIcon,
       href: "/settings/organisation-details",
       color: "bg-blue-500",
+    },
+    {
+      title: "Storage Locations",
+      description: "Manage seed storage locations and tracking",
+      icon: MapPin,
+      href: "/settings/storage-locations",
+      color: "bg-orange-500",
     },
     {
       title: "Species list",
