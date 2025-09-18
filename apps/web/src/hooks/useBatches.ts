@@ -384,6 +384,11 @@ export const useUpdateBatch = () => {
           queryKey: ["batches", "byCollection", updatedBatch.collection_id],
         })
       }
+
+      // Invalidate filter-based queries
+      queryClient.invalidateQueries({
+        queryKey: ["batches", "byFilter"],
+      })
     },
   })
 }
