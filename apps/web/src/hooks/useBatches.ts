@@ -85,6 +85,12 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
   })
 }
 
+export const invalidateBatchesByFilterCache = (batchFilter: BatchFilter) => {
+  queryClient.invalidateQueries({
+    queryKey: ["batches", "byFilter", batchFilter],
+  })
+}
+
 // Query: Get batch details with full custody history
 export const useBatchDetail = (batchId: string) => {
   return useQuery({
@@ -129,24 +135,49 @@ export const useBatchDetail = (batchId: string) => {
 // Mutation: Create batch from collection
 type CreateBatchFromCollectionParams = {
   collectionId: string
+  weight_grams?: number
+  is_extracted?: boolean
+  is_treated?: boolean
+  is_sorted?: boolean
+  is_coated?: boolean
   notes?: string
 }
 
 export const useCreateBatchFromCollection = () => {
-  return useMutation<string, Error, CreateBatchFromCollectionParams>({
-    mutationFn: async ({ collectionId, notes }) => {
-      const { data, error } = await supabase.rpc(
+  return useMutation<Batch, Error, CreateBatchFromCollectionParams>({
+    mutationFn: async ({
+      collectionId,
+      weight_grams,
+      is_extracted,
+      is_treated,
+      is_sorted,
+      is_coated,
+      notes,
+    }) => {
+      const { data: id, error } = await supabase.rpc(
         "fn_create_batch_from_collection",
         {
           p_collection_id: collectionId,
+          p_weight_grams: weight_grams || undefined,
+          p_is_extracted: is_extracted || undefined,
+          p_is_treated: is_treated || undefined,
+          p_is_sorted: is_sorted || undefined,
+          p_is_coated: is_coated || undefined,
           p_notes: notes || undefined,
         },
       )
 
       if (error) throw new Error(error.message)
-      return data as string
+      const { data: batch, error: detailError } = await supabase
+        .from("batches")
+        .select("*")
+        .eq("id", id)
+        .single()
+
+      if (detailError) throw new Error(detailError.message)
+      return batch as Batch
     },
-    onSuccess: (newBatchId, variables) => {
+    onSuccess: (newBatch, variables) => {
       // Invalidate collection batches cache
       queryClient.invalidateQueries({
         queryKey: ["batches", "byCollection", variables.collectionId],
@@ -154,7 +185,7 @@ export const useCreateBatchFromCollection = () => {
 
       // Invalidate batch detail cache for new batch
       queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", newBatchId],
+        queryKey: ["batches", "detail", newBatch.id],
       })
     },
   })
@@ -163,14 +194,32 @@ export const useCreateBatchFromCollection = () => {
 // Mutation: Split batch
 type SplitBatchParams = {
   parentBatchId: string
+  weight_grams?: number
+  is_extracted?: boolean
+  is_treated?: boolean
+  is_sorted?: boolean
+  is_coated?: boolean
   notes?: string
 }
 
 export const useSplitBatch = () => {
   return useMutation<string, Error, SplitBatchParams>({
-    mutationFn: async ({ parentBatchId, notes }) => {
+    mutationFn: async ({
+      parentBatchId,
+      weight_grams,
+      is_extracted,
+      is_treated,
+      is_sorted,
+      is_coated,
+      notes,
+    }) => {
       const { data, error } = await supabase.rpc("fn_split_batch", {
         p_parent_batch_id: parentBatchId,
+        p_weight_grams: weight_grams || undefined,
+        p_is_extracted: is_extracted || undefined,
+        p_is_treated: is_treated || undefined,
+        p_is_sorted: is_sorted || undefined,
+        p_is_coated: is_coated || undefined,
         p_notes: notes || undefined,
       })
 
@@ -208,14 +257,29 @@ export const useSplitBatch = () => {
 // Mutation: Merge batches
 type MergeBatchesParams = {
   sourceBatchIds: string[]
+  is_extracted?: boolean
+  is_treated?: boolean
+  is_sorted?: boolean
+  is_coated?: boolean
   notes?: string
 }
 
 export const useMergeBatches = () => {
   return useMutation<string, Error, MergeBatchesParams>({
-    mutationFn: async ({ sourceBatchIds, notes }) => {
+    mutationFn: async ({
+      sourceBatchIds,
+      is_extracted,
+      is_treated,
+      is_sorted,
+      is_coated,
+      notes,
+    }) => {
       const { data, error } = await supabase.rpc("fn_merge_batches", {
         p_source_batch_ids: sourceBatchIds,
+        p_is_extracted: is_extracted || undefined,
+        p_is_treated: is_treated || undefined,
+        p_is_sorted: is_sorted || undefined,
+        p_is_coated: is_coated || undefined,
         p_notes: notes || undefined,
       })
 
@@ -255,15 +319,25 @@ export const useMergeBatches = () => {
 // Mutation: Update batch
 type UpdateBatchParams = {
   id: string
+  weight_grams?: number
+  is_extracted?: boolean
+  is_treated?: boolean
+  is_sorted?: boolean
+  is_coated?: boolean
   notes?: string
 }
 
 export const useUpdateBatch = () => {
   return useMutation<Batch, Error, UpdateBatchParams>({
-    mutationFn: async ({ id, notes }) => {
+    mutationFn: async ({ id, ...updateData }) => {
+      // Filter out undefined values
+      const cleanUpdateData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined),
+      )
+
       const { data, error } = await supabase
         .from("batches")
-        .update({ notes })
+        .update(cleanUpdateData)
         .eq("id", id)
         .select()
         .single()
@@ -287,6 +361,11 @@ export const useUpdateBatch = () => {
           queryKey: ["batches", "byCollection", updatedBatch.collection_id],
         })
       }
+
+      // Invalidate filter-based queries
+      queryClient.invalidateQueries({
+        queryKey: ["batches", "byFilter"],
+      })
     },
   })
 }

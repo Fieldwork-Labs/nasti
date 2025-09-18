@@ -15,8 +15,12 @@ import { useToast } from "@nasti/ui/hooks"
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "@/components/inventory/BatchTableRow"
 import { BatchStorageForm } from "@/components/storage/BatchStorageForm"
+import { BatchForm } from "@/components/batches/BatchForm"
 import type { BatchWithCustody } from "@/hooks/useBatches"
-import { useBatchesByFilter } from "@/hooks/useBatches"
+import {
+  invalidateBatchesByFilterCache,
+  useBatchesByFilter,
+} from "@/hooks/useBatches"
 
 // Define search schema for URL parameters
 const inventorySearchSchema = z.object({
@@ -48,6 +52,7 @@ function InventoryPage() {
   )
   const [storageMoveBatch, setStorageMoveBatch] =
     useState<BatchWithCustody | null>(null)
+  const [showCreateBatchModal, setShowCreateBatchModal] = useState(false)
 
   // Extract filters from URL search params
   const filters = useMemo(
@@ -64,14 +69,19 @@ function InventoryPage() {
   const sortDirection: SortDirection =
     (searchParams.order as SortDirection) || "desc"
 
+  const batchFilter = useMemo(
+    () => ({
+      speciesId: filters.speciesId || undefined,
+      locationId: filters.locationId || undefined,
+      search: filters.searchTerm,
+      sort: sortField,
+      order: sortDirection,
+    }),
+    [filters, sortField, sortDirection],
+  )
+
   // Fetch batches using the filter hook
-  const { data: batches = [], isLoading } = useBatchesByFilter({
-    speciesId: filters.speciesId || undefined,
-    locationId: filters.locationId || undefined,
-    search: filters.searchTerm,
-    sort: sortField,
-    order: sortDirection,
-  })
+  const { data: batches = [], isLoading } = useBatchesByFilter(batchFilter)
 
   // Update URL search parameters
   const updateSearchParams = (
@@ -183,7 +193,10 @@ function InventoryPage() {
               Manage and track your seed batches
             </p>
           </div>
-          <Button className="gap-2">
+          <Button
+            className="gap-2"
+            onClick={() => setShowCreateBatchModal(true)}
+          >
             <Plus className="h-4 w-4" />
             Create Batch
           </Button>
@@ -329,6 +342,24 @@ function InventoryPage() {
                 onCancel={() => setStorageMoveBatch(null)}
               />
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={showCreateBatchModal}
+          onOpenChange={setShowCreateBatchModal}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Batch</DialogTitle>
+            </DialogHeader>
+            <BatchForm
+              onSuccess={() => {
+                setShowCreateBatchModal(false)
+                invalidateBatchesByFilterCache(batchFilter)
+              }}
+              onCancel={() => setShowCreateBatchModal(false)}
+            />
           </DialogContent>
         </Dialog>
       </div>

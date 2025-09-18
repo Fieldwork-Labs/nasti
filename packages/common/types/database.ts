@@ -180,22 +180,37 @@ export type Database = {
           collection_id: string
           created_at: string | null
           id: string
+          is_coated: boolean
+          is_extracted: boolean
+          is_sorted: boolean
+          is_treated: boolean
           notes: string | null
           organisation_id: string
+          weight_grams: number
         }
         Insert: {
           collection_id: string
           created_at?: string | null
           id?: string
+          is_coated?: boolean
+          is_extracted?: boolean
+          is_sorted?: boolean
+          is_treated?: boolean
           notes?: string | null
           organisation_id: string
+          weight_grams: number
         }
         Update: {
           collection_id?: string
           created_at?: string | null
           id?: string
+          is_coated?: boolean
+          is_extracted?: boolean
+          is_sorted?: boolean
+          is_treated?: boolean
           notes?: string | null
           organisation_id?: string
+          weight_grams?: number
         }
         Relationships: [
           {
@@ -1156,15 +1171,38 @@ export type Database = {
         Returns: string
       }
       fn_create_batch_from_collection: {
-        Args: { p_collection_id: string; p_notes?: string }
+        Args: {
+          p_collection_id: string
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
+          p_notes?: string
+          p_weight_grams?: number
+        }
         Returns: string
       }
       fn_merge_batches: {
-        Args: { p_notes?: string; p_source_batch_ids: string[] }
+        Args: {
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
+          p_notes?: string
+          p_source_batch_ids: string[]
+        }
         Returns: string
       }
       fn_split_batch: {
-        Args: { p_notes?: string; p_parent_batch_id: string }
+        Args: {
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
+          p_notes?: string
+          p_parent_batch_id: string
+          p_weight_grams?: number
+        }
         Returns: string
       }
       geography: {
