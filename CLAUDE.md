@@ -20,11 +20,13 @@ This is a Turborepo monorepo for NASTI (a field data collection application) wit
 Use these commands from the repository root:
 
 ### Development
+
 - `pnpm dev`: Start all applications in development mode
 - `pnpm dev --filter=@nasti/web`: Start only the web app
 - `pnpm dev --filter=nasti-pwa`: Start only the PWA
 
 ### Building and Testing
+
 - `pnpm build`: Build all packages and applications
 - `pnpm lint`: Run ESLint across all packages
 - `pnpm test`: Run tests across all packages
@@ -32,6 +34,7 @@ Use these commands from the repository root:
 - `pnpm test:coverage --filter=nasti-pwa`: Run PWA tests with coverage
 
 ### Supabase
+
 - `supabase start`: Start local Supabase development environment
 - `supabase stop`: Stop local Supabase
 - `supabase db reset`: Reset local database with fresh migrations
@@ -39,6 +42,7 @@ Use these commands from the repository root:
 ## Architecture Overview
 
 ### Technology Stack
+
 - **Frontend**: React 18/19 with TypeScript
 - **Routing**: TanStack Router with file-based routing
 - **State Management**: Zustand for global state, TanStack Query for server state
@@ -49,6 +53,7 @@ Use these commands from the repository root:
 - **Testing**: Vitest with React Testing Library (PWA only)
 
 ### Key Features
+
 - Offline-first PWA with service worker caching
 - Real-time data synchronization via Supabase
 - File uploads with tus-js-client (resumable uploads)
@@ -57,6 +62,7 @@ Use these commands from the repository root:
 - Multi-tenant organization support
 
 ### Data Flow
+
 - Both apps use TanStack Query for server state management
 - PWA implements offline persistence using IndexedDB
 - Real-time updates via Supabase subscriptions
@@ -64,12 +70,14 @@ Use these commands from the repository root:
 - Geographic data uses PostGIS extensions
 
 ### Authentication & Authorization
+
 - Supabase Auth with email/password
 - Row Level Security (RLS) policies enforce data access
 - Organization-based multi-tenancy
 - User roles: admin, member with varying permissions
 
 ### Package Relationships
+
 - `@nasti/common`: Shared hooks, types, and utilities used by both apps
 - `@nasti/ui`: Component library with consistent styling and behavior
 - Both apps extend base configurations from shared packages
@@ -77,25 +85,32 @@ Use these commands from the repository root:
 ## Important Conventions
 
 ### Code Style
+
 - Use `Boolean(condition)` instead of `!!condition`
 - No semicolons (configured in Prettier)
+- Avoid `any` wherever possible. Use `unknown` where type is actually unknown. Attempt to type things properly wherever possible.
+- Prefer `const` over `let` unless you need to reassign
 - Tailwind CSS for all styling
 - File-based routing with TanStack Router
 
 ### Component Patterns
+
 - Prefer composition over configuration in UI components
 - Use custom hooks from `@nasti/common` for business logic
 - Form handling with react-hook-form and Zod validation
 - Consistent error boundaries and loading states
 
 ### Database Conventions
+
 - Use Supabase functions for complex operations
 - All user data is organization-scoped
 - Geographic data stored as PostGIS POINT types
 - Soft deletes for user-generated content
 
 ### Environment Configuration
+
 Local development uses Supabase local development stack:
+
 - API: http://127.0.0.1:57321
-- DB: postgresql://postgres:postgres@127.0.0.1:57322/postgres  
+- DB: postgresql://postgres:postgres@127.0.0.1:57322/postgres
 - Studio: http://127.0.0.1:57323

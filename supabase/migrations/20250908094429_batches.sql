@@ -11,14 +11,17 @@ CREATE TABLE storage_locations (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- TABLE: collection (assumed to exist)
-
 -- TABLE: batches
 CREATE TABLE batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   collection_id UUID NOT NULL REFERENCES collection(id) ON DELETE CASCADE,
   organisation_id UUID NOT NULL REFERENCES organisation(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT now(),
+  weight_grams INTEGER NOT NULL CHECK (weight_grams > 0),
+  is_extracted BOOLEAN NOT NULL DEFAULT FALSE,
+  is_treated BOOLEAN NOT NULL DEFAULT FALSE,
+  is_sorted BOOLEAN NOT NULL DEFAULT FALSE,
+  is_coated BOOLEAN NOT NULL DEFAULT FALSE,
   notes TEXT
 );
 
