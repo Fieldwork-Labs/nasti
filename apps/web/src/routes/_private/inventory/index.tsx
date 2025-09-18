@@ -317,13 +317,20 @@ function InventoryPage() {
           open={Boolean(editingBatch)}
           onOpenChange={() => setEditingBatch(null)}
         >
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Batch</DialogTitle>
             </DialogHeader>
-            <div className="text-muted-foreground py-8 text-center">
-              TODO: Batch editing form will be implemented here
-            </div>
+            {editingBatch && (
+              <BatchForm
+                batch={editingBatch}
+                onSuccess={() => {
+                  setEditingBatch(null)
+                  invalidateBatchesByFilterCache(batchFilter)
+                }}
+                onCancel={() => setEditingBatch(null)}
+              />
+            )}
           </DialogContent>
         </Dialog>
 

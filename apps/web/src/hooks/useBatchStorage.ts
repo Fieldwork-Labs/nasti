@@ -368,18 +368,58 @@ export const useRemoveBatchFromStorage = () => {
   })
 }
 
+// Mutation: Create storage record notes
+type CreateStorageRecordParams = {
+  locationId: string
+  batchId: string
+  notes?: string
+}
+
+export const useCreateStorageRecord = () => {
+  return useMutation<BatchStorage, Error, CreateStorageRecordParams>({
+    mutationFn: async ({ locationId, batchId, notes }) => {
+      const { data, error } = await supabase
+        .from("batch_storage")
+        .insert({ notes, location_id: locationId, batch_id: batchId })
+        .select()
+        .single()
+
+      if (error) throw new Error(error.message)
+      return data as BatchStorage
+    },
+    onSuccess: (created) => {
+      // Invalidate related caches
+      queryClient.invalidateQueries({
+        queryKey: ["storageLocations"],
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ["batches", "storageHistory", created.batch_id],
+      })
+
+      queryClient.setQueryData<BatchStorage>(
+        ["batches", "currentStorage", created.batch_id],
+        (oldData) => {
+          if (!oldData) return created
+          return { ...oldData, ...created }
+        },
+      )
+    },
+  })
+}
 // Mutation: Update storage record notes
 type UpdateStorageRecordParams = {
   storageId: string
+  locationId?: string
   notes?: string
 }
 
 export const useUpdateStorageRecord = () => {
   return useMutation<BatchStorage, Error, UpdateStorageRecordParams>({
-    mutationFn: async ({ storageId, notes }) => {
+    mutationFn: async ({ storageId, locationId, notes }) => {
       const { data, error } = await supabase
         .from("batch_storage")
-        .update({ notes })
+        .update({ notes, location_id: locationId })
         .eq("id", storageId)
         .select()
         .single()

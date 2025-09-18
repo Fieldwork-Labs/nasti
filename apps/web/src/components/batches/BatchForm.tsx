@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
@@ -23,7 +23,12 @@ import {
   CollectionWithSpeciesAndTrip,
   useCollections,
 } from "@/hooks/useCollections"
-import { useStorageLocations } from "@/hooks/useBatchStorage"
+import {
+  useStorageLocations,
+  useCurrentBatchStorage,
+  useUpdateStorageRecord,
+  useCreateStorageRecord,
+} from "@/hooks/useBatchStorage"
 import {
   useUpdateBatch,
   useCreateBatchFromCollection,
@@ -90,11 +95,14 @@ export const BatchForm = ({
     searchTerm: collectionSearchTerm || undefined, // Use search term for filtering
   })
   const { data: storageLocations } = useStorageLocations()
+  const { data: currentBatchStorage } = useCurrentBatchStorage(batch?.id || "")
 
   // Mutations
   const createBatchMutation = useCreateBatchFromCollection()
   const updateBatchMutation = useUpdateBatch()
   const moveBatchToStorageMutation = useMoveBatchToStorage()
+  const createStorage = useCreateStorageRecord()
+  const updateStorage = useUpdateStorageRecord()
 
   // Form setup
   const form = useForm<BatchFormData>({
@@ -111,6 +119,23 @@ export const BatchForm = ({
       storage_notes: "",
     },
   })
+
+  // Reset form values when batch or currentBatchStorage data changes
+  useEffect(() => {
+    if (batch) {
+      form.reset({
+        collection_id: batch.collection_id,
+        weight_grams: batch.weight_grams,
+        is_extracted: batch.is_extracted,
+        is_treated: batch.is_treated,
+        is_sorted: batch.is_sorted,
+        is_coated: batch.is_coated,
+        notes: batch.notes || "",
+        storage_location_id: currentBatchStorage?.location_id || "",
+        storage_notes: currentBatchStorage?.notes || "",
+      })
+    }
+  }, [batch, currentBatchStorage, form])
 
   // Filter storage locations (collections are filtered server-side by the hook)
   const filteredStorageLocations = storageLocations?.filter(
@@ -139,8 +164,6 @@ export const BatchForm = ({
 
   const onSubmit = async (data: BatchFormData) => {
     try {
-      let batchId: string
-
       if (isEditing) {
         // Update existing batch with all fields
         await updateBatchMutation.mutateAsync({
@@ -152,7 +175,13 @@ export const BatchForm = ({
           is_coated: data.is_coated,
           notes: data.notes,
         })
-        batchId = batch!.id
+        if (currentBatchStorage) {
+          await updateStorage.mutateAsync({
+            locationId: data.storage_location_id,
+            notes: data.storage_notes,
+            storageId: currentBatchStorage.id,
+          })
+        }
 
         toast({
           description: "Batch updated successfully",
@@ -168,19 +197,16 @@ export const BatchForm = ({
           is_coated: data.is_coated,
           notes: data.notes,
         })
-        batchId = batch.id
+        if (data.storage_location_id) {
+          await createStorage.mutateAsync({
+            locationId: data.storage_location_id,
+            batchId: batch.id,
+            notes: data.storage_notes,
+          })
+        }
 
         toast({
           description: "Batch created successfully",
-        })
-      }
-
-      // Handle storage location if specified
-      if (data.storage_location_id) {
-        await moveBatchToStorageMutation.mutateAsync({
-          batchId,
-          locationId: data.storage_location_id,
-          notes: data.storage_notes,
         })
       }
 
