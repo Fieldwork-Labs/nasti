@@ -109,7 +109,7 @@ export const useCurrentBatchStorage = (batchId: string) => {
         .single()
 
       if (error) {
-        // Batch might not be in storage yet
+        // Batch might not have a storage record
         if (error.code === "PGRST116") return null
         throw new Error(error.message)
       }

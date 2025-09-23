@@ -42,11 +42,8 @@ const getCollections = async ({
         .range(page * limit, (page + 1) * limit)
         .order("created_at", { ascending: false }),
       getBaseQ()
-        .ilike("trip.name", `%${searchTerm}%`)
-        .range(page * limit, (page + 1) * limit)
-        .order("created_at", { ascending: false }),
-      getBaseQ()
         .ilike("field_name", `%${searchTerm}%`)
+        .is("species_id", null)
         .range(page * limit, (page + 1) * limit)
         .order("created_at", { ascending: false }),
     )
@@ -62,8 +59,15 @@ const getCollections = async ({
   const error = querieResults.find(({ error }) => error)?.error
   if (error) throw new Error(error.message)
 
-  const data = querieResults.map(({ data }) => data).flat()
-  return Array.from(new Set(data)) as CollectionWithSpeciesAndTrip[]
+  const allData = querieResults
+    .map(({ data }) => data)
+    .flat()
+    .filter((x): x is CollectionWithSpeciesAndTrip => Boolean(x))
+  if (!allData) return []
+
+  // uniqueness check
+  const dataMap = Object.fromEntries(allData.map((x) => [x.id, x]))
+  return Object.values(dataMap)
 }
 
 type CollectionsProps = {
