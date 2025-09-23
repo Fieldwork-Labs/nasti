@@ -101,11 +101,14 @@ export const useCurrentBatchStorage = (batchId: string) => {
         .from("batch_storage")
         .select(
           `
-            *,
-            location:storage_locations(id, name, description)
+          *,
+          location:storage_locations(id, name, description)
           `,
         )
         .eq("batch_id", batchId)
+        .is("moved_out_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .single()
 
       if (error) {
@@ -271,6 +274,7 @@ export const useDeleteStorageLocation = () => {
 // Mutation: Move batch to storage location
 type MoveBatchToStorageParams = {
   batchId: string
+  currentBatchStorageId?: string
   locationId: string
   notes?: string
   storedAt?: string
@@ -278,15 +282,25 @@ type MoveBatchToStorageParams = {
 
 export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
-    mutationFn: async ({ batchId, locationId, notes, storedAt }) => {
-      // First, mark any current storage as moved out
-      const { error: updateError } = await supabase
-        .from("batch_storage")
-        .update({ moved_out_at: new Date().toISOString() })
-        .eq("batch_id", batchId)
-        .is("moved_out_at", null)
+    mutationFn: async ({
+      batchId,
+      currentBatchStorageId,
+      locationId,
+      notes,
+      storedAt,
+    }) => {
+      const timestamp = new Date().toISOString()
 
-      if (updateError) throw new Error(updateError.message)
+      if (currentBatchStorageId) {
+        // First, mark any current storage as moved out
+        const { error: updateError } = await supabase
+          .from("batch_storage")
+          .update({ moved_out_at: timestamp })
+          .eq("id", currentBatchStorageId)
+          .is("moved_out_at", null)
+
+        if (updateError) throw new Error(updateError.message)
+      }
 
       // Create new storage record
       const { data, error } = await supabase
@@ -294,21 +308,17 @@ export const useMoveBatchToStorage = () => {
         .insert({
           batch_id: batchId,
           location_id: locationId,
-          stored_at: storedAt || new Date().toISOString(),
+          stored_at: storedAt || timestamp,
           notes,
         })
         .select()
         .single()
+        .overrideTypes<BatchStorage>()
 
       if (error) throw new Error(error.message)
-      return data as BatchStorage
+      return data
     },
     onSuccess: (_, variables) => {
-      // Invalidate all storage-related caches
-      queryClient.invalidateQueries({
-        queryKey: ["storageLocations"],
-      })
-
       queryClient.invalidateQueries({
         queryKey: ["batches", "currentStorage", variables.batchId],
       })
@@ -326,43 +336,41 @@ export const useMoveBatchToStorage = () => {
 
 // Mutation: Remove batch from storage (mark as moved out)
 type RemoveBatchFromStorageParams = {
-  batchId: string
+  batchStorageId: string
   notes?: string
 }
 
 export const useRemoveBatchFromStorage = () => {
   return useMutation<BatchStorage, Error, RemoveBatchFromStorageParams>({
-    mutationFn: async ({ batchId, notes }) => {
+    mutationFn: async ({ batchStorageId, notes }) => {
       const { data, error } = await supabase
         .from("batch_storage")
         .update({
           moved_out_at: new Date().toISOString(),
           notes: notes || null,
         })
-        .eq("batch_id", batchId)
+        .eq("id", batchStorageId)
         .is("moved_out_at", null)
         .select()
         .single()
+        .overrideTypes<BatchStorage>()
 
       if (error) throw new Error(error.message)
-      return data as BatchStorage
+      return data
     },
-    onSuccess: (_, variables) => {
+    onSuccess: ({ batch_id }) => {
       // Invalidate storage caches
+
       queryClient.invalidateQueries({
-        queryKey: ["storageLocations"],
+        queryKey: ["batches", "currentStorage", batch_id],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "currentStorage", variables.batchId],
+        queryKey: ["batches", "storageHistory", batch_id],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "storageHistory", variables.batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", variables.batchId],
+        queryKey: ["batches", "detail", batch_id],
       })
     },
   })

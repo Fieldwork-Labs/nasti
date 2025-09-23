@@ -126,19 +126,19 @@ export const useBatchDetail = (batchId: string) => {
           *,
           custody_history:batch_custody(
             *,
-            organisation:organisation(name)
+            organisation:organisation!batch_custody_organisation_id_fkey(name)
           ),
           current_custodian:current_batch_custody(
             organisation_id,
             received_at
           ),
-          splits:batch_splits(
+          splits:batch_splits!batch_splits_child_batch_id_fkey(
             *,
-            child_batch:batches(id, notes, created_at)
+            child_batch:batches!batch_splits_child_batch_id_fkey(id, notes, created_at)
           ),
-          merges:batch_merges(
+          merges:batch_merges!batch_merges_merged_batch_id_fkey(
             *,
-            source_batch:batches(id, notes, created_at)
+            source_batch:batches!batch_merges_merged_batch_id_fkey(id, notes, created_at)
           ),
           storage:current_batch_storage(
             *,

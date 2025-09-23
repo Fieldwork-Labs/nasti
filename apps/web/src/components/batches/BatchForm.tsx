@@ -33,7 +33,6 @@ import {
   useUpdateBatch,
   useCreateBatchFromCollection,
 } from "@/hooks/useBatches"
-import { useMoveBatchToStorage } from "@/hooks/useBatchStorage"
 import type { Batch, StorageLocation } from "@nasti/common/types"
 
 const batchFormSchema = z.object({
@@ -100,7 +99,6 @@ export const BatchForm = ({
   // Mutations
   const createBatchMutation = useCreateBatchFromCollection()
   const updateBatchMutation = useUpdateBatch()
-  const moveBatchToStorageMutation = useMoveBatchToStorage()
   const createStorage = useCreateStorageRecord()
   const updateStorage = useUpdateStorageRecord()
 
@@ -157,9 +155,7 @@ export const BatchForm = ({
   )
 
   const isLoading =
-    createBatchMutation.isPending ||
-    updateBatchMutation.isPending ||
-    moveBatchToStorageMutation.isPending
+    createBatchMutation.isPending || updateBatchMutation.isPending
   const isEditing = Boolean(batch)
 
   const onSubmit = async (data: BatchFormData) => {
@@ -384,6 +380,7 @@ export const BatchForm = ({
               variant="outline"
               role="combobox"
               className="w-full justify-start"
+              disabled={isEditing}
             >
               {selectedStorageLocation ? (
                 <span className="truncate">{selectedStorageLocation.name}</span>

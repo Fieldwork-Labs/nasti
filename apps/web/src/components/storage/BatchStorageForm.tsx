@@ -19,7 +19,7 @@ import {
   CommandList,
 } from "@nasti/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
-import { Check, ChevronsUpDown, MapPin } from "lucide-react"
+import { ArrowRight, Check, ChevronsUpDown, MapPin } from "lucide-react"
 
 import {
   useStorageLocations,
@@ -63,6 +63,13 @@ export const BatchStorageForm = ({
   const { data: currentStorage } = useCurrentBatchStorage(batch.id)
   const moveBatchToStorage = useMoveBatchToStorage()
   const removeBatchFromStorage = useRemoveBatchFromStorage()
+  const availableStorageLocations = useMemo(
+    () =>
+      storageLocations?.filter(
+        (location) => location.id !== currentStorage?.location_id,
+      ),
+    [storageLocations, currentStorage],
+  )
 
   const defaultValues = useMemo(() => {
     const now = new Date()
@@ -84,23 +91,28 @@ export const BatchStorageForm = ({
     handleSubmit,
     control,
     watch,
-    formState: { errors, isSubmitting, isValid },
+    formState: { errors, isSubmitting, isValid: baseIsValid, isDirty },
   } = useForm<BatchStorageFormData>({
     resolver: zodResolver(schema),
     mode: "onChange",
     defaultValues,
   })
+  // don't allow submit if form is not dirty
+  const isValid = baseIsValid && isDirty
 
   const selectedLocationId = watch("locationId")
+  const isRemoving = selectedLocationId === "remove"
 
   const onSubmit = useCallback(
     async (data: BatchStorageFormData) => {
+      const { locationId } = data
       try {
-        if (data.locationId) {
+        if (locationId && locationId !== "remove") {
           // Move to storage location
           await moveBatchToStorage.mutateAsync({
             batchId: batch.id,
-            locationId: data.locationId,
+            currentBatchStorageId: currentStorage?.id,
+            locationId,
             notes: data.notes || undefined,
             storedAt: data.storedAt,
           })
@@ -108,10 +120,11 @@ export const BatchStorageForm = ({
           toast({
             description: "Batch moved to storage successfully",
           })
-        } else {
+        } else if (locationId === "remove") {
+          if (!currentStorage) throw new Error("No storage location found")
           // Remove from storage
           await removeBatchFromStorage.mutateAsync({
-            batchId: batch.id,
+            batchStorageId: currentStorage.id,
             notes: data.notes || undefined,
           })
 
@@ -131,7 +144,14 @@ export const BatchStorageForm = ({
         })
       }
     },
-    [batch.id, moveBatchToStorage, removeBatchFromStorage, onSuccess, toast],
+    [
+      onSuccess,
+      moveBatchToStorage,
+      batch.id,
+      currentStorage,
+      toast,
+      removeBatchFromStorage,
+    ],
   )
 
   const isLoading =
@@ -140,9 +160,9 @@ export const BatchStorageForm = ({
     moveBatchToStorage.isPending ||
     removeBatchFromStorage.isPending
 
-  const selectedLocation = storageLocations?.find(
-    (loc) => loc.id === selectedLocationId,
-  )
+  const selectedLocation =
+    !isRemoving &&
+    storageLocations?.find((loc) => loc.id === selectedLocationId)
 
   return (
     <form
@@ -168,9 +188,11 @@ export const BatchStorageForm = ({
                       <MapPin className="h-4 w-4" />
                       {selectedLocation
                         ? selectedLocation.name
-                        : field.value
-                          ? "Loading..."
-                          : "Select location or remove from storage"}
+                        : isRemoving
+                          ? "Remove from storage"
+                          : field.value
+                            ? "Loading..."
+                            : "Select location or remove from storage"}
                     </div>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
@@ -181,21 +203,25 @@ export const BatchStorageForm = ({
                     <CommandList>
                       <CommandEmpty>No storage locations found.</CommandEmpty>
                       <CommandGroup>
-                        <CommandItem
-                          value="none"
-                          onSelect={() => {
-                            field.onChange(null)
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              !field.value ? "opacity-100" : "opacity-0",
-                            )}
-                          />
-                          Remove from storage
-                        </CommandItem>
-                        {storageLocations?.map((location) => (
+                        {currentStorage && (
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              field.onChange("remove")
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                field.value === "remove"
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            Remove from storage
+                          </CommandItem>
+                        )}
+                        {availableStorageLocations?.map((location) => (
                           <CommandItem
                             key={location.id}
                             value={location.name}
@@ -235,7 +261,7 @@ export const BatchStorageForm = ({
           )}
         </div>
 
-        {selectedLocationId && (
+        {selectedLocationId && !isRemoving && (
           <FormField
             label="Storage Date & Time"
             type="datetime-local"
@@ -266,19 +292,42 @@ export const BatchStorageForm = ({
           {!errors.notes && <span className="h-4" />}
         </div>
 
-        {currentStorage && (
-          <div className="bg-muted rounded-md p-3 text-sm">
-            <p className="font-medium">Current Storage:</p>
-            <p className="text-muted-foreground">
-              {currentStorage.location?.name}
-            </p>
-            {currentStorage.stored_at && (
-              <p className="text-muted-foreground text-xs">
-                Stored: {new Date(currentStorage.stored_at).toLocaleString()}
+        <div className="flex gap-4">
+          {currentStorage && (
+            <div className="bg-muted w-full rounded-md p-3 text-sm">
+              <p className="font-medium">Current Storage:</p>
+              <p className="text-muted-foreground">
+                {currentStorage.location?.name}
               </p>
-            )}
-          </div>
-        )}
+              {currentStorage.stored_at && (
+                <p className="text-muted-foreground text-xs">
+                  Stored: {new Date(currentStorage.stored_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
+          {selectedLocation && (
+            <>
+              <span className="flex flex-col justify-center">
+                <ArrowRight className="text-muted-foreground h-6 w-6" />
+              </span>
+              <div className="bg-muted w-full rounded-md p-3 text-sm">
+                <p className="font-medium">New Storage:</p>
+                <p className="text-muted-foreground">{selectedLocation.name}</p>
+              </div>
+            </>
+          )}
+          {isRemoving && (
+            <>
+              <span className="flex flex-col justify-center">
+                <ArrowRight className="text-muted-foreground h-6 w-6" />
+              </span>
+              <div className="bg-muted w-full rounded-md p-3 text-sm">
+                <p className="font-medium">Remove from Storage</p>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2 pt-4">
@@ -286,7 +335,7 @@ export const BatchStorageForm = ({
           <Button
             type="button"
             variant="secondary"
-            className="flex-1"
+            className="flex-1 cursor-pointer"
             onClick={onCancel}
             disabled={isLoading}
           >
@@ -295,14 +344,14 @@ export const BatchStorageForm = ({
         )}
         <Button
           type="submit"
-          className="flex-1"
+          className="flex-1 cursor-pointer"
           disabled={!isValid || isLoading}
         >
           {isLoading
             ? "Updating..."
-            : selectedLocationId
-              ? "Move to Storage"
-              : "Remove from Storage"}
+            : isRemoving
+              ? "Remove from Storage"
+              : "Move"}
         </Button>
       </div>
     </form>
