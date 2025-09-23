@@ -19,13 +19,13 @@ import { Species, StorageLocation } from "@nasti/common/types"
 
 type BatchInventoryFiltersProps = {
   filters: {
-    speciesId: string | null
-    locationId: string | null
+    species: string | null
+    location: string | null
     searchTerm: string
   }
   onFiltersChange: (filters: {
-    speciesId?: string | null
-    locationId?: string | null
+    species?: string | null
+    location?: string | null
     searchTerm?: string
   }) => void
   className?: string
@@ -42,7 +42,7 @@ export const BatchInventoryFilters = ({
   const [locationSearchTerm, setLocationSearchTerm] = useState("")
 
   const { data: speciesList } = useSpeciesSearch(speciesSearchTerm)
-  const { data: selectedSpecies } = useSpecies(filters.speciesId)
+  const { data: selectedSpecies } = useSpecies(filters.species)
 
   // Storage locations
   const { data: storageLocations } = useStorageLocations()
@@ -56,16 +56,16 @@ export const BatchInventoryFilters = ({
   )
 
   const selectedLocation = storageLocations?.find(
-    (l: StorageLocation) => l.id === filters.locationId,
+    (l: StorageLocation) => l.id === filters.location,
   )
 
   const hasActiveFilters =
-    filters.speciesId || filters.locationId || filters.searchTerm
+    filters.species || filters.location || filters.searchTerm
 
   const clearAllFilters = () => {
     onFiltersChange({
-      speciesId: null,
-      locationId: null,
+      species: null,
+      location: null,
       searchTerm: "",
     })
   }
@@ -94,6 +94,9 @@ export const BatchInventoryFilters = ({
               value={filters.searchTerm}
               onChange={(e) => onFiltersChange({ searchTerm: e.target.value })}
               className="pl-10"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
             />
           </div>
         </div>
@@ -127,11 +130,11 @@ export const BatchInventoryFilters = ({
                 <CommandList>
                   <CommandEmpty>No species found.</CommandEmpty>
                   <CommandGroup>
-                    {filters.speciesId && (
+                    {filters.species && (
                       <CommandItem
                         value="none"
                         onSelect={() => {
-                          onFiltersChange({ speciesId: null })
+                          onFiltersChange({ species: null })
                           setSpeciesSearchOpen(false)
                         }}
                       >
@@ -144,7 +147,7 @@ export const BatchInventoryFilters = ({
                         key={species.id}
                         value={species.name}
                         onSelect={() => {
-                          onFiltersChange({ speciesId: species.id })
+                          onFiltersChange({ species: species.id })
                           setSpeciesSearchOpen(false)
                         }}
                       >
@@ -195,11 +198,13 @@ export const BatchInventoryFilters = ({
                 <CommandList>
                   <CommandEmpty>No locations found.</CommandEmpty>
                   <CommandGroup>
-                    {filters.locationId && (
+                    {filters.location && (
                       <CommandItem
                         value="none"
+                        className="cursor-pointer"
                         onSelect={() => {
-                          onFiltersChange({ locationId: null })
+                          setLocationSearchTerm("")
+                          onFiltersChange({ location: null })
                           setLocationSearchOpen(false)
                         }}
                       >
@@ -210,10 +215,11 @@ export const BatchInventoryFilters = ({
                     {filteredStorageLocations?.map(
                       (location: StorageLocation) => (
                         <CommandItem
+                          className="cursor-pointer"
                           key={location.id}
                           value={location.name}
                           onSelect={() => {
-                            onFiltersChange({ locationId: location.id })
+                            onFiltersChange({ location: location.id })
                             setLocationSearchOpen(false)
                           }}
                         >
@@ -260,7 +266,7 @@ export const BatchInventoryFilters = ({
                 variant="ghost"
                 size="sm"
                 className="h-4 w-4 p-0 hover:bg-green-200"
-                onClick={() => onFiltersChange({ speciesId: null })}
+                onClick={() => onFiltersChange({ species: null })}
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -274,7 +280,7 @@ export const BatchInventoryFilters = ({
                 variant="ghost"
                 size="sm"
                 className="h-4 w-4 p-0 hover:bg-orange-200"
-                onClick={() => onFiltersChange({ locationId: null })}
+                onClick={() => onFiltersChange({ location: null })}
               >
                 <X className="h-3 w-3" />
               </Button>

@@ -16,7 +16,7 @@ import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilt
 import { BatchTableRow } from "@/components/inventory/BatchTableRow"
 import { BatchStorageForm } from "@/components/storage/BatchStorageForm"
 import { BatchForm } from "@/components/batches/BatchForm"
-import type { BatchWithCustody } from "@/hooks/useBatches"
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import {
   invalidateBatchesByFilterCache,
   useBatchesByFilter,
@@ -47,18 +47,17 @@ function InventoryPage() {
   const { toast } = useToast()
 
   // Local state for modals
-  const [editingBatch, setEditingBatch] = useState<BatchWithCustody | null>(
-    null,
-  )
+  const [editingBatch, setEditingBatch] =
+    useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [storageMoveBatch, setStorageMoveBatch] =
-    useState<BatchWithCustody | null>(null)
+    useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false)
 
   // Extract filters from URL search params
   const filters = useMemo(
     () => ({
-      speciesId: searchParams.species || null,
-      locationId: searchParams.location || null,
+      species: searchParams.species || null,
+      location: searchParams.location || null,
       searchTerm: searchParams.search || "",
     }),
     [searchParams],
@@ -71,8 +70,8 @@ function InventoryPage() {
 
   const batchFilter = useMemo(
     () => ({
-      speciesId: filters.speciesId || undefined,
-      locationId: filters.locationId || undefined,
+      speciesId: filters.species || undefined,
+      locationId: filters.location || undefined,
       search: filters.searchTerm,
       sort: sortField,
       order: sortDirection,
@@ -95,6 +94,7 @@ function InventoryPage() {
     const updatedParams = { ...searchParams, ...cleanNewParams }
 
     navigate({
+      from: "/inventory",
       search: updatedParams,
       replace: true,
     })
@@ -107,16 +107,24 @@ function InventoryPage() {
     locationId?: string | null
     searchTerm?: string
   }) => {
+    const definedFilters = Object.fromEntries(
+      Object.entries(newFilters).filter(
+        ([_, value]) => value !== undefined && value !== "",
+      ),
+    )
+    // filter out undefined values from searchParams, we only care about nulls and defined values
+    const newParams: Record<string, string | undefined> = Object.fromEntries(
+      Object.entries(searchParams).filter(
+        ([_, value]) => value !== undefined && value !== "",
+      ),
+    )
+    // replace nulls with undefined
+    for (const [key, value] of Object.entries(definedFilters)) {
+      newParams[key] = value ?? undefined
+    }
+
     updateSearchParams({
-      species: newFilters.speciesId
-        ? newFilters.speciesId
-        : searchParams.species,
-      collection: newFilters.collectionId
-        ? newFilters.collectionId
-        : searchParams.collection,
-      location: newFilters.locationId
-        ? newFilters.locationId
-        : searchParams.location,
+      ...newParams,
       search:
         newFilters.searchTerm !== undefined
           ? newFilters.searchTerm
@@ -135,11 +143,8 @@ function InventoryPage() {
     })
   }
 
-  // Use batches directly since filtering and sorting is handled by the hook
-  const filteredAndSortedBatches = batches
-
   // Action handlers
-  const handleEdit = (batch: BatchWithCustody) => {
+  const handleEdit = (batch: BatchWithCurrentLocationAndSpecies) => {
     setEditingBatch(batch)
   }
 
@@ -151,7 +156,7 @@ function InventoryPage() {
     })
   }
 
-  const handleSplit = (_batch: BatchWithCustody) => {
+  const handleSplit = (_batch: BatchWithCurrentLocationAndSpecies) => {
     // TODO: Implement batch splitting
     toast({
       description: "Batch splitting not yet implemented",
@@ -159,7 +164,7 @@ function InventoryPage() {
     })
   }
 
-  const handleMerge = (_batch: BatchWithCustody) => {
+  const handleMerge = (_batch: BatchWithCurrentLocationAndSpecies) => {
     // TODO: Implement batch merging
     toast({
       description: "Batch merging not yet implemented",
@@ -167,7 +172,7 @@ function InventoryPage() {
     })
   }
 
-  const handleStorageMove = (batch: BatchWithCustody) => {
+  const handleStorageMove = (batch: BatchWithCurrentLocationAndSpecies) => {
     setStorageMoveBatch(batch)
   }
 
@@ -213,8 +218,7 @@ function InventoryPage() {
         {/* Results Summary */}
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-sm">
-            Showing {filteredAndSortedBatches.length} of {batches.length}{" "}
-            batches
+            Showing {batches.length} of {batches.length} batches
           </p>
         </div>
 
@@ -223,7 +227,7 @@ function InventoryPage() {
           {isLoading && <div className="h-20 w-full animate-pulse space-y-4" />}
           {!isLoading && (
             <>
-              {filteredAndSortedBatches.length === 0 ? (
+              {batches.length === 0 ? (
                 <div className="p-8 text-center">
                   <div className="text-muted-foreground">
                     {batches.length === 0 ? (
@@ -274,7 +278,7 @@ function InventoryPage() {
                           </Button>
                         </th>
                         <th className="px-4 py-3 text-left font-semibold">
-                          Storage Location
+                          Storage
                         </th>
                         <th className="px-4 py-3 text-left">
                           <Button
@@ -293,7 +297,7 @@ function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAndSortedBatches.map((batch) => (
+                      {batches.map((batch) => (
                         <BatchTableRow
                           key={batch.id}
                           batch={batch}
