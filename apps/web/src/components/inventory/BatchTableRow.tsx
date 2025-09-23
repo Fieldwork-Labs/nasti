@@ -26,17 +26,17 @@ import {
   AlertDialogTrigger,
 } from "@nasti/ui/alert-dialog"
 
-import type { BatchWithCustody } from "../../hooks/useBatches"
+import type { BatchWithCurrentLocationAndSpecies } from "../../hooks/useBatches"
 import { useBatchDetail } from "../../hooks/useBatches"
 import { useCurrentBatchStorage } from "../../hooks/useBatchStorage"
 
 type BatchTableRowProps = {
-  batch: BatchWithCustody
-  onEdit?: (batch: BatchWithCustody) => void
+  batch: BatchWithCurrentLocationAndSpecies
+  onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
-  onSplit?: (batch: BatchWithCustody) => void
-  onMerge?: (batch: BatchWithCustody) => void
-  onStorageMove?: (batch: BatchWithCustody) => void
+  onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
   className?: string
 }
 
@@ -94,8 +94,7 @@ export const BatchTableRow = ({
           <div className="flex items-center gap-2">
             <Leaf className="h-4 w-4 text-green-600" />
             <span className="text-sm">
-              {/* TODO: Add species name from batch detail */}
-              Species TBD
+              {batch.species?.name || batch.collection?.field_name}
             </span>
           </div>
         </td>
@@ -132,75 +131,70 @@ export const BatchTableRow = ({
         </td>
 
         <td className="px-4 py-3">
-          <div
-            className="flex items-center gap-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit?.(batch)}
-              className="h-8 w-8 p-0"
+          {/* button style container only */}
+          <div className="[&_button]:h-8 [&_button]:w-8 [&_button]:cursor-pointer [&_button]:p-0">
+            <div
+              className="flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
             >
-              <Edit className="h-4 w-4" />
-            </Button>
+              <Button variant="ghost" size="sm" onClick={() => onEdit?.(batch)}>
+                <Edit className="h-4 w-4" />
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSplit?.(batch)}
-              className="h-8 w-8 p-0"
-            >
-              <Split className="h-4 w-4" />
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onSplit?.(batch)}
+              >
+                <Split className="h-4 w-4" />
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onMerge?.(batch)}
-              className="h-8 w-8 p-0"
-            >
-              <Merge className="h-4 w-4" />
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onMerge?.(batch)}
+              >
+                <Merge className="h-4 w-4" />
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onStorageMove?.(batch)}
-              className="h-8 w-8 p-0"
-            >
-              <MapPin className="h-4 w-4" />
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onStorageMove?.(batch)}
+              >
+                <MapPin className="h-4 w-4" />
+              </Button>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Batch</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this batch? This action
-                    cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-red-600 hover:bg-red-700"
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
                   >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this batch? This action
+                      cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </td>
       </tr>
@@ -232,13 +226,6 @@ export const BatchTableRow = ({
                     </div>
                   </div>
 
-                  <div>
-                    <span className="font-medium">Organisation:</span>
-                    <div className="mt-1 text-xs">
-                      {batch.organisation_id.slice(0, 8)}...
-                    </div>
-                  </div>
-
                   {batch.notes && (
                     <div className="md:col-span-2 lg:col-span-3">
                       <span className="font-medium">Notes:</span>
@@ -264,29 +251,6 @@ export const BatchTableRow = ({
                       </div>
                     </div>
                   )}
-
-                  <div>
-                    <span className="font-medium">Custody:</span>
-                    <div className="mt-1 text-xs">
-                      {batch.current_custodian ? (
-                        <div>
-                          Current custodian:{" "}
-                          {batch.current_custodian.organisation_id.slice(0, 8)}
-                          ...
-                          <div className="text-muted-foreground">
-                            Since:{" "}
-                            {new Date(
-                              batch.current_custodian.received_at,
-                            ).toLocaleDateString()}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          No custody info
-                        </span>
-                      )}
-                    </div>
-                  </div>
                 </div>
               )}
 

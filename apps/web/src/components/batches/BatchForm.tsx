@@ -60,10 +60,10 @@ const CollectionDisplay = ({
 }) => {
   return (
     <span className="truncate">
-      {collection.field_name ||
-        collection.species?.name ||
+      {collection.species?.name ||
+        collection.field_name ||
         `Collection ${collection.id.slice(0, 8)}`}{" "}
-      - {collection.trip.name}
+      - {collection.trip?.name}
     </span>
   )
 }
@@ -164,10 +164,10 @@ export const BatchForm = ({
 
   const onSubmit = async (data: BatchFormData) => {
     try {
-      if (isEditing) {
+      if (batch) {
         // Update existing batch with all fields
         await updateBatchMutation.mutateAsync({
-          id: batch!.id,
+          id: batch.id,
           weight_grams: data.weight_grams,
           is_extracted: data.is_extracted,
           is_treated: data.is_treated,
@@ -181,8 +181,14 @@ export const BatchForm = ({
             notes: data.storage_notes,
             storageId: currentBatchStorage.id,
           })
+        } else if (data.storage_location_id) {
+          // Create new storage record
+          await createStorage.mutateAsync({
+            locationId: data.storage_location_id,
+            batchId: batch.id,
+            notes: data.storage_notes,
+          })
         }
-
         toast({
           description: "Batch updated successfully",
         })
@@ -250,10 +256,11 @@ export const BatchForm = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-[--radix-popover-trigger-width] p-0"
+            className="min-w-[--radix-popper-available-width] p-0"
             align="start"
           >
-            <Command>
+            {/* this filter prop is required to prevent Command from doing its own filtering */}
+            <Command filter={() => 1}>
               <CommandInput
                 placeholder="Search collections..."
                 value={collectionSearchTerm}

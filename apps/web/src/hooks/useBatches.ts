@@ -52,6 +52,23 @@ type BatchFilter = {
   order: string
 }
 
+export type BatchWithCurrentLocationAndSpecies = Batch & {
+  current_location?: {
+    batch_id: string
+    location_id: string
+    notes: string | null
+    stored_at: string | null
+  }[]
+  species?: {
+    id: string
+    name: string
+  } | null
+  collection: {
+    id: string
+    field_name: string
+  }
+}
+
 export const useBatchesByFilter = (batchFilter: BatchFilter) => {
   return useQuery({
     queryKey: ["batches", "byFilter", batchFilter],
@@ -60,24 +77,30 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
         `
           *,
           current_location:current_batch_storage(
-            batch_id,
             location_id,
             notes,
             stored_at
-          )
+          ),
+          collection!inner(
+            id,
+            field_name
+          ),
+          species:collection(...species(id, name))
         `,
       )
       if (batchFilter.collectionId) {
         q = q.eq("collection_id", batchFilter.collectionId)
       }
       if (batchFilter.speciesId) {
-        q = q.eq("species_id", batchFilter.speciesId)
+        q = q.eq("collection.species_id", batchFilter.speciesId)
       }
       if (batchFilter.locationId) {
-        q = q.eq("location_id", batchFilter.locationId)
+        q = q.eq("current_batch_storage.location_id", batchFilter.locationId)
       }
 
-      const { data, error } = await q.order("created_at", { ascending: false })
+      const { data, error } = await q
+        .order(batchFilter.sort, { ascending: batchFilter.order === "asc" })
+        .overrideTypes<BatchWithCurrentLocationAndSpecies[]>()
 
       if (error) throw new Error(error.message)
       return data
@@ -361,11 +384,6 @@ export const useUpdateBatch = () => {
           queryKey: ["batches", "byCollection", updatedBatch.collection_id],
         })
       }
-
-      // Invalidate filter-based queries
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "byFilter"],
-      })
     },
   })
 }
