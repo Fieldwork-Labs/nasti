@@ -92,8 +92,8 @@ export const BatchTableRow = ({
 
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
-            <Leaf className="h-4 w-4 text-green-600" />
-            <span className="text-sm">
+            {batch.species && <Leaf className="h-4 w-4 text-green-600" />}
+            <span className="w-56 truncate text-sm">
               {batch.species?.name || batch.collection?.field_name}
             </span>
           </div>
