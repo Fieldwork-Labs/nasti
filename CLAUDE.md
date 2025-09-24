@@ -92,6 +92,7 @@ Use these commands from the repository root:
 - Prefer `const` over `let` unless you need to reassign
 - Tailwind CSS for all styling
 - File-based routing with TanStack Router
+- Before writing a useEffect hook, please read [You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect) in the React docs.
 
 ### Component Patterns
 

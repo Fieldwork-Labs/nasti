@@ -43,7 +43,7 @@ export const useBatchesByCollection = (collectionId: string) => {
 }
 
 // Query: Get batches for a filter object
-type BatchFilter = {
+export type BatchFilter = {
   collectionId?: string
   speciesId?: string
   locationId?: string

@@ -4,23 +4,18 @@ import { useMemo, useState } from "react"
 import { ArrowUpDown, ArrowUp, ArrowDown, Plus } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@nasti/ui/dialog"
 import { useToast } from "@nasti/ui/hooks"
 
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "@/components/inventory/BatchTableRow"
-import { BatchStorageForm } from "@/components/storage/BatchStorageForm"
-import { BatchForm } from "@/components/batches/BatchForm"
-import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import {
-  invalidateBatchesByFilterCache,
-  useBatchesByFilter,
-} from "@/hooks/useBatches"
+  BatchEditModal,
+  BatchSplitModal,
+  BatchStorageModal,
+  BatchCreateModal,
+} from "@/components/inventory/modals"
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import { useBatchesByFilter } from "@/hooks/useBatches"
 
 // Define search schema for URL parameters
 const inventorySearchSchema = z.object({
@@ -50,6 +45,8 @@ function InventoryPage() {
   const [editingBatch, setEditingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [storageMoveBatch, setStorageMoveBatch] =
+    useState<BatchWithCurrentLocationAndSpecies | null>(null)
+  const [splittingBatch, setSplittingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false)
 
@@ -156,12 +153,8 @@ function InventoryPage() {
     })
   }
 
-  const handleSplit = (_batch: BatchWithCurrentLocationAndSpecies) => {
-    // TODO: Implement batch splitting
-    toast({
-      description: "Batch splitting not yet implemented",
-      variant: "destructive",
-    })
+  const handleSplit = (batch: BatchWithCurrentLocationAndSpecies) => {
+    setSplittingBatch(batch)
   }
 
   const handleMerge = (_batch: BatchWithCurrentLocationAndSpecies) => {
@@ -317,62 +310,39 @@ function InventoryPage() {
         </Card>
 
         {/* Modals */}
-        <Dialog
-          open={Boolean(editingBatch)}
-          onOpenChange={() => setEditingBatch(null)}
-        >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Batch</DialogTitle>
-            </DialogHeader>
-            {editingBatch && (
-              <BatchForm
-                batch={editingBatch}
-                onSuccess={() => {
-                  setEditingBatch(null)
-                  invalidateBatchesByFilterCache(batchFilter)
-                }}
-                onCancel={() => setEditingBatch(null)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+        {editingBatch && (
+          <BatchEditModal
+            isOpen={Boolean(editingBatch)}
+            onClose={() => setEditingBatch(null)}
+            batch={editingBatch}
+            batchFilter={batchFilter}
+          />
+        )}
 
-        <Dialog
-          open={Boolean(storageMoveBatch)}
-          onOpenChange={() => setStorageMoveBatch(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Manage Batch Storage</DialogTitle>
-            </DialogHeader>
-            {storageMoveBatch && (
-              <BatchStorageForm
-                batch={storageMoveBatch}
-                onSuccess={() => setStorageMoveBatch(null)}
-                onCancel={() => setStorageMoveBatch(null)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+        {storageMoveBatch && (
+          <BatchStorageModal
+            isOpen={Boolean(storageMoveBatch)}
+            onClose={() => setStorageMoveBatch(null)}
+            batch={storageMoveBatch}
+          />
+        )}
 
-        <Dialog
-          open={showCreateBatchModal}
-          onOpenChange={setShowCreateBatchModal}
-        >
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Batch</DialogTitle>
-            </DialogHeader>
-            <BatchForm
-              onSuccess={() => {
-                setShowCreateBatchModal(false)
-                invalidateBatchesByFilterCache(batchFilter)
-              }}
-              onCancel={() => setShowCreateBatchModal(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        {splittingBatch && (
+          <BatchSplitModal
+            isOpen={Boolean(splittingBatch)}
+            onClose={() => setSplittingBatch(null)}
+            batch={splittingBatch}
+            batchFilter={batchFilter}
+          />
+        )}
+
+        {showCreateBatchModal && (
+          <BatchCreateModal
+            isOpen={showCreateBatchModal}
+            onClose={() => setShowCreateBatchModal(false)}
+            batchFilter={batchFilter}
+          />
+        )}
       </div>
     </div>
   )
