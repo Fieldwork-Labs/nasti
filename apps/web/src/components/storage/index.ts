@@ -1,5 +1,5 @@
 export { StorageLocationForm } from "./StorageLocationForm"
-export { BatchStorageForm } from "./BatchStorageForm"
+export { BatchStorageForm } from "../inventory/BatchStorageForm"
 export { StorageLocationsList } from "./StorageLocationsList"
 export type { StorageLocationFormData } from "./StorageLocationForm"
-export type { BatchStorageFormData } from "./BatchStorageForm"
+export type { BatchStorageFormData } from "../inventory/BatchStorageForm"
