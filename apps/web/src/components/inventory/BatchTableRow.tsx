@@ -10,6 +10,9 @@ import {
   Calendar,
   Package,
   Leaf,
+  Plus,
+  Minus,
+  X,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
@@ -29,6 +32,7 @@ import {
 import type { BatchWithCurrentLocationAndSpecies } from "../../hooks/useBatches"
 import { useBatchDetail } from "../../hooks/useBatches"
 import { useCurrentBatchStorage } from "../../hooks/useBatchStorage"
+import { cn } from "@nasti/ui/utils"
 
 type BatchTableRowProps = {
   batch: BatchWithCurrentLocationAndSpecies
@@ -38,6 +42,15 @@ type BatchTableRowProps = {
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
   className?: string
+  mergeMode?: {
+    isActive: boolean
+    isInitiating: boolean
+    isSelected: boolean
+    canMerge: boolean
+    onAddToMerge: () => void
+    onRemoveFromMerge: () => void
+    onCancelMerge: () => void
+  }
 }
 
 export const BatchTableRow = ({
@@ -48,6 +61,7 @@ export const BatchTableRow = ({
   onMerge,
   onStorageMove,
   className,
+  mergeMode,
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { toast } = useToast()
@@ -62,11 +76,23 @@ export const BatchTableRow = ({
     })
   }
 
+  // need a special value to represent when mergemode is active but this row is not mergeable
+  const mergeDisabled = Boolean(mergeMode && !mergeMode.canMerge)
+
   return (
     <>
       {/* Main Row */}
       <tr
-        className={`hover:bg-muted/50 cursor-pointer border-b transition-colors ${className}`}
+        className={cn(
+          "hover:bg-muted/50 cursor-pointer border-b transition-colors",
+          mergeMode?.isSelected &&
+            mergeMode?.canMerge &&
+            "bg-accent/20 border-accent/40",
+          mergeDisabled && "bg-muted-foreground/20 border-transparent",
+
+          mergeMode?.isInitiating && "bg-accent/40 border-accent/60",
+          className,
+        )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <td className="px-4 py-3">
@@ -132,68 +158,121 @@ export const BatchTableRow = ({
 
         <td className="px-4 py-3">
           {/* button style container only */}
-          <div className="[&_button]:h-8 [&_button]:w-8 [&_button]:cursor-pointer [&_button]:p-0">
+          <div className="[&_button]:h-8 [&_button]:cursor-pointer [&_button]:px-1">
             <div
               className="flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              <Button variant="ghost" size="sm" onClick={() => onEdit?.(batch)}>
-                <Edit className="h-4 w-4" />
-              </Button>
+              {mergeMode?.canMerge && mergeMode?.isActive ? (
+                // Merge mode actions
+                <>
+                  {mergeMode.isInitiating ? (
+                    // Initiating batch shows cancel merge button
+                    <Button
+                      variant="outline"
+                      size={"lg"}
+                      onClick={mergeMode.onCancelMerge}
+                      className="text-destructive border-destructive/50 hover:bg-destructive/50"
+                    >
+                      <X className="mr-1 h-4 w-4" />
+                      <span className="text-xs">Cancel Merge</span>
+                    </Button>
+                  ) : (
+                    // Other batches show add/remove from merge buttons
+                    <>
+                      {mergeMode.isSelected ? (
+                        <Button
+                          variant="outline"
+                          onClick={mergeMode.onRemoveFromMerge}
+                          className="text-accent-foreground border-accent bg-accent/20"
+                        >
+                          <Minus className="mr-1 h-4 w-4" />
+                          <span className="text-xs">Remove</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={mergeMode.onAddToMerge}
+                          className="text-primary border-primary/20 hover:bg-primary/10"
+                        >
+                          <Plus className="mr-1 h-4 w-4" />
+                          <span className="text-xs">Add to Merge</span>
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
+                // Normal mode actions
+                <>
+                  <Button
+                    variant="ghost"
+                    disabled={mergeDisabled}
+                    size="sm"
+                    onClick={() => onEdit?.(batch)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onSplit?.(batch)}
-              >
-                <Split className="h-4 w-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onMerge?.(batch)}
-              >
-                <Merge className="h-4 w-4" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onStorageMove?.(batch)}
-              >
-                <MapPin className="h-4 w-4" />
-              </Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    disabled={mergeDisabled}
+                    onClick={() => onSplit?.(batch)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Split className="h-4 w-4" />
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Batch</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this batch? This action
-                      cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={mergeDisabled}
+                    onClick={() => onMerge?.(batch)}
+                  >
+                    <Merge className="h-4 w-4" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={mergeDisabled}
+                    onClick={() => onStorageMove?.(batch)}
+                  >
+                    <MapPin className="h-4 w-4" />
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={mergeDisabled}
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this batch? This
+                          action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDelete}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
             </div>
           </div>
         </td>

@@ -110,23 +110,29 @@ ORDER BY batch_id, stored_at DESC;
 
 
 -- VIEW: batch_lineage_to_collections
-CREATE VIEW batch_lineage_to_collections AS
-WITH RECURSIVE lineage AS (
-  -- Non-recursive term
+CREATE OR REPLACE VIEW batch_lineage_to_collections AS
+WITH RECURSIVE lineage (batch_id, collection_id) AS (
+  -- base case: direct batches with their own collection_id
   SELECT id AS batch_id, collection_id
   FROM batches
   WHERE collection_id IS NOT NULL
 
   UNION ALL
 
-  -- Single recursive term (combine both joins)
-  SELECT 
-    COALESCE(bs.child_batch_id, bm.merged_batch_id) AS batch_id,
-    l.collection_id
+  -- recursive case: follow splits and merges
+  SELECT next_batch.batch_id, l.collection_id
   FROM lineage l
-  LEFT JOIN batch_splits bs ON bs.parent_batch_id = l.batch_id
-  LEFT JOIN batch_merges bm ON bm.source_batch_id = l.batch_id
-  WHERE bs.child_batch_id IS NOT NULL OR bm.merged_batch_id IS NOT NULL
+  JOIN (
+    -- splits
+    SELECT parent_batch_id AS source_id, child_batch_id AS batch_id
+    FROM batch_splits
+    
+    UNION ALL
+    
+    -- merges
+    SELECT source_batch_id AS source_id, merged_batch_id AS batch_id
+    FROM batch_merges
+  ) next_batch ON next_batch.source_id = l.batch_id
 )
 SELECT DISTINCT batch_id, collection_id
 FROM lineage;
