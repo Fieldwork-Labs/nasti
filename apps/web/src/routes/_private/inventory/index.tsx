@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { motion } from "motion/react"
 import { z } from "zod"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowUpDown, ArrowUp, ArrowDown, Plus } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
@@ -8,14 +9,17 @@ import { useToast } from "@nasti/ui/hooks"
 
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "@/components/inventory/BatchTableRow"
+import { CompleteMergeButton } from "@/components/inventory/CompleteMergeButton"
 import {
   BatchEditModal,
   BatchSplitModal,
   BatchStorageModal,
   BatchCreateModal,
+  BatchMergeModal,
 } from "@/components/inventory/modals"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchesByFilter } from "@/hooks/useBatches"
+import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
 
 // Define search schema for URL parameters
 const inventorySearchSchema = z.object({
@@ -35,6 +39,8 @@ export const Route = createFileRoute("/_private/inventory/")({
 type SortField = "created_at" | "collection_id" | "organisation_id"
 type SortDirection = "asc" | "desc"
 
+const MotionCard = motion.create(Card)
+
 function InventoryPage() {
   const navigate = Route.useNavigate()
 
@@ -49,6 +55,15 @@ function InventoryPage() {
   const [splittingBatch, setSplittingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [showCreateBatchModal, setShowCreateBatchModal] = useState(false)
+
+  // Merge mode state
+  const [mergeState, setMergeState] = useState<{
+    isActive: boolean
+    initiatingBatchId: string
+    allowedBatchSpecies: string | null
+    selectedBatchIds: string[]
+  } | null>(null)
+  const [showMergeModal, setShowMergeModal] = useState(false)
 
   // Extract filters from URL search params
   const filters = useMemo(
@@ -78,6 +93,11 @@ function InventoryPage() {
 
   // Fetch batches using the filter hook
   const { data: batches = [], isLoading } = useBatchesByFilter(batchFilter)
+
+  // Get selected batches for merge modal
+  const selectedBatchesForMerge = mergeState
+    ? batches.filter((batch) => mergeState.selectedBatchIds.includes(batch.id))
+    : []
 
   // Update URL search parameters
   const updateSearchParams = (
@@ -157,6 +177,49 @@ function InventoryPage() {
     setSplittingBatch(batch)
   }
 
+  const handleMerge = (batch: BatchWithCurrentLocationAndSpecies) => {
+    setMergeState({
+      isActive: true,
+      initiatingBatchId: batch.id,
+      allowedBatchSpecies: batch.species?.id ?? null,
+      selectedBatchIds: [batch.id],
+    })
+  }
+
+  const handleAddToMerge = (batchId: string) => {
+    setMergeState((prev) =>
+      prev
+        ? {
+            ...prev,
+            selectedBatchIds: [...prev.selectedBatchIds, batchId],
+          }
+        : null,
+    )
+  }
+
+  const handleRemoveFromMerge = (batchId: string) => {
+    setMergeState((prev) =>
+      prev
+        ? {
+            ...prev,
+            selectedBatchIds: prev.selectedBatchIds.filter(
+              (id) => id !== batchId,
+            ),
+          }
+        : null,
+    )
+  }
+
+  const handleCancelMerge = () => {
+    setMergeState(null)
+  }
+
+  const handleCompleteMerge = () => {
+    if (mergeState && mergeState.selectedBatchIds.length >= 2) {
+      setShowMergeModal(true)
+    }
+  }
+
   const handleStorageMove = (batch: BatchWithCurrentLocationAndSpecies) => {
     setStorageMoveBatch(batch)
   }
@@ -171,6 +234,20 @@ function InventoryPage() {
       <ArrowDown className="ml-1 h-4 w-4" />
     )
   }
+
+  // calculations of offset for merge state
+  const windowSize = useWindowSize()
+  const [ref, { width }] = useMeasure()
+  const initialWidth = useRef(width)
+  const mergeStateRatchet = useRef(false)
+  useEffect(() => {
+    if (!mergeStateRatchet.current && mergeState?.isActive) {
+      initialWidth.current = width
+      mergeStateRatchet.current = true
+    }
+  }, [mergeState?.isActive, width])
+
+  const offset = ((windowSize?.width ?? 0) - (initialWidth.current ?? 0)) / 2
 
   return (
     <div className="container mx-auto p-6">
@@ -208,7 +285,18 @@ function InventoryPage() {
         </div>
 
         {/* Table */}
-        <Card className="overflow-hidden">
+        <MotionCard
+          ref={ref}
+          animate={{
+            width: mergeState?.isActive ? "100vw" : "auto",
+            x: mergeState?.isActive ? offset * -1 : 0, // Calculate offset from container edge
+            borderRadius: mergeState?.isActive ? 0 : 8, // Adjust as needed
+          }}
+          transition={{
+            duration: 0.5,
+          }}
+          className="overflow-hidden"
+        >
           {isLoading && <div className="h-20 w-full animate-pulse space-y-4" />}
           {!isLoading && (
             <>
@@ -234,7 +322,7 @@ function InventoryPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <motion.table className="w-full">
                     <thead className="bg-muted/50">
                       <tr>
                         <th className="px-4 py-3 text-left">
@@ -290,15 +378,46 @@ function InventoryPage() {
                           onDelete={handleDelete}
                           onSplit={handleSplit}
                           onStorageMove={handleStorageMove}
+                          mergeMode={
+                            mergeState
+                              ? {
+                                  isActive: mergeState.isActive,
+                                  isInitiating:
+                                    batch.id === mergeState.initiatingBatchId,
+                                  isSelected:
+                                    mergeState.selectedBatchIds.includes(
+                                      batch.id,
+                                    ),
+                                  canMerge:
+                                    batch.species?.id ===
+                                      mergeState.allowedBatchSpecies ||
+                                    (mergeState.allowedBatchSpecies === null &&
+                                      Boolean(batch.species) === false),
+                                  onAddToMerge: () =>
+                                    handleAddToMerge(batch.id),
+                                  onRemoveFromMerge: () =>
+                                    handleRemoveFromMerge(batch.id),
+                                  onCancelMerge: handleCancelMerge,
+                                }
+                              : undefined
+                          }
                         />
                       ))}
                     </tbody>
-                  </table>
+                  </motion.table>
                 </div>
               )}
             </>
           )}
-        </Card>
+        </MotionCard>
+
+        {/* Complete Merge Button */}
+        {mergeState && mergeState.selectedBatchIds.length > 0 && (
+          <CompleteMergeButton
+            selectedCount={mergeState.selectedBatchIds.length}
+            onCompleteMerge={handleCompleteMerge}
+          />
+        )}
 
         {/* Modals */}
         {editingBatch && (
@@ -331,6 +450,18 @@ function InventoryPage() {
           <BatchCreateModal
             isOpen={showCreateBatchModal}
             onClose={() => setShowCreateBatchModal(false)}
+            batchFilter={batchFilter}
+          />
+        )}
+
+        {mergeState && selectedBatchesForMerge.length > 0 && (
+          <BatchMergeModal
+            isOpen={showMergeModal}
+            onClose={() => {
+              setShowMergeModal(false)
+              setMergeState(null) // Reset merge state after modal closes
+            }}
+            selectedBatches={selectedBatchesForMerge}
             batchFilter={batchFilter}
           />
         )}
