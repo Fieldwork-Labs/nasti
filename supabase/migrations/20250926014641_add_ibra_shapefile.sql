@@ -14,9 +14,9 @@ CREATE TABLE ibra_regions (
 );
 
 -- Create spatial index for performance
-CREATE INDEX idx_ibra_regions_geom_high ON ibra_regions_multi_lod USING GIST (geom_high);
-CREATE INDEX idx_ibra_regions_geom_medium ON ibra_regions_multi_lod USING GIST (geom_medium);
-CREATE INDEX idx_ibra_regions_geom_low ON ibra_regions_multi_lod USING GIST (geom_low);
+CREATE INDEX idx_ibra_regions_geom_high ON ibra_regions USING GIST (geom_high);
+CREATE INDEX idx_ibra_regions_geom_medium ON ibra_regions USING GIST (geom_medium);
+CREATE INDEX idx_ibra_regions_geom_low ON ibra_regions USING GIST (geom_low);
 
 
 

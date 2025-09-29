@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       collection: {
         Row: {
+          code: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -26,6 +27,7 @@ export type Database = {
           weight_estimate_kg: number | null
         }
         Insert: {
+          code?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           weight_estimate_kg?: number | null
         }
         Update: {
+          code?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -107,13 +110,6 @@ export type Database = {
             columns: ["collection_id"]
             isOneToOne: false
             referencedRelation: "collection"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "collection_photo_collection_id_fkey"
-            columns: ["collection_id"]
-            isOneToOne: false
-            referencedRelation: "obfuscated_collection_data"
             referencedColumns: ["id"]
           },
         ]
@@ -713,6 +709,20 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
+      generate_collection_code: {
+        Args: {
+          p_created_at: string
+          p_field_name: string
+          p_location: unknown
+          p_organisation_id: string
+          p_species_id: string
+        }
+        Returns: string
+      }
+      generate_org_abbreviation: {
+        Args: { org_name: string }
+        Returns: string
+      }
       geography: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
@@ -936,6 +946,10 @@ export type Database = {
       geomfromewkt: {
         Args: { "": string }
         Returns: unknown
+      }
+      get_ibra_code_from_location: {
+        Args: { location_geom: unknown }
+        Returns: string
       }
       get_ibra_regions: {
         Args: {
@@ -2452,3 +2466,4 @@ export const Constants = {
     },
   },
 } as const
+

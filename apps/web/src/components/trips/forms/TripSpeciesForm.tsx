@@ -53,6 +53,7 @@ const useSpeciesForLocation = (trip?: Trip) => {
     useALAOccurrencesByLocation({
       lat: location?.latitude,
       lng: location?.longitude,
+      pageSize: 500,
     })
 
   useEffect(() => {

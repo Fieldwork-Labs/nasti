@@ -156,6 +156,7 @@ export const CollectionDetailModal = ({
           </div>
         }
       >
+        <span className="pb-2 text-lg font-bold">{collection.code}</span>
         <div className="space-y-4">
           {/* Species Info */}
           {collection.species_id && (
