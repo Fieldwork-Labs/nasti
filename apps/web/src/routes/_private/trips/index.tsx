@@ -3,10 +3,10 @@ import { Trip } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { ChevronDownIcon, ChevronUpIcon, MapPin, PlusIcon } from "lucide-react"
-import mapboxgl from "mapbox-gl"
+import mapboxgl, { MapMouseEvent } from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
-import { useCallback, useState } from "react"
-import Map, { Marker, Popup } from "react-map-gl"
+import { useCallback, useEffect, useState, useRef } from "react"
+import Map, { Layer, Marker, Popup, Source, useMap } from "react-map-gl"
 
 import { TripFormProvider, TripFormWizard } from "@/components/trips/TripWizard"
 
@@ -28,9 +28,125 @@ import {
 import { useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@nasti/common/utils"
 import { Spinner } from "@nasti/ui/spinner"
+import { useIbraRegions } from "@/hooks/useIbra"
 
 interface TripsMapProps {
   trips: Trip[]
+}
+
+export function IbraLayer() {
+  const { current: map } = useMap()
+  const [zoom, setZoom] = useState(0)
+  const [bounds, setBounds] = useState<[[number, number], [number, number]]>()
+
+  const { data: ibra } = useIbraRegions(zoom, bounds)
+
+  const hoveredFeatureId = useRef<string | number | null>(null)
+
+  const handleMouseMove = useCallback(
+    (event: MapMouseEvent) => {
+      if (!map) return
+      const features = map.queryRenderedFeatures(event.point)
+      const feature = features?.[0]
+      // If a feature is already hovered, reset its state
+      if (
+        hoveredFeatureId.current !== null &&
+        feature?.id !== hoveredFeatureId.current
+      ) {
+        map.setFeatureState(
+          { source: "ibra", id: hoveredFeatureId.current },
+          { hover: false },
+        )
+      }
+
+      // Set hover state for the new feature
+      if (feature?.id) {
+        hoveredFeatureId.current = feature.id
+        map.setFeatureState({ source: "ibra", id: feature.id }, { hover: true })
+      }
+    },
+    [map],
+  )
+
+  const handleMapMove = useCallback(() => {
+    if (!map) return
+    const mapBounds = map.getBounds()?.toArray()
+    setBounds(mapBounds)
+  }, [map])
+
+  const handleMapZoom = useCallback(() => {
+    if (!map) return
+    setZoom(map.getZoom())
+    const mapBounds = map.getBounds()?.toArray()
+    setBounds(mapBounds)
+  }, [map])
+
+  useEffect(() => {
+    map?.on("mousemove", handleMouseMove)
+    map?.on("moveend", handleMapMove)
+    map?.on("zoomend", handleMapZoom)
+
+    return () => {
+      map?.off("mousemove", handleMouseMove)
+      map?.off("moveend", handleMapMove)
+      map?.off("zoomend", handleMapZoom)
+    }
+  }, [handleMouseMove, handleMapMove, handleMapZoom, map])
+
+  if (!ibra) return null
+  return (
+    <Source
+      id="ibra"
+      type="geojson"
+      data={ibra}
+      generateId={true} // Important: enables feature-state functionality
+    >
+      <Layer
+        id="ibra"
+        source="ibra"
+        type="line"
+        paint={{
+          "line-color": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            "#ff23e3",
+            "#e049e3",
+          ],
+          "line-width": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            3,
+            2,
+          ],
+        }}
+      />
+      <Layer
+        id="ibra-label"
+        source="ibra" // Make sure to specify the source
+        type="symbol"
+        layout={{
+          "text-field": ["concat", ["get", "code"], "\n", ["get", "name"]],
+          "text-size": 16,
+          "text-font": ["Open Sans Bold"],
+          "text-offset": [0, 0],
+          "text-anchor": "center",
+          "text-allow-overlap": false,
+        }}
+        paint={{
+          "text-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false],
+            1,
+            0,
+          ],
+          "text-color": "#000000",
+          "text-halo-color": "#FFFFFF",
+          "text-halo-width": 2,
+          "text-halo-blur": 3,
+        }}
+      />
+    </Source>
+  )
 }
 
 const TripsMap = ({ trips }: TripsMapProps) => {
@@ -52,6 +168,7 @@ const TripsMap = ({ trips }: TripsMapProps) => {
       style={{ height: 540 }}
       mapStyle="mapbox://styles/mapbox/satellite-v9"
     >
+      <IbraLayer />
       {trips.filter(tripWithLocationFilter).map((trip) => (
         <Marker {...getTripCoordinates(trip)} key={trip.id}>
           <div className="rounded-full bg-white/50 p-2">
