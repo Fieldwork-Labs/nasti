@@ -61,17 +61,17 @@ export const CollectionListItem = ({
         onMouseOver={() => (onHover ? onHover(id) : null)}
         onMouseLeave={() => (onHover ? onHover(undefined) : null)}
         onClick={open}
-        className="bg-secondary-background text-primary-foreground hover:bg-primary/90 flex h-20 cursor-pointer gap-2 rounded-sm"
+        className="bg-secondary-background text-primary-foreground hover:bg-primary/90 h-26 flex cursor-pointer gap-2 rounded-sm"
       >
         {signedUrlsIsLoading && (
-          <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
+          <span className="h-26 flex w-20 items-center justify-center bg-slate-500">
             <Spinner className="h-6 w-6" />
           </span>
         )}
         {!signedUrlsIsLoading && (
           <>
             {photo ? (
-              <span className="flex h-20 w-20 content-center justify-center">
+              <span className="h-26 flex w-20 content-center justify-center">
                 <img
                   src={photo}
                   alt={`${speciesName} Image`}
@@ -79,7 +79,7 @@ export const CollectionListItem = ({
                 />
               </span>
             ) : (
-              <span className="flex h-20 w-20 items-center justify-center bg-slate-500">
+              <span className="h-26 flex w-20 items-center justify-center bg-slate-500">
                 <LeafIcon />
               </span>
             )}
@@ -99,6 +99,7 @@ export const CollectionListItem = ({
             </TooltipProvider>
             {showTrip && <span className="text-xs">{trip?.name}</span>}
           </div>
+          <div>{collection.code}</div>
           <div className="flex flex-col text-start text-xs">
             {details && <span>{details}</span>}
             {creator && <span>{creator.name ?? "Unknown Person"}</span>}
