@@ -193,7 +193,7 @@ returns boolean language sql stable as $$
   select exists (
     select 1
     from batch_custody bc
-    join organisation_members om on bc.organisation_id = om.organisation_id
+    join org_user om on bc.organisation_id = om.organisation_id
     where bc.batch_id = batch_id
       and om.user_id = auth_uid
   );
@@ -210,13 +210,26 @@ CREATE POLICY org_members_can_select_batches
   USING (is_batch_custodian_or_past(auth.uid(), id));
 
 -- Modify only if caller is member of current custodian org for that batch
-CREATE POLICY current_custodian_can_modify_batches
+CREATE POLICY current_custodian_can_update_batches
   ON batches
-  FOR UPDATE, DELETE
+  FOR UPDATE
   USING (
     EXISTS (
       SELECT 1 FROM current_batch_custody cbc
-      JOIN organisation_members om ON om.organisation_id = cbc.organisation_id
+      JOIN org_user om ON om.organisation_id = cbc.organisation_id
+      WHERE cbc.batch_id = batches.id
+      AND om.user_id = auth.uid()
+    )
+  );
+
+-- Policy for DELETE
+CREATE POLICY current_custodian_can_delete_batches
+  ON batches
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM current_batch_custody cbc
+      JOIN org_user om ON om.organisation_id = cbc.organisation_id
       WHERE cbc.batch_id = batches.id
       AND om.user_id = auth.uid()
     )
@@ -351,8 +364,4 @@ USING (EXISTS (
 SELECT 1 FROM batches b
 JOIN current_batch_custody cbc ON b.id = cbc.batch_id
 WHERE b.id = tests.batch_id AND is_org_member(auth.uid(), cbc.organisation_id)
-));
-CREATE POLICY testers_can_write_tests ON tests
-FOR INSERT WITH CHECK (EXISTS (
-SELECT 1 FROM testers t WHERE t.batch_id = tests.batch_id AND t.user_id = auth.uid()
 ));
