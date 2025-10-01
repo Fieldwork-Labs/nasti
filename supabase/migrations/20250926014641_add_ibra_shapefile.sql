@@ -168,8 +168,9 @@ BEGIN
     FROM temp_ibra_original;
 END $$;
 
--- Execute the function
-SELECT load_ibra7_regions_paginated();
+-- Don't Execute the function, this breaks the migrations for some reason
+-- must do it manually
+-- SELECT load_ibra7_regions_paginated();
 
 
 -- RPC: Get IBRA regions by detail level
