@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS http;
+
 CREATE TABLE ibra_regions (
     id BIGSERIAL PRIMARY KEY,
     name TEXT,
@@ -52,7 +54,6 @@ COMMENT ON TABLE ibra_regions IS 'IBRA7 Regions - Read-only reference data for g
 COMMENT ON POLICY "Allow authenticated read access to ibra_regions" ON ibra_regions IS 'Allows all authenticated users to read IBRA regions data';
 COMMENT ON POLICY "Deny all write operations on ibra_regions" ON ibra_regions IS 'Prevents any modifications to the IBRA regions reference data';
 
-create extension http with schema extensions;
 
 CREATE OR REPLACE FUNCTION load_ibra7_regions_paginated()
 RETURNS void
@@ -160,8 +161,8 @@ BEGIN
     INSERT INTO ibra_regions (geom_high, geom_medium, geom_low, properties, name, code)
     SELECT 
         ST_SimplifyPreserveTopology(geom, 0.001) as geom_high,
-        ST_SimplifyPreserveTopology(geom, 0.005) as geom_medium,
-        ST_SimplifyPreserveTopology(geom, 0.02) as geom_low,
+        ST_SimplifyPreserveTopology(geom, 0.01) as geom_medium,
+        ST_SimplifyPreserveTopology(geom, 0.05) as geom_low,
         properties,
         name,
         reg_code

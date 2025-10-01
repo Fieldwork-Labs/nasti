@@ -12,8 +12,8 @@ async function getRegionsByDetailLevel(
     detail_level: detailLevel,
   }
 
-  // Only add bounds parameters if bounds are provided and detail level is high
-  if (bounds && detailLevel === "high") {
+  // Only add bounds parameters if bounds are provided
+  if (bounds) {
     const [[minLng, minLat], [maxLng, maxLat]] = bounds
     rpcParams = {
       ...rpcParams,
@@ -40,6 +40,9 @@ async function getRegionsByDetailLevel(
   }
 }
 
+type IbraQueryKey =
+  | [string, string]
+  | [string, string, [[number, number], [number, number]] | undefined]
 export const useIbraRegions = (
   zoomLevel: number,
   bounds: [[number, number], [number, number]] | undefined,
@@ -51,10 +54,16 @@ export const useIbraRegions = (
   } else if (zoomLevel >= 5) {
     geometryColumn = "medium"
   }
+
+  let queryKey: IbraQueryKey
   const queryBounds = geometryColumn === "high" ? bounds : undefined
+  if (queryBounds) queryKey = ["ibraRegions", geometryColumn, queryBounds]
+  else queryKey = ["ibraRegions", geometryColumn]
+
   return useQuery({
-    queryKey: ["ibraRegions", geometryColumn, queryBounds],
+    queryKey,
     queryFn: () => getRegionsByDetailLevel(geometryColumn, queryBounds),
     refetchOnMount: false,
+    staleTime: Infinity,
   })
 }
