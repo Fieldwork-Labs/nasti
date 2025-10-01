@@ -27,7 +27,9 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
   }
 
   const { params } = (await context.request.json()) as {
-    params: Database["public"]["Functions"]["get_ibra_regions"]["Args"]
+    params:
+      | Database["public"]["Functions"]["get_ibra_regions"]["Args"]
+      | { ids: string[] }
   }
 
   // Get the user's auth token from the Authorization header
@@ -44,27 +46,43 @@ export async function onRequestPost(context: { request: Request; env: Env }) {
     { method: "GET" },
   )
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
   const cache = caches.default
   let response = await cache.match(cacheKey)
 
   if (!response) {
-    console.log("Cache miss, fetching from Supabase")
-    console.log({ authHeader })
-    const supabaseResponse = await fetch(
-      `${context.env.SUPABASE_URL}/rest/v1/rpc/get_ibra_regions`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: context.env.SUPABASE_ANON_KEY,
-          Authorization: authHeader, // Use user's token,
+    let supabaseResponse: Response
+    const headers = {
+      "Content-Type": "application/json",
+      apikey: context.env.SUPABASE_ANON_KEY,
+      Authorization: authHeader, // Use user's token,
+    }
+
+    if ("ids" in params) {
+      const urlParms = new URLSearchParams({
+        id: `in.(${params.ids.join(",")})`,
+        select: "id,name,code,properties,geometry:geom_high",
+      })
+      supabaseResponse = await fetch(
+        `${context.env.SUPABASE_URL}/rest/v1/ibra_regions?${urlParms.toString()}`,
+        {
+          method: "GET",
+          headers,
         },
-        body: JSON.stringify(params),
-      },
-    )
+      )
+    } else {
+      supabaseResponse = await fetch(
+        `${context.env.SUPABASE_URL}/rest/v1/rpc/get_ibra_regions`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(params),
+        },
+      )
+    }
 
     const data = await supabaseResponse.json()
-
     response = new Response(JSON.stringify(data), {
       headers: {
         "Content-Type": "application/json",

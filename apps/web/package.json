@@ -43,6 +43,7 @@
     "zustand": "5.0.0-rc.2"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251001.0",
     "@nasti/eslint-config": "workspace:*",
     "@nasti/tailwind-config": "workspace:*",
     "@nasti/typescript-config": "workspace:*",

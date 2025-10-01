@@ -29,6 +29,8 @@ import { useViewState } from "@nasti/common/hooks"
 import { queryClient } from "@nasti/common/utils"
 import { Spinner } from "@nasti/ui/spinner"
 import { useIbraRegions } from "@/hooks/useIbra"
+import { isNumber } from "lodash"
+import { FeatureCollection } from "geojson"
 
 interface TripsMapProps {
   trips: Trip[]
@@ -37,9 +39,19 @@ interface TripsMapProps {
 export function IbraLayer() {
   const { current: map } = useMap()
   const [zoom, setZoom] = useState(0)
-  const [bounds, setBounds] = useState<[[number, number], [number, number]]>()
+  const [ids, setIds] = useState<number[]>()
 
-  const { data: ibra } = useIbraRegions(zoom, bounds)
+  const { data: ibra } = useIbraRegions(zoom, ids)
+  const { data: ibraIndex } = useIbraRegions(1)
+  // ibraState is kept separately so there's no flash of the layer when loading
+  const [ibraState, setIbraState] = useState<FeatureCollection | undefined>(
+    ibra,
+  )
+  useEffect(() => {
+    if (ibra) {
+      setIbraState(ibra)
+    }
+  }, [ibra])
 
   const hoveredFeatureId = useRef<string | number | null>(null)
 
@@ -68,84 +80,98 @@ export function IbraLayer() {
     [map],
   )
 
-  const handleMapMove = useCallback(() => {
-    if (!map) return
-    const mapBounds = map.getBounds()?.toArray()
-    setBounds(mapBounds)
+  const getIdsOnMap = useCallback(() => {
+    const features = map?.queryRenderedFeatures({ layers: ["ibra-index"] })
+    if (features?.length) {
+      const mapIds = new Set(
+        features
+          // do not use .id, must use .properties.id
+          .map(({ properties }) => properties?.id)
+          .filter((x): x is number => Boolean(x) && isNumber(x)),
+      )
+
+      setIds(Array.from(mapIds))
+    }
   }, [map])
 
   const handleMapZoom = useCallback(() => {
     if (!map) return
     setZoom(map.getZoom())
-    const mapBounds = map.getBounds()?.toArray()
-    setBounds(mapBounds)
-  }, [map])
+    getIdsOnMap()
+  }, [map, getIdsOnMap])
 
   useEffect(() => {
     map?.on("mousemove", handleMouseMove)
-    map?.on("moveend", handleMapMove)
+    map?.on("moveend", getIdsOnMap)
     map?.on("zoomend", handleMapZoom)
 
     return () => {
       map?.off("mousemove", handleMouseMove)
-      map?.off("moveend", handleMapMove)
+      map?.off("moveend", getIdsOnMap)
       map?.off("zoomend", handleMapZoom)
     }
-  }, [handleMouseMove, handleMapMove, handleMapZoom, map])
+  }, [handleMouseMove, getIdsOnMap, handleMapZoom, map])
 
-  if (!ibra) return null
+  if (!ibraState) return null
   return (
-    <Source
-      id="ibra"
-      type="geojson"
-      data={ibra}
-      generateId={true} // Important: enables feature-state functionality
-    >
+    <>
+      {/* ibraIndex allows the map to know which feature IDs to load when zoomed in */}
+      <Source id="ibra-index" type="geojson" data={ibraIndex} />
       <Layer
-        id="ibra"
-        source="ibra"
+        id="ibra-index"
+        source="ibra-index"
         type="line"
         paint={{
-          "line-color": [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            "#ff23e3",
-            "#e049e3",
-          ],
-          "line-width": [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            3,
-            2,
-          ],
+          "line-opacity": 0,
         }}
       />
-      <Layer
-        id="ibra-label"
-        source="ibra" // Make sure to specify the source
-        type="symbol"
-        layout={{
-          "text-field": ["concat", ["get", "code"], "\n", ["get", "name"]],
-          "text-size": 16,
-          "text-font": ["Open Sans Bold"],
-          "text-offset": [0, 0],
-          "text-anchor": "center",
-          "text-allow-overlap": false,
-        }}
-        paint={{
-          "text-opacity": [
-            "case",
-            ["boolean", ["feature-state", "hover"], false],
-            1,
-            0,
-          ],
-          "text-color": "#000000",
-          "text-halo-color": "#FFFFFF",
-          "text-halo-width": 2,
-          "text-halo-blur": 3,
-        }}
-      />
-    </Source>
+      <Source id="ibra" type="geojson" data={ibraState}>
+        <Layer
+          id="ibra"
+          source="ibra"
+          type="line"
+          paint={{
+            "line-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#ff23e3",
+              "#e049e3",
+            ],
+            "line-width": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              3,
+              2,
+            ],
+          }}
+        />
+        <Layer
+          id="ibra-label"
+          source="ibra" // Make sure to specify the source
+          type="symbol"
+          layout={{
+            "text-field": ["concat", ["get", "code"], "\n", ["get", "name"]],
+            "text-size": 16,
+            "text-font": ["Open Sans Bold"],
+            "text-offset": [0, 0],
+            "text-anchor": "center",
+            "text-allow-overlap": false,
+          }}
+          paint={{
+            "text-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              1,
+              0,
+            ],
+            "text-color": "#000000",
+            "text-halo-color": "#FFFFFF",
+            "text-halo-width": 2,
+            "text-halo-blur": 3,
+          }}
+        />
+      </Source>
+    </>
   )
 }
 

@@ -11,7 +11,6 @@ export const useCollectionPhoto = ({ id }: { id?: string }) => {
   })
   let photo: CollectionPhoto | PendingCollectionPhoto | undefined
   while (!photo && queries.length > 0) {
-    //
     const query = queries.pop()
     if (!query) continue
     const [, queryData] = query

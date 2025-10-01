@@ -4,5 +4,6 @@
 # Sentry Config File
 .env.sentry-build-plugin
 
-# cloudflare functions env vars
+# cloudflare functions
 .dev.vars
+.wrangler

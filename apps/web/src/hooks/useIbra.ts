@@ -2,47 +2,24 @@ import useUserStore from "@/store/userStore"
 import { Database } from "@nasti/common/types/database"
 import { queryClient } from "@nasti/common/utils"
 import { useQuery } from "@tanstack/react-query"
-import { booleanContains } from "@turf/boolean-contains"
-import { buffer } from "@turf/buffer"
-import { bbox } from "@turf/bbox"
-import { bboxPolygon } from "@turf/bbox-polygon"
-import { useCallback } from "react"
-import { Geometry } from "wkx"
-import { Feature, GeoJsonProperties, Polygon } from "geojson"
+import { Feature, FeatureCollection, GeometryObject } from "geojson"
 
 type DetailLevel = "high" | "medium" | "low"
+type ResponseFeature = {
+  geometry: GeometryObject
+  name: string
+  code: string
+  id: number
+}
 
 async function getRegionsByDetailLevel(
   detailLevel: DetailLevel,
-  bounds?: [[number, number], [number, number]],
   authToken?: string,
-) {
-  let rpcParams: Database["public"]["Functions"]["get_ibra_regions"]["Args"] = {
-    detail_level: detailLevel,
-  }
-
-  // Only add bounds parameters if bounds are provided
-  if (bounds) {
-    const [[minLng, minLat], [maxLng, maxLat]] = bounds
-    const originalBbox = [minLng, minLat, maxLng, maxLat] as [
-      number,
-      number,
-      number,
-      number,
-    ]
-    const poly = bboxPolygon(originalBbox)
-    const bufferedPoly = buffer(poly, 0.2, { units: "degrees" })
-    const bufferedBbox = bufferedPoly ? bbox(bufferedPoly) : originalBbox
-
-    rpcParams = {
-      ...rpcParams,
-      min_lng: bufferedBbox[0],
-      min_lat: bufferedBbox[1],
-      max_lng: bufferedBbox[2],
-      max_lat: bufferedBbox[3],
+): Promise<FeatureCollection> {
+  const rpcParams: Database["public"]["Functions"]["get_ibra_regions"]["Args"] =
+    {
+      detail_level: detailLevel,
     }
-  }
-  // For medium and low detail levels, bounds parameters remain undefined/null
 
   const response = await fetch("http://localhost:8788/api/get_ibra_regions", {
     method: "POST",
@@ -54,42 +31,84 @@ async function getRegionsByDetailLevel(
       params: rpcParams,
     }),
   })
-  const data: { geometry: Geometry; name: string; code: string }[] =
-    await response.json()
+  const data: ResponseFeature[] = await response.json()
 
   if (!data) throw new Error("Unable to fetch IBRA data")
 
-  return {
+  const featureCol: FeatureCollection = {
     type: "FeatureCollection",
     features: data.map((region) => {
-      return {
+      const id = region.id
+      const result: Feature = {
         type: "Feature",
         geometry: region.geometry,
-        properties: { name: region.name, code: region.code },
+        id,
+        properties: { id, name: region.name, code: region.code },
       }
+      return result
     }),
   }
+  return featureCol
 }
 
-type IbraQueryKeyWithBounds = [
-  string,
-  string,
-  Feature<Polygon, GeoJsonProperties> | undefined,
-]
+async function getRegionsById(
+  ids: number[],
+  authToken?: string,
+): Promise<FeatureCollection> {
+  if (ids.length === 0) return { type: "FeatureCollection", features: [] }
 
-type IbraQueryKey = [string, string] | IbraQueryKeyWithBounds
+  const cachedResults: Feature[] = []
+  const missingIds: number[] = []
+  const detailsQuerys = queryClient.getQueriesData<Feature>({
+    queryKey: ["ibraRegions", "detail"],
+  })
+  ids.forEach((id) => {
+    const cachedQuery = detailsQuerys.find(
+      ([queryKey]) => queryKey.length === 3 && queryKey[2] === id,
+    )
+    if (cachedQuery && cachedQuery[1]) {
+      cachedResults.push(cachedQuery[1])
+    } else {
+      missingIds.push(id)
+    }
+  })
+  if (missingIds.length === 0)
+    return { type: "FeatureCollection", features: cachedResults }
 
-const convertBounds = (
-  bounds: [[number, number], [number, number]],
-): [number, number, number, number] => {
-  const [[swX, swY], [neX, neY]] = bounds
-  return [swX, swY, neX, neY]
+  const response = await fetch("http://localhost:8788/api/get_ibra_regions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+      params: { ids: missingIds },
+    }),
+  })
+  const data: ResponseFeature[] = await response.json()
+
+  if (!data) throw new Error("Unable to fetch IBRA data")
+
+  const features = cachedResults
+  data.map((region) => {
+    const id = region.id
+    const result: Feature = {
+      type: "Feature",
+      geometry: region.geometry,
+      id,
+      properties: { id, name: region.name, code: region.code },
+    }
+    features.push(result)
+    queryClient.setQueryData(["ibraRegions", "detail", id], result)
+  })
+
+  return {
+    type: "FeatureCollection",
+    features,
+  } as FeatureCollection
 }
 
-export const useIbraRegions = (
-  zoomLevel: number,
-  bounds: [[number, number], [number, number]] | undefined,
-) => {
+export const useIbraRegions = (zoomLevel: number, ids?: number[]) => {
   const { session } = useUserStore()
   let geometryColumn: DetailLevel = "low"
 
@@ -99,52 +118,18 @@ export const useIbraRegions = (
     geometryColumn = "medium"
   }
 
-  const queryBounds = geometryColumn === "high" ? bounds : undefined
-
-  // Find a cached query that contains the current bounds
-  const findCachedParentQuery = useCallback((): IbraQueryKey => {
-    if (!queryBounds) {
-      return ["ibraRegions", geometryColumn]
-    }
-    // Get all cached queries for this detail level
-    const cachedQueries = queryClient.getQueryCache().findAll({
-      queryKey: ["ibraRegions", geometryColumn],
-    })
-
-    const queryBoundsBbox = bboxPolygon(convertBounds(queryBounds))
-    // Check each cached query to see if it contains our bounds
-    for (const query of cachedQueries) {
-      const key = query.queryKey as IbraQueryKey
-
-      // If the cached query has bounds
-      if (key.length === 3) {
-        const cachedBounds = key[2]
-        if (!cachedBounds) {
-          // No suitable cached query found, use new bounds
-          return ["ibraRegions", geometryColumn, queryBoundsBbox]
-        }
-
-        // Check if current bounds fit within cached bounds
-        if (booleanContains(cachedBounds, queryBoundsBbox)) {
-          return key // Reuse this cached query
-        }
-      }
-    }
-
-    // No suitable cached query found, use new bounds
-    return ["ibraRegions", geometryColumn, queryBoundsBbox]
-  }, [queryBounds, geometryColumn])
-
-  const queryKey = findCachedParentQuery()
+  // if ids provided, look for cached query with ids
+  const queryByIds = ids && ids.length > 0 && geometryColumn === "high"
+  const queryKey = queryByIds
+    ? ["ibraRegions", "byIdList", ids]
+    : ["ibraRegions", geometryColumn]
 
   return useQuery({
     queryKey,
     queryFn: () =>
-      getRegionsByDetailLevel(
-        geometryColumn,
-        queryBounds,
-        session?.access_token,
-      ),
+      queryByIds
+        ? getRegionsById(ids, session?.access_token)
+        : getRegionsByDetailLevel(geometryColumn, session?.access_token),
     refetchOnMount: false,
     staleTime: Infinity,
     throwOnError: false,
