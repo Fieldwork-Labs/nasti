@@ -3,3 +3,6 @@
 /node_modules
 # Sentry Config File
 .env.sentry-build-plugin
+
+# cloudflare functions env vars
+.dev.vars
