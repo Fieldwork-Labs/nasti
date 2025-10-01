@@ -157,14 +157,6 @@ function InventoryPage() {
     setSplittingBatch(batch)
   }
 
-  const handleMerge = (_batch: BatchWithCurrentLocationAndSpecies) => {
-    // TODO: Implement batch merging
-    toast({
-      description: "Batch merging not yet implemented",
-      variant: "destructive",
-    })
-  }
-
   const handleStorageMove = (batch: BatchWithCurrentLocationAndSpecies) => {
     setStorageMoveBatch(batch)
   }
@@ -192,7 +184,7 @@ function InventoryPage() {
             </p>
           </div>
           <Button
-            className="gap-2"
+            className="cursor-pointer gap-2"
             onClick={() => setShowCreateBatchModal(true)}
           >
             <Plus className="h-4 w-4" />
@@ -297,7 +289,6 @@ function InventoryPage() {
                           onEdit={handleEdit}
                           onDelete={handleDelete}
                           onSplit={handleSplit}
-                          onMerge={handleMerge}
                           onStorageMove={handleStorageMove}
                         />
                       ))}

@@ -195,3 +195,7 @@ SELECT pg_catalog.setval('"supabase_functions"."hooks_id_seq"', 1, false);
 --
 
 RESET ALL;
+
+
+-- automatically run the load ibra regions function
+SELECT load_ibra7_regions_paginated();
