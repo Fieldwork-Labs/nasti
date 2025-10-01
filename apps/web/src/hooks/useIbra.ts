@@ -21,7 +21,7 @@ async function getRegionsByDetailLevel(
       detail_level: detailLevel,
     }
 
-  const response = await fetch("http://localhost:8788/api/get_ibra_regions", {
+  const response = await fetch("/api/get_ibra_regions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -75,7 +75,7 @@ async function getRegionsById(
   if (missingIds.length === 0)
     return { type: "FeatureCollection", features: cachedResults }
 
-  const response = await fetch("http://localhost:8788/api/get_ibra_regions", {
+  const response = await fetch("/api/get_ibra_regions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
