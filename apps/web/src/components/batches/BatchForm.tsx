@@ -251,23 +251,22 @@ export const BatchForm = ({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent
-            className="min-w-[--radix-popper-available-width] p-0"
-            align="start"
-          >
+          <PopoverContent className="w-full p-0" align="start">
             {/* this filter prop is required to prevent Command from doing its own filtering */}
             <Command filter={() => 1}>
               <CommandInput
+                className="cursor-pointer"
                 placeholder="Search collections..."
                 value={collectionSearchTerm}
                 onValueChange={setCollectionSearchTerm}
               />
-              <CommandList>
+              <CommandList className="w-[--cmdk-root-width]">
                 <CommandEmpty>No collections found.</CommandEmpty>
-                <CommandGroup>
+                <CommandGroup className="w-[--cmdk-input-width]">
                   {collections?.map(
                     (collection: CollectionWithSpeciesAndTrip) => (
                       <CommandItem
+                        className="w-[--cmdk-list-width] cursor-pointer"
                         key={collection.id}
                         value={collection.id}
                         onSelect={() => {
@@ -391,11 +390,8 @@ export const BatchForm = ({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent
-            className="w-[--radix-popover-trigger-width] p-0"
-            align="start"
-          >
-            <Command>
+          <PopoverContent className="w-full p-0" align="start">
+            <Command filter={() => 1}>
               <CommandInput
                 placeholder="Search storage locations..."
                 value={storageLocationSearchTerm}
