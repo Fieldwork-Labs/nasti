@@ -32,6 +32,7 @@ vi.mock("@nasti/common/supabase", () => {
 
 const mockCollection = {
   id: "someId",
+  code: "someCode",
   species_id: "3ef49a8c-c020-4418-b3ef-9efbc9a80d57",
   species_uncertain: false,
   field_name: "Old Field Name",

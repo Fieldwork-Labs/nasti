@@ -1,4 +1,4 @@
-import { Database } from "./database"
+import { Database, TablesInsert, TablesUpdate } from "./database"
 
 type Table<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Row"]
@@ -14,7 +14,12 @@ export type Collection = Table<"collection"> & { location: string | null }
 export type CollectionWithCoord = Collection & {
   locationCoord?: { latitude: number; longitude: number }
 }
-export type NewCollection = Collection & { photos: { new: File[] } }
+export type NewCollection = TablesInsert<"collection"> & {
+  location: string
+}
+// TablesUpdate includes the id field as optional but it should really be requirec
+export type UpdateCollection = TablesUpdate<"collection"> & { id: string }
+
 export type CollectionPhoto = Table<"collection_photo">
 export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">

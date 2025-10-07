@@ -20,7 +20,7 @@ import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
-import { Collection } from "@nasti/common/types"
+import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import {
   UploadPhotoVariables,
@@ -150,7 +150,7 @@ function AddCollection() {
       if (!location) throw new Error("No location available")
       const { latitude, longitude } = location
       const locationPoint = `POINT(${longitude} ${latitude})`
-      const newCollection: Collection = {
+      const newCollection: NewCollection = {
         ...data,
         species_uncertain:
           data.species_uncertain || data.field_name.trim().length > 0,
