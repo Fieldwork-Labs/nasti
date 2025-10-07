@@ -10,7 +10,7 @@ import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ROLE } from "@nasti/common/types"
+import { ROLE, UpdateCollection } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -160,7 +160,7 @@ function CollectionForm() {
       const { latitude, longitude, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
       console.log({ locationPoint })
-      const payload = {
+      const payload: UpdateCollection = {
         id: collectionIdRef.current,
         trip_id: tripId,
         organisation_id: org.organisation_id,

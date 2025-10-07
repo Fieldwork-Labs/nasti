@@ -1,4 +1,8 @@
-import { CollectionWithCoord, type Collection } from "@nasti/common/types"
+import {
+  CollectionWithCoord,
+  NewCollection,
+  type Collection,
+} from "@nasti/common/types"
 
 import { supabase } from "@nasti/common/supabase"
 
@@ -8,15 +12,16 @@ import { queryClient } from "@/lib/queryClient"
 import { useCallback } from "react"
 import { parsePostGISPoint } from "@nasti/common/utils"
 
-const createCollection = async (createdItem: Collection) => {
+const createCollection = async (createdItem: NewCollection) => {
   const query = supabase.from("collection").insert(createdItem)
 
-  const { data, error } = await query.select("*").single()
+  const { data: collection, error } = await query
+    .select("*")
+    .single()
+    .overrideTypes<Collection>()
 
   if (error) throw new Error(error.message)
-  if (!data) throw new Error("No data returned from collection upsert")
-
-  const collection = data as Collection
+  if (!collection) throw new Error("No data returned from collection upsert")
 
   return collection
 }
@@ -24,7 +29,7 @@ const createCollection = async (createdItem: Collection) => {
 export const getMutationKey = (tripId?: string) => ["createCollection", tripId]
 
 export const useCollectionCreate = ({ tripId }: { tripId: string }) => {
-  const mutation = useMutation<Collection, unknown, Collection>({
+  const mutation = useMutation<Collection, unknown, NewCollection>({
     mutationKey: getMutationKey(tripId),
     mutationFn: (createdItem) => createCollection(createdItem),
     onMutate: (variable) => {
@@ -32,8 +37,10 @@ export const useCollectionCreate = ({ tripId }: { tripId: string }) => {
       const queryKey = ["trip", "details", variable.trip_id]
       const tripQuery = queryClient.getQueryData<TripDetails>(queryKey)
       if (!tripQuery) throw new Error("Unknown trip")
-
-      const pendingCollection: CollectionWithCoord = { ...variable }
+      type InsertCollectionWithCoord = NewCollection & {
+        locationCoord?: { latitude: number; longitude: number }
+      }
+      const pendingCollection: InsertCollectionWithCoord = { ...variable }
 
       if (variable.location) {
         const innerString = variable.location.substring(
@@ -59,7 +66,7 @@ export const useCollectionCreate = ({ tripId }: { tripId: string }) => {
       )
 
       if (variable.species_id) {
-        queryClient.setQueryData<Collection[]>(
+        queryClient.setQueryData<Array<Collection | NewCollection>>(
           ["collections", "bySpecies", pendingCollection.species_id],
           (oldData) => {
             if (!oldData) return [pendingCollection]

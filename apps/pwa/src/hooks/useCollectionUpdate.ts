@@ -1,4 +1,8 @@
-import { CollectionWithCoord, type Collection } from "@nasti/common/types"
+import {
+  CollectionWithCoord,
+  UpdateCollection,
+  type Collection,
+} from "@nasti/common/types"
 
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/queryClient"
@@ -7,7 +11,7 @@ import { TripDetails } from "./useHydrateTripDetails"
 import { parsePostGISPoint } from "@nasti/common/utils"
 import { getMutationKey } from "./useCollectionCreate"
 
-const updateCollection = async (updatedItem: Collection) => {
+const updateCollection = async (updatedItem: UpdateCollection) => {
   const query = supabase
     .from("collection")
     .upsert(updatedItem)
@@ -22,7 +26,7 @@ const updateCollection = async (updatedItem: Collection) => {
 }
 
 export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
-  return useMutation<Collection, unknown, Collection>({
+  return useMutation<Collection, unknown, UpdateCollection>({
     mutationKey: getMutationKey(tripId),
     mutationFn: (updatedItem) => updateCollection(updatedItem),
     onMutate: (variables) => {
@@ -50,7 +54,7 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
       )
 
       if (variables.species_id) {
-        queryClient.setQueryData<Collection[]>(
+        queryClient.setQueryData<Array<Collection | UpdateCollection>>(
           ["collections", "bySpecies", variables.species_id],
           (oldData) => {
             if (!oldData || oldData.length === 0) return [variables]

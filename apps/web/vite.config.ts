@@ -13,6 +13,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    watch: {
+      ignored: ["**/.wrangler/**", "**/node_modules/**"],
+    },
+  },
   test: {
     setupFiles: ["vitest-localstorage-mock"],
     mockReset: false,

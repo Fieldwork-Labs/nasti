@@ -4,7 +4,7 @@ import {
   OccurrencesQueryResponse,
   UseALAOccurrencesResult,
 } from "./types"
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 
 const BASE_URL = "https://api.ala.org.au/occurrences"
 
@@ -15,11 +15,13 @@ type UseALAOccurrencesOptions = {
   lng?: number
   radius?: number
   maxResults?: number
+  pageSize?: number
 }
 
 export const useALAOccurrencesByLocation = ({
   radius = 50,
-  maxResults,
+  maxResults = 5000, // the max allowed by ALA, greater than this causes buggy behaviour
+  pageSize = ITEMS_PER_PAGE,
   lat,
   lng,
 }: UseALAOccurrencesOptions): UseALAOccurrencesResult => {
@@ -48,10 +50,11 @@ export const useALAOccurrencesByLocation = ({
         lon: lng.toString(),
         radius: (radius ?? 50).toString(),
         start: pageParam.toString(),
-        pageSize: ITEMS_PER_PAGE.toString(),
+        pageSize: pageSize.toString(),
         fl: "scientificName,taxonConceptID,raw_occurrenceRemarks,stateConservation,decimalLatitude,decimalLongitude,year",
       })
       params.append("fq", "country:Australia")
+      params.append("fq", `taxonRank:"species" OR taxonRank:"subspecies"`)
 
       const response = await fetch(
         `${BASE_URL}/occurrences/search/?${params.toString()}`,
@@ -66,11 +69,14 @@ export const useALAOccurrencesByLocation = ({
     },
     getNextPageParam: (prevPage) => {
       if (!prevPage) return undefined
+      if (prevPage.occurrences.length === 0) {
+        return undefined
+      }
 
       const nextStartIndex = prevPage.startIndex + prevPage.pageSize
       if (maxResults) {
         const endIndex = Math.min(prevPage.totalRecords, maxResults)
-        return nextStartIndex < endIndex ? nextStartIndex : null
+        return nextStartIndex < endIndex ? nextStartIndex : undefined
       }
       return nextStartIndex < prevPage.totalRecords ? nextStartIndex : undefined
     },
@@ -79,11 +85,14 @@ export const useALAOccurrencesByLocation = ({
   })
 
   // Combine all occurrences from all fetched pages
-  const occurrences =
-    data?.pages.reduce<Occurrence[]>(
-      (acc, page) => [...acc, ...(page ? page.occurrences : [])],
-      [],
-    ) ?? []
+  const occurrences = useMemo(
+    () =>
+      data?.pages.reduce<Occurrence[]>(
+        (acc, page) => [...acc, ...(page ? page.occurrences : [])],
+        [],
+      ) ?? [],
+    [data],
+  )
 
   const fetchAll = useCallback(async () => {
     // keep fetching em
