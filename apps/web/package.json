@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev --proxy=5174 -- pnpm run dev:vite",
+    "dev": "wrangler pages dev --compatibility-date=2025-09-27 --proxy=5173 -- pnpm run dev:vite",
     "dev:vite": "vite --clearScreen false",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
