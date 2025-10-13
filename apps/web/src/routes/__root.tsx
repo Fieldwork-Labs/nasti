@@ -136,9 +136,14 @@ const RootComponent = () => {
                   )}
                 </Link>
                 {session && (
-                  <Link to="/trips" className="text-lead">
-                    My Trips
-                  </Link>
+                  <>
+                    <Link to="/trips" className="text-lead">
+                      Trips
+                    </Link>
+                    <Link to="/inventory" className="text-lead">
+                      Inventory
+                    </Link>
+                  </>
                 )}
               </div>
               {/* Right side - User Menu */}
