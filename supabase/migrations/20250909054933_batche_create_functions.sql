@@ -38,6 +38,22 @@ BEGIN
     RAISE EXCEPTION 'Permission denied: not a member of the custodian organisation';
   END IF;
 
+  -- Validate that all batches share the same collection_id
+  SELECT COUNT(DISTINCT collection_id) = 1
+  INTO v_same
+  FROM batches
+  WHERE id = ANY (p_source_batch_ids);
+
+  IF NOT v_same THEN
+    RAISE EXCEPTION 'All batches must be derived from the same collection';
+  END IF;
+
+  -- Get collection_id for the new batch
+  SELECT DISTINCT collection_id
+  INTO v_collection
+  FROM batches
+  WHERE id = ANY (p_source_batch_ids);
+
   -- Get collection and aggregate properties from source batches
   SELECT 
       SUM(weight_grams),
@@ -56,9 +72,9 @@ BEGIN
 
  
   INSERT INTO batches (
-    id, 
-    collection_id, 
-    organisation_id, 
+    id,
+    collection_id,
+    organisation_id,
     weight_grams,
     is_extracted,
     is_treated,
@@ -67,9 +83,9 @@ BEGIN
     notes
   )
   VALUES (
-    gen_random_uuid(), 
-    null, 
-    v_org, 
+    gen_random_uuid(),
+    v_collection,
+    v_org,
     v_total_weight,
     COALESCE(p_is_extracted, v_all_extracted),
     COALESCE(p_is_treated, v_all_treated),

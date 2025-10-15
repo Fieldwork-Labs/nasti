@@ -66,6 +66,7 @@ export type BatchWithCurrentLocationAndSpecies = Batch & {
   collection: {
     id: string
     field_name: string
+    code: string
   }
 }
 
@@ -83,7 +84,8 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
           ),
           collection!inner(
             id,
-            field_name
+            field_name,
+            code
           ),
           species:collection(...species(id, name))
         `,

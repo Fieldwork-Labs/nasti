@@ -3,7 +3,6 @@ import { Modal } from "@nasti/ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parseWkbPoint } from "@nasti/common/utils"
-import { Collection } from "@nasti/common/types"
 import { SpeciesListItem } from "@/routes/_private/species"
 import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
@@ -33,6 +32,7 @@ import {
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 import { formatDuration } from "@/lib/duration"
+import { useCollection } from "@/hooks/useCollection"
 
 const PhotosTab = ({
   photos,
@@ -91,16 +91,17 @@ const EditButtons = ({
 )
 
 export const CollectionDetailModal = ({
-  collection,
+  id,
   open,
   onClose,
 }: {
-  collection?: Collection
+  id: string
   open: boolean
   onClose: () => void
 }) => {
   const { isAdmin } = useUserStore()
   const { pathname } = useLocation()
+  const { data: collection } = useCollection(id)
   // Parse location coordinates
   const coordinates = useMemo(() => {
     if (!collection?.location) return null

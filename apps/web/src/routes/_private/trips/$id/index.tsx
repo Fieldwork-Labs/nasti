@@ -30,7 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { Map, Marker } from "react-map-gl"
 import { SpeciesListItem } from "../../species"
 
-import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 import { AddScoutingNoteWizardModal } from "@/components/scoutingNotes/ScoutingNoteFormModal"
 import { ScoutingNoteListItem } from "@/components/scoutingNotes/ScoutingNoteListItem"
@@ -406,7 +406,7 @@ const CollectionsList = ({
         {isLoading && <Spinner />}
         {!collections || (collections.length === 0 && "No collections yet")}
         {collections?.map((coll) => (
-          <CollectionListItem
+          <CollectionListItemWithModal
             key={coll.id}
             id={coll.id}
             onHover={setItemHovered}

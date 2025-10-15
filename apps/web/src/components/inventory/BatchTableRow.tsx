@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ChevronDown,
   ChevronRight,
@@ -13,10 +13,11 @@ import {
   Plus,
   Minus,
   X,
+  ShoppingBag,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
-import { useToast } from "@nasti/ui/hooks"
+import { useOpenClose, useToast } from "@nasti/ui/hooks"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,14 @@ import type { BatchWithCurrentLocationAndSpecies } from "../../hooks/useBatches"
 import { useBatchDetail } from "../../hooks/useBatches"
 import { useCurrentBatchStorage } from "../../hooks/useBatchStorage"
 import { cn } from "@nasti/ui/utils"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@nasti/ui/tooltip"
+import { CollectionListItem } from "../collections/CollectionListItem"
+import { CollectionDetailModal } from "../collections/CollectionDetailModal"
 
 type BatchTableRowProps = {
   batch: BatchWithCurrentLocationAndSpecies
@@ -53,6 +62,36 @@ type BatchTableRowProps = {
   }
 }
 
+const BatchCollectionField = ({
+  batch,
+}: {
+  batch: BatchWithCurrentLocationAndSpecies
+}) => {
+  const { open, isOpen, close } = useOpenClose()
+  return (
+    <>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 text-blue-600" />
+              <span className="font-mono text-sm">{batch.collection.code}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="p-0">
+            <CollectionListItem id={batch.collection_id} onClick={open} />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <CollectionDetailModal
+        id={batch.collection_id}
+        open={isOpen}
+        onClose={close}
+      />
+    </>
+  )
+}
+
 export const BatchTableRow = ({
   batch,
   onEdit,
@@ -68,6 +107,10 @@ export const BatchTableRow = ({
 
   const { data: _, isLoading: detailLoading } = useBatchDetail(batch.id)
   const { data: currentStorage } = useCurrentBatchStorage(batch.id)
+
+  useEffect(() => {
+    if (mergeMode?.isActive) setIsExpanded(false)
+  }, [mergeMode?.isActive])
 
   const handleDelete = () => {
     onDelete?.(batch.id)
@@ -88,7 +131,8 @@ export const BatchTableRow = ({
           mergeMode?.isSelected &&
             mergeMode?.canMerge &&
             "bg-accent/20 border-accent/40",
-          mergeDisabled && "bg-muted-foreground/20 border-transparent",
+          mergeDisabled &&
+            "bg-muted-foreground/20 text-primary-foreground/40 border-transparent",
 
           mergeMode?.isInitiating && "bg-accent/40 border-accent/60",
           className,
@@ -126,18 +170,13 @@ export const BatchTableRow = ({
         </td>
 
         <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-blue-600" />
-            <span className="font-mono text-sm">
-              {batch.collection_id.slice(0, 8)}...
-            </span>
-          </div>
+          <BatchCollectionField batch={batch} />
         </td>
 
         <td className="px-4 py-3">
           {currentStorage ? (
             <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-orange-600" />
+              <Package className="h-4 w-4 text-orange-600" />
               <span className="text-sm">{currentStorage.location?.name}</span>
             </div>
           ) : (
