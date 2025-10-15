@@ -29,11 +29,9 @@ import {
   useCurrentBatchStorage,
   useCreateStorageRecord,
 } from "@/hooks/useBatchStorage"
-import type { Batch, StorageLocation } from "@nasti/common/types"
+import type { StorageLocation } from "@nasti/common/types"
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { cn } from "@nasti/ui/utils"
-
-// Generate unique IDs for form management
-const generateId = () => Math.random().toString(36).slice(2, 11)
 
 // Child Storage Location Selector Component
 type ChildStorageLocationSelectorProps = {
@@ -142,14 +140,14 @@ const batchSplitSchema = z.object({
         storage_location_id: z.string().optional(),
       }),
     )
-    .min(2, "Must have at least 2 children")
+    .min(1, "Must have at least 1 children")
     .max(5, "Maximum 5 children allowed"),
 })
 
 type BatchSplitFormData = z.infer<typeof batchSplitSchema>
 
 type BatchSplitFormProps = {
-  parentBatch: Batch
+  parentBatch: BatchWithCurrentLocationAndSpecies
   onSuccess?: () => void
   onCancel?: () => void
   className?: string
@@ -166,23 +164,29 @@ export const BatchSplitForm = ({
   const createStorage = useCreateStorageRecord()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Get current weight (use weight_info if available, otherwise original weight)
+  const currentWeight =
+    parentBatch.weights?.current_weight ?? parentBatch.weight_grams
+  const originalWeight =
+    parentBatch.weights?.original_weight ?? parentBatch.weight_grams
+
   // Fetch data
   const { data: storageLocations } = useStorageLocations()
   const { data: currentBatchStorage } = useCurrentBatchStorage(parentBatch.id)
 
-  // Form setup with initial 2 children
+  // Form setup with initial 2 children (default to splitting current weight in half)
   const form = useForm<BatchSplitFormData>({
     resolver: zodResolver(batchSplitSchema),
     defaultValues: {
       children: [
         {
-          id: generateId(),
-          weight_grams: parentBatch.weight_grams,
+          id: crypto.randomUUID(),
+          weight_grams: Math.floor(currentWeight / 2),
           storage_location_id: "",
         },
         {
-          id: generateId(),
-          weight_grams: 0,
+          id: crypto.randomUUID(),
+          weight_grams: Math.ceil(currentWeight / 2),
           storage_location_id: "",
         },
       ],
@@ -213,68 +217,21 @@ export const BatchSplitForm = ({
     (sum, child) => sum + (Number(child.weight_grams) || 0),
     0,
   )
-  const isValidTotal = totalWeight === parentBatch.weight_grams
-  const remainingWeight = parentBatch.weight_grams - totalWeight
+  // Allow partial splits - total can be <= current weight
+  const isValidTotal = totalWeight > 0 && totalWeight <= currentWeight
+  const remainingWeight = currentWeight - totalWeight
 
-  // Weight redistribution logic
-  const updateChildWeight = (index: number, newWeight: number) => {
-    const currentChildren = form.getValues("children")
-
-    if (index === 0) {
-      // When first child changes, distribute remaining weight proportionally among others
-      const remainingForOthers = parentBatch.weight_grams - newWeight
-      const otherChildren = currentChildren.slice(1)
-      const otherChildrenTotal = otherChildren.reduce(
-        (sum, child) => sum + Number(child.weight_grams),
-        0,
-      )
-
-      if (otherChildrenTotal > 0 && remainingForOthers >= 0) {
-        // Proportionally redistribute
-        otherChildren.forEach((child, otherIndex) => {
-          const proportion = Number(child.weight_grams) / otherChildrenTotal
-          const newOtherWeight = Math.round(remainingForOthers * proportion)
-          form.setValue(
-            `children.${otherIndex + 1}.weight_grams`,
-            Math.max(0, newOtherWeight),
-          )
-        })
-      } else if (remainingForOthers >= 0) {
-        // Equal distribution among other children
-        const perChild = Math.floor(remainingForOthers / otherChildren.length)
-        const remainder = remainingForOthers % otherChildren.length
-
-        otherChildren.forEach((_, otherIndex) => {
-          const additionalWeight = otherIndex < remainder ? 1 : 0
-          form.setValue(
-            `children.${otherIndex + 1}.weight_grams`,
-            perChild + additionalWeight,
-          )
-        })
-      }
-    } else {
-      // When any other child changes, update first child to balance
-      const otherChildrenSum = currentChildren
-        .slice(1)
-        .reduce((sum, child, childIndex) => {
-          return (
-            sum +
-            (childIndex === index - 1 ? newWeight : Number(child.weight_grams))
-          )
-        }, 0)
-
-      const newFirstWeight = parentBatch.weight_grams - otherChildrenSum
-      if (newFirstWeight >= 0) {
-        form.setValue("children.0.weight_grams", newFirstWeight)
-      }
-    }
+  // Weight redistribution logic (no longer auto-balancing to allow partial splits)
+  const updateChildWeight = (_index: number, _newWeight: number) => {
+    // Remove auto-balancing logic to allow flexible partial splits
+    // Users can manually adjust weights as needed
   }
 
   // Add new child
   const addChild = () => {
     if (fields.length < 5) {
       const newChild = {
-        id: generateId(),
+        id: crypto.randomUUID(),
         weight_grams: 0,
         storage_location_id: currentBatchStorage?.location_id || "",
       }
@@ -282,28 +239,19 @@ export const BatchSplitForm = ({
     }
   }
 
-  // Remove child and redistribute weight
+  // Remove child (no weight redistribution for partial splits)
   const removeChild = (index: number) => {
-    if (fields.length > 2) {
-      const removedWeight = form.getValues(`children.${index}.weight_grams`)
-      remove(index)
-
-      // Add removed weight to first child
-      setTimeout(() => {
-        const firstChildWeight = form.getValues("children.0.weight_grams")
-        form.setValue(
-          "children.0.weight_grams",
-          firstChildWeight + removedWeight,
-        )
-      }, 0)
-    }
+    if (fields.length > 1) remove(index)
   }
 
   // Handle form submission
   const onSubmit = async (data: BatchSplitFormData) => {
     if (!isValidTotal) {
       toast({
-        description: "Total weight must equal parent batch weight",
+        description:
+          totalWeight > currentWeight
+            ? `Total weight (${totalWeight}g) exceeds current batch weight (${currentWeight}g)`
+            : "Total weight must be greater than 0",
         variant: "destructive",
       })
       return
@@ -374,10 +322,13 @@ export const BatchSplitForm = ({
             Split Batch {parentBatch.id.slice(0, 8)}...
           </h3>
         </div>
-        <p className="text-muted-foreground text-sm">
-          Parent Weight: {parentBatch.weight_grams}g → Split into{" "}
-          {fields.length} children
-        </p>
+        <div className="text-muted-foreground space-y-1 text-sm">
+          <p>Current Weight: {currentWeight}g</p>
+          {currentWeight !== originalWeight && (
+            <p className="text-xs">Original Weight: {originalWeight}g</p>
+          )}
+          <p>Splitting into {fields.length} children</p>
+        </div>
       </div>
 
       {/* Child Batch Fieldsets */}
@@ -394,8 +345,8 @@ export const BatchSplitForm = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => removeChild(index)}
-                  disabled={fields.length <= 2}
-                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                  disabled={fields.length <= 1}
+                  className="h-8 w-8 cursor-pointer p-0 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -406,7 +357,7 @@ export const BatchSplitForm = ({
                   <Input
                     type="number"
                     min="0"
-                    max={parentBatch.weight_grams}
+                    max={currentWeight}
                     placeholder="Weight in grams"
                     {...form.register(`children.${index}.weight_grams`, {
                       onChange: (e) =>
@@ -430,7 +381,7 @@ export const BatchSplitForm = ({
                     style={{
                       width: `${Math.min(
                         ((Number(watchedChildren[index]?.weight_grams) || 0) /
-                          parentBatch.weight_grams) *
+                          currentWeight) *
                           100,
                         100,
                       )}%`,
@@ -477,28 +428,44 @@ export const BatchSplitForm = ({
 
       {/* Weight Summary */}
       <Card
-        className={`text-primary p-4 ${isValidTotal ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}
+        className={`text-primary p-4 ${
+          isValidTotal
+            ? remainingWeight > 0
+              ? "border-blue-200 bg-blue-50"
+              : "border-green-200 bg-green-50"
+            : "border-red-200 bg-red-50"
+        }`}
       >
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium">
-              Total Weight: {totalWeight}g / {parentBatch.weight_grams}g
+              Total Children Weight: {totalWeight}g / {currentWeight}g
             </p>
-            {remainingWeight !== 0 && (
-              <p className="text-sm">
-                {remainingWeight > 0 ? "Remaining" : "Excess"}:{" "}
-                {Math.abs(remainingWeight)}g
+            {remainingWeight > 0 && isValidTotal && (
+              <p className="text-muted-foreground text-xs">
+                {remainingWeight}g will remain in parent batch
+              </p>
+            )}
+            {remainingWeight < 0 && (
+              <p className="text-sm text-red-700">
+                Excess: {Math.abs(remainingWeight)}g
               </p>
             )}
           </div>
           <div className="flex items-center gap-2">
             {isValidTotal ? (
-              <span className="text-sm font-medium text-green-700">
-                ✓ Weights match
-              </span>
+              remainingWeight > 0 ? (
+                <span className="text-sm font-medium text-blue-700">
+                  ✓ Partial split
+                </span>
+              ) : (
+                <span className="text-sm font-medium text-green-700">
+                  ✓ Full split
+                </span>
+              )
             ) : (
               <span className="text-sm font-medium text-red-700">
-                ⚠ Weight mismatch
+                ⚠ Invalid weight
               </span>
             )}
           </div>
