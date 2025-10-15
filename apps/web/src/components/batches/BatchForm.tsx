@@ -59,10 +59,12 @@ const CollectionDisplay = ({
 }) => {
   return (
     <span className="truncate">
-      {collection.species?.name ||
-        collection.field_name ||
-        `Collection ${collection.id.slice(0, 8)}`}{" "}
-      - {collection.trip?.name}
+      {collection.code} -{" "}
+      {collection.species?.name ? (
+        <span className="italic">{collection.species?.name}</span>
+      ) : (
+        <>{collection.field_name}</>
+      )}
     </span>
   )
 }
@@ -88,11 +90,21 @@ export const BatchForm = ({
   const [storageLocationSearchTerm, setStorageLocationSearchTerm] = useState("")
 
   // Hooks for data fetching
-  const { data: collections } = useCollections({
-    page: 0, // Start from page 0
-    limit: 100, // Get enough collections for the dropdown
-    searchTerm: collectionSearchTerm || undefined, // Use search term for filtering
-  })
+  const { data: collections, isLoading: isLoadingCollections } = useCollections(
+    {
+      page: 0, // Start from page 0
+      limit: 100, // Get enough collections for the dropdown
+      searchTerm: collectionSearchTerm || undefined, // Use search term for filtering
+    },
+  )
+
+  const [collectionsMemory, setCollectionsMemory] = useState<
+    CollectionWithSpeciesAndTrip[]
+  >([])
+  useEffect(() => {
+    if (!isLoadingCollections) setCollectionsMemory(collections ?? [])
+  }, [collections, isLoadingCollections])
+
   const { data: storageLocations } = useStorageLocations()
   const { data: currentBatchStorage } = useCurrentBatchStorage(batch?.id || "")
 
@@ -147,7 +159,7 @@ export const BatchForm = ({
   )
 
   // Get selected items
-  const selectedCollection = collections?.find(
+  const selectedCollection = collectionsMemory?.find(
     (c: CollectionWithSpeciesAndTrip) => c.id === form.watch("collection_id"),
   )
   const selectedStorageLocation = storageLocations?.find(
@@ -251,7 +263,10 @@ export const BatchForm = ({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-0" align="start">
+          <PopoverContent
+            className="w-[var(--radix-popover-trigger-width)] p-0"
+            align="start"
+          >
             {/* this filter prop is required to prevent Command from doing its own filtering */}
             <Command filter={() => 1}>
               <CommandInput
@@ -260,10 +275,10 @@ export const BatchForm = ({
                 value={collectionSearchTerm}
                 onValueChange={setCollectionSearchTerm}
               />
-              <CommandList className="w-[--cmdk-root-width]">
+              <CommandList>
                 <CommandEmpty>No collections found.</CommandEmpty>
-                <CommandGroup className="w-[--cmdk-input-width]">
-                  {collections?.map(
+                <CommandGroup className="w-[--radix-popper-anchor-width]">
+                  {collectionsMemory.map(
                     (collection: CollectionWithSpeciesAndTrip) => (
                       <CommandItem
                         className="w-[--cmdk-list-width] cursor-pointer"
@@ -274,9 +289,7 @@ export const BatchForm = ({
                           setCollectionSearchOpen(false)
                         }}
                       >
-                        <div className="flex flex-col">
-                          <CollectionDisplay collection={collection} />
-                        </div>
+                        <CollectionDisplay collection={collection} />
                       </CommandItem>
                     ),
                   )}

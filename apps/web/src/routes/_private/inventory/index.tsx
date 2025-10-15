@@ -59,8 +59,7 @@ function InventoryPage() {
   // Merge mode state
   const [mergeState, setMergeState] = useState<{
     isActive: boolean
-    initiatingBatchId: string
-    allowedBatchSpecies: string | null
+    initiatingBatch: BatchWithCurrentLocationAndSpecies
     selectedBatchIds: string[]
   } | null>(null)
   const [showMergeModal, setShowMergeModal] = useState(false)
@@ -180,8 +179,7 @@ function InventoryPage() {
   const handleMerge = (batch: BatchWithCurrentLocationAndSpecies) => {
     setMergeState({
       isActive: true,
-      initiatingBatchId: batch.id,
-      allowedBatchSpecies: batch.species?.id ?? null,
+      initiatingBatch: batch,
       selectedBatchIds: [batch.id],
     })
   }
@@ -378,21 +376,20 @@ function InventoryPage() {
                           onDelete={handleDelete}
                           onSplit={handleSplit}
                           onStorageMove={handleStorageMove}
+                          onMerge={handleMerge}
                           mergeMode={
                             mergeState
                               ? {
                                   isActive: mergeState.isActive,
                                   isInitiating:
-                                    batch.id === mergeState.initiatingBatchId,
+                                    batch.id === mergeState.initiatingBatch.id,
                                   isSelected:
                                     mergeState.selectedBatchIds.includes(
                                       batch.id,
                                     ),
                                   canMerge:
-                                    batch.species?.id ===
-                                      mergeState.allowedBatchSpecies ||
-                                    (mergeState.allowedBatchSpecies === null &&
-                                      Boolean(batch.species) === false),
+                                    batch.collection_id ===
+                                    mergeState.initiatingBatch.collection_id,
                                   onAddToMerge: () =>
                                     handleAddToMerge(batch.id),
                                   onRemoveFromMerge: () =>
