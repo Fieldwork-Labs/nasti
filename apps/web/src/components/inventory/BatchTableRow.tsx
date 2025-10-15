@@ -6,7 +6,6 @@ import {
   Trash2,
   Split,
   Merge,
-  MapPin,
   Calendar,
   Package,
   Leaf,
@@ -16,7 +15,6 @@ import {
   ShoppingBag,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
-import { Badge } from "@nasti/ui/badge"
 import { useOpenClose, useToast } from "@nasti/ui/hooks"
 import {
   AlertDialog,
@@ -174,16 +172,27 @@ export const BatchTableRow = ({
         </td>
 
         <td className="px-4 py-3">
-          {currentStorage ? (
+          {currentStorage && (
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-orange-600" />
               <span className="text-sm">{currentStorage.location?.name}</span>
             </div>
-          ) : (
-            <Badge variant="outline" className="text-xs">
-              Not stored
-            </Badge>
           )}
+        </td>
+
+        <td className="px-4 py-3 text-right">
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-sm font-medium">
+              {batch.weights?.current_weight}
+            </span>
+            {batch.weights &&
+              batch.weights.current_weight !==
+                batch.weights.original_weight && (
+                <span className="text-muted-foreground text-xs">
+                  of {batch.weights.original_weight}
+                </span>
+              )}
+          </div>
         </td>
 
         <td className="px-4 py-3">
@@ -277,7 +286,7 @@ export const BatchTableRow = ({
                     disabled={mergeDisabled}
                     onClick={() => onStorageMove?.(batch)}
                   >
-                    <MapPin className="h-4 w-4" />
+                    <Package className="h-4 w-4" />
                   </Button>
 
                   <AlertDialog>
@@ -320,7 +329,7 @@ export const BatchTableRow = ({
       {/* Expanded Details Row */}
       {isExpanded && (
         <tr className="bg-muted/25 border-b">
-          <td colSpan={6} className="px-4 py-4">
+          <td colSpan={7} className="px-4 py-4">
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Batch Details</h4>
 
@@ -341,6 +350,25 @@ export const BatchTableRow = ({
                     <span className="font-medium">Collection ID:</span>
                     <div className="mt-1 font-mono text-xs">
                       {batch.collection_id}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="font-medium">Weight:</span>
+                    <div className="mt-1 text-xs">
+                      {batch.weights ? (
+                        <>
+                          <div>Current: {batch.weights.current_weight}g</div>
+                          {batch.weights.current_weight !==
+                            batch.weights.original_weight && (
+                            <div className="text-muted-foreground">
+                              Original: {batch.weights.original_weight}g
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div>{batch.weight_grams}g</div>
+                      )}
                     </div>
                   </div>
 

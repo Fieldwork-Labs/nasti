@@ -351,6 +351,9 @@ function InventoryPage() {
                         <th className="px-4 py-3 text-left font-semibold">
                           Storage
                         </th>
+                        <th className="px-4 py-3 text-right font-semibold">
+                          Weight (g)
+                        </th>
                         <th className="px-4 py-3 text-left">
                           <Button
                             variant="ghost"
