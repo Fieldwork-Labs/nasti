@@ -37,7 +37,7 @@ import { SpeciesIndigNameForm } from "@/components/species/SpeciesIndigNameForm"
 import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
 import { useCollectionsBySpecies } from "@/hooks/useCollectionsBySpecies"
 import { Tabs, TabsList, TabsTrigger } from "@nasti/ui/tabs"
-import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 import { Spinner } from "@nasti/ui/spinner"
 
@@ -396,7 +396,7 @@ const SpeciesDetail = () => {
           <div className="grid flex-col gap-2 lg:grid-cols-2">
             {collections && collections.length > 0
               ? collections.map((coll) => (
-                  <CollectionListItem
+                  <CollectionListItemWithModal
                     key={coll.id}
                     id={coll.id}
                     showTrip

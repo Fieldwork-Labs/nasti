@@ -29,7 +29,7 @@ import { AddCollectionWizardModal } from "@/components/collections/CollectionFor
 
 import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
 import { useViewState } from "@nasti/common/hooks"
-import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { Spinner } from "@nasti/ui/spinner"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 import { useSuspenseQuery } from "@tanstack/react-query"
@@ -238,7 +238,7 @@ const TripDetail = () => {
                 {!collections ||
                   (collections.length === 0 && "No collections yet")}
                 {collections?.map((coll) => (
-                  <CollectionListItem
+                  <CollectionListItemWithModal
                     key={coll.id}
                     id={coll.id}
                     onHover={setCollectionHovered}
