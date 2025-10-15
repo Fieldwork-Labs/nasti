@@ -68,13 +68,17 @@ export type BatchWithCurrentLocationAndSpecies = Batch & {
     field_name: string
     code: string
   }
+  weights?: {
+    original_weight: number
+    current_weight: number
+  } | null
 }
 
 export const useBatchesByFilter = (batchFilter: BatchFilter) => {
   return useQuery({
     queryKey: ["batches", "byFilter", batchFilter],
     queryFn: async () => {
-      let q = supabase.from("batches").select(
+      let q = supabase.from("active_batches").select(
         `
           *,
           current_location:current_batch_storage(
@@ -102,10 +106,25 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
 
       const { data, error } = await q
         .order(batchFilter.sort, { ascending: batchFilter.order === "asc" })
-        .overrideTypes<BatchWithCurrentLocationAndSpecies[]>()
+        .overrideTypes<
+          Array<
+            Omit<BatchWithCurrentLocationAndSpecies, "weights"> & {
+              original_weight: number
+              current_weight: number
+            }
+          >
+        >()
 
       if (error) throw new Error(error.message)
-      return data
+
+      // Transform original_weight and current_weight into weights object
+      return data.map((batch) => ({
+        ...batch,
+        weights: {
+          original_weight: batch.original_weight,
+          current_weight: batch.current_weight,
+        },
+      })) as BatchWithCurrentLocationAndSpecies[]
     },
   })
 }
