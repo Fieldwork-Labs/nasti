@@ -29,7 +29,7 @@
     "@uidotdev/usehooks": "^2.4.1",
     "buffer": "^6.0.3",
     "lodash": "^4.17.21",
-    "lucide-react": "^0.453.0",
+    "lucide-react": "^0.546.0",
     "mapbox-gl": "^3.8.0",
     "motion": "^12.23.21",
     "posthog-js": "^1.258.2",

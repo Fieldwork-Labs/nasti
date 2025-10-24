@@ -4,32 +4,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@nasti/ui/dialog"
-import { BatchForm } from "@/components/batches"
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import {
   invalidateBatchesByFilterCache,
   type BatchFilter,
 } from "@/hooks/useBatches"
+import { BatchProcessingForm } from "@/components/batches/BatchProcessingForm"
 
-type BatchCreateModalProps = {
+type BatchProcessingModalProps = {
   isOpen: boolean
   onClose: () => void
+  batch: BatchWithCurrentLocationAndSpecies
   batchFilter: BatchFilter
 }
 
-export const BatchCreateModal = ({
+export const BatchProcessingModal = ({
   isOpen,
   onClose,
+  batch,
   batchFilter,
-}: BatchCreateModalProps) => {
+}: BatchProcessingModalProps) => {
   if (!isOpen) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create New Batch</DialogTitle>
+          <DialogTitle>Process Batch</DialogTitle>
         </DialogHeader>
-        <BatchForm
+        <BatchProcessingForm
+          batch={batch}
           onSuccess={() => {
             onClose()
             invalidateBatchesByFilterCache(batchFilter)

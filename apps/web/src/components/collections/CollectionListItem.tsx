@@ -17,6 +17,7 @@ import { Spinner } from "@nasti/ui/spinner"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
 import { formatDuration } from "@/lib/duration"
+import { cn } from "@nasti/ui/utils"
 
 export const CollectionListItem = ({
   id,
@@ -54,12 +55,17 @@ export const CollectionListItem = ({
   const creator = people?.find((person) => person.id === collection.created_by)
   const formattedDuration = formatDuration(collection.duration)
 
+  const isHoverable = onHover || onClick
+
   return (
     <div
       onMouseOver={() => (onHover ? onHover(id) : null)}
       onMouseLeave={() => (onHover ? onHover(undefined) : null)}
       onClick={onClick}
-      className="bg-secondary-background text-primary-foreground hover:bg-primary/90 h-26 flex cursor-pointer gap-2 rounded-sm"
+      className={cn(
+        "bg-secondary-background text-primary-foreground h-26 flex gap-2 rounded-sm",
+        isHoverable && "hover:bg-primary/90 cursor-pointer",
+      )}
     >
       {signedUrlsIsLoading && (
         <span className="h-26 flex w-20 items-center justify-center bg-slate-500">

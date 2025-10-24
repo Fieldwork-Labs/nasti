@@ -35,6 +35,7 @@ Sentry.init({
   sendDefaultPii: true,
   integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
   transport: Sentry.makeBrowserOfflineTransport(Sentry.makeFetchTransport),
+  enabled: import.meta.env.VITE_IS_PROD,
 })
 
 // Register the router instance for type safety

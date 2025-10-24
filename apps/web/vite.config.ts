@@ -37,8 +37,9 @@ export default defineConfig({
   },
   // Use no envDir in production, default behavior works with Cloudflare
   envDir: isProd ? undefined : path.resolve(__dirname, "../.."),
-
-  // define,
+  define: {
+    "import.meta.env.VITE_IS_PROD": JSON.stringify(isProd),
+  },
   plugins: [
     TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
     react({ jsxRuntime: "automatic" }),

@@ -8,11 +8,14 @@ import {
   Merge,
   Calendar,
   Package,
-  Leaf,
+  BrushCleaning,
   Plus,
   Minus,
   X,
   ShoppingBag,
+  FileWarningIcon,
+  Combine,
+  Boxes,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { useOpenClose, useToast } from "@nasti/ui/hooks"
@@ -37,13 +40,16 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  withTooltip,
 } from "@nasti/ui/tooltip"
 import { CollectionListItem } from "../collections/CollectionListItem"
 import { CollectionDetailModal } from "../collections/CollectionDetailModal"
+import { BatchHistory } from "./BatchHistory"
 
 type BatchTableRowProps = {
   batch: BatchWithCurrentLocationAndSpecies
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
@@ -66,6 +72,7 @@ const BatchCollectionField = ({
   batch: BatchWithCurrentLocationAndSpecies
 }) => {
   const { open, isOpen, close } = useOpenClose()
+
   return (
     <>
       <TooltipProvider>
@@ -77,12 +84,12 @@ const BatchCollectionField = ({
             </div>
           </TooltipTrigger>
           <TooltipContent className="p-0">
-            <CollectionListItem id={batch.collection_id} onClick={open} />
+            <CollectionListItem id={batch.collection.id} onClick={open} />
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <CollectionDetailModal
-        id={batch.collection_id}
+        id={batch.collection.id}
         open={isOpen}
         onClose={close}
       />
@@ -90,10 +97,15 @@ const BatchCollectionField = ({
   )
 }
 
+const NeedsProcessingIcon = withTooltip(
+  <FileWarningIcon className="h-4 w-4 text-orange-600" />,
+)
+
 export const BatchTableRow = ({
   batch,
   onEdit,
   onDelete,
+  onProcess,
   onSplit,
   onMerge,
   onStorageMove,
@@ -101,10 +113,12 @@ export const BatchTableRow = ({
   mergeMode,
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
+  const { open, isOpen, close } = useOpenClose()
   const { toast } = useToast()
 
   const { data: _, isLoading: detailLoading } = useBatchDetail(batch.id)
   const { data: currentStorage } = useCurrentBatchStorage(batch.id)
+  const hasWeight = batch.weight_grams !== null
 
   useEffect(() => {
     if (mergeMode?.isActive) setIsExpanded(false)
@@ -154,16 +168,10 @@ export const BatchTableRow = ({
                 <ChevronRight className="h-4 w-4" />
               )}
             </Button>
-            <span className="font-mono text-sm">{batch.id.slice(0, 8)}...</span>
-          </div>
-        </td>
-
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            {batch.species && <Leaf className="h-4 w-4 text-green-600" />}
-            <span className="w-56 truncate text-sm">
-              {batch.species?.name || batch.collection?.field_name}
-            </span>
+            <span className="font-mono text-sm">{batch.code}</span>
+            {!hasWeight && (
+              <NeedsProcessingIcon>Requires processing</NeedsProcessingIcon>
+            )}
           </div>
         </td>
 
@@ -258,35 +266,65 @@ export const BatchTableRow = ({
                     disabled={mergeDisabled}
                     size="sm"
                     onClick={() => onEdit?.(batch)}
+                    title="Edit"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={mergeDisabled}
-                    onClick={() => onSplit?.(batch)}
-                  >
-                    <Split className="h-4 w-4" />
-                  </Button>
+                  {batch.is_processed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={mergeDisabled}
+                      onClick={() => onSplit?.(batch)}
+                      title="Split"
+                    >
+                      <Split className="h-4 w-4" />
+                    </Button>
+                  )}
 
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={mergeDisabled}
-                    onClick={() => onMerge?.(batch)}
+                    onClick={() => onProcess?.(batch)}
+                    title="Process"
                   >
-                    <Merge className="h-4 w-4" />
+                    <BrushCleaning className="h-4 w-4" />
                   </Button>
+
+                  {batch.is_processed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={mergeDisabled}
+                      onClick={() => onMerge?.(batch)}
+                      title="Merge"
+                    >
+                      <Merge className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {!batch.is_processed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={mergeDisabled}
+                      onClick={() => onMerge?.(batch)}
+                      title="Mix"
+                    >
+                      <Combine className="h-4 w-4" />
+                    </Button>
+                  )}
 
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={mergeDisabled}
                     onClick={() => onStorageMove?.(batch)}
+                    title="Move to storage"
                   >
-                    <Package className="h-4 w-4" />
+                    <Boxes className="h-4 w-4" />
                   </Button>
 
                   <AlertDialog>
@@ -295,7 +333,8 @@ export const BatchTableRow = ({
                         variant="ghost"
                         size="sm"
                         disabled={mergeDisabled}
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
+                        title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -332,7 +371,22 @@ export const BatchTableRow = ({
           <td colSpan={7} className="px-4 py-4">
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Batch Details</h4>
-
+              <div className="flex w-full gap-2">
+                {batch.collection_id && (
+                  <>
+                    <CollectionListItem
+                      id={batch.collection_id}
+                      onClick={open}
+                    />
+                    <CollectionDetailModal
+                      id={batch.collection.id}
+                      open={isOpen}
+                      onClose={close}
+                    />
+                  </>
+                )}
+                <BatchHistory batchId={batch.id} />
+              </div>
               {detailLoading ? (
                 <div className="animate-pulse space-y-2">
                   <div className="h-4 w-1/4 rounded bg-gray-200"></div>
@@ -349,7 +403,7 @@ export const BatchTableRow = ({
                   <div>
                     <span className="font-medium">Collection ID:</span>
                     <div className="mt-1 font-mono text-xs">
-                      {batch.collection_id}
+                      {batch.collection.id}
                     </div>
                   </div>
 
