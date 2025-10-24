@@ -225,7 +225,7 @@ const TripDetail = () => {
                 {isAdmin && (
                   <Button
                     onClick={() => openModal("collection")}
-                    className="flex gap-1 px-2 py-1"
+                    className="flex cursor-pointer gap-1 px-2 py-1"
                   >
                     <ShoppingBag aria-label="New Collection" size={12} />{" "}
                     <span className="text-sm">Add Collection</span>

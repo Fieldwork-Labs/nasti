@@ -25,7 +25,8 @@ export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">
 export type Person = GetOrgUsers["Returns"][number]
 
-export type Role = Database["public"]["Enums"]["org_user_types"]
+type Enums = Database["public"]["Enums"]
+export type Role = Enums["org_user_types"]
 
 export enum ROLE {
   ADMIN = "Admin",
@@ -34,6 +35,7 @@ export enum ROLE {
 }
 
 export type Batch = Table<"batches">
+export type BatchProcessing = Table<"batch_processing">
 export type BatchCustody = Table<"batch_custody">
 export type BatchSplit = Table<"batch_splits">
 export type BatchMerge = Table<"batch_merges">
@@ -41,3 +43,6 @@ export type BatchStorage = Table<"batch_storage">
 export type StorageLocation = Table<"storage_locations">
 export type Treatment = Table<"treatments">
 export type Test = Table<"tests">
+
+export type BatchProcessType = Enums["batch_process_type"]
+export type BatchQuality = Enums["batch_quality"]

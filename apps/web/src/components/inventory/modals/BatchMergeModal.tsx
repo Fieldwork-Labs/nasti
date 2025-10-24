@@ -12,7 +12,6 @@ import {
 import { Button } from "@nasti/ui/button"
 import { Label } from "@nasti/ui/label"
 import { Textarea } from "@nasti/ui/textarea"
-import { Checkbox } from "@nasti/ui/checkbox"
 import { Badge } from "@nasti/ui/badge"
 import { useToast } from "@nasti/ui/hooks"
 
@@ -24,10 +23,6 @@ import type {
 import { invalidateBatchesByFilterCache } from "@/hooks/useBatches"
 
 const batchMergeSchema = z.object({
-  is_extracted: z.boolean().default(false),
-  is_treated: z.boolean().default(false),
-  is_sorted: z.boolean().default(false),
-  is_coated: z.boolean().default(false),
   notes: z.string().optional(),
 })
 
@@ -55,18 +50,15 @@ export const BatchMergeModal = ({
     (sum, batch) => sum + (batch.weight_grams || 0),
     0,
   )
-  const allExtracted = selectedBatches.every((batch) => batch.is_extracted)
-  const allTreated = selectedBatches.every((batch) => batch.is_treated)
-  const allSorted = selectedBatches.every((batch) => batch.is_sorted)
-  const allCoated = selectedBatches.every((batch) => batch.is_coated)
+
+  // Validate that all batches have the same code
+  const batchCodes = [...new Set(selectedBatches.map((batch) => batch.code))]
+  const hasMatchingCodes = batchCodes.length === 1
+  const commonCode = hasMatchingCodes ? batchCodes[0] : null
 
   const form = useForm<BatchMergeFormData>({
     resolver: zodResolver(batchMergeSchema),
     defaultValues: {
-      is_extracted: allExtracted,
-      is_treated: allTreated,
-      is_sorted: allSorted,
-      is_coated: allCoated,
       notes: "",
     },
   })
@@ -81,10 +73,6 @@ export const BatchMergeModal = ({
 
       await mergeBatchesMutation.mutateAsync({
         sourceBatchIds,
-        is_extracted: data.is_extracted,
-        is_treated: data.is_treated,
-        is_sorted: data.is_sorted,
-        is_coated: data.is_coated,
         notes:
           data.notes ||
           `Merged from ${sourceBatchIds.length} batches: ${sourceBatchIds.map((id) => id.slice(0, 8)).join(", ")}`,
@@ -118,6 +106,49 @@ export const BatchMergeModal = ({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Code Validation Warning */}
+          {!hasMatchingCodes && (
+            <div className="border-destructive bg-destructive/10 rounded-lg border p-4">
+              <div className="flex items-start gap-3">
+                <div className="text-destructive mt-0.5">
+                  <svg
+                    className="h-5 w-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1 space-y-1">
+                  <p className="text-destructive text-sm font-semibold">
+                    Cannot Merge Batches with Different Codes
+                  </p>
+                  <p className="text-destructive/80 text-xs">
+                    All batches must have the same code to be merged. Found
+                    codes: {batchCodes.join(", ")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Batch Code Info */}
+          {hasMatchingCodes && commonCode && (
+            <div className="border-primary/20 bg-primary/5 rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <Package className="text-primary h-4 w-4" />
+                <span className="text-sm font-medium">Batch Code:</span>
+                <Badge variant="secondary" className="font-mono">
+                  {commonCode}
+                </Badge>
+              </div>
+            </div>
+          )}
+
           {/* Selected Batches Summary */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">
@@ -131,7 +162,7 @@ export const BatchMergeModal = ({
                 >
                   <div className="flex items-center gap-2">
                     <Package className="text-primary h-4 w-4" />
-                    <span className="font-mono">{batch.id.slice(0, 8)}...</span>
+                    <span className="font-mono">{batch.code}</span>
                   </div>
                   <Badge variant="outline" className="text-xs">
                     {batch.weight_grams}g
@@ -142,76 +173,6 @@ export const BatchMergeModal = ({
             <div className="flex items-center justify-between text-sm font-medium">
               <span>Total Weight:</span>
               <Badge variant="secondary">{totalWeight}g</Badge>
-            </div>
-          </div>
-
-          {/* Processing Status */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium">Processing Status</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_extracted"
-                  checked={form.watch("is_extracted")}
-                  onCheckedChange={(checked) =>
-                    form.setValue("is_extracted", Boolean(checked))
-                  }
-                />
-                <Label htmlFor="is_extracted" className="text-sm font-normal">
-                  Extracted{" "}
-                  {allExtracted && (
-                    <span className="text-primary text-xs">(all)</span>
-                  )}
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_treated"
-                  checked={form.watch("is_treated")}
-                  onCheckedChange={(checked) =>
-                    form.setValue("is_treated", Boolean(checked))
-                  }
-                />
-                <Label htmlFor="is_treated" className="text-sm font-normal">
-                  Treated{" "}
-                  {allTreated && (
-                    <span className="text-primary text-xs">(all)</span>
-                  )}
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_sorted"
-                  checked={form.watch("is_sorted")}
-                  onCheckedChange={(checked) =>
-                    form.setValue("is_sorted", Boolean(checked))
-                  }
-                />
-                <Label htmlFor="is_sorted" className="text-sm font-normal">
-                  Sorted{" "}
-                  {allSorted && (
-                    <span className="text-primary text-xs">(all)</span>
-                  )}
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_coated"
-                  checked={form.watch("is_coated")}
-                  onCheckedChange={(checked) =>
-                    form.setValue("is_coated", Boolean(checked))
-                  }
-                />
-                <Label htmlFor="is_coated" className="text-sm font-normal">
-                  Coated{" "}
-                  {allCoated && (
-                    <span className="text-primary text-xs">(all)</span>
-                  )}
-                </Label>
-              </div>
             </div>
           </div>
 
@@ -234,7 +195,7 @@ export const BatchMergeModal = ({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !hasMatchingCodes}
               className="min-w-[120px]"
             >
               {isSubmitting && (

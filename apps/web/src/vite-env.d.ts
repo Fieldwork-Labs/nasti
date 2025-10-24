@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_ALA_CLIENT_SECRET: string
   readonly VITE_PUBLIC_POSTHOG_KEY?: string
   readonly VITE_PUBLIC_POSTHOG_HOST?: string
+  readonly VITE_IS_PROD?: boolean
 }
 
 interface ImportMeta {

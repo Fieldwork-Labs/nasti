@@ -13,6 +13,7 @@ import { PostHogConfig } from "posthog-js"
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   sendDefaultPii: true,
+  enabled: import.meta.env.VITE_IS_PROD,
 })
 
 // Create a new router instance

@@ -17,7 +17,9 @@ export const usePeople = () => {
       return getUsers()
     },
     enabled: Boolean(organisation?.id),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
+
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: ["users", organisation?.id],
