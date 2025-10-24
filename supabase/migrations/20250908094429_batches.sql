@@ -17,11 +17,7 @@ CREATE TABLE batches (
   collection_id UUID NOT NULL REFERENCES collection(id) ON DELETE CASCADE,
   organisation_id UUID NOT NULL REFERENCES organisation(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT now(),
-  weight_grams INTEGER NOT NULL CHECK (weight_grams > 0),
-  is_extracted BOOLEAN NOT NULL DEFAULT FALSE,
-  is_treated BOOLEAN NOT NULL DEFAULT FALSE,
-  is_sorted BOOLEAN NOT NULL DEFAULT FALSE,
-  is_coated BOOLEAN NOT NULL DEFAULT FALSE,
+  weight_grams INTEGER CHECK (weight_grams > 0 OR weight_grams IS NULL),
   notes TEXT
 );
 

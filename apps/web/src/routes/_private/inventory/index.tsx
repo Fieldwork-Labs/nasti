@@ -2,27 +2,31 @@ import { createFileRoute } from "@tanstack/react-router"
 import { motion } from "motion/react"
 import { z } from "zod"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowUpDown, ArrowUp, ArrowDown, Plus } from "lucide-react"
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
 import { useToast } from "@nasti/ui/hooks"
 
-import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
+import {
+  BatchInventoryFilters,
+  BatchStatus,
+} from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "@/components/inventory/BatchTableRow"
 import { CompleteMergeButton } from "@/components/inventory/CompleteMergeButton"
 import {
   BatchEditModal,
   BatchSplitModal,
   BatchStorageModal,
-  BatchCreateModal,
   BatchMergeModal,
 } from "@/components/inventory/modals"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchesByFilter } from "@/hooks/useBatches"
 import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
+import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
 
 // Define search schema for URL parameters
 const inventorySearchSchema = z.object({
+  status: z.enum(["any", "unprocessed", "processed"]).default("any").optional(),
   species: z.string().optional(),
   collection: z.string().optional(),
   location: z.string().optional(),
@@ -54,7 +58,8 @@ function InventoryPage() {
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [splittingBatch, setSplittingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
-  const [showCreateBatchModal, setShowCreateBatchModal] = useState(false)
+  const [processingBatch, setPocessingBatch] =
+    useState<BatchWithCurrentLocationAndSpecies | null>(null)
 
   // Merge mode state
   const [mergeState, setMergeState] = useState<{
@@ -67,6 +72,7 @@ function InventoryPage() {
   // Extract filters from URL search params
   const filters = useMemo(
     () => ({
+      status: searchParams.status,
       species: searchParams.species || null,
       location: searchParams.location || null,
       searchTerm: searchParams.search || "",
@@ -81,6 +87,7 @@ function InventoryPage() {
 
   const batchFilter = useMemo(
     () => ({
+      status: filters.status,
       speciesId: filters.species || undefined,
       locationId: filters.location || undefined,
       search: filters.searchTerm,
@@ -91,7 +98,10 @@ function InventoryPage() {
   )
 
   // Fetch batches using the filter hook
-  const { data: batches = [], isLoading } = useBatchesByFilter(batchFilter)
+  const { data: batches = [], isLoading: isLoadingBatches } =
+    useBatchesByFilter(batchFilter)
+
+  const isLoading = isLoadingBatches
 
   // Get selected batches for merge modal
   const selectedBatchesForMerge = mergeState
@@ -118,6 +128,7 @@ function InventoryPage() {
 
   // Handle filter changes
   const handleFiltersChange = (newFilters: {
+    status?: BatchStatus
     speciesId?: string | null
     collectionId?: string | null
     locationId?: string | null
@@ -128,12 +139,13 @@ function InventoryPage() {
         ([_, value]) => value !== undefined && value !== "",
       ),
     )
-    // filter out undefined values from searchParams, we only care about nulls and defined values
-    const newParams: Record<string, string | undefined> = Object.fromEntries(
-      Object.entries(searchParams).filter(
-        ([_, value]) => value !== undefined && value !== "",
-      ),
-    )
+    // filter out undefined values from searchParams, we only care about nulls and defined values except for 'unprocessed'
+    const newParams: Record<string, string | boolean | undefined> =
+      Object.fromEntries(
+        Object.entries(searchParams).filter(
+          ([_, value]) => value !== undefined && value !== "",
+        ),
+      )
     // replace nulls with undefined
     for (const [key, value] of Object.entries(definedFilters)) {
       newParams[key] = value ?? undefined
@@ -247,6 +259,20 @@ function InventoryPage() {
 
   const offset = ((windowSize?.width ?? 0) - (initialWidth.current ?? 0)) / 2
 
+  const getMergeModeForBatch = (batch: BatchWithCurrentLocationAndSpecies) => {
+    if (!mergeState) return undefined
+    return {
+      isActive: mergeState.isActive,
+      isInitiating: batch.id === mergeState.initiatingBatch.id,
+      isSelected: mergeState.selectedBatchIds.includes(batch.id),
+      canMerge:
+        batch.collection_id === mergeState.initiatingBatch.collection_id,
+      onAddToMerge: () => handleAddToMerge(batch.id),
+      onRemoveFromMerge: () => handleRemoveFromMerge(batch.id),
+      onCancelMerge: handleCancelMerge,
+    }
+  }
+
   return (
     <div className="container mx-auto p-6">
       <div className="space-y-6">
@@ -258,13 +284,6 @@ function InventoryPage() {
               Manage and track your seed batches
             </p>
           </div>
-          <Button
-            className="cursor-pointer gap-2"
-            onClick={() => setShowCreateBatchModal(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Create Batch
-          </Button>
         </div>
 
         {/* Filters */}
@@ -330,12 +349,9 @@ function InventoryPage() {
                             onClick={() => handleSort("created_at")}
                             className="font-semibold"
                           >
-                            Batch ID
+                            Batch Code
                             {getSortIcon("created_at")}
                           </Button>
-                        </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          Species
                         </th>
                         <th className="px-4 py-3 text-left">
                           <Button
@@ -379,28 +395,9 @@ function InventoryPage() {
                           onDelete={handleDelete}
                           onSplit={handleSplit}
                           onStorageMove={handleStorageMove}
+                          onProcess={setPocessingBatch}
                           onMerge={handleMerge}
-                          mergeMode={
-                            mergeState
-                              ? {
-                                  isActive: mergeState.isActive,
-                                  isInitiating:
-                                    batch.id === mergeState.initiatingBatch.id,
-                                  isSelected:
-                                    mergeState.selectedBatchIds.includes(
-                                      batch.id,
-                                    ),
-                                  canMerge:
-                                    batch.collection_id ===
-                                    mergeState.initiatingBatch.collection_id,
-                                  onAddToMerge: () =>
-                                    handleAddToMerge(batch.id),
-                                  onRemoveFromMerge: () =>
-                                    handleRemoveFromMerge(batch.id),
-                                  onCancelMerge: handleCancelMerge,
-                                }
-                              : undefined
-                          }
+                          mergeMode={getMergeModeForBatch(batch)}
                         />
                       ))}
                     </tbody>
@@ -446,10 +443,11 @@ function InventoryPage() {
           />
         )}
 
-        {showCreateBatchModal && (
-          <BatchCreateModal
-            isOpen={showCreateBatchModal}
-            onClose={() => setShowCreateBatchModal(false)}
+        {processingBatch && (
+          <BatchProcessingModal
+            isOpen={Boolean(processingBatch)}
+            onClose={() => setPocessingBatch(null)}
+            batch={processingBatch}
             batchFilter={batchFilter}
           />
         )}

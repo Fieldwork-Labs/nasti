@@ -11,19 +11,31 @@ import {
   CommandItem,
   CommandList,
 } from "@nasti/ui/command"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nasti/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useSpecies } from "@/hooks/useSpecies"
 import { useSpeciesSearch } from "@/hooks/useSpeciesSearch"
 import { useStorageLocations } from "@/hooks/useBatchStorage"
 import { Species, StorageLocation } from "@nasti/common/types"
 
+export type BatchStatus = "unprocessed" | "processed" | "any"
+
 type BatchInventoryFiltersProps = {
   filters: {
+    status?: BatchStatus
     species: string | null
     location: string | null
     searchTerm: string
   }
   onFiltersChange: (filters: {
+    status?: BatchStatus
     species?: string | null
     location?: string | null
     searchTerm?: string
@@ -59,16 +71,19 @@ export const BatchInventoryFilters = ({
     (l: StorageLocation) => l.id === filters.location,
   )
 
-  const hasActiveFilters =
-    filters.species || filters.location || filters.searchTerm
+  const hasActiveFilters = Object.entries(filters)
+    .filter(([key, value]) => key !== "status" && value !== "any")
+    .some(([, v]) => Boolean(v))
 
   const clearAllFilters = () => {
     onFiltersChange({
+      status: undefined,
       species: null,
       location: null,
       searchTerm: "",
     })
   }
+  const BATCH_STATUSES: BatchStatus[] = ["any", "unprocessed", "processed"]
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -82,7 +97,31 @@ export const BatchInventoryFilters = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-2">
+          <Label>Status</Label>
+          <Select
+            value={filters.status}
+            onValueChange={(value) =>
+              onFiltersChange({ status: value as BatchStatus })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Any" />
+            </SelectTrigger>
+            <SelectContent className="w-full">
+              <SelectGroup>
+                {BATCH_STATUSES.map((status) => (
+                  <SelectItem
+                    key={status}
+                    value={status}
+                  >{`${status.slice(0, 1).toLocaleUpperCase()}${status.slice(1)}`}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Search Term */}
         <div className="space-y-2">
           <Label htmlFor="search">Search</Label>
@@ -246,13 +285,27 @@ export const BatchInventoryFilters = ({
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-2 border-t pt-2">
           <span className="text-muted-foreground text-sm">Active filters:</span>
+          {filters.status !== "any" && (
+            <div className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800">
+              {filters.status}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 cursor-pointer p-0 hover:bg-blue-200"
+                onClick={() => onFiltersChange({ status: "any" })}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
           {filters.searchTerm && (
             <div className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800">
               Search: "{filters.searchTerm}"
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-blue-200"
+                className="h-4 w-4 cursor-pointer p-0 hover:bg-blue-200"
                 onClick={() => onFiltersChange({ searchTerm: "" })}
               >
                 <X className="h-3 w-3" />
@@ -261,11 +314,11 @@ export const BatchInventoryFilters = ({
           )}
           {selectedSpecies && (
             <div className="flex items-center gap-1 rounded-md bg-green-100 px-2 py-1 text-sm text-green-800">
-              Species: {selectedSpecies.name}
+              {selectedSpecies.name}
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-green-200"
+                className="h-4 w-4 cursor-pointer p-0 hover:bg-green-200"
                 onClick={() => onFiltersChange({ species: null })}
               >
                 <X className="h-3 w-3" />
@@ -275,11 +328,11 @@ export const BatchInventoryFilters = ({
 
           {selectedLocation && (
             <div className="flex items-center gap-1 rounded-md bg-orange-100 px-2 py-1 text-sm text-orange-800">
-              Location: {selectedLocation.name}
+              {selectedLocation.name}
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-orange-200"
+                className="h-4 w-4 cursor-pointer p-0 hover:bg-orange-200"
                 onClick={() => onFiltersChange({ location: null })}
               >
                 <X className="h-3 w-3" />

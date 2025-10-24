@@ -69,17 +69,6 @@ SELECT
   END as current_weight
 FROM batches b;
 
--- VIEW: active_batches
--- Shows only batches with current weight > 0 (not fully consumed)
-CREATE VIEW active_batches AS
-SELECT
-  b.*,
-  bcw.original_weight,
-  bcw.current_weight
-FROM batches b
-JOIN batch_current_weight bcw ON bcw.id = b.id
-WHERE bcw.current_weight > 0;
-
 -- FUNCTION: Computed field for batch weights (for PostgREST)
 -- Returns weight information for a given batch as a JSON object
 CREATE OR REPLACE FUNCTION batch_weight_info(batch_row batches)

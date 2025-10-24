@@ -164,6 +164,92 @@ export type Database = {
           },
         ]
       }
+      batch_processing: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          input_batch_id: string | null
+          notes: string | null
+          organisation_id: string
+          output_batch_id: string
+          process: Database["public"]["Enums"]["batch_process_type"]
+          quality_assessment: Database["public"]["Enums"]["batch_quality"]
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_batch_id?: string | null
+          notes?: string | null
+          organisation_id: string
+          output_batch_id: string
+          process: Database["public"]["Enums"]["batch_process_type"]
+          quality_assessment: Database["public"]["Enums"]["batch_quality"]
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_batch_id?: string | null
+          notes?: string | null
+          organisation_id?: string
+          output_batch_id?: string
+          process?: Database["public"]["Enums"]["batch_process_type"]
+          quality_assessment?: Database["public"]["Enums"]["batch_quality"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_processing_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_processing_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_processing_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_processing_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_processing_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_processing_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_processing_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_splits: {
         Row: {
           child_batch_id: string
@@ -338,40 +424,31 @@ export type Database = {
       }
       batches: {
         Row: {
-          collection_id: string
+          code: string | null
+          collection_id: string | null
           created_at: string | null
           id: string
-          is_coated: boolean
-          is_extracted: boolean
-          is_sorted: boolean
-          is_treated: boolean
           notes: string | null
           organisation_id: string
-          weight_grams: number
+          weight_grams: number | null
         }
         Insert: {
-          collection_id: string
+          code?: string | null
+          collection_id?: string | null
           created_at?: string | null
           id?: string
-          is_coated?: boolean
-          is_extracted?: boolean
-          is_sorted?: boolean
-          is_treated?: boolean
           notes?: string | null
           organisation_id: string
-          weight_grams: number
+          weight_grams?: number | null
         }
         Update: {
-          collection_id?: string
+          code?: string | null
+          collection_id?: string | null
           created_at?: string | null
           id?: string
-          is_coated?: boolean
-          is_extracted?: boolean
-          is_sorted?: boolean
-          is_treated?: boolean
           notes?: string | null
           organisation_id?: string
-          weight_grams?: number
+          weight_grams?: number | null
         }
         Relationships: [
           {
@@ -988,14 +1065,12 @@ export type Database = {
     Views: {
       active_batches: {
         Row: {
+          code: string | null
           collection_id: string | null
           created_at: string | null
           current_weight: number | null
           id: string | null
-          is_coated: boolean | null
-          is_extracted: boolean | null
-          is_sorted: boolean | null
-          is_treated: boolean | null
+          is_processed: boolean | null
           notes: string | null
           organisation_id: string | null
           original_weight: number | null
@@ -1040,6 +1115,16 @@ export type Database = {
           current_weight?: never
           id?: string | null
           original_weight?: number | null
+        }
+        Relationships: []
+      }
+      batch_lineage: {
+        Row: {
+          batch_id: string | null
+          created_at: string | null
+          creation_event: string | null
+          event_details: Json | null
+          parent_batch_id: string | null
         }
         Relationships: []
       }
@@ -1431,35 +1516,26 @@ export type Database = {
         Args: { geom1: unknown; geom2: unknown }
         Returns: boolean
       }
-      fn_create_batch_from_collection: {
-        Args: {
-          p_collection_id: string
-          p_is_coated?: boolean
-          p_is_extracted?: boolean
-          p_is_sorted?: boolean
-          p_is_treated?: boolean
-          p_notes?: string
-          p_weight_grams?: number
-        }
-        Returns: string
-      }
       fn_merge_batches: {
         Args: {
-          p_is_coated?: boolean
-          p_is_extracted?: boolean
-          p_is_sorted?: boolean
-          p_is_treated?: boolean
           p_notes?: string
           p_source_batch_ids: string[]
         }
         Returns: string
       }
+      fn_process_batch: {
+        Args: {
+          p_input_batch_id: string
+          p_notes?: string
+          p_origin_batch_weight?: number
+          p_output_weight: number
+          p_process: Database["public"]["Enums"]["batch_process_type"]
+          p_quality_assessment: Database["public"]["Enums"]["batch_quality"]
+        }
+        Returns: string
+      }
       fn_split_batch: {
         Args: {
-          p_is_coated?: boolean
-          p_is_extracted?: boolean
-          p_is_sorted?: boolean
-          p_is_treated?: boolean
           p_notes?: string
           p_parent_batch_id: string
           p_weight_grams?: number
@@ -3156,6 +3232,8 @@ export type Database = {
       }
     }
     Enums: {
+      batch_process_type: "clean" | "sort" | "coat" | "treat" | "other"
+      batch_quality: "ORG" | "HQ" | "MQ" | "LQ"
       org_user_types: "Member" | "Admin"
     }
     CompositeTypes: {
@@ -3312,6 +3390,8 @@ export const Constants = {
   },
   public: {
     Enums: {
+      batch_process_type: ["clean", "sort", "coat", "treat", "other"],
+      batch_quality: ["ORG", "HQ", "MQ", "LQ"],
       org_user_types: ["Member", "Admin"],
     },
   },
