@@ -7,6 +7,20 @@ import path from "path"
 
 const isProd = process.env.CF_PAGES === "1"
 
+const plugins = [
+  TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
+  react({ jsxRuntime: "automatic" }),
+  nodePolyfills({ globals: { Buffer: true } }),
+]
+
+if (isProd) {
+  plugins.push(
+    sentryVitePlugin({
+      org: "fieldworklabs",
+      project: "nasti-web",
+    }),
+  )
+}
 export default defineConfig({
   resolve: {
     alias: {
@@ -23,7 +37,6 @@ export default defineConfig({
     mockReset: false,
     environment: "jsdom",
     deps: {
-      // since v0.34 you can also do:
       optimizer: {
         web: {
           include: [
@@ -40,17 +53,7 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_IS_PROD": JSON.stringify(isProd),
   },
-  plugins: [
-    TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
-    react({ jsxRuntime: "automatic" }),
-    nodePolyfills({ globals: { Buffer: true } }),
-    sentryVitePlugin({
-      org: "fieldworklabs",
-      project: "nasti-web",
-      telemetry: isProd,
-    }),
-  ],
-
+  plugins,
   build: {
     sourcemap: true,
   },
