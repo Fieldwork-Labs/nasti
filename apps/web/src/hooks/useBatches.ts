@@ -173,14 +173,6 @@ export const useBatchDetail = (batchId: string) => {
             organisation_id,
             received_at
           ),
-          splits:batch_splits!batch_splits_child_batch_id_fkey(
-            *,
-            child_batch:batches!batch_splits_child_batch_id_fkey(id, notes, created_at)
-          ),
-          merges:batch_merges!batch_merges_merged_batch_id_fkey(
-            *,
-            source_batch:batches!batch_merges_merged_batch_id_fkey(id, notes, created_at)
-          ),
           storage:current_batch_storage(
             *,
             location:storage_locations(name, description)
@@ -387,6 +379,27 @@ export const useBatchCustodyHistory = (batchId: string) => {
   })
 }
 
+export const useBatchDelete = () => {
+  return useMutation<string, Error, string>({
+    mutationFn: async (batchId: string) => {
+      const { data, error } = await supabase
+        .from("batches")
+        .delete()
+        .eq("id", batchId)
+        .select()
+        .single()
+
+      if (error) throw new Error(error.message)
+      return data?.id ?? null
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["batches"],
+      })
+    },
+  })
+}
+
 // Query: Get batch lineage (splits and merges)
 export const useBatchLineage = (batchId: string) => {
   return useQuery({
@@ -431,6 +444,44 @@ export const useBatchLineage = (batchId: string) => {
         splits: splitsResult.data as (BatchSplit & { child_batch: Batch })[],
         merges: mergesResult.data as (BatchMerge & { source_batch: Batch })[],
       }
+    },
+  })
+}
+
+// Query: Check if a batch can be deleted
+// A batch cannot be deleted if it has any relationships in:
+// - batch_splits (as parent or child)
+// - batch_merges (as merged or source)
+// - batch_processing (as input or output)
+export const useCanDeleteBatch = (batchId: string) => {
+  return useQuery({
+    queryKey: ["batches", "canDelete", batchId],
+    queryFn: async () => {
+      // Check if this batch has been used to create other batches
+      // by checking if any other batches reference this as their parent
+      const { count: childCount, error: childError } = await supabase
+        .from("batch_lineage")
+        .select("batch_id", { count: "exact", head: true })
+        .eq("parent_batch_id", batchId)
+
+      if (childError) throw new Error(childError.message)
+
+      // Check if this batch is a source in any merges
+      const { count: mergeSourceCount, error: mergeError } = await supabase
+        .from("batch_merges")
+        .select("id", { count: "exact", head: true })
+        .eq("source_batch_id", batchId)
+
+      if (mergeError) throw new Error(mergeError.message)
+
+      // A batch can be deleted only if:
+      // It hasn't been used to create other batches
+      const hasCreatedOtherBatches = Boolean(childCount && childCount > 0)
+      const isSourceInMerge = Boolean(mergeSourceCount && mergeSourceCount > 0)
+
+      const canDelete = Boolean(!hasCreatedOtherBatches && !isSourceInMerge)
+
+      return { canDelete }
     },
   })
 }

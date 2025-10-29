@@ -20,7 +20,7 @@ import {
   BatchMergeModal,
 } from "@/components/inventory/modals"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import { useBatchesByFilter } from "@/hooks/useBatches"
+import { useBatchDelete, useBatchesByFilter } from "@/hooks/useBatches"
 import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
 import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
 
@@ -101,6 +101,8 @@ function InventoryPage() {
   const { data: batches = [], isLoading: isLoadingBatches } =
     useBatchesByFilter(batchFilter)
 
+  const { mutateAsync: deleteBatch } = useBatchDelete()
+
   const isLoading = isLoadingBatches
 
   // Get selected batches for merge modal
@@ -176,12 +178,12 @@ function InventoryPage() {
     setEditingBatch(batch)
   }
 
-  const handleDelete = (_batchId: string) => {
-    // TODO: Implement batch deletion
-    toast({
-      description: "Batch deletion not yet implemented",
-      variant: "destructive",
-    })
+  const handleDelete = async (_batchId: string) => {
+    const deleted = await deleteBatch(_batchId)
+    if (deleted)
+      toast({
+        description: "Batch successfully deleted",
+      })
   }
 
   const handleSplit = (batch: BatchWithCurrentLocationAndSpecies) => {
