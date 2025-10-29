@@ -46,16 +46,16 @@ ORDER BY batch_id, received_at DESC;
 -- TABLE: batch_splits
 CREATE TABLE batch_splits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  parent_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  child_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  parent_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
+  child_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- TABLE: batch_merges
 CREATE TABLE batch_merges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  merged_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  source_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  merged_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
+  source_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
