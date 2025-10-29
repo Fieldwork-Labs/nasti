@@ -18,7 +18,7 @@ import {
   Boxes,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
-import { useOpenClose, useToast } from "@nasti/ui/hooks"
+import { useOpenClose } from "@nasti/ui/hooks"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +32,7 @@ import {
 } from "@nasti/ui/alert-dialog"
 
 import type { BatchWithCurrentLocationAndSpecies } from "../../hooks/useBatches"
-import { useBatchDetail } from "../../hooks/useBatches"
+import { useBatchDetail, useCanDeleteBatch } from "../../hooks/useBatches"
 import { useCurrentBatchStorage } from "../../hooks/useBatchStorage"
 import { cn } from "@nasti/ui/utils"
 import {
@@ -114,25 +114,19 @@ export const BatchTableRow = ({
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { open, isOpen, close } = useOpenClose()
-  const { toast } = useToast()
 
   const { data: _, isLoading: detailLoading } = useBatchDetail(batch.id)
   const { data: currentStorage } = useCurrentBatchStorage(batch.id)
+  const { data: canDeleteData } = useCanDeleteBatch(batch.id)
   const hasWeight = batch.weight_grams !== null
 
   useEffect(() => {
     if (mergeMode?.isActive) setIsExpanded(false)
   }, [mergeMode?.isActive])
 
-  const handleDelete = () => {
-    onDelete?.(batch.id)
-    toast({
-      description: "Batch deleted successfully",
-    })
-  }
-
   // need a special value to represent when mergemode is active but this row is not mergeable
   const mergeDisabled = Boolean(mergeMode && !mergeMode.canMerge)
+  const canDelete = canDeleteData?.canDelete ?? true
 
   return (
     <>
@@ -327,37 +321,51 @@ export const BatchTableRow = ({
                     <Boxes className="h-4 w-4" />
                   </Button>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={mergeDisabled}
-                        className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Batch</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this batch? This
-                          action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDelete}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <AlertDialog>
+                        <TooltipTrigger asChild>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={mergeDisabled || !canDelete}
+                              className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              title={
+                                canDelete ? "Delete" : "Cannot delete batch"
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                        </TooltipTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this batch? This
+                              action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDelete?.(batch.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      {!canDelete && (
+                        <TooltipContent>
+                          Cannot delete: batch has splits, merges, or processing
+                          events
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </>
               )}
             </div>

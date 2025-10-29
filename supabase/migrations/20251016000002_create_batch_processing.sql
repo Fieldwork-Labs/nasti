@@ -5,8 +5,8 @@ CREATE TYPE batch_quality AS ENUM ('ORG', 'HQ', 'MQ', 'LQ');
 -- Create batch_processing table
 CREATE TABLE batch_processing (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  input_batch_id UUID REFERENCES batches(id) ON DELETE CASCADE,
-  output_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  input_batch_id UUID REFERENCES batches(id) ON DELETE RESTRICT,
+  output_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
   process batch_process_type NOT NULL,
   quality_assessment batch_quality NOT NULL,
   notes TEXT,

@@ -1,5 +1,6 @@
 import { useBatchHistory, useBatchSplit } from "@/hooks/useBatches"
 import { useBatchProcessingEvent } from "@/hooks/useBatchProcessing"
+import { useCollection } from "@/hooks/useCollection"
 import { Badge } from "@nasti/ui/badge"
 import { CalendarIcon, Notebook } from "lucide-react"
 
@@ -127,6 +128,44 @@ const SplitEvent = ({ event }: { event: SplitEvent }) => {
   )
 }
 
+const MergeEvent = ({ event }: { event: MergeEvent }) => {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center space-x-2">
+        <CalendarIcon className="h-4 w-4" />
+        <div className="text-sm">
+          {event.created_at && new Date(event.created_at).toLocaleDateString()}
+        </div>
+        <Badge variant={"outline"}>Split</Badge>
+      </div>
+      <div className="text-sm">
+        Parents:{" "}
+        <span className="font-mono font-semibold">
+          {event.event_details.source_batch_ids.length} batches
+        </span>
+      </div>
+    </div>
+  )
+}
+
+const InitialEvent = ({ event }: { event: InitialEvent }) => {
+  const { data: collection, isLoading } = useCollection(
+    event.event_details.collection_id,
+  )
+  if (isLoading) return <div>Loading...</div>
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm">From Collection: {collection?.code}</span>
+      <div className="flex items-center space-x-2">
+        <CalendarIcon className="h-4 w-4" />
+        <div className="text-sm">
+          {event.created_at && new Date(event.created_at).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const EventComponentSwitch = ({ event }: { event: HistoryEvent }) => {
   switch (event.creation_event) {
     case "processing": {
@@ -142,14 +181,12 @@ const EventComponentSwitch = ({ event }: { event: HistoryEvent }) => {
     case "merge": {
       const isMerge = historyTypeGuards.merge(event)
       if (!isMerge) throw new Error("Incorrect event type: Merge")
-      return <div> MEERRGE</div>
-      //   return <MergeEvent event={event} />
+      return <MergeEvent event={event} />
     }
     case "initial": {
       const isInitial = historyTypeGuards.initial(event)
       if (!isInitial) throw new Error("Incorrect event type: Initial")
-      return <div> CRWEATION</div>
-      //   return <InitialEvent event={event} />
+      return <InitialEvent event={event} />
     }
     default:
       return <div>Unknown event type</div>

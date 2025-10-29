@@ -181,12 +181,12 @@ export const BatchSplitForm = ({
       children: [
         {
           id: crypto.randomUUID(),
-          weight_grams: Math.floor(currentWeight / 2),
+          weight_grams: Math.floor((currentWeight ?? 0) / 2),
           storage_location_id: "",
         },
         {
           id: crypto.randomUUID(),
-          weight_grams: Math.ceil(currentWeight / 2),
+          weight_grams: Math.ceil((currentWeight ?? 0) / 2),
           storage_location_id: "",
         },
       ],
@@ -218,8 +218,10 @@ export const BatchSplitForm = ({
     0,
   )
   // Allow partial splits - total can be <= current weight
-  const isValidTotal = totalWeight > 0 && totalWeight <= currentWeight
-  const remainingWeight = currentWeight - totalWeight
+  const isValidTotal = currentWeight
+    ? totalWeight > 0 && totalWeight <= currentWeight
+    : true
+  const remainingWeight = currentWeight ? currentWeight - totalWeight : 0
 
   // Weight redistribution logic (no longer auto-balancing to allow partial splits)
   const updateChildWeight = (_index: number, _newWeight: number) => {
@@ -249,7 +251,7 @@ export const BatchSplitForm = ({
     if (!isValidTotal) {
       toast({
         description:
-          totalWeight > currentWeight
+          currentWeight && totalWeight > currentWeight
             ? `Total weight (${totalWeight}g) exceeds current batch weight (${currentWeight}g)`
             : "Total weight must be greater than 0",
         variant: "destructive",
@@ -327,7 +329,10 @@ export const BatchSplitForm = ({
           {currentWeight !== originalWeight && (
             <p className="text-xs">Original Weight: {originalWeight}g</p>
           )}
-          <p>Splitting into {fields.length} children</p>
+          <p>
+            Splitting into {fields.length}{" "}
+            {fields.length === 1 ? "child" : "children"}
+          </p>
         </div>
       </div>
 
@@ -357,7 +362,7 @@ export const BatchSplitForm = ({
                   <Input
                     type="number"
                     min="0"
-                    max={currentWeight}
+                    max={currentWeight ?? 0}
                     placeholder="Weight in grams"
                     {...form.register(`children.${index}.weight_grams`, {
                       onChange: (e) =>
@@ -381,7 +386,7 @@ export const BatchSplitForm = ({
                     style={{
                       width: `${Math.min(
                         ((Number(watchedChildren[index]?.weight_grams) || 0) /
-                          currentWeight) *
+                          (currentWeight ?? 1)) *
                           100,
                         100,
                       )}%`,
