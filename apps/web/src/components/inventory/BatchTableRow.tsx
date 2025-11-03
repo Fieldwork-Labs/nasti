@@ -16,6 +16,7 @@ import {
   FileWarningIcon,
   Combine,
   Boxes,
+  FlaskConical,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
@@ -32,7 +33,11 @@ import {
 } from "@nasti/ui/alert-dialog"
 
 import type { BatchWithCurrentLocationAndSpecies } from "../../hooks/useBatches"
-import { useBatchDetail, useCanDeleteBatch } from "../../hooks/useBatches"
+import {
+  useBatchDetail,
+  useBatchHistory,
+  useCanDeleteBatch,
+} from "../../hooks/useBatches"
 import { useCurrentBatchStorage } from "../../hooks/useBatchStorage"
 import { cn } from "@nasti/ui/utils"
 import {
@@ -45,6 +50,9 @@ import {
 import { CollectionListItem } from "../collections/CollectionListItem"
 import { CollectionDetailModal } from "../collections/CollectionDetailModal"
 import { BatchHistory } from "./BatchHistory"
+import { QualityTestModal } from "../tests/QualityTestModal"
+import { useBatchTests } from "@/hooks/useBatchTreatments"
+import { Badge } from "@nasti/ui/badge"
 
 type BatchTableRowProps = {
   batch: BatchWithCurrentLocationAndSpecies
@@ -64,6 +72,121 @@ type BatchTableRowProps = {
     onRemoveFromMerge: () => void
     onCancelMerge: () => void
   }
+}
+
+const ParentBatchBadge = withTooltip(
+  <Badge variant="secondary">Parent batch</Badge>,
+)
+const BatchTestHistory = ({
+  batch,
+}: {
+  batch: BatchWithCurrentLocationAndSpecies
+}) => {
+  const { data: tests, isPending: isPendingTests } = useBatchTests(batch.id)
+  const { data: history, isPending: isPendingBatchHistory } = useBatchHistory(
+    batch.id,
+  )
+  const hasTests = tests?.length && tests.length > 0
+  const { data: parentTests, isPending: isPendingParentTests } = useBatchTests(
+    !hasTests && history?.parent_batch_id
+      ? history?.parent_batch_id
+      : undefined,
+  )
+
+  const isParentTests =
+    !isPendingTests &&
+    tests?.length === 0 &&
+    parentTests?.length &&
+    parentTests.length > 0
+  const displayTests = (isParentTests ? parentTests : tests) ?? []
+  if (isPendingTests || isPendingBatchHistory || isPendingParentTests)
+    return (
+      <div className="animate-pulse space-y-2">
+        <div className="h-4 w-1/4 rounded bg-gray-200"></div>
+      </div>
+    )
+  return (
+    <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
+      <span className="text-sm">Quality Test History</span>
+      {displayTests.length > 0 ? (
+        <div className="bg-muted/20 max-h-32 space-y-2 overflow-y-auto rounded-lg p-3">
+          {displayTests.map((test) => (
+            <div key={test.id} className="flex items-center gap-3 text-sm">
+              {test.tested_at && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="text-sm" />
+                  <span className="font-mono text-sm">
+                    {new Date(test.tested_at).toLocaleDateString()}
+                  </span>
+                  {isParentTests && (
+                    <ParentBatchBadge>
+                      This test was carried out on the parent batch
+                    </ParentBatchBadge>
+                  )}
+                </div>
+              )}
+              {/* Stats section */}
+              <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    TPSU{" "}
+                    <span className="font-mono font-bold">
+                      {test.statistics.tpsu.toFixed(3)}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    PLS{" "}
+                    <span className="font-mono font-bold">
+                      {(test.statistics.pls * 100).toFixed(3)}%
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    PSU Number{" "}
+                    <span className="font-mono font-bold">
+                      {test.statistics.psuCount}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    PLS Number
+                    <span className="font-mono font-bold">
+                      {" "}
+                      {test.statistics.plsCount}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    SE
+                    <span className="font-mono font-bold">
+                      {" "}
+                      {test.statistics.standardError.toFixed(3)}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    Reps
+                    <span className="font-mono font-bold">
+                      {" "}
+                      {test.result.repeats.length}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-muted-foreground text-xs">No tests found</div>
+      )}
+    </div>
+  )
 }
 
 const BatchCollectionField = ({
@@ -114,6 +237,7 @@ export const BatchTableRow = ({
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { open, isOpen, close } = useOpenClose()
+  const [isQualityTestModalOpen, setIsQualityTestModalOpen] = useState(false)
 
   const { data: _, isLoading: detailLoading } = useBatchDetail(batch.id)
   const { data: currentStorage } = useCurrentBatchStorage(batch.id)
@@ -321,6 +445,16 @@ export const BatchTableRow = ({
                     <Boxes className="h-4 w-4" />
                   </Button>
 
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={mergeDisabled}
+                    onClick={() => setIsQualityTestModalOpen(true)}
+                    title="Quality Test"
+                  >
+                    <FlaskConical className="h-4 w-4" />
+                  </Button>
+
                   <TooltipProvider>
                     <Tooltip>
                       <AlertDialog>
@@ -404,18 +538,6 @@ export const BatchTableRow = ({
               ) : (
                 <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
                   <div>
-                    <span className="font-medium">Batch ID:</span>
-                    <div className="mt-1 font-mono text-xs">{batch.id}</div>
-                  </div>
-
-                  <div>
-                    <span className="font-medium">Collection ID:</span>
-                    <div className="mt-1 font-mono text-xs">
-                      {batch.collection.id}
-                    </div>
-                  </div>
-
-                  <div>
                     <span className="font-medium">Weight:</span>
                     <div className="mt-1 text-xs">
                       {batch.weights ? (
@@ -461,18 +583,63 @@ export const BatchTableRow = ({
                   )}
                 </div>
               )}
-
-              {/* TODO: Add more detailed information here in the future */}
-              <div className="border-t pt-2">
-                <div className="text-muted-foreground text-xs">
-                  TODO: Advanced batch details (lineage, treatments, tests,
-                  etc.) will be displayed here
+              {batch.latest_quality_statistics && (
+                <div className="space-y-2 border-t pt-2">
+                  <div className="text-muted-foreground text-xs">
+                    Latest Quality Statistics
+                  </div>
+                  <div className="grid grid-cols-6 gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">
+                        TPSU{" "}
+                        <span className="font-bold">
+                          {batch.latest_quality_statistics.tpsu.toFixed(3)}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">
+                        PLS{" "}
+                        <span className="font-bold">
+                          {(batch.latest_quality_statistics.pls * 100).toFixed(
+                            3,
+                          )}
+                          %
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">
+                        PSU Number{" "}
+                        <span className="font-bold">
+                          {batch.latest_quality_statistics.psuCount}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">
+                        PLS Number
+                        <span className="font-bold">
+                          {" "}
+                          {batch.latest_quality_statistics.plsCount}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+              <BatchTestHistory batch={batch} />
             </div>
           </td>
         </tr>
       )}
+
+      {/* Quality Test Modal */}
+      <QualityTestModal
+        isOpen={isQualityTestModalOpen}
+        onClose={() => setIsQualityTestModalOpen(false)}
+        batchId={batch.id}
+      />
     </>
   )
 }

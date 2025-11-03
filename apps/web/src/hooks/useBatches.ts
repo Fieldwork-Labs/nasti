@@ -6,6 +6,7 @@ import {
   type BatchCustody,
   type BatchSplit,
   type BatchMerge,
+  ActiveBatch,
 } from "@nasti/common/types"
 import { BatchStatus } from "@/components/inventory/BatchInventoryFilters"
 
@@ -54,7 +55,7 @@ export type BatchFilter = {
   order: string
 }
 
-type IsProcessedBatch = Batch & {
+type IsProcessedBatch = ActiveBatch & {
   is_processed: boolean
 }
 
@@ -176,6 +177,10 @@ export const useBatchDetail = (batchId: string) => {
           storage:current_batch_storage(
             *,
             location:storage_locations(name, description)
+          ),
+          latest_quality_statistics:tests!inner(
+            id,
+            statistics
           )
         `,
         )

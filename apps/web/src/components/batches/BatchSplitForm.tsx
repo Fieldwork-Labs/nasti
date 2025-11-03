@@ -275,7 +275,7 @@ export const BatchSplitForm = ({
         const childBatchId = await splitBatchMutation.mutateAsync({
           parentBatchId: parentBatch.id,
           weight_grams: child.weight_grams,
-          notes: `Split ${i + 1} of ${weightedChildren.length} from batch ${parentBatch.id.slice(0, 8)}`,
+          notes: `Split ${i + 1} of ${weightedChildren.length} from batch ${parentBatch.code}`,
         })
         createdBatches.push(childBatchId)
 

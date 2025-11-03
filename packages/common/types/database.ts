@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       batch_custody: {
@@ -403,6 +428,10 @@ export type Database = {
           collection_id: string | null
           created_at: string | null
           id: string
+          is_coated: boolean
+          is_extracted: boolean
+          is_sorted: boolean
+          is_treated: boolean
           notes: string | null
           organisation_id: string
           weight_grams: number | null
@@ -412,6 +441,10 @@ export type Database = {
           collection_id?: string | null
           created_at?: string | null
           id?: string
+          is_coated?: boolean
+          is_extracted?: boolean
+          is_sorted?: boolean
+          is_treated?: boolean
           notes?: string | null
           organisation_id: string
           weight_grams?: number | null
@@ -421,6 +454,10 @@ export type Database = {
           collection_id?: string | null
           created_at?: string | null
           id?: string
+          is_coated?: boolean
+          is_extracted?: boolean
+          is_sorted?: boolean
+          is_treated?: boolean
           notes?: string | null
           organisation_id?: string
           weight_grams?: number | null
@@ -811,6 +848,7 @@ export type Database = {
           batch_id: string
           id: string
           result: Json | null
+          statistics: Json | null
           tested_at: string | null
           tested_by: string | null
           type: string
@@ -819,6 +857,7 @@ export type Database = {
           batch_id: string
           id?: string
           result?: Json | null
+          statistics?: Json | null
           tested_at?: string | null
           tested_by?: string | null
           type: string
@@ -827,6 +866,7 @@ export type Database = {
           batch_id?: string
           id?: string
           result?: Json | null
+          statistics?: Json | null
           tested_at?: string | null
           tested_by?: string | null
           type?: string
@@ -1025,7 +1065,12 @@ export type Database = {
           created_at: string | null
           current_weight: number | null
           id: string | null
+          is_coated: boolean | null
+          is_extracted: boolean | null
           is_processed: boolean | null
+          is_sorted: boolean | null
+          is_treated: boolean | null
+          latest_quality_statistics: Json | null
           notes: string | null
           organisation_id: string | null
           original_weight: number | null
@@ -1440,6 +1485,14 @@ export type Database = {
         Args: { data: string }
         Returns: string
       }
+      calculate_quality_test_statistics: {
+        Args: { p_test_id: string }
+        Returns: Json
+      }
+      calculate_standard_deviation: {
+        Args: { input_values: number[] }
+        Returns: number
+      }
       current_custodian_org_id: {
         Args: { p_batch_id: string }
         Returns: string
@@ -1477,6 +1530,10 @@ export type Database = {
       }
       fn_merge_batches: {
         Args: {
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
           p_notes?: string
           p_source_batch_ids: string[]
         }
@@ -1485,6 +1542,10 @@ export type Database = {
       fn_process_batch: {
         Args: {
           p_input_batch_id: string
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
           p_notes?: string
           p_origin_batch_weight?: number
           p_output_weight: number
@@ -1495,6 +1556,10 @@ export type Database = {
       }
       fn_split_batch: {
         Args: {
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
           p_notes?: string
           p_parent_batch_id: string
           p_weight_grams?: number
@@ -3355,6 +3420,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       batch_process_type: ["clean", "sort", "coat", "treat", "other"],
@@ -3363,3 +3431,4 @@ export const Constants = {
     },
   },
 } as const
+
