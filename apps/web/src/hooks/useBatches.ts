@@ -6,6 +6,7 @@ import {
   type BatchCustody,
   type BatchSplit,
   type BatchMerge,
+  ActiveBatch,
 } from "@nasti/common/types"
 import { BatchStatus } from "@/components/inventory/BatchInventoryFilters"
 
@@ -54,7 +55,7 @@ export type BatchFilter = {
   order: string
 }
 
-type IsProcessedBatch = Batch & {
+type IsProcessedBatch = ActiveBatch & {
   is_processed: boolean
 }
 
@@ -90,11 +91,6 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
     queryKey: ["batches", "byFilter", batchFilter],
     queryFn: async () => {
       let q = supabase.from("active_batches").select(`*,
-          current_location:current_batch_storage(
-            location_id,
-            notes,
-            stored_at
-          ),
           collection:collection_id!inner(
             id,
             field_name,
@@ -121,7 +117,7 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
         q = q.eq("collection_id.species_id", batchFilter.speciesId)
       }
       if (batchFilter.locationId) {
-        q = q.eq("current_batch_storage.location_id", batchFilter.locationId)
+        q = q.eq("current_location_id", batchFilter.locationId)
       }
 
       const { data, error } = await q
@@ -176,11 +172,16 @@ export const useBatchDetail = (batchId: string) => {
           storage:current_batch_storage(
             *,
             location:storage_locations(name, description)
+          ),
+          latest_quality_statistics:tests!inner(
+            id,
+            statistics
           )
         `,
         )
         .eq("id", batchId)
-        .single()
+        .limit(1)
+        .maybeSingle()
 
       if (error) throw new Error(error.message)
       return data

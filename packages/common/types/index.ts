@@ -35,14 +35,77 @@ export enum ROLE {
 }
 
 export type Batch = Table<"batches">
-export type BatchProcessing = Table<"batch_processing">
+export type ActiveBatch = Omit<
+  Database["public"]["Views"]["active_batches"]["Row"],
+  "latest_quality_statistics" | "organisation_id" | "id"
+> & {
+  id: string
+  organisation_id: string
+  latest_quality_statistics: QualityTestCalculations | null
+}
+export type BatchProcessing = Omit<Table<"batch_processing">, "process"> & {
+  process: string[]
+}
 export type BatchCustody = Table<"batch_custody">
 export type BatchSplit = Table<"batch_splits">
 export type BatchMerge = Table<"batch_merges">
 export type BatchStorage = Table<"batch_storage">
 export type StorageLocation = Table<"storage_locations">
 export type Treatment = Table<"treatments">
-export type Test = Table<"tests">
 
 export type BatchProcessType = Enums["batch_process_type"]
 export type BatchQuality = Enums["batch_quality"]
+
+// Test Types
+export type Test = Table<"tests">
+
+// Quality Test Types
+export type QualityTestType =
+  | "x-ray"
+  | "cut test"
+  | "tz"
+  | "slow purity"
+  | "quick purity"
+
+export interface QualityTestRepeat {
+  weight_grams: number
+  viable_seed_count: number
+  dead_seed_count: number
+}
+
+export interface QualityTestResult {
+  test_type: QualityTestType
+  psu_grams: number
+  inert_seed_weight_grams?: number
+  other_species_seeds_grams?: number
+  relative_humidity_percent: number
+  repeats: QualityTestRepeat[]
+  notes?: string
+}
+
+export interface QualityTestCalculations {
+  tpsu: number
+  psu: number
+  vsu: number
+  pls: number
+  plsCount: number
+  psuCount: number
+  standardError: number
+  repeat_count: number
+}
+
+type QualityTestStatistics = {
+  pls: number
+  psu: number
+  vsu: number
+  tpsu: number
+  plsCount: number
+  psuCount: number
+  standardError: number
+}
+
+export type QualityTest = Omit<Table<"tests">, "result" | "statistics"> & {
+  type: "quality"
+  result: QualityTestResult
+  statistics: QualityTestStatistics
+}

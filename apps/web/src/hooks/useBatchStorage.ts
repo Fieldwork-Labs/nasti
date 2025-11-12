@@ -109,7 +109,7 @@ export const useCurrentBatchStorage = (batchId: string) => {
         .is("moved_out_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (error) {
         // Batch might not have a storage record
