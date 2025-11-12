@@ -35,7 +35,7 @@ type MergeEvent = BaseHistoryEvent & {
 
 type ProcessingData = {
   batch_processing_id: string
-  process: string
+  process: string[]
   quality_assessment: string
   output_weight: number
 }
@@ -83,7 +83,7 @@ const ProcessingEvent = ({ event }: { event: ProcessingEvent }) => {
             new Date(processingHistory.created_at).toLocaleDateString()}
         </div>
         <Badge variant={"outline"}>Processing</Badge>
-        <div className="text-sm">{processingHistory.process}</div>
+        <div className="text-sm">{processingHistory.process.join(", ")}</div>
         {processingHistory.notes && processingHistory.notes.length > 0 && (
           <div className="bg-secondary-background/70 flex items-center gap-2 rounded px-2 py-1 text-sm">
             <Notebook className="h-4 w-4" />

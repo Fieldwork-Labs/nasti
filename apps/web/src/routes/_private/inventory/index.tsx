@@ -75,7 +75,7 @@ function InventoryPage() {
       status: searchParams.status,
       species: searchParams.species || null,
       location: searchParams.location || null,
-      searchTerm: searchParams.search || "",
+      search: searchParams.search || "",
     }),
     [searchParams],
   )
@@ -90,7 +90,7 @@ function InventoryPage() {
       status: filters.status,
       speciesId: filters.species || undefined,
       locationId: filters.location || undefined,
-      search: filters.searchTerm,
+      search: filters.search ?? "",
       sort: sortField,
       order: sortDirection,
     }),
@@ -114,13 +114,7 @@ function InventoryPage() {
   const updateSearchParams = (
     newParams: z.infer<typeof inventorySearchSchema>,
   ) => {
-    const cleanNewParams = Object.fromEntries(
-      Object.entries(newParams).filter(
-        ([_, value]) => value !== null && value !== "",
-      ),
-    )
-    const updatedParams = { ...searchParams, ...cleanNewParams }
-
+    const updatedParams = { ...searchParams, ...newParams }
     navigate({
       from: "/inventory",
       search: updatedParams,
@@ -134,32 +128,22 @@ function InventoryPage() {
     speciesId?: string | null
     collectionId?: string | null
     locationId?: string | null
-    searchTerm?: string
+    search?: string
   }) => {
-    const definedFilters = Object.fromEntries(
-      Object.entries(newFilters).filter(
+    // filter out undefined values from searchParams, we only care about nulls and defined values except for 'unprocessed'
+    const definedParams: Record<string, string | boolean> = Object.fromEntries(
+      Object.entries(searchParams).filter(
         ([_, value]) => value !== undefined && value !== "",
       ),
     )
-    // filter out undefined values from searchParams, we only care about nulls and defined values except for 'unprocessed'
-    const newParams: Record<string, string | boolean | undefined> =
-      Object.fromEntries(
-        Object.entries(searchParams).filter(
-          ([_, value]) => value !== undefined && value !== "",
-        ),
-      )
     // replace nulls with undefined
-    for (const [key, value] of Object.entries(definedFilters)) {
-      newParams[key] = value ?? undefined
+    const finalFilters: Record<string, string | boolean | undefined> = {
+      ...definedParams,
     }
-
-    updateSearchParams({
-      ...newParams,
-      search:
-        newFilters.searchTerm !== undefined
-          ? newFilters.searchTerm
-          : searchParams.search,
-    })
+    for (const [key, value] of Object.entries(newFilters)) {
+      finalFilters[key] = value ?? undefined
+    }
+    updateSearchParams(finalFilters)
   }
 
   // Handle sorting
@@ -268,7 +252,8 @@ function InventoryPage() {
       isInitiating: batch.id === mergeState.initiatingBatch.id,
       isSelected: mergeState.selectedBatchIds.includes(batch.id),
       canMerge:
-        batch.collection_id === mergeState.initiatingBatch.collection_id,
+        batch.collection_id === mergeState.initiatingBatch.collection_id &&
+        batch.code === mergeState.initiatingBatch.code,
       onAddToMerge: () => handleAddToMerge(batch.id),
       onRemoveFromMerge: () => handleRemoveFromMerge(batch.id),
       onCancelMerge: handleCancelMerge,

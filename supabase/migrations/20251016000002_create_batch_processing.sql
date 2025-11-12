@@ -2,12 +2,41 @@
 CREATE TYPE batch_process_type AS ENUM ('clean', 'sort', 'coat', 'treat', 'other');
 CREATE TYPE batch_quality AS ENUM ('ORG', 'HQ', 'MQ', 'LQ');
 
+-- Create validation function for process array
+CREATE OR REPLACE FUNCTION validate_process_array(processes JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  valid_processes TEXT[] := ARRAY['clean', 'sort', 'coat', 'treat', 'other'];
+  process_value TEXT;
+BEGIN
+  -- Check if processes is an array
+  IF jsonb_typeof(processes) != 'array' THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check if array is not empty
+  IF jsonb_array_length(processes) = 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check each element in the array
+  FOR process_value IN SELECT jsonb_array_elements_text(processes)
+  LOOP
+    IF NOT (process_value = ANY(valid_processes)) THEN
+      RETURN FALSE;
+    END IF;
+  END LOOP;
+
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 -- Create batch_processing table
 CREATE TABLE batch_processing (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   input_batch_id UUID REFERENCES batches(id) ON DELETE RESTRICT,
   output_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
-  process batch_process_type NOT NULL,
+  process JSONB NOT NULL CHECK (validate_process_array(process)),
   quality_assessment batch_quality NOT NULL,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),

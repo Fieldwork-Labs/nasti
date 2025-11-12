@@ -32,13 +32,13 @@ type BatchInventoryFiltersProps = {
     status?: BatchStatus
     species: string | null
     location: string | null
-    searchTerm: string
+    search: string
   }
   onFiltersChange: (filters: {
     status?: BatchStatus
     species?: string | null
     location?: string | null
-    searchTerm?: string
+    search?: string
   }) => void
   className?: string
 }
@@ -80,7 +80,7 @@ export const BatchInventoryFilters = ({
       status: undefined,
       species: null,
       location: null,
-      searchTerm: "",
+      search: "",
     })
   }
   const BATCH_STATUSES: BatchStatus[] = ["any", "unprocessed", "processed"]
@@ -130,8 +130,8 @@ export const BatchInventoryFilters = ({
             <Input
               id="search"
               placeholder="Search batches..."
-              value={filters.searchTerm}
-              onChange={(e) => onFiltersChange({ searchTerm: e.target.value })}
+              value={filters.search}
+              onChange={(e) => onFiltersChange({ search: e.target.value })}
               className="pl-10"
               autoComplete="off"
               autoCorrect="off"
@@ -285,7 +285,7 @@ export const BatchInventoryFilters = ({
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-2 border-t pt-2">
           <span className="text-muted-foreground text-sm">Active filters:</span>
-          {filters.status !== "any" && (
+          {filters.status && filters.status !== "any" && (
             <div className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800">
               {filters.status}
               <Button
@@ -299,14 +299,14 @@ export const BatchInventoryFilters = ({
             </div>
           )}
 
-          {filters.searchTerm && (
+          {filters.search && (
             <div className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-sm text-blue-800">
-              Search: "{filters.searchTerm}"
+              Search: "{filters.search}"
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-4 w-4 cursor-pointer p-0 hover:bg-blue-200"
-                onClick={() => onFiltersChange({ searchTerm: "" })}
+                onClick={() => onFiltersChange({ search: undefined })}
               >
                 <X className="h-3 w-3" />
               </Button>

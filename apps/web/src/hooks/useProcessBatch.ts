@@ -8,7 +8,7 @@ type ProcessBatchParams = {
   inputBatchId: string
   originBatchWeight?: number
   outputWeight: number
-  process: BatchProcessType
+  process: BatchProcessType[]
   qualityAssessment: BatchQuality
   notes?: string
 }
