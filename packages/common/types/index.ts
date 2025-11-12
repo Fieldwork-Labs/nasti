@@ -37,9 +37,10 @@ export enum ROLE {
 export type Batch = Table<"batches">
 export type ActiveBatch = Omit<
   Database["public"]["Views"]["active_batches"]["Row"],
-  "latest_quality_statistics" | "id"
+  "latest_quality_statistics" | "organisation_id" | "id"
 > & {
   id: string
+  organisation_id: string
   latest_quality_statistics: QualityTestCalculations | null
 }
 export type BatchProcessing = Omit<Table<"batch_processing">, "process"> & {
