@@ -73,11 +73,16 @@ CREATE TABLE treatments (
 CREATE TABLE tests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('viability', 'germination')),
+  organisation_id UUID NOT NULL REFERENCES organisation(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('quality', 'germination')),
   result JSONB,
   tested_at TIMESTAMPTZ DEFAULT now(),
   tested_by UUID REFERENCES auth.users(id)
 );
+
+-- Create indexes for tests
+CREATE INDEX idx_tests_batch_id ON tests(batch_id);
+CREATE INDEX idx_tests_organisation_id ON tests(organisation_id);
 
 
 -- TABLE: batch_storage
@@ -359,11 +364,26 @@ WHERE b.id = treatments.batch_id AND is_org_member(auth.uid(), cbc.organisation_
 ));
 
 
--- For tests: current custodian org and testers assigned
+-- For tests: organisation members can access their org's tests
 ALTER TABLE tests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY custodian_can_access_tests ON tests
-USING (EXISTS (
-SELECT 1 FROM batches b
-JOIN current_batch_custody cbc ON b.id = cbc.batch_id
-WHERE b.id = tests.batch_id AND is_org_member(auth.uid(), cbc.organisation_id)
-));
+
+-- Policy: read tests for your organisation
+CREATE POLICY org_members_can_select_tests ON tests
+  FOR SELECT
+  USING (is_org_member(auth.uid(), organisation_id));
+
+-- Policy: insert tests for your organisation
+CREATE POLICY org_members_can_insert_tests ON tests
+  FOR INSERT
+  WITH CHECK (is_org_member(auth.uid(), organisation_id));
+
+-- Policy: update tests for your organisation
+CREATE POLICY org_members_can_update_tests ON tests
+  FOR UPDATE
+  USING (is_org_member(auth.uid(), organisation_id))
+  WITH CHECK (is_org_member(auth.uid(), organisation_id));
+
+-- Policy: delete tests for your organisation
+CREATE POLICY org_members_can_delete_tests ON tests
+  FOR DELETE
+  USING (is_org_member(auth.uid(), organisation_id));

@@ -173,7 +173,7 @@ export type Database = {
           notes: string | null
           organisation_id: string
           output_batch_id: string
-          process: Database["public"]["Enums"]["batch_process_type"]
+          process: Json
           quality_assessment: Database["public"]["Enums"]["batch_quality"]
         }
         Insert: {
@@ -184,7 +184,7 @@ export type Database = {
           notes?: string | null
           organisation_id: string
           output_batch_id: string
-          process: Database["public"]["Enums"]["batch_process_type"]
+          process: Json
           quality_assessment: Database["public"]["Enums"]["batch_quality"]
         }
         Update: {
@@ -195,7 +195,7 @@ export type Database = {
           notes?: string | null
           organisation_id?: string
           output_batch_id?: string
-          process?: Database["public"]["Enums"]["batch_process_type"]
+          process?: Json
           quality_assessment?: Database["public"]["Enums"]["batch_quality"]
         }
         Relationships: [
@@ -940,6 +940,37 @@ export type Database = {
             referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      tests: {
+        Row: {
+          batch_id: string
+          id: string
+          result: Json | null
+          statistics: Json | null
+          tested_at: string | null
+          tested_by: string | null
+          type: string
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          result?: Json | null
+          statistics?: Json | null
+          tested_at?: string | null
+          tested_by?: string | null
+          type: string
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          result?: Json | null
+          statistics?: Json | null
+          tested_at?: string | null
+          tested_by?: string | null
+          type?: string
+        }
+        Relationships: [
           {
             foreignKeyName: "species_photo_species_id_fkey"
             columns: ["species_id"]
@@ -1068,6 +1099,7 @@ export type Database = {
           code: string | null
           collection_id: string | null
           created_at: string | null
+          current_location_id: string | null
           current_weight: number | null
           id: string | null
           is_processed: boolean | null
@@ -1077,6 +1109,13 @@ export type Database = {
           weight_grams: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["current_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "batches_collection_id_fkey"
             columns: ["collection_id"]
@@ -1485,6 +1524,18 @@ export type Database = {
         Args: { data: string }
         Returns: string
       }
+      calculate_quality_test_statistics: {
+        Args: { p_test_id: string }
+        Returns: Json
+      }
+      calculate_standard_deviation: {
+        Args: { input_values: number[] }
+        Returns: number
+      }
+      current_custodian_org_id: {
+        Args: { p_batch_id: string }
+        Returns: string
+      }
       disablelongtransactions: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1518,6 +1569,10 @@ export type Database = {
       }
       fn_merge_batches: {
         Args: {
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
           p_notes?: string
           p_source_batch_ids: string[]
         }
@@ -1529,13 +1584,17 @@ export type Database = {
           p_notes?: string
           p_origin_batch_weight?: number
           p_output_weight: number
-          p_process: Database["public"]["Enums"]["batch_process_type"]
+          p_process: Json
           p_quality_assessment: Database["public"]["Enums"]["batch_quality"]
         }
         Returns: string
       }
       fn_split_batch: {
         Args: {
+          p_is_coated?: boolean
+          p_is_extracted?: boolean
+          p_is_sorted?: boolean
+          p_is_treated?: boolean
           p_notes?: string
           p_parent_batch_id: string
           p_weight_grams?: number
@@ -1820,6 +1879,10 @@ export type Database = {
           role: Database["public"]["Enums"]["org_user_types"]
           token: string
         }
+      }
+      get_merged_batch_inherited_statistics: {
+        Args: { p_merged_batch_id: string }
+        Returns: Json
       }
       get_next_code_sequence: {
         Args: {
@@ -3229,6 +3292,10 @@ export type Database = {
       urlencode: {
         Args: { data: Json } | { string: string } | { string: string }
         Returns: string
+      }
+      validate_process_array: {
+        Args: { processes: Json }
+        Returns: boolean
       }
     }
     Enums: {

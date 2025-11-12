@@ -4,10 +4,10 @@
 CREATE OR REPLACE FUNCTION fn_process_batch(
   p_input_batch_id UUID,
   p_output_weight INTEGER,
-  p_process batch_process_type,
+  p_process JSONB,
   p_quality_assessment batch_quality,
   p_origin_batch_weight INTEGER DEFAULT NULL,
-  p_notes TEXT DEFAULT NULL,
+  p_notes TEXT DEFAULT NULL
 ) RETURNS UUID AS $$
 DECLARE
   v_output_batch_id UUID;
@@ -77,6 +77,7 @@ BEGIN
     v_collection_id,
     v_batch_code,
     p_output_weight,
+    p_notes,
     v_organisation_id
   )
   RETURNING id INTO v_output_batch_id;

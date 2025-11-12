@@ -18,8 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useToast } from "@nasti/ui/hooks"
 
 import { useProcessBatch } from "@/hooks/useProcessBatch"
-import type { Batch } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
+import { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 
 // Process type options
 const processTypes = [
@@ -41,7 +41,9 @@ const qualityOptions = [
 // Batch processing form schema
 const batchProcessingSchema = z
   .object({
-    process: z.enum(["clean", "sort", "coat", "treat", "other"]),
+    process: z
+      .array(z.enum(["clean", "sort", "coat", "treat", "other"]))
+      .min(1, "At least one process type must be selected"),
     qualityAssessment: z.enum(["ORG", "HQ", "MQ", "LQ"]),
     outputWeight: z.coerce
       .number()
@@ -78,20 +80,8 @@ const batchProcessingSchema = z
 
 type BatchProcessingFormData = z.infer<typeof batchProcessingSchema>
 
-type BatchWithRelations = Batch & {
-  collection?: {
-    id: string
-    field_name: string | null
-    code: string | null
-  }
-  species?: {
-    id: string
-    name: string | null
-  } | null
-}
-
 type BatchProcessingFormProps = {
-  batch: BatchWithRelations
+  batch: BatchWithCurrentLocationAndSpecies
   onSuccess?: () => void
   onCancel?: () => void
   className?: string
@@ -115,7 +105,7 @@ export const BatchProcessingForm = ({
   const form = useForm<BatchProcessingFormData>({
     resolver: zodResolver(batchProcessingSchema),
     defaultValues: {
-      process: "clean",
+      process: [],
       qualityAssessment: "HQ",
       outputWeight: 0,
       inputWeight: batch.weight_grams ?? undefined,
@@ -187,7 +177,7 @@ export const BatchProcessingForm = ({
 
       {/* Process Type */}
       <div className="space-y-2">
-        <Label htmlFor="process">Process Type *</Label>
+        <Label htmlFor="process">Process Types *</Label>
         <Popover open={processTypeOpen} onOpenChange={setProcessTypeOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -195,8 +185,15 @@ export const BatchProcessingForm = ({
               role="combobox"
               className="w-full justify-between"
             >
-              {processTypes.find((pt) => pt.value === form.watch("process"))
-                ?.label || "Select process type"}
+              {form.watch("process").length > 0
+                ? form
+                    .watch("process")
+                    .map(
+                      (p) =>
+                        processTypes.find((pt) => pt.value === p)?.label || p,
+                    )
+                    .join(", ")
+                : "Select process types"}
               <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -210,8 +207,8 @@ export const BatchProcessingForm = ({
                       key={pt.value}
                       value={pt.value}
                       onSelect={() => {
-                        form.setValue(
-                          "process",
+                        const currentValues = form.watch("process")
+                        const newValues = currentValues.includes(
                           pt.value as
                             | "clean"
                             | "sort"
@@ -219,13 +216,32 @@ export const BatchProcessingForm = ({
                             | "treat"
                             | "other",
                         )
-                        setProcessTypeOpen(false)
+                          ? currentValues.filter((v) => v !== pt.value)
+                          : [
+                              ...currentValues,
+                              pt.value as
+                                | "clean"
+                                | "sort"
+                                | "coat"
+                                | "treat"
+                                | "other",
+                            ]
+                        form.setValue("process", newValues)
                       }}
                     >
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          form.watch("process") === pt.value
+                          form
+                            .watch("process")
+                            .includes(
+                              pt.value as
+                                | "clean"
+                                | "sort"
+                                | "coat"
+                                | "treat"
+                                | "other",
+                            )
                             ? "opacity-100"
                             : "opacity-0",
                         )}
