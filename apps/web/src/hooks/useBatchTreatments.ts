@@ -234,7 +234,6 @@ export function getStatisticsForBatch(
     standardError,
   }
 }
-////
 
 // Query: Get tests for a batch
 export const useBatchTests = (batchId?: string) => {
@@ -300,51 +299,6 @@ export const useAddTest = () => {
       // Invalidate batch detail cache
       queryClient.invalidateQueries({
         queryKey: ["batches", "detail", newTest.batch_id],
-      })
-    },
-  })
-}
-
-// Mutation: Update test
-type UpdateTestParams = {
-  id: string
-  type?: "quality" | "germination"
-  result?: Json
-  testedAt?: string
-}
-
-export const useUpdateTest = () => {
-  return useMutation<Test, Error, UpdateTestParams>({
-    mutationFn: async ({ id, type, result, testedAt }) => {
-      const { data, error } = await supabase
-        .from("tests")
-        .update({
-          type,
-          result,
-          tested_at: testedAt,
-        })
-        .eq("id", id)
-        .select()
-        .single()
-
-      if (error) throw new Error(error.message)
-      return data as Test
-    },
-    onSuccess: (updatedTest) => {
-      // Update in tests cache
-      queryClient.setQueryData<Test[]>(
-        ["batches", "tests", updatedTest.batch_id],
-        (oldData) => {
-          if (!oldData) return [updatedTest]
-          return oldData.map((test) =>
-            test.id === updatedTest.id ? updatedTest : test,
-          )
-        },
-      )
-
-      // Invalidate batch detail cache
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", updatedTest.batch_id],
       })
     },
   })
@@ -520,14 +474,27 @@ export const useUpdateQualityTest = () => {
       if (error) throw new Error(error.message)
       return data as unknown as QualityTest
     },
-    onSuccess: (updatedTest) => {
+    onSuccess: async (updatedTest) => {
+      // wait one second to ensure the trigger function re-calculates the statistics
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const { data, error } = await supabase
+        .from("tests")
+        .select("*")
+        .eq("id", updatedTest.id)
+        .limit(1)
+        .maybeSingle()
+        .overrideTypes<QualityTest>()
+
+      if (error) throw new Error(error.message)
+      if (!data) throw new Error("Test not found")
+
       // Update in quality tests cache
       queryClient.setQueryData<QualityTest[]>(
-        ["batches", "qualityTests", updatedTest.batch_id],
+        ["batches", "qualityTests", data.batch_id],
         (oldData) => {
-          if (!oldData) return [updatedTest]
+          if (!oldData) return [data]
           return oldData.map((test) =>
-            test.id === updatedTest.id ? updatedTest : test,
+            test.id === updatedTest.id ? data : test,
           )
         },
       )
@@ -536,9 +503,9 @@ export const useUpdateQualityTest = () => {
       queryClient.setQueryData<QualityTest[]>(
         ["batches", "tests", updatedTest.batch_id],
         (oldData) => {
-          if (!oldData) return [updatedTest]
+          if (!oldData) return [data]
           return oldData.map((test) =>
-            test.id === updatedTest.id ? updatedTest : test,
+            test.id === updatedTest.id ? data : test,
           )
         },
       )

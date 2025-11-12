@@ -17,6 +17,7 @@ import {
   Combine,
   Boxes,
   FlaskConical,
+  Pencil,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
@@ -38,6 +39,7 @@ import {
   useBatchHistory,
   useCanDeleteBatch,
 } from "../../hooks/useBatches"
+import type { QualityTest } from "@nasti/common/types"
 import { useCurrentBatchStorage } from "../../hooks/useBatchStorage"
 import { cn } from "@nasti/ui/utils"
 import {
@@ -82,6 +84,10 @@ const BatchTestHistory = ({
 }: {
   batch: BatchWithCurrentLocationAndSpecies
 }) => {
+  const [editingTest, setEditingTest] = useState<QualityTest | null>(null)
+  const { isOpen: isEditModalOpen, setIsOpen: setIsEditModalOpen } =
+    useOpenClose()
+
   const { data: tests, isPending: isPendingTests } = useBatchTests(batch.id)
   const { data: history, isPending: isPendingBatchHistory } = useBatchHistory(
     batch.id,
@@ -99,6 +105,17 @@ const BatchTestHistory = ({
     parentTests?.length &&
     parentTests.length > 0
   const displayTests = (isParentTests ? parentTests : tests) ?? []
+
+  const handleEditTest = (test: QualityTest) => {
+    setEditingTest(test)
+    setIsEditModalOpen(true)
+  }
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false)
+    setEditingTest(null)
+  }
+
   if (isPendingTests || isPendingBatchHistory || isPendingParentTests)
     return (
       <div className="animate-pulse space-y-2">
@@ -107,88 +124,112 @@ const BatchTestHistory = ({
     )
 
   return (
-    <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
-      <span className="text-sm">Quality Test History</span>
-      {displayTests.length > 0 ? (
-        <div className="bg-muted/20 max-h-32 space-y-2 overflow-y-auto rounded-lg p-3">
-          {displayTests.map((test) => (
-            <div key={test.id} className="flex items-center gap-3 text-sm">
-              {test.tested_at && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="text-sm" />
-                  <span className="font-mono text-sm">
-                    {new Date(test.tested_at).toLocaleDateString()}
-                  </span>
-                  {isParentTests && (
-                    <ParentBatchBadge>
-                      This test was carried out on the parent batch
-                    </ParentBatchBadge>
-                  )}
-                </div>
-              )}
-              {/* Stats section */}
-              <div className="flex gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    TPSU{" "}
-                    <span className="font-mono font-bold">
-                      {test.statistics.tpsu.toFixed(3)}
+    <>
+      <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
+        <span className="text-sm">Quality Test History</span>
+        {displayTests.length > 0 ? (
+          <div className="bg-muted/20 max-h-32 space-y-2 overflow-y-auto rounded-lg p-3">
+            {displayTests.map((test) => (
+              <div key={test.id} className="flex items-center gap-3 text-sm">
+                {test.tested_at && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="text-sm" />
+                    <span className="font-mono text-sm">
+                      {new Date(test.tested_at).toLocaleDateString()}
                     </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    PLS{" "}
-                    <span className="font-mono font-bold">
-                      {(test.statistics.pls * 100).toFixed(3)}%
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    PSU Number{" "}
-                    <span className="font-mono font-bold">
-                      {test.statistics.psuCount}
-                    </span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    PLS Number
-                    <span className="font-mono font-bold">
-                      {" "}
-                      {test.statistics.plsCount}
-                    </span>
-                  </span>
-                </div>
-                {test.statistics.standardError !== null && (
+                    {isParentTests && (
+                      <ParentBatchBadge>
+                        This test was carried out on the parent batch
+                      </ParentBatchBadge>
+                    )}
+                  </div>
+                )}
+                {/* Stats section */}
+                <div className="flex gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
-                      SE
+                      TPSU{" "}
                       <span className="font-mono font-bold">
-                        {" "}
-                        {test.statistics.standardError.toFixed(3)}
+                        {test.statistics.tpsu.toFixed(3)}
                       </span>
                     </span>
                   </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    Reps
-                    <span className="font-mono font-bold">
-                      {" "}
-                      {test.result.repeats.length}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      PLS{" "}
+                      <span className="font-mono font-bold">
+                        {(test.statistics.pls * 100).toFixed(3)}%
+                      </span>
                     </span>
-                  </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      PSU Number{" "}
+                      <span className="font-mono font-bold">
+                        {test.statistics.psuCount}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      PLS Number
+                      <span className="font-mono font-bold">
+                        {" "}
+                        {test.statistics.plsCount}
+                      </span>
+                    </span>
+                  </div>
+                  {test.statistics.standardError !== null && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">
+                        SE
+                        <span className="font-mono font-bold">
+                          {" "}
+                          {test.statistics.standardError.toFixed(3)}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      Reps
+                      <span className="font-mono font-bold">
+                        {" "}
+                        {test.result.repeats.length}
+                      </span>
+                    </span>
+                  </div>
                 </div>
+                {/* Edit button - only show if test is on this batch, not parent */}
+                {!isParentTests && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditTest(test)}
+                    title="Edit test"
+                    className="h-6 w-6 cursor-pointer p-0"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-muted-foreground text-xs">No tests found</div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-muted-foreground text-xs">No tests found</div>
+        )}
+      </div>
+
+      {/* Edit Quality Test Modal */}
+      {editingTest && (
+        <QualityTestModal
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          batchId={batch.id}
+          existingTest={editingTest}
+        />
       )}
-    </div>
+    </>
   )
 }
 
