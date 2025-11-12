@@ -42,7 +42,9 @@ export type ActiveBatch = Omit<
   id: string
   latest_quality_statistics: QualityTestCalculations | null
 }
-export type BatchProcessing = Table<"batch_processing">
+export type BatchProcessing = Omit<Table<"batch_processing">, "process"> & {
+  process: string[]
+}
 export type BatchCustody = Table<"batch_custody">
 export type BatchSplit = Table<"batch_splits">
 export type BatchMerge = Table<"batch_merges">

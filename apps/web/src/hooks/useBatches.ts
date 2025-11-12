@@ -91,11 +91,6 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
     queryKey: ["batches", "byFilter", batchFilter],
     queryFn: async () => {
       let q = supabase.from("active_batches").select(`*,
-          current_location:current_batch_storage(
-            location_id,
-            notes,
-            stored_at
-          ),
           collection:collection_id!inner(
             id,
             field_name,
@@ -122,7 +117,7 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
         q = q.eq("collection_id.species_id", batchFilter.speciesId)
       }
       if (batchFilter.locationId) {
-        q = q.eq("current_batch_storage.location_id", batchFilter.locationId)
+        q = q.eq("current_location_id", batchFilter.locationId)
       }
 
       const { data, error } = await q
@@ -185,7 +180,8 @@ export const useBatchDetail = (batchId: string) => {
         `,
         )
         .eq("id", batchId)
-        .single()
+        .limit(1)
+        .maybeSingle()
 
       if (error) throw new Error(error.message)
       return data

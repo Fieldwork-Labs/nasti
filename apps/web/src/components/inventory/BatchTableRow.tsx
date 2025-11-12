@@ -105,6 +105,7 @@ const BatchTestHistory = ({
         <div className="h-4 w-1/4 rounded bg-gray-200"></div>
       </div>
     )
+
   return (
     <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
       <span className="text-sm">Quality Test History</span>
@@ -160,15 +161,17 @@ const BatchTestHistory = ({
                     </span>
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    SE
-                    <span className="font-mono font-bold">
-                      {" "}
-                      {test.statistics.standardError.toFixed(3)}
+                {test.statistics.standardError !== null && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      SE
+                      <span className="font-mono font-bold">
+                        {" "}
+                        {test.statistics.standardError.toFixed(3)}
+                      </span>
                     </span>
-                  </span>
-                </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="text-sm">
                     Reps
