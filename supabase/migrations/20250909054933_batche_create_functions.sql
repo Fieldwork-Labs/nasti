@@ -1,9 +1,6 @@
 -- Update batch creation functions to handle all required fields
 SET search_path TO public;
 
--- Drop existing functions first
-DROP FUNCTION IF EXISTS fn_split_batch(uuid, text);
-
 
 -- Updated function: Split batch with inheritance of parent properties
 CREATE OR REPLACE FUNCTION fn_split_batch(
@@ -191,5 +188,5 @@ END;
 $$;
 
 -- Grant permissions
-GRANT EXECUTE ON FUNCTION fn_split_batch(uuid, integer, boolean, boolean, boolean, boolean, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION fn_merge_batches(uuid[], boolean, boolean, boolean, boolean, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION fn_split_batch(uuid, integer,  text) TO authenticated;
+GRANT EXECUTE ON FUNCTION fn_merge_batches(uuid[], text) TO authenticated;
