@@ -6,6 +6,7 @@ import { Organisation, Role, ROLE } from "@nasti/common/types"
 type OrgFields = [
   "id",
   "name",
+  "type",
   "contact_address",
   "contact_email",
   "contact_name",
@@ -64,6 +65,7 @@ const useUserStore = create<UserState>((set) => ({
           `*, organisation(
             "id",
             "name",
+            "type",
             "contact_address",
             "contact_email",
             "contact_name",

@@ -1,9 +1,30 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
 import { useAdminOnly } from "@/hooks/useAdminOnly"
-import { Card } from "@nasti/ui/card"
-import { Button } from "@nasti/ui/button"
-import { Settings, Leaf, Users, SettingsIcon, MapPin } from "lucide-react"
+import { useIncomingLinkRequests } from "@/hooks/useTestingOrgs"
 import useUserStore from "@/store/userStore"
+import { Button } from "@nasti/ui/button"
+import { Card } from "@nasti/ui/card"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import {
+  Building2,
+  Leaf,
+  LucideProps,
+  MapPin,
+  Settings,
+  SettingsIcon,
+  Users,
+} from "lucide-react"
+import { ForwardRefExoticComponent, RefAttributes } from "react"
+
+type SettingsCard = {
+  title: string
+  description: string
+  icon: ForwardRefExoticComponent<
+    Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>
+  >
+  href: string
+  color: string
+  notifications?: number
+}
 
 export const Route = createFileRoute("/_private/settings/")({
   component: SettingsDashboard,
@@ -13,7 +34,9 @@ function SettingsDashboard() {
   useAdminOnly()
   const { organisation } = useUserStore()
 
-  const settingsCards = [
+  const isTestingOrg = organisation?.type === "Testing"
+
+  const settingsCards: SettingsCard[] = [
     {
       title: "Organisation Details",
       description: "Update organisation details",
@@ -43,6 +66,26 @@ function SettingsDashboard() {
       color: "bg-purple-500",
     },
   ]
+  const { data } = useIncomingLinkRequests()
+
+  if (isTestingOrg) {
+    settingsCards.push({
+      title: "Organisation Links",
+      description: "Manage link requests and connections",
+      icon: Building2,
+      href: "/settings/testing-orgs",
+      color: "bg-teal-500",
+      notifications: data?.length,
+    })
+  } else {
+    settingsCards.push({
+      title: "Testing Organisations",
+      description: "Connect with testing organisations for quality testing",
+      icon: Building2,
+      href: "/settings/testing-orgs",
+      color: "bg-teal-500",
+    })
+  }
 
   return (
     <div>
@@ -66,8 +109,17 @@ function SettingsDashboard() {
             >
               <div className="flex h-full flex-col justify-between gap-4">
                 <div className="flex flex-col items-start gap-2">
-                  <div className={`rounded-lg p-3 ${card.color} text-white`}>
-                    <IconComponent className="h-6 w-6" />
+                  <div className="flex w-full justify-between">
+                    <div className={`rounded-lg p-3 ${card.color} text-white`}>
+                      <IconComponent className="h-6 w-6" />
+                    </div>
+                    {card.notifications && (
+                      <div className="flex">
+                        <span className="size-6 rounded-full bg-red-500 text-center text-sm text-white">
+                          {card.notifications}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="">
                     <h3 className="mb-2 text-lg font-semibold">{card.title}</h3>

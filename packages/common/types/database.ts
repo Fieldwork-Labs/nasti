@@ -373,6 +373,91 @@ export type Database = {
           },
         ]
       }
+      batch_testing_assignment: {
+        Row: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          assignment_type: string
+          batch_id: string
+          completed_at: string | null
+          id: string
+          returned_at: string | null
+          sample_weight_grams: number | null
+          subsample_storage_location_id: string | null
+          subsample_weight_grams: number | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          assignment_type: string
+          batch_id: string
+          completed_at?: string | null
+          id?: string
+          returned_at?: string | null
+          sample_weight_grams?: number | null
+          subsample_storage_location_id?: string | null
+          subsample_weight_grams?: number | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by_org_id?: string
+          assigned_to_org_id?: string
+          assignment_type?: string
+          batch_id?: string
+          completed_at?: string | null
+          id?: string
+          returned_at?: string | null
+          sample_weight_grams?: number | null
+          subsample_storage_location_id?: string | null
+          subsample_weight_grams?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_testing_assignment_assigned_by_org_fkey"
+            columns: ["assigned_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_assigned_to_org_fkey"
+            columns: ["assigned_to_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_batch_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_batch_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_batch_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_subsample_location_fkey"
+            columns: ["subsample_storage_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_weight_adjustments: {
         Row: {
           batch_id: string
@@ -717,6 +802,7 @@ export type Database = {
           id: string
           name: string
           owner_id: string
+          type: Database["public"]["Enums"]["organisation_type"]
         }
         Insert: {
           contact_address?: string | null
@@ -727,6 +813,7 @@ export type Database = {
           id?: string
           name: string
           owner_id: string
+          type?: Database["public"]["Enums"]["organisation_type"]
         }
         Update: {
           contact_address?: string | null
@@ -737,101 +824,102 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string
+          type?: Database["public"]["Enums"]["organisation_type"]
         }
         Relationships: []
       }
-      scouting_notes: {
+      organisation_link: {
         Row: {
+          can_process: boolean
+          can_test: boolean
           created_at: string
-          created_by: string | null
-          description: string | null
-          field_name: string | null
+          created_by: string
+          general_org_id: string
           id: string
-          location: unknown | null
-          organisation_id: string | null
-          species_id: string | null
-          species_uncertain: boolean
-          specimen_collected: boolean | null
-          trip_id: string | null
+          testing_org_id: string
         }
         Insert: {
+          can_process?: boolean
+          can_test?: boolean
           created_at?: string
-          created_by?: string | null
-          description?: string | null
-          field_name?: string | null
+          created_by: string
+          general_org_id: string
           id?: string
-          location?: unknown | null
-          organisation_id?: string | null
-          species_id?: string | null
-          species_uncertain?: boolean
-          specimen_collected?: boolean | null
-          trip_id?: string | null
+          testing_org_id: string
         }
         Update: {
+          can_process?: boolean
+          can_test?: boolean
           created_at?: string
-          created_by?: string | null
-          description?: string | null
-          field_name?: string | null
+          created_by?: string
+          general_org_id?: string
           id?: string
-          location?: unknown | null
-          organisation_id?: string | null
-          species_id?: string | null
-          species_uncertain?: boolean
-          specimen_collected?: boolean | null
-          trip_id?: string | null
+          testing_org_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "scouting_notes_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "organisation_link_general_org_fkey"
+            columns: ["general_org_id"]
             isOneToOne: false
             referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "scouting_notes_species_id_fkey"
-            columns: ["species_id"]
+            foreignKeyName: "organisation_link_testing_org_fkey"
+            columns: ["testing_org_id"]
             isOneToOne: false
-            referencedRelation: "species"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scouting_notes_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trip"
+            referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
         ]
       }
-      scouting_notes_photos: {
+      organisation_link_request: {
         Row: {
-          caption: string | null
+          accepted_at: string | null
+          accepted_by: string | null
+          can_process: boolean
+          can_test: boolean
+          created_at: string
+          created_by: string
+          general_org_id: string
           id: string
-          scouting_notes_id: string
-          uploaded_at: string | null
-          url: string
+          testing_org_id: string
         }
         Insert: {
-          caption?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          can_process?: boolean
+          can_test?: boolean
+          created_at?: string
+          created_by: string
+          general_org_id: string
           id?: string
-          scouting_notes_id: string
-          uploaded_at?: string | null
-          url: string
+          testing_org_id: string
         }
         Update: {
-          caption?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          can_process?: boolean
+          can_test?: boolean
+          created_at?: string
+          created_by?: string
+          general_org_id?: string
           id?: string
-          scouting_notes_id?: string
-          uploaded_at?: string | null
-          url?: string
+          testing_org_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "scouting_notes_photo_scouting_notes_id_fkey"
-            columns: ["scouting_notes_id"]
+            foreignKeyName: "organisation_link_request_general_org_fkey"
+            columns: ["general_org_id"]
             isOneToOne: false
-            referencedRelation: "scouting_notes"
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_link_request_testing_org_fkey"
+            columns: ["testing_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
         ]
@@ -946,6 +1034,8 @@ export type Database = {
         Row: {
           batch_id: string
           id: string
+          organisation_id: string
+          performed_by_organisation_id: string | null
           result: Json | null
           statistics: Json | null
           tested_at: string | null
@@ -955,6 +1045,8 @@ export type Database = {
         Insert: {
           batch_id: string
           id?: string
+          organisation_id: string
+          performed_by_organisation_id?: string | null
           result?: Json | null
           statistics?: Json | null
           tested_at?: string | null
@@ -964,6 +1056,8 @@ export type Database = {
         Update: {
           batch_id?: string
           id?: string
+          organisation_id?: string
+          performed_by_organisation_id?: string | null
           result?: Json | null
           statistics?: Json | null
           tested_at?: string | null
@@ -975,7 +1069,84 @@ export type Database = {
             foreignKeyName: "species_photo_species_id_fkey"
             columns: ["species_id"]
             isOneToOne: false
-            referencedRelation: "species"
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_performed_by_organisation_id_fkey"
+            columns: ["performed_by_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatments: {
+        Row: {
+          batch_id: string
+          description: string | null
+          id: string
+          performed_at: string | null
+          performed_by: string | null
+          type: string
+        }
+        Insert: {
+          batch_id: string
+          description?: string | null
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          type: string
+        }
+        Update: {
+          batch_id?: string
+          description?: string | null
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
             referencedColumns: ["id"]
           },
         ]
@@ -1099,23 +1270,16 @@ export type Database = {
           code: string | null
           collection_id: string | null
           created_at: string | null
-          current_location_id: string | null
           current_weight: number | null
           id: string | null
           is_processed: boolean | null
+          latest_quality_statistics: Json | null
           notes: string | null
           organisation_id: string | null
           original_weight: number | null
           weight_grams: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "batch_storage_location_id_fkey"
-            columns: ["current_location_id"]
-            isOneToOne: false
-            referencedRelation: "storage_locations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "batches_collection_id_fkey"
             columns: ["collection_id"]
@@ -1568,14 +1732,7 @@ export type Database = {
         Returns: boolean
       }
       fn_merge_batches: {
-        Args: {
-          p_is_coated?: boolean
-          p_is_extracted?: boolean
-          p_is_sorted?: boolean
-          p_is_treated?: boolean
-          p_notes?: string
-          p_source_batch_ids: string[]
-        }
+        Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
       }
       fn_process_batch: {
@@ -1591,10 +1748,6 @@ export type Database = {
       }
       fn_split_batch: {
         Args: {
-          p_is_coated?: boolean
-          p_is_extracted?: boolean
-          p_is_sorted?: boolean
-          p_is_treated?: boolean
           p_notes?: string
           p_parent_batch_id: string
           p_weight_grams?: number
@@ -1990,6 +2143,22 @@ export type Database = {
       }
       http_set_curlopt: {
         Args: { curlopt: string; value: string }
+        Returns: boolean
+      }
+      is_batch_custodian_or_past: {
+        Args: { auth_uid: string; batch_id: string }
+        Returns: boolean
+      }
+      is_current_custodian: {
+        Args: { p_batch_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_linked_testing_org: {
+        Args: { p_general_org_id: string; p_testing_org_id: string }
+        Returns: boolean
+      }
+      is_org_member: {
+        Args: { org_id: string; user_id: string }
         Returns: boolean
       }
       json: {
@@ -3302,6 +3471,7 @@ export type Database = {
       batch_process_type: "clean" | "sort" | "coat" | "treat" | "other"
       batch_quality: "ORG" | "HQ" | "MQ" | "LQ"
       org_user_types: "Member" | "Admin"
+      organisation_type: "General" | "Testing"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3460,6 +3630,7 @@ export const Constants = {
       batch_process_type: ["clean", "sort", "coat", "treat", "other"],
       batch_quality: ["ORG", "HQ", "MQ", "LQ"],
       org_user_types: ["Member", "Admin"],
+      organisation_type: ["General", "Testing"],
     },
   },
 } as const
