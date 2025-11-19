@@ -18,6 +18,7 @@ import {
   Boxes,
   FlaskConical,
   Pencil,
+  SendIcon,
 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
@@ -55,6 +56,7 @@ import { BatchHistory } from "./BatchHistory"
 import { QualityTestModal } from "../tests/QualityTestModal"
 import { useBatchTests } from "@/hooks/useBatchTreatments"
 import { Badge } from "@nasti/ui/badge"
+import { useActiveBatchAssignment } from "@/hooks/useBatchAssignments"
 
 type BatchTableRowProps = {
   batch: BatchWithCurrentLocationAndSpecies
@@ -64,6 +66,7 @@ type BatchTableRowProps = {
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
   className?: string
   mergeMode?: {
     isActive: boolean
@@ -73,6 +76,13 @@ type BatchTableRowProps = {
     onAddToMerge: () => void
     onRemoveFromMerge: () => void
     onCancelMerge: () => void
+  }
+  assignmentMode?: {
+    isActive: boolean
+    isSelected: boolean
+    onAddToAssignment: () => void
+    onRemoveFromAssignment: () => void
+    onCancelAssignment: () => void
   }
 }
 
@@ -276,8 +286,10 @@ export const BatchTableRow = ({
   onSplit,
   onMerge,
   onStorageMove,
+  onAssignForTesting,
   className,
   mergeMode,
+  assignmentMode,
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { open, isOpen, close } = useOpenClose()
@@ -286,15 +298,18 @@ export const BatchTableRow = ({
   const { data: _, isLoading: detailLoading } = useBatchDetail(batch.id)
   const { data: currentStorage } = useCurrentBatchStorage(batch.id)
   const { data: canDeleteData } = useCanDeleteBatch(batch.id)
+  const { data: activeAssignment } = useActiveBatchAssignment(batch.id)
   const hasWeight = batch.weight_grams !== null
 
   useEffect(() => {
-    if (mergeMode?.isActive) setIsExpanded(false)
-  }, [mergeMode?.isActive])
+    if (mergeMode?.isActive || assignmentMode?.isActive) setIsExpanded(false)
+  }, [mergeMode?.isActive, assignmentMode?.isActive])
 
   // need a special value to represent when mergemode is active but this row is not mergeable
   const mergeDisabled = Boolean(mergeMode && !mergeMode.canMerge)
   const canDelete = canDeleteData?.canDelete ?? true
+  const hasActiveAssignment = Boolean(activeAssignment)
+  console.log({ activeAssignment })
 
   return (
     <>
@@ -307,8 +322,8 @@ export const BatchTableRow = ({
             "bg-accent/20 border-accent/40",
           mergeDisabled &&
             "bg-muted-foreground/20 text-primary-foreground/40 border-transparent",
-
           mergeMode?.isInitiating && "bg-accent/40 border-accent/60",
+          assignmentMode?.isSelected && "border-green-300 bg-green-50",
           className,
         )}
         onClick={() => setIsExpanded(!isExpanded)}
@@ -333,6 +348,36 @@ export const BatchTableRow = ({
             <span className="font-mono text-sm">{batch.code}</span>
             {!hasWeight && (
               <NeedsProcessingIcon>Requires processing</NeedsProcessingIcon>
+            )}
+            {activeAssignment && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500 bg-blue-50 text-xs text-blue-700"
+                    >
+                      {activeAssignment.assignment_type === "sample"
+                        ? "Sample Out"
+                        : "Processing"}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {activeAssignment.assignment_type === "sample"
+                        ? `${activeAssignment.sample_weight_grams}g sample sent to `
+                        : "Full batch sent to "}
+                      {activeAssignment.assigned_to_org?.name}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Assigned:{" "}
+                      {new Date(
+                        activeAssignment.assigned_at,
+                      ).toLocaleDateString()}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         </td>
@@ -381,7 +426,47 @@ export const BatchTableRow = ({
               className="flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              {mergeMode?.canMerge && mergeMode?.isActive ? (
+              {assignmentMode?.isActive ? (
+                // Assignment mode actions
+                <>
+                  {assignmentMode.isSelected ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={assignmentMode.onRemoveFromAssignment}
+                        className="border-green-500 bg-green-100 text-green-700"
+                      >
+                        <Minus className="mr-1 h-4 w-4" />
+                        <span className="text-xs">Remove</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={assignmentMode.onCancelAssignment}
+                        className="border-destructive/50 text-destructive hover:bg-destructive/50"
+                      >
+                        <X className="mr-1 h-4 w-4" />
+                        <span className="text-xs">Cancel</span>
+                      </Button>
+                    </div>
+                  ) : hasActiveAssignment ? (
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500 bg-blue-50 text-xs text-blue-700"
+                    >
+                      Already Assigned
+                    </Badge>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={assignmentMode.onAddToAssignment}
+                      className="border-blue-500/20 text-blue-700 hover:bg-blue-50"
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      <span className="text-xs">Add to Assignment</span>
+                    </Button>
+                  )}
+                </>
+              ) : mergeMode?.canMerge && mergeMode?.isActive ? (
                 // Merge mode actions
                 <>
                   {mergeMode.isInitiating ? (
@@ -498,6 +583,33 @@ export const BatchTableRow = ({
                   >
                     <FlaskConical className="h-4 w-4" />
                   </Button>
+
+                  {onAssignForTesting && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={mergeDisabled || hasActiveAssignment}
+                            onClick={() => onAssignForTesting(batch)}
+                            title={
+                              hasActiveAssignment
+                                ? "Batch already assigned"
+                                : "Assign for Testing"
+                            }
+                          >
+                            <SendIcon className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        {hasActiveAssignment && (
+                          <TooltipContent>
+                            Batch already has an active assignment
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
 
                   <TooltipProvider>
                     <Tooltip>

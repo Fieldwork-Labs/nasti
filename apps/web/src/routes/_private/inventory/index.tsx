@@ -13,16 +13,21 @@ import {
 } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "@/components/inventory/BatchTableRow"
 import { CompleteMergeButton } from "@/components/inventory/CompleteMergeButton"
+import { CompleteAssignmentButton } from "@/components/inventory/CompleteAssignmentButton"
 import {
   BatchEditModal,
   BatchSplitModal,
   BatchStorageModal,
   BatchMergeModal,
+  AssignBatchesForTestingModal,
 } from "@/components/inventory/modals"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchDelete, useBatchesByFilter } from "@/hooks/useBatches"
 import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
 import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
+import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
+import useUserStore from "@/store/userStore"
+import { useAssignmentMode } from "@/hooks/useAssignmentMode"
 
 // Define search schema for URL parameters
 const inventorySearchSchema = z.object({
@@ -98,12 +103,27 @@ function InventoryPage() {
   )
 
   // Fetch batches using the filter hook
-  const { data: batches = [], isLoading: isLoadingBatches } =
-    useBatchesByFilter(batchFilter)
+  const { data: batches = [], isLoading } = useBatchesByFilter(batchFilter)
+
+  // Assignment mode hook
+  const {
+    assignmentState,
+    showAssignmentModal,
+    selectedBatchesForAssignment,
+    handleAssignForTesting,
+    handleCompleteAssignment,
+    handleCloseAssignmentModal,
+    getAssignmentModeForBatch,
+  } = useAssignmentMode(batches)
+
+  // Check if user has any linked testing organisations
+  const { organisation } = useUserStore()
+  const { data: organisationLinks } = useOrganisationLinks()
+  const hasTestingOrgLinks =
+    organisation?.type === "General" &&
+    Boolean(organisationLinks && organisationLinks.length > 0)
 
   const { mutateAsync: deleteBatch } = useBatchDelete()
-
-  const isLoading = isLoadingBatches
 
   // Get selected batches for merge modal
   const selectedBatchesForMerge = mergeState
@@ -384,7 +404,13 @@ function InventoryPage() {
                           onStorageMove={handleStorageMove}
                           onProcess={setPocessingBatch}
                           onMerge={handleMerge}
+                          onAssignForTesting={
+                            hasTestingOrgLinks
+                              ? handleAssignForTesting
+                              : undefined
+                          }
                           mergeMode={getMergeModeForBatch(batch)}
+                          assignmentMode={getAssignmentModeForBatch(batch)}
                         />
                       ))}
                     </tbody>
@@ -400,6 +426,14 @@ function InventoryPage() {
           <CompleteMergeButton
             selectedCount={mergeState.selectedBatchIds.length}
             onCompleteMerge={handleCompleteMerge}
+          />
+        )}
+
+        {/* Complete Assignment Button */}
+        {assignmentState && assignmentState.selectedBatchIds.length > 0 && (
+          <CompleteAssignmentButton
+            selectedCount={assignmentState.selectedBatchIds.length}
+            onCompleteAssignment={handleCompleteAssignment}
           />
         )}
 
@@ -447,6 +481,15 @@ function InventoryPage() {
               setMergeState(null) // Reset merge state after modal closes
             }}
             selectedBatches={selectedBatchesForMerge}
+            batchFilter={batchFilter}
+          />
+        )}
+
+        {assignmentState && selectedBatchesForAssignment.length > 0 && (
+          <AssignBatchesForTestingModal
+            isOpen={showAssignmentModal}
+            onClose={handleCloseAssignmentModal}
+            selectedBatches={selectedBatchesForAssignment}
             batchFilter={batchFilter}
           />
         )}

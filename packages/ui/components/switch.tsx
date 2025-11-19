@@ -1,12 +1,13 @@
+"use client"
+
 import * as React from "react"
 import * as SwitchPrimitive from "@radix-ui/react-switch"
-
 import { cn } from "../utils"
 
-const Switch = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<typeof SwitchPrimitive.Root>
->(({ className, ...props }, ref) => {
+function Switch({
+  className,
+  ...props
+}: React.ComponentProps<typeof SwitchPrimitive.Root>) {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
@@ -15,7 +16,6 @@ const Switch = React.forwardRef<
         className,
       )}
       {...props}
-      ref={ref}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
@@ -25,7 +25,6 @@ const Switch = React.forwardRef<
       />
     </SwitchPrimitive.Root>
   )
-})
+}
 
-Switch.displayName = SwitchPrimitive.Root.displayName
 export { Switch }
