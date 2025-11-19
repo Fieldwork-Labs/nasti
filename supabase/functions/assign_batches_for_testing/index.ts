@@ -7,13 +7,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, Apikey",
   "Access-Control-Max-Age": "86400",
 }
 
 interface AssignmentRequest {
   batch_id: string
   sample_weight_grams?: number
+  assignment_type: "sample" | "full_batch"
+}
+
+const returnErrorResponse = (message: string, status: number) => {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  })
 }
 
 Deno.serve(async (req) => {
@@ -29,10 +38,7 @@ Deno.serve(async (req) => {
     // Create Supabase client with user's auth
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
+      return returnErrorResponse("Missing authorization", 401)
     }
 
     const supabaseClient = createClient(
@@ -52,74 +58,50 @@ Deno.serve(async (req) => {
     } = await supabaseClient.auth.getUser()
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
+      return returnErrorResponse("Unauthorized", 401)
     }
 
     // Get request body
-    const { batch_assignments, testing_org_id, assignment_type } =
+    const { batch_assignments: untypedBatchAssignments, testing_org_id } =
       await req.json()
+    const batchAssignments: AssignmentRequest[] = untypedBatchAssignments
 
     // Validate inputs
     if (
-      !batch_assignments ||
-      !Array.isArray(batch_assignments) ||
-      batch_assignments.length === 0
+      !batchAssignments ||
+      !Array.isArray(batchAssignments) ||
+      batchAssignments.length === 0
     ) {
-      return new Response(
-        JSON.stringify({
-          error: "batch_assignments must be a non-empty array",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "batch_assignments must be a non-empty array",
+        400,
       )
     }
 
     if (!testing_org_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing required field: testing_org_id" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+      return returnErrorResponse("Missing required field: testing_org_id", 400)
     }
 
-    if (
-      !assignment_type ||
-      !["sample", "full_batch"].includes(assignment_type)
-    ) {
-      return new Response(
-        JSON.stringify({
-          error: "assignment_type must be either 'sample' or 'full_batch'",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
-    }
+    for (const assignment of batchAssignments) {
+      if (
+        !assignment.assignment_type ||
+        !["sample", "full_batch"].includes(assignment.assignment_type)
+      ) {
+        return returnErrorResponse(
+          "assignment_type must be either 'sample' or 'full_batch'",
+          400,
+        )
+      }
 
-    // Validate sample weights for sample type
-    if (assignment_type === "sample") {
-      for (const assignment of batch_assignments) {
+      // Validate sample weights for sample type
+      if (assignment.assignment_type === "sample") {
         if (
           !assignment.sample_weight_grams ||
           assignment.sample_weight_grams <= 0
         ) {
-          return new Response(
-            JSON.stringify({
-              error:
-                "sample_weight_grams is required and must be > 0 for sample type assignments",
-            }),
-            {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            },
+          return returnErrorResponse(
+            "sample_weight_grams is required and must be > 0 for sample type assignments",
+            400,
           )
         }
       }
@@ -133,12 +115,9 @@ Deno.serve(async (req) => {
       .single()
 
     if (!orgMembership) {
-      return new Response(
-        JSON.stringify({ error: "User is not a member of any organisation" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "User is not a member of any organisation",
+        403,
       )
     }
 
@@ -153,74 +132,46 @@ Deno.serve(async (req) => {
       .single()
 
     if (linkError || !link) {
-      return new Response(
-        JSON.stringify({
-          error: "No link exists with the specified testing organisation",
-        }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "No link exists with the specified testing organisation",
+        404,
       )
     }
 
     // Check permissions based on assignment type
-    if (assignment_type === "full_batch" && !link.can_process) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "Testing organisation does not have permission to process batches",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+    for (const assignment of batchAssignments) {
+      if (assignment.assignment_type === "full_batch" && !link.can_process) {
+        return returnErrorResponse(
+          "Testing organisation does not have permission to process batches",
+          403,
+        )
+      }
+
+      if (assignment.assignment_type === "sample" && !link.can_test) {
+        return returnErrorResponse(
+          "Testing organisation does not have permission to test samples",
+          403,
+        )
+      }
     }
 
-    if (assignment_type === "sample" && !link.can_test) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "Testing organisation does not have permission to test samples",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
-    }
-
-    const batch_ids = batch_assignments.map(
-      (a: AssignmentRequest) => a.batch_id,
-    )
+    const batchIds = batchAssignments.map((a) => a.batch_id)
 
     // Verify all batches belong to user's org (current custodian)
     const { data: batches, error: batchError } = await supabaseClient
       .from("current_batch_custody")
       .select("batch_id, organisation_id")
-      .in("batch_id", batch_ids)
+      .in("batch_id", batchIds)
 
     if (batchError) {
-      return new Response(
-        JSON.stringify({
-          error: `Failed to fetch batches: ${batchError.message}`,
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        `Failed to fetch batches: ${batchError.message}`,
+        500,
       )
     }
 
-    if (!batches || batches.length !== batch_ids.length) {
-      return new Response(
-        JSON.stringify({ error: "One or more batches not found" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+    if (!batches || batches.length !== batchIds.length) {
+      return returnErrorResponse("One or more batches not found", 404)
     }
 
     // Check all batches belong to user's org
@@ -228,14 +179,9 @@ Deno.serve(async (req) => {
       (b) => b.organisation_id !== userOrgId,
     )
     if (invalidBatches.length > 0) {
-      return new Response(
-        JSON.stringify({
-          error: "One or more batches do not belong to your organisation",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "One or more batches do not belong to your organisation",
+        403,
       )
     }
 
@@ -243,30 +189,27 @@ Deno.serve(async (req) => {
     const { data: existingAssignments } = await supabaseClient
       .from("batch_testing_assignment")
       .select("batch_id")
-      .in("batch_id", batch_ids)
+      .in("batch_id", batchIds)
       .is("returned_at", null)
 
     if (existingAssignments && existingAssignments.length > 0) {
-      return new Response(
-        JSON.stringify({
-          error: "One or more batches already have active testing assignments",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "One or more batches already have active testing assignments",
+        400,
       )
     }
 
     // Create assignment records
-    const assignmentRecords = batch_assignments.map(
+    const assignmentRecords = batchAssignments.map(
       (assignment: AssignmentRequest) => ({
         batch_id: assignment.batch_id,
         assigned_to_org_id: testing_org_id,
         assigned_by_org_id: userOrgId,
-        assignment_type: assignment_type,
+        assignment_type: assignment.assignment_type,
         sample_weight_grams:
-          assignment_type === "sample" ? assignment.sample_weight_grams : null,
+          assignment.assignment_type === "sample"
+            ? assignment.sample_weight_grams
+            : null,
       }),
     )
 
@@ -276,56 +219,15 @@ Deno.serve(async (req) => {
       .select()
 
     if (assignError) {
-      return new Response(
-        JSON.stringify({
-          error: `Failed to create assignments: ${assignError.message}`,
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        `Failed to create assignments: ${assignError.message}`,
+        500,
       )
-    }
-
-    // If full_batch, create custody transfers
-    if (assignment_type === "full_batch") {
-      const custodyRecords = batch_ids.map((batch_id) => ({
-        batch_id: batch_id,
-        organisation_id: testing_org_id,
-        transferred_by: user.id,
-        previous_organisation_id: userOrgId,
-        notes: "Transferred for testing/processing",
-      }))
-
-      const { error: custodyError } = await supabaseClient
-        .from("batch_custody")
-        .insert(custodyRecords)
-
-      if (custodyError) {
-        // Rollback: delete the assignments we just created
-        await supabaseClient
-          .from("batch_testing_assignment")
-          .delete()
-          .in(
-            "id",
-            newAssignments.map((a) => a.id),
-          )
-
-        return new Response(
-          JSON.stringify({
-            error: `Failed to transfer custody: ${custodyError.message}`,
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        )
-      }
     }
 
     return new Response(
       JSON.stringify({
-        message: `Successfully assigned ${batch_ids.length} batch(es) for testing`,
+        message: `Successfully assigned ${batchIds.length} batch(es) for testing`,
         assignments: newAssignments,
       }),
       {
@@ -334,14 +236,9 @@ Deno.serve(async (req) => {
       },
     )
   } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: `Internal server error: ${(error as Error).message}`,
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+    return returnErrorResponse(
+      `Internal server error: ${(error as Error).message}`,
+      500,
     )
   }
 })
