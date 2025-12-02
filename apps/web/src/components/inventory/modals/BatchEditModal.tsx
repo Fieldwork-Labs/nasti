@@ -6,23 +6,19 @@ import {
 } from "@nasti/ui/dialog"
 import { BatchForm } from "@/components/batches"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import {
-  invalidateBatchesByFilterCache,
-  type BatchFilter,
-} from "@/hooks/useBatches"
 
 type BatchEditModalProps = {
   isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
   batch: BatchWithCurrentLocationAndSpecies
-  batchFilter: BatchFilter
 }
 
 export const BatchEditModal = ({
   isOpen,
   onClose,
   batch,
-  batchFilter,
+  onSuccess,
 }: BatchEditModalProps) => {
   if (!isOpen) return null
 
@@ -36,7 +32,7 @@ export const BatchEditModal = ({
           batch={batch}
           onSuccess={() => {
             onClose()
-            invalidateBatchesByFilterCache(batchFilter)
+            onSuccess?.()
           }}
           onCancel={onClose}
         />

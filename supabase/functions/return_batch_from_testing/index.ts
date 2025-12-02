@@ -6,9 +6,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, Apikey",
   "Access-Control-Max-Age": "86400",
+}
+
+const returnErrorResponse = (message: string, status: number) => {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  })
 }
 
 Deno.serve(async (req) => {
@@ -24,10 +32,7 @@ Deno.serve(async (req) => {
     // Create Supabase client with user's auth
     const authHeader = req.headers.get("Authorization")
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
+      return returnErrorResponse("Missing authorization", 401)
     }
 
     const supabaseClient = createClient(
@@ -47,10 +52,7 @@ Deno.serve(async (req) => {
     } = await supabaseClient.auth.getUser()
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
+      return returnErrorResponse("Unauthorized", 401)
     }
 
     // Get request body
@@ -62,26 +64,14 @@ Deno.serve(async (req) => {
 
     // Validate inputs
     if (!assignment_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing required field: assignment_id" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+      return returnErrorResponse("Missing required field: assignment_id", 400)
     }
 
     // If subsample weight provided, storage location is required
     if (subsample_weight_grams && !subsample_storage_location_id) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "subsample_storage_location_id is required when storing a subsample",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "subsample_storage_location_id is required when storing a subsample",
+        400,
       )
     }
 
@@ -93,12 +83,9 @@ Deno.serve(async (req) => {
       .single()
 
     if (!orgMembership) {
-      return new Response(
-        JSON.stringify({ error: "User is not a member of any organisation" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "User is not a member of any organisation",
+        403,
       )
     }
 
@@ -112,37 +99,20 @@ Deno.serve(async (req) => {
       .single()
 
     if (fetchError || !assignment) {
-      return new Response(
-        JSON.stringify({ error: "Assignment not found" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+      return returnErrorResponse("Assignment not found", 404)
     }
 
     // Verify user's org is the testing org for this assignment
     if (assignment.assigned_to_org_id !== userOrgId) {
-      return new Response(
-        JSON.stringify({
-          error: "This assignment does not belong to your organisation",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+      return returnErrorResponse(
+        "This assignment does not belong to your organisation",
+        403,
       )
     }
 
     // Check if already returned
     if (assignment.returned_at) {
-      return new Response(
-        JSON.stringify({ error: "Assignment already returned" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+      return returnErrorResponse("Assignment already returned", 400)
     }
 
     // Validate storage location belongs to testing org (if provided)
@@ -154,24 +124,13 @@ Deno.serve(async (req) => {
         .single()
 
       if (locationError || !location) {
-        return new Response(
-          JSON.stringify({ error: "Storage location not found" }),
-          {
-            status: 404,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        )
+        return returnErrorResponse("Storage location not found", 404)
       }
 
       if (location.organisation_id !== userOrgId) {
-        return new Response(
-          JSON.stringify({
-            error: "Storage location does not belong to your organisation",
-          }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
+        return returnErrorResponse(
+          "Storage location does not belong to your organisation",
+          403,
         )
       }
     }
@@ -179,6 +138,7 @@ Deno.serve(async (req) => {
     // Update assignment with return info
     const updateData: {
       returned_at: string
+      completed_at?: string
       subsample_weight_grams?: number
       subsample_storage_location_id?: string
     } = {
@@ -193,55 +153,22 @@ Deno.serve(async (req) => {
       updateData.subsample_storage_location_id = subsample_storage_location_id
     }
 
-    const { data: updatedAssignment, error: updateError } =
-      await supabaseClient
-        .from("batch_testing_assignment")
-        .update(updateData)
-        .eq("id", assignment_id)
-        .select()
-        .single()
-
-    if (updateError) {
-      return new Response(
-        JSON.stringify({
-          error: `Failed to update assignment: ${updateError.message}`,
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      )
+    if (!assignment.completed_at) {
+      updateData.completed_at = new Date().toISOString()
     }
 
-    // If full batch assignment, create custody transfer back to original org
-    if (assignment.assignment_type === "full_batch") {
-      const { error: custodyError } = await supabaseClient
-        .from("batch_custody")
-        .insert({
-          batch_id: assignment.batch_id,
-          organisation_id: assignment.assigned_by_org_id,
-          transferred_by: user.id,
-          previous_organisation_id: userOrgId,
-          notes: "Returned from testing/processing",
-        })
+    const { data: updatedAssignment, error: updateError } = await supabaseClient
+      .from("batch_testing_assignment")
+      .update(updateData)
+      .eq("id", assignment_id)
+      .select()
+      .single()
 
-      if (custodyError) {
-        // Rollback: remove returned_at from assignment
-        await supabaseClient
-          .from("batch_testing_assignment")
-          .update({ returned_at: null })
-          .eq("id", assignment_id)
-
-        return new Response(
-          JSON.stringify({
-            error: `Failed to transfer custody: ${custodyError.message}`,
-          }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        )
-      }
+    if (updateError) {
+      return returnErrorResponse(
+        `Failed to update assignment: ${updateError.message}`,
+        500,
+      )
     }
 
     return new Response(
@@ -255,12 +182,9 @@ Deno.serve(async (req) => {
       },
     )
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: `Internal server error: ${error.message}` }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+    return returnErrorResponse(
+      `Internal server error: ${(error as Error).message}`,
+      500,
     )
   }
 })

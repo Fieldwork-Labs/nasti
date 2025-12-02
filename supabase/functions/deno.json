@@ -1,6 +1,0 @@
-{
-  "imports": {
-    "@/common-types": "../../packages/common/types/index.ts",
-    "@/common-types/database": "../../packages/common/types/database.ts"
-  }
-}

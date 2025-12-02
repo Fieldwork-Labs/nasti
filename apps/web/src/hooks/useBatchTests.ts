@@ -395,6 +395,7 @@ export const useCreateQualityTest = () => {
         .from("tests")
         .insert({
           batch_id: batchId,
+          performed_by_organisation_id: organisation.id,
           type: "quality",
           result: result as unknown as Json,
           tested_at: new Date().toISOString(),

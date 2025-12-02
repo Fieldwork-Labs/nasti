@@ -71,6 +71,7 @@ export const InvitationForm = () => {
       <FormField
         label="Email"
         type="email"
+        autoComplete="off"
         {...register("email", {
           required: "Required",
         })}

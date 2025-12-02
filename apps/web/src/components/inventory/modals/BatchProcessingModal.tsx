@@ -5,24 +5,21 @@ import {
   DialogTitle,
 } from "@nasti/ui/dialog"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import {
-  invalidateBatchesByFilterCache,
-  type BatchFilter,
-} from "@/hooks/useBatches"
+
 import { BatchProcessingForm } from "@/components/batches/BatchProcessingForm"
 
 type BatchProcessingModalProps = {
   isOpen: boolean
   onClose: () => void
   batch: BatchWithCurrentLocationAndSpecies
-  batchFilter: BatchFilter
+  onSuccess?: () => void
 }
 
 export const BatchProcessingModal = ({
   isOpen,
   onClose,
   batch,
-  batchFilter,
+  onSuccess,
 }: BatchProcessingModalProps) => {
   if (!isOpen) return null
 
@@ -36,7 +33,7 @@ export const BatchProcessingModal = ({
           batch={batch}
           onSuccess={() => {
             onClose()
-            invalidateBatchesByFilterCache(batchFilter)
+            onSuccess?.()
           }}
           onCancel={onClose}
         />

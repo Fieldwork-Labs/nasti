@@ -277,27 +277,49 @@ END $$;
 -- Enable RLS on tests if not already enabled
 ALTER TABLE tests ENABLE ROW LEVEL SECURITY;
 
--- Tests can be viewed by batch owner org OR performing org
+-- Tests can be viewed by batch owner org (via custody) OR performing org
 CREATE POLICY org_members_can_view_tests ON tests
   FOR SELECT
   USING (
-    is_org_member(auth.uid(), organisation_id)
+    -- User's org owns the batch (via current custody)
+    EXISTS (
+      SELECT 1
+      FROM current_batch_custody cbc
+      INNER JOIN org_user ou ON ou.organisation_id = cbc.organisation_id
+      WHERE cbc.batch_id = tests.batch_id
+        AND ou.user_id = auth.uid()
+    )
     OR
-    (performed_by_organisation_id IS NOT NULL AND is_org_member(auth.uid(), performed_by_organisation_id))
+    -- User's org performed the test
+    (performed_by_organisation_id IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM org_user ou
+       WHERE ou.organisation_id = performed_by_organisation_id
+         AND ou.user_id = auth.uid()
+     ))
   );
 
 -- Tests can be created by batch owner org OR by testing orgs with assignments
 CREATE POLICY org_members_can_insert_tests ON tests
   FOR INSERT
   WITH CHECK (
-    is_org_member(auth.uid(), organisation_id)
+    -- User's org owns the batch (via current custody)
+    EXISTS (
+      SELECT 1
+      FROM current_batch_custody cbc
+      INNER JOIN org_user ou ON ou.organisation_id = cbc.organisation_id
+      WHERE cbc.batch_id = tests.batch_id
+        AND ou.user_id = auth.uid()
+    )
     OR
+    -- User's org has an active testing assignment for this batch
     EXISTS (
       SELECT 1
       FROM batch_testing_assignment bta
+      INNER JOIN org_user ou ON ou.organisation_id = bta.assigned_to_org_id
       WHERE bta.batch_id = tests.batch_id
-        AND is_org_member(auth.uid(), bta.assigned_to_org_id)
-        AND bta.returned_at IS NULL -- assignment still active
+        AND bta.returned_at IS NULL
+        AND ou.user_id = auth.uid()
     )
   );
 
@@ -306,11 +328,19 @@ CREATE POLICY org_members_can_update_tests ON tests
   FOR UPDATE
   USING (
     performed_by_organisation_id IS NOT NULL
-    AND is_org_member(auth.uid(), performed_by_organisation_id)
+    AND EXISTS (
+      SELECT 1 FROM org_user ou
+      WHERE ou.organisation_id = performed_by_organisation_id
+        AND ou.user_id = auth.uid()
+    )
   )
   WITH CHECK (
     performed_by_organisation_id IS NOT NULL
-    AND is_org_member(auth.uid(), performed_by_organisation_id)
+    AND EXISTS (
+      SELECT 1 FROM org_user ou
+      WHERE ou.organisation_id = performed_by_organisation_id
+        AND ou.user_id = auth.uid()
+    )
   );
 
 -- Tests can be deleted by performing org
@@ -318,12 +348,18 @@ CREATE POLICY org_members_can_delete_tests ON tests
   FOR DELETE
   USING (
     performed_by_organisation_id IS NOT NULL
-    AND is_org_member(auth.uid(), performed_by_organisation_id)
+    AND EXISTS (
+      SELECT 1 FROM org_user ou
+      WHERE ou.organisation_id = performed_by_organisation_id
+        AND ou.user_id = auth.uid()
+    )
   );
 
 -- Add comments
-COMMENT ON POLICY org_members_can_view_tests ON tests IS 'Batch owner org and performing org can view tests';
+COMMENT ON POLICY org_members_can_view_tests ON tests IS 'Batch owner org (via custody) and performing org can view tests';
 COMMENT ON POLICY org_members_can_insert_tests ON tests IS 'Batch owner org and testing orgs with active assignments can create tests';
+COMMENT ON POLICY org_members_can_update_tests ON tests IS 'Only the org that performed the test can update it';
+COMMENT ON POLICY org_members_can_delete_tests ON tests IS 'Only the org that performed the test can delete it';
 
 -- Add comments for organisation link policies
 COMMENT ON POLICY general_org_can_insert_links ON organisation_link IS 'Only General org admins can create links';

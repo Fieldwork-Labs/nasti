@@ -6,23 +6,19 @@ import {
 } from "@nasti/ui/dialog"
 import { BatchSplitForm } from "@/components/batches"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import {
-  invalidateBatchesByFilterCache,
-  type BatchFilter,
-} from "@/hooks/useBatches"
 
 type BatchSplitModalProps = {
   isOpen: boolean
   onClose: () => void
+  onSuccess?: () => void
   batch: BatchWithCurrentLocationAndSpecies
-  batchFilter: BatchFilter
 }
 
 export const BatchSplitModal = ({
   isOpen,
   onClose,
   batch,
-  batchFilter,
+  onSuccess,
 }: BatchSplitModalProps) => {
   if (!isOpen) return null
 
@@ -36,7 +32,7 @@ export const BatchSplitModal = ({
           parentBatch={batch}
           onSuccess={() => {
             onClose()
-            invalidateBatchesByFilterCache(batchFilter)
+            onSuccess?.()
           }}
           onCancel={onClose}
         />

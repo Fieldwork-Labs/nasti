@@ -27,7 +27,7 @@ import { cn } from "@nasti/ui/utils"
 import {
   useCreateQualityTest,
   useUpdateQualityTest,
-} from "@/hooks/useBatchTreatments"
+} from "@/hooks/useBatchTests"
 import type { QualityTestType, QualityTest } from "@nasti/common/types"
 
 // Test type options
@@ -87,7 +87,7 @@ const SeedCounts = ({
     getDeadSeedCount(index) + getViableSeedCount(index)
 
   return fields.map((field, index) => (
-    <div key={field.id} className="rounded-lg border border-gray-200 p-2">
+    <div key={field.id} className="rounded-lg border p-2">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-sm font-medium">Repeat {index + 1}</span>
         {fields.length > 1 && (
