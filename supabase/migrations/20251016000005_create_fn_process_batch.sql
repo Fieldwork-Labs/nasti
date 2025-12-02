@@ -120,6 +120,27 @@ BEGIN
     auth.uid()
   );
 
+  -- If input batch has an active testing assignment, create a new assignment for output batch
+  -- This maintains assignment continuity when testing orgs process batches
+  INSERT INTO batch_testing_assignment (
+    batch_id,
+    assigned_to_org_id,
+    assigned_by_org_id,
+    assignment_type,
+    sample_weight_grams,
+    assigned_at
+  )
+  SELECT
+    v_output_batch_id,
+    bta.assigned_to_org_id,
+    bta.assigned_by_org_id,
+    bta.assignment_type,
+    bta.sample_weight_grams,
+    bta.assigned_at
+  FROM batch_testing_assignment bta
+  WHERE bta.batch_id = p_input_batch_id
+    AND bta.returned_at IS NULL;
+
   RETURN v_output_batch_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
