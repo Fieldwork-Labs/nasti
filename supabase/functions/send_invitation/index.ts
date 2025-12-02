@@ -142,20 +142,23 @@ Deno.serve(async (req) => {
     }
 
     const invitationId = crypto.randomUUID()
+    const invitation = {
+      id: invitationId,
+      email,
+      name,
+      organisation_id: orgUser.organisation_id,
+      invited_by: userId,
+      token: invitationToken,
+      created_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      accepted_at: null,
+      organisation_name: orgUser.organisation.name,
+      role: role || "Member",
+    }
     // Insert the invitation into the database
-    const { error: insertError } = await supabase.from("invitation").insert([
-      {
-        id: invitationId,
-        email,
-        name,
-        organisation_id: orgUser.organisation_id,
-        invited_by: userId,
-        token: invitationToken,
-        created_at: new Date(),
-        expires_at: expiresAt,
-        role: role || "Member",
-      },
-    ])
+    const { error: insertError } = await supabase
+      .from("invitation")
+      .insert(invitation)
 
     if (insertError) {
       console.error("Database insert error:", insertError)

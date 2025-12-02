@@ -7,6 +7,9 @@ export type BatchAssignmentWithOrg = BatchTestingAssignment & {
   assigned_to_org?: {
     name: string
   }
+  assigned_by_org?: {
+    name: string
+  }
 }
 
 // Fetch active assignments for batches (not yet returned)
@@ -19,7 +22,8 @@ export const useActiveBatchAssignments = () => {
         .select(
           `
           *,
-          assigned_to_org:organisation!assigned_to_org_id(name)
+          assigned_to_org:organisation!assigned_to_org_id(name),
+          assigned_by_org:organisation!assigned_by_org_id(name)
         `,
         )
         .is("returned_at", null)
@@ -41,7 +45,8 @@ export const useActiveBatchAssignment = (batchId: string) => {
         .select(
           `
           *,
-          assigned_to_org:organisation!assigned_to_org_id(name)
+          assigned_to_org:organisation!assigned_to_org_id(name),
+          assigned_by_org:organisation!assigned_by_org_id(name)
         `,
         )
         .eq("batch_id", batchId)

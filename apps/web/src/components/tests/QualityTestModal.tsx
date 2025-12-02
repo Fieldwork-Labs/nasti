@@ -6,6 +6,7 @@ import {
 } from "@nasti/ui/dialog"
 import { QualityTestForm } from "./QualityTestForm"
 import type { QualityTest } from "@nasti/common/types"
+import { useBatchFiltersContext } from "@/routes/_private/inventory/-components/BatchFiltersContext"
 
 type QualityTestModalProps = {
   isOpen: boolean
@@ -20,6 +21,7 @@ export const QualityTestModal = ({
   batchId,
   existingTest,
 }: QualityTestModalProps) => {
+  const { invalidateBatchesCacheByFilter } = useBatchFiltersContext()
   if (!isOpen) return null
 
   return (
@@ -33,7 +35,10 @@ export const QualityTestModal = ({
         <QualityTestForm
           batchId={batchId}
           existingTest={existingTest}
-          onSuccess={onClose}
+          onSuccess={() => {
+            invalidateBatchesCacheByFilter()
+            onClose()
+          }}
           onCancel={onClose}
         />
       </DialogContent>

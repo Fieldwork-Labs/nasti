@@ -49,7 +49,6 @@ Deno.serve(async (req) => {
     .limit(1)
 
   if (error || !invitations || invitations.length === 0) {
-    console.log({ error, invitation })
     return new Response("Invitation not found", {
       status: 404,
       headers: corsHeaders,

@@ -137,9 +137,11 @@ const RootComponent = () => {
                 </Link>
                 {session && (
                   <>
-                    <Link to="/trips" className="text-lead">
-                      Trips
-                    </Link>
+                    {organisation?.type === "General" && (
+                      <Link to="/trips" className="text-lead">
+                        Trips
+                      </Link>
+                    )}
                     <Link to="/inventory" className="text-lead">
                       Inventory
                     </Link>

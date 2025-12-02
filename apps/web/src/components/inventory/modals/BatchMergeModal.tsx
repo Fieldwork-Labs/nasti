@@ -1,26 +1,22 @@
-import { useState } from "react"
-import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { Loader2, Package, Merge } from "lucide-react"
+import { Badge } from "@nasti/ui/badge"
+import { Button } from "@nasti/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@nasti/ui/dialog"
-import { Button } from "@nasti/ui/button"
+import { useToast } from "@nasti/ui/hooks"
 import { Label } from "@nasti/ui/label"
 import { Textarea } from "@nasti/ui/textarea"
-import { Badge } from "@nasti/ui/badge"
-import { useToast } from "@nasti/ui/hooks"
+import { Loader2, Merge, Package } from "lucide-react"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
 
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useMergeBatches } from "@/hooks/useBatches"
-import type {
-  BatchWithCurrentLocationAndSpecies,
-  BatchFilter,
-} from "@/hooks/useBatches"
-import { invalidateBatchesByFilterCache } from "@/hooks/useBatches"
 
 const batchMergeSchema = z.object({
   notes: z.string().optional(),
@@ -32,14 +28,14 @@ type BatchMergeModalProps = {
   isOpen: boolean
   onClose: () => void
   selectedBatches: BatchWithCurrentLocationAndSpecies[]
-  batchFilter: BatchFilter
+  onSuccess?: () => void
 }
 
 export const BatchMergeModal = ({
   isOpen,
   onClose,
   selectedBatches,
-  batchFilter,
+  onSuccess,
 }: BatchMergeModalProps) => {
   const { toast } = useToast()
   const mergeBatchesMutation = useMergeBatches()
@@ -82,7 +78,7 @@ export const BatchMergeModal = ({
         description: `Successfully merged ${selectedBatches.length} batches`,
       })
 
-      invalidateBatchesByFilterCache(batchFilter)
+      onSuccess?.()
       onClose()
     } catch (error) {
       console.error("Merge failed:", error)

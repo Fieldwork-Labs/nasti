@@ -24,11 +24,8 @@ import {
 } from "@nasti/ui/select"
 
 import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
-import type {
-  BatchWithCurrentLocationAndSpecies,
-  BatchFilter,
-} from "@/hooks/useBatches"
-import { invalidateBatchesByFilterCache } from "@/hooks/useBatches"
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+
 import { useAssignBatchesForTesting } from "@/hooks/useAssignBatchesForTesting"
 import { cn } from "@nasti/ui/utils"
 
@@ -50,15 +47,9 @@ const BatchSampleRow = ({
 }: {
   batch: BatchWithCurrentLocationAndSpecies
 }) => {
-  const {
-    setValue,
-    setError,
-    watch,
-    formState: { errors },
-  } = useFormContext<AssignBatchesFormData>()
+  const { setValue, setError, watch } = useFormContext<AssignBatchesFormData>()
   const values = watch("sample_weights")[batch.id]
   const isSample = values.assignment_type === "sample"
-  console.log({ errors })
 
   const handleSampleWeightChange = (value: string) => {
     const newValue = parseInt(value)
@@ -147,14 +138,14 @@ type AssignBatchesForTestingModalProps = {
   isOpen: boolean
   onClose: () => void
   selectedBatches: BatchWithCurrentLocationAndSpecies[]
-  batchFilter: BatchFilter
+  onSuccess?: () => void
 }
 
 export const AssignBatchesForTestingModal = ({
   isOpen,
   onClose,
   selectedBatches,
-  batchFilter,
+  onSuccess,
 }: AssignBatchesForTestingModalProps) => {
   const { toast } = useToast()
   const assignBatchesMutation = useAssignBatchesForTesting()
@@ -249,7 +240,7 @@ export const AssignBatchesForTestingModal = ({
         description: `Successfully assigned ${selectedBatches.length} batch${selectedBatches.length > 1 ? "es" : ""} for testing`,
       })
 
-      invalidateBatchesByFilterCache(batchFilter)
+      onSuccess?.()
       onClose()
       // Reset form and state
       form.reset()

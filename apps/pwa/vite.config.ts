@@ -100,9 +100,9 @@ export default defineConfig({
         navigateFallback: "index.html",
         runtimeCaching: [
           {
-            // match   /functions/v1/ala_image_proxy?url=…
+            // match   /api/ala_image_proxy?url=…
             urlPattern: ({ url }) =>
-              url.pathname.startsWith("/functions/v1/ala_image_proxy"),
+              url.pathname.startsWith("/api/ala_image_proxy"),
 
             handler: "CacheFirst", // serve from cache when offline
             method: "GET",

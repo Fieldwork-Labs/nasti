@@ -6,7 +6,10 @@ import {
   TripSpeciesModal,
 } from "@/components/trips/modals"
 import { getTripCoordinates } from "@/components/trips/utils"
-import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
+import {
+  getTripDetailQueryOptions,
+  TripWithDetails,
+} from "@/hooks/useTripDetail"
 import { TripSpeciesWithDetails, useTripSpecies } from "@/hooks/useTripSpecies"
 import useUserStore from "@/store/userStore"
 import { parsePostGISPoint, queryClient } from "@nasti/common/utils"
@@ -43,12 +46,6 @@ import { Spinner } from "@nasti/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { useSuspenseQuery } from "@tanstack/react-query"
 
-const getTripQueryOptions = (id: string) => ({
-  queryKey: ["trip", id],
-  queryFn: () => getTripDetail(id),
-  enabled: Boolean(id),
-})
-
 type ModalComponentNames =
   | "details"
   | "location"
@@ -60,7 +57,7 @@ type ModalComponentNames =
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const { isAdmin } = useUserStore()
-  const { data: instance } = useSuspenseQuery(getTripQueryOptions(id))
+  const { data: instance } = useSuspenseQuery(getTripDetailQueryOptions(id))
 
   const { data: tripSpecies } = useTripSpecies(instance?.id)
   const tripSpeciesMap = useMemo(() => {
@@ -463,7 +460,7 @@ export const Route = createFileRoute("/_private/trips/$id/")({
     const { id } = params
 
     return queryClient.ensureQueryData<TripWithDetails | null>(
-      getTripQueryOptions(id),
+      getTripDetailQueryOptions(id),
     )
   },
   pendingComponent: () => (
