@@ -20,9 +20,11 @@ import { useToast } from "@nasti/ui/hooks"
 import { useProcessBatch } from "@/hooks/useProcessBatch"
 import { cn } from "@nasti/ui/utils"
 import { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import { Checkbox } from "@nasti/ui/checkbox"
 
+type ProcessTypes = "clean" | "sort" | "coat" | "treat" | "other"
 // Process type options
-const processTypes = [
+const processTypes: Array<{ value: ProcessTypes; label: string }> = [
   { value: "clean", label: "Clean" },
   { value: "sort", label: "Sort" },
   { value: "coat", label: "Coat" },
@@ -95,7 +97,6 @@ export const BatchProcessingForm = ({
 }: BatchProcessingFormProps) => {
   const { toast } = useToast()
   const { mutateAsync: processBatchMutation, isPending } = useProcessBatch()
-  const [processTypeOpen, setProcessTypeOpen] = useState(false)
   const [qualityOpen, setQualityOpen] = useState(false)
 
   // Determine if origin weight is required (batch has NULL weight)
@@ -178,82 +179,24 @@ export const BatchProcessingForm = ({
       {/* Process Type */}
       <div className="space-y-2">
         <Label htmlFor="process">Process Types *</Label>
-        <Popover open={processTypeOpen} onOpenChange={setProcessTypeOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              className="w-full justify-between"
-            >
-              {form.watch("process").length > 0
-                ? form
-                    .watch("process")
-                    .map(
-                      (p) =>
-                        processTypes.find((pt) => pt.value === p)?.label || p,
-                    )
-                    .join(", ")
-                : "Select process types"}
-              <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0" align="start">
-            <Command>
-              <CommandList>
-                <CommandEmpty>No process type found.</CommandEmpty>
-                <CommandGroup>
-                  {processTypes.map((pt) => (
-                    <CommandItem
-                      key={pt.value}
-                      value={pt.value}
-                      onSelect={() => {
-                        const currentValues = form.watch("process")
-                        const newValues = currentValues.includes(
-                          pt.value as
-                            | "clean"
-                            | "sort"
-                            | "coat"
-                            | "treat"
-                            | "other",
-                        )
-                          ? currentValues.filter((v) => v !== pt.value)
-                          : [
-                              ...currentValues,
-                              pt.value as
-                                | "clean"
-                                | "sort"
-                                | "coat"
-                                | "treat"
-                                | "other",
-                            ]
-                        form.setValue("process", newValues)
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          form
-                            .watch("process")
-                            .includes(
-                              pt.value as
-                                | "clean"
-                                | "sort"
-                                | "coat"
-                                | "treat"
-                                | "other",
-                            )
-                            ? "opacity-100"
-                            : "opacity-0",
-                        )}
-                      />
-                      {pt.label}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        <div className="grid w-1/2 grid-cols-2 space-y-2">
+          {processTypes.map(({ label, value }) => (
+            <div key={value} className="flex items-center gap-2">
+              <Checkbox
+                id={value}
+                checked={form.watch("process").includes(value)}
+                onCheckedChange={(_checked) => {
+                  const currentValues = form.watch("process")
+                  const newValues: BatchProcessingFormData["process"] = _checked
+                    ? [...currentValues, value]
+                    : currentValues.filter((v) => v !== value)
+                  form.setValue("process", newValues)
+                }}
+              />
+              <Label htmlFor={value}>{label}</Label>
+            </div>
+          ))}
+        </div>
         {form.formState.errors.process && (
           <p className="text-sm text-red-600">
             {form.formState.errors.process.message}

@@ -18,7 +18,6 @@ import {
   FileWarningIcon,
   Package,
   Pencil,
-  ShoppingBag,
   Trash2,
 } from "lucide-react"
 import { useState, type ReactNode } from "react"
@@ -45,7 +44,6 @@ import { useCurrentBatchStorage } from "@/hooks/useBatchStorage"
 import { CollectionDetailModal } from "@/components/collections/CollectionDetailModal"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
-import { BatchHistory } from "@/components/inventory/BatchHistory"
 import useUserStore from "@/store/userStore"
 
 // =============================================================================
@@ -142,6 +140,9 @@ export const BatchTestHistory = ({
                     )}
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  {test.result.test_type}
+                </div>
                 <QualityTestStats
                   statistics={test.statistics}
                   repeatsCount={test.result.repeats.length}
@@ -190,9 +191,9 @@ export const QualityTestStats = ({
   <div className="flex gap-2">
     <div className="flex items-center gap-2">
       <span className="text-sm">
-        TPSU{" "}
+        TSW{" "}
         <span className="font-mono font-bold">
-          {statistics.tpsu.toFixed(3)}
+          {statistics.tpsu.toFixed(3)}g
         </span>
       </span>
     </div>
@@ -200,33 +201,13 @@ export const QualityTestStats = ({
       <span className="text-sm">
         PLS{" "}
         <span className="font-mono font-bold">
-          {(statistics.pls * 100).toFixed(3)}%
+          {(statistics.pls * 100).toFixed(2)}%{" "}
+          {statistics.standardError && (
+            <span>± {statistics.standardError?.toFixed(3)}%</span>
+          )}
         </span>
       </span>
     </div>
-    <div className="flex items-center gap-2">
-      <span className="text-sm">
-        PSU Number{" "}
-        <span className="font-mono font-bold">{statistics.psuCount}</span>
-      </span>
-    </div>
-    <div className="flex items-center gap-2">
-      <span className="text-sm">
-        PLS Number
-        <span className="font-mono font-bold"> {statistics.plsCount}</span>
-      </span>
-    </div>
-    {statistics.standardError !== null && (
-      <div className="flex items-center gap-2">
-        <span className="text-sm">
-          SE
-          <span className="font-mono font-bold">
-            {" "}
-            {statistics.standardError.toFixed(3)}
-          </span>
-        </span>
-      </div>
-    )}
     {repeatsCount !== undefined && (
       <div className="flex items-center gap-2">
         <span className="text-sm">
@@ -239,44 +220,14 @@ export const QualityTestStats = ({
 )
 
 /**
- * Displays the collection code with tooltip preview and modal
+ * Displays the Species Name
  */
-export const BatchCollectionField = ({
+export const BatchSpeciesNameField = ({
   batch,
 }: {
   batch: BatchWithCurrentLocationAndSpecies
 }) => {
-  const { open, isOpen, close } = useOpenClose()
-  const { organisation } = useUserStore()
-  const isTesting = organisation?.type === "Testing"
-
-  return (
-    <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4 text-blue-600" />
-              <span className="font-mono text-sm">{batch.collection.code}</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="p-0">
-            <CollectionListItem
-              id={batch.collection.id}
-              onClick={isTesting ? undefined : open}
-            />
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-      {!isTesting && (
-        <CollectionDetailModal
-          id={batch.collection.id}
-          open={isOpen}
-          onClose={close}
-        />
-      )}
-    </>
-  )
+  return <span className="text-sm italic">{batch.species?.name}</span>
 }
 
 /**
@@ -296,14 +247,14 @@ export const LatestQualityStatistics = ({
     <div className="grid grid-cols-6 gap-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">
-          TPSU <span className="font-bold">{statistics.tpsu.toFixed(3)}</span>
+          TSW <span className="font-bold">{statistics.tpsu.toFixed(3)}g</span>
         </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm">
           PLS{" "}
           <span className="font-bold">
-            {(statistics.pls * 100).toFixed(3)}%
+            {(statistics.pls * 100).toFixed(2)}%
           </span>
         </span>
       </div>
@@ -427,7 +378,7 @@ export const BatchExpandedDetails = ({
       <h4 className="text-sm font-semibold">Batch Details</h4>
       <div className="flex w-full gap-2">
         <BatchCollectionDetails batch={batch} />
-        <BatchHistory batchId={batch.id} />
+        {/* <BatchHistory batchId={batch.id} /> */}
       </div>
       {detailLoading ? (
         <BatchDetailsSkeleton />
@@ -476,48 +427,56 @@ const BatchDetailsContent = ({
 }: {
   batch: BatchType
   currentStorage: CurrentBatchStorage
-}) => (
-  <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-    <div>
-      <span className="font-medium">Weight:</span>
-      <div className="mt-1 text-xs">
-        {batch.weights ? (
-          <>
-            <div>Current: {batch.weights.current_weight}g</div>
-            {batch.weights.current_weight !== batch.weights.original_weight && (
+}) => {
+  const hasBatchWeight = batch.weights?.current_weight || batch.weight_grams
+  return (
+    <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
+      {hasBatchWeight && (
+        <div>
+          <span className="font-medium">Weight:</span>
+          <div className="mt-1 text-xs">
+            {batch.weights?.current_weight ? (
+              <>
+                <div>Current: {batch.weights.current_weight}g</div>
+                {batch.weights.current_weight !==
+                  batch.weights.original_weight && (
+                  <div className="text-muted-foreground">
+                    Original: {batch.weights.original_weight}g
+                  </div>
+                )}
+              </>
+            ) : (
+              batch.weight_grams && <div>{batch.weight_grams}g</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {batch.notes && (
+        <div className="md:col-span-2 lg:col-span-3">
+          <span className="font-medium">Notes:</span>
+          <div className="text-muted-foreground mt-1 text-xs">
+            {batch.notes}
+          </div>
+        </div>
+      )}
+
+      {currentStorage && (
+        <div>
+          <span className="font-medium">Storage Location:</span>
+          <div className="mt-1 text-xs">
+            {currentStorage.location?.name}
+            {currentStorage.stored_at && (
               <div className="text-muted-foreground">
-                Original: {batch.weights.original_weight}g
+                Stored: {new Date(currentStorage.stored_at).toLocaleString()}
               </div>
             )}
-          </>
-        ) : (
-          <div>{batch.weight_grams}g</div>
-        )}
-      </div>
-    </div>
-
-    {batch.notes && (
-      <div className="md:col-span-2 lg:col-span-3">
-        <span className="font-medium">Notes:</span>
-        <div className="text-muted-foreground mt-1 text-xs">{batch.notes}</div>
-      </div>
-    )}
-
-    {currentStorage && (
-      <div>
-        <span className="font-medium">Storage Location:</span>
-        <div className="mt-1 text-xs">
-          {currentStorage.location?.name}
-          {currentStorage.stored_at && (
-            <div className="text-muted-foreground">
-              Stored: {new Date(currentStorage.stored_at).toLocaleString()}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-    )}
-  </div>
-)
+      )}
+    </div>
+  )
+}
 
 // =============================================================================
 // Main Row Cell Components
@@ -700,7 +659,7 @@ export const BatchTableRowContainer = ({
       </td>
 
       <td className="px-4 py-3">
-        <BatchCollectionField batch={batch} />
+        <BatchSpeciesNameField batch={batch} />
       </td>
 
       <td className="px-4 py-3">

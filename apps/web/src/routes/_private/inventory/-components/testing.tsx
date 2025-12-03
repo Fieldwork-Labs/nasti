@@ -17,11 +17,11 @@ import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
 // Define search schema for URL parameters
 export const inventorySearchSchemaTesting = z.object({
   status: z.enum(["any", "pending", "completed"]).default("any").optional(),
-  species: z.string().optional(),
+  speciesId: z.string().optional(),
   collection: z.string().optional(),
-  location: z.string().optional(),
+  locationId: z.string().optional(),
   search: z.string().optional(),
-  sort: z.enum(["created_at", "collection_id", "organisation_id"]).optional(),
+  sort: z.enum(["created_at", "species_id", "organisation_id"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
 })
 
@@ -138,11 +138,11 @@ export function InventoryPageTesting() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleSort("collection_id")}
+                            onClick={() => handleSort("species_id")}
                             className="font-semibold"
                           >
                             Collection
-                            {getSortIcon("collection_id")}
+                            {getSortIcon("species_id")}
                           </Button>
                         </th>
                         <th className="px-4 py-3 text-left font-semibold">

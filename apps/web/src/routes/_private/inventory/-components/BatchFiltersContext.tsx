@@ -12,7 +12,7 @@ import {
   ReactNode,
 } from "react"
 
-export type SortField = "created_at" | "collection_id" | "organisation_id"
+export type SortField = "created_at" | "species_id" | "organisation_id"
 type SortDirection = "asc" | "desc"
 
 interface BatchFiltersContextValue {
@@ -24,8 +24,8 @@ interface BatchFiltersContextValue {
   sortField: SortField
   filters: {
     status?: BatchStatus
-    species: string | null
-    location: string | null
+    speciesId: string | null
+    locationId: string | null
     search: string
   }
   handleFiltersChange: (newFilters: {
@@ -67,8 +67,8 @@ export const BatchFiltersProvider = ({
   const filters = useMemo(
     () => ({
       status: searchParams.status,
-      species: searchParams.species || null,
-      location: searchParams.location || null,
+      speciesId: searchParams.speciesId || null,
+      locationId: searchParams.locationId || null,
       search: searchParams.search || "",
     }),
     [searchParams],
@@ -82,8 +82,8 @@ export const BatchFiltersProvider = ({
   const batchFilter = useMemo(
     () => ({
       status: filters.status,
-      speciesId: filters.species || undefined,
-      locationId: filters.location || undefined,
+      speciesId: filters.speciesId || undefined,
+      locationId: filters.locationId || undefined,
       search: filters.search ?? "",
       sort: sortField,
       order: sortDirection,

@@ -363,7 +363,7 @@ export const QualityTestForm = ({
         <div className="grid grid-cols-3 gap-1">
           {/* PSU */}
           <div className="space-y-2">
-            <Label htmlFor="psu_grams">PSU (grams) *</Label>
+            <Label htmlFor="psu_grams">PS (grams) *</Label>
             <div className="flex items-center gap-2">
               <Input
                 id="psu_grams"
