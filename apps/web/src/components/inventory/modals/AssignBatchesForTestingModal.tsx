@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm, FormProvider, useFormContext } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -48,8 +48,10 @@ const BatchSampleRow = ({
   batch: BatchWithCurrentLocationAndSpecies
 }) => {
   const { setValue, setError, watch } = useFormContext<AssignBatchesFormData>()
-  const values = watch("sample_weights")[batch.id]
-  const isSample = values.assignment_type === "sample"
+  const valuesByBatch = watch("sample_weights")
+
+  const values = valuesByBatch[batch.id]
+  const isSample = values?.assignment_type === "sample"
 
   const handleSampleWeightChange = (value: string) => {
     const newValue = parseInt(value)
@@ -62,7 +64,7 @@ const BatchSampleRow = ({
     setValue(
       "sample_weights",
       {
-        ...watch("sample_weights"),
+        ...valuesByBatch,
         [batch.id]: {
           ...values,
           weight_grams: parseInt(value),
@@ -73,12 +75,12 @@ const BatchSampleRow = ({
   }
 
   const handleSampleAssignmentTypeChange = (isSampleVal: boolean) => {
-    let weight_grams = values.weight_grams
+    let weight_grams = values?.weight_grams
     if (!isSampleVal) weight_grams = undefined
     setValue(
       "sample_weights",
       {
-        ...watch("sample_weights"),
+        ...valuesByBatch,
         [batch.id]: {
           weight_grams,
           assignment_type: isSampleVal ? "sample" : "full_batch",
@@ -125,7 +127,7 @@ const BatchSampleRow = ({
           max={batch.weight_grams || undefined}
           disabled={!isSample}
           placeholder={isSample ? "0" : `${batch.weight_grams}`}
-          value={values.weight_grams || ""}
+          value={values?.weight_grams || ""}
           onChange={(e) => handleSampleWeightChange(e.target.value)}
         />
         g
@@ -152,11 +154,9 @@ export const AssignBatchesForTestingModal = ({
   const { data: organisationLinks } = useOrganisationLinks()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const form = useForm<AssignBatchesFormData>({
-    resolver: zodResolver(assignBatchesSchema),
-    defaultValues: {
-      testing_org_id: "",
-      sample_weights: selectedBatches.reduce(
+  const sampleWeights = useMemo(
+    () =>
+      selectedBatches.reduce(
         (acc, batch) => {
           acc[batch.id] = {
             assignment_type: "sample",
@@ -166,8 +166,21 @@ export const AssignBatchesForTestingModal = ({
         },
         {} as AssignBatchesFormData["sample_weights"],
       ),
+    [selectedBatches],
+  )
+
+  const form = useForm<AssignBatchesFormData>({
+    resolver: zodResolver(assignBatchesSchema),
+    defaultValues: {
+      testing_org_id: "",
+      sample_weights: sampleWeights,
     },
   })
+
+  // update form data when selected batches prop changes
+  useEffect(() => {
+    form.setValue("sample_weights", sampleWeights)
+  }, [form, sampleWeights])
 
   const assignmentTypes = Object.values(form.watch("sample_weights")).map(
     (sampleWeight) => sampleWeight.assignment_type,

@@ -321,7 +321,7 @@ export const BatchSplitForm = ({
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-blue-600" />
           <h3 className="text-lg font-semibold">
-            Split Batch {parentBatch.id.slice(0, 8)}...
+            Split Batch {parentBatch.code}
           </h3>
         </div>
         <div className="text-muted-foreground space-y-1 text-sm">

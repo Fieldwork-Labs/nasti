@@ -1,5 +1,6 @@
 import { useState } from "react"
 import type { BatchWithCurrentLocationAndSpecies } from "./useBatches"
+import { useOpenClose } from "@nasti/ui/hooks"
 
 interface AssignmentState {
   isActive: boolean
@@ -11,7 +12,8 @@ export const useAssignmentMode = (
 ) => {
   const [assignmentState, setAssignmentState] =
     useState<AssignmentState | null>(null)
-  const [showAssignmentModal, setShowAssignmentModal] = useState(false)
+  const { setIsOpen: setShowAssignmentModal, isOpen: showAssignmentModal } =
+    useOpenClose()
 
   // Get selected batches for assignment modal
   const selectedBatchesForAssignment = assignmentState

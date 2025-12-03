@@ -6,6 +6,7 @@ SELECT DISTINCT
   bcw.original_weight,
   bcw.current_weight,
   cbs.location_id as current_location_id,
+  c.species_id,
   (
     -- Check if this batch or any of its ancestors were involved in processing
     WITH RECURSIVE ancestors AS (
@@ -52,6 +53,7 @@ SELECT DISTINCT
 FROM
   batches b
   JOIN batch_current_weight bcw ON bcw.id = b.id
+  LEFT JOIN collection c ON c.id = b.collection_id
   LEFT JOIN LATERAL (
     SELECT location_id
     FROM current_batch_storage

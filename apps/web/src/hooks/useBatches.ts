@@ -91,7 +91,7 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
     queryKey: ["batches", "byFilter", batchFilter],
     queryFn: async () => {
       let q = supabase.from("active_batches").select(`*,
-          collection:collection_id!inner(
+          collection:collection_id(
             id,
             field_name,
             code
@@ -114,14 +114,17 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
         q = q.ilike("code", `%${batchFilter.search}%`)
       }
       if (batchFilter.speciesId) {
-        q = q.eq("collection_id.species_id", batchFilter.speciesId)
+        q = q.eq("species_id", batchFilter.speciesId)
       }
       if (batchFilter.locationId) {
         q = q.eq("current_location_id", batchFilter.locationId)
       }
-
+      let sort = batchFilter.sort
+      if (batchFilter.sort === "species_id") {
+        sort = "species(name)"
+      }
       const { data, error } = await q
-        .order(batchFilter.sort, { ascending: batchFilter.order === "asc" })
+        .order(sort, { ascending: batchFilter.order === "asc" })
         .overrideTypes<
           Array<
             Omit<BatchWithCurrentLocationAndSpecies, "weights"> & {

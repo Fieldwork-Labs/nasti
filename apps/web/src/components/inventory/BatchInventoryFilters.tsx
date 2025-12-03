@@ -49,7 +49,7 @@ export const BatchInventoryFilters = ({
   const [locationSearchTerm, setLocationSearchTerm] = useState("")
 
   const { data: speciesList } = useSpeciesSearch(speciesSearchTerm)
-  const { data: selectedSpecies } = useSpecies(filters.species)
+  const { data: selectedSpecies } = useSpecies(filters.speciesId)
 
   // Storage locations
   const { data: storageLocations } = useStorageLocations()
@@ -63,7 +63,7 @@ export const BatchInventoryFilters = ({
   )
 
   const selectedLocation = storageLocations?.find(
-    (l: StorageLocation) => l.id === filters.location,
+    (l: StorageLocation) => l.id === filters.locationId,
   )
 
   const hasActiveFilters = Object.entries(filters)
@@ -163,7 +163,7 @@ export const BatchInventoryFilters = ({
                 <CommandList>
                   <CommandEmpty>No species found.</CommandEmpty>
                   <CommandGroup>
-                    {filters.species && (
+                    {filters.speciesId && (
                       <CommandItem
                         value="none"
                         onSelect={() => {
@@ -231,7 +231,7 @@ export const BatchInventoryFilters = ({
                 <CommandList>
                   <CommandEmpty>No locations found.</CommandEmpty>
                   <CommandGroup>
-                    {filters.location && (
+                    {filters.locationId && (
                       <CommandItem
                         value="none"
                         className="cursor-pointer"

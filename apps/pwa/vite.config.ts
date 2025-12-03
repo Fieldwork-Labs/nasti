@@ -134,7 +134,7 @@ export default defineConfig({
     sentryVitePlugin({
       org: "fieldworklabs",
       project: "nasti-pwa",
-      telemetry: isProd,
+      disable: !isProd,
     }),
   ],
 
