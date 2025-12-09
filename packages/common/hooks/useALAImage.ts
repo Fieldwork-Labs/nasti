@@ -27,7 +27,7 @@ const getSpeciesImageUrl = async ({
   // URL encode the id as it contains special characters
   const alaUrl = `${BASE_URL}/${id}${format ? `/${format}` : ""}`
   const webAppUrl = import.meta.env.VITE_WEB_APP_URL || ""
-  const proxyUrl = `${webAppUrl}/api/ala_image_proxy?url=${encodeURIComponent(alaUrl)}`
+  const proxyUrl = `https://${webAppUrl}/api/ala_image_proxy?url=${encodeURIComponent(alaUrl)}`
   return proxyUrl
 }
 
