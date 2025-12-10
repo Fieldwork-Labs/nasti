@@ -32,7 +32,7 @@ export const TripSpeciesDetail = ({ species }: SpeciesDetailProps) => {
           <i>{species.name}</i>
         </h5>
         <div className="flex flex-col">
-          {data.commonNames.length > 0 && (
+          {data.commonNames && data.commonNames.length > 0 && (
             <span>{data.commonNames[0].nameString}</span>
           )}
           {species.indigenous_name && (

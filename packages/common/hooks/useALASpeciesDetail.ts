@@ -132,7 +132,7 @@ export interface SpeciesDetail {
   taxonName: unknown[]
   classification: Classification
   synonyms: Synonym[]
-  commonNames: CommonName[]
+  commonNames?: CommonName[]
   imageIdentifier: string | null
   wikiUrl: string | null
   conservationStatuses: Record<string, unknown>

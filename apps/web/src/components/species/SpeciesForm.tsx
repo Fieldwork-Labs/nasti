@@ -200,7 +200,7 @@ export const SpeciesForm = ({
               </Button>
             </div>
             <div className="flex flex-col text-xs">
-              {data && data.commonNames.length > 0 && (
+              {data && data.commonNames && data.commonNames.length > 0 && (
                 <span>{data.commonNames[0].nameString}</span>
               )}
             </div>
