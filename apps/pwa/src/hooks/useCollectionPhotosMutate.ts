@@ -11,6 +11,7 @@ import {
   TripCollectionPhotos,
 } from "./useCollectionPhotosForTrip"
 import { Upload } from "tus-js-client"
+import { Session } from "@supabase/supabase-js"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -29,12 +30,9 @@ async function uploadFile(
   fileName: string,
   file: File,
   metadata: Record<string, string> = {},
+  session: Session,
   onProgressUpdate?: (percentageComplete: number) => void,
 ) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
   return new Promise(async (resolve, reject) => {
     if (!session) throw new Error("No session")
 
@@ -130,9 +128,24 @@ export const useCollectionPhotosMutate = ({
 
       const filePath = getFilePath(file, photoId)
 
-      const [, { data, error }] = await Promise.all([
-        // Upload file to Supabase Storage
-        uploadFile(
+      // Get a fresh session before starting operations
+      // This is critical when resuming from offline mode
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        throw new Error(`Failed to get session: ${sessionError.message}`)
+      }
+
+      if (!session) {
+        throw new Error("No active session. Please log in again.")
+      }
+
+      try {
+        // First, upload file to Supabase Storage
+        await uploadFile(
           "collection-photos",
           filePath,
           file,
@@ -140,10 +153,12 @@ export const useCollectionPhotosMutate = ({
             collectionId,
             photoId,
           },
+          session,
           (percentage) => updateUploadProgress(photoId, percentage),
-        ),
-        // upload to supabase database table
-        supabase
+        )
+
+        // Then, insert record into database
+        const { data, error } = await supabase
           .from("collection_photo")
           .insert([
             {
@@ -154,12 +169,23 @@ export const useCollectionPhotosMutate = ({
             },
           ])
           .select()
-          .single(),
-      ]).catch((error) => {
+          .single()
+
+        if (error) {
+          // Provide better error messages for RLS violations
+          if (error.message.includes("row-level security")) {
+            throw new Error(
+              `Permission denied: Unable to create photo record. This may indicate a session or permissions issue. ${error.message}`,
+            )
+          }
+          throw error
+        }
+
+        return data as CollectionPhoto
+      } catch (error) {
+        console.error("Error creating collection photo:", error)
         throw error
-      })
-      if (error) throw error
-      return data as CollectionPhoto
+      }
     },
     onMutate: async ({ file, ...variables }) => {
       // IndexedDB Put is not done here because it needs to be awaited regardless of online state
