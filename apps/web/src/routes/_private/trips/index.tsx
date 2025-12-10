@@ -58,6 +58,8 @@ export function IbraLayer() {
   const handleMouseMove = useCallback(
     (event: MapMouseEvent) => {
       if (!map) return
+      // If the map style has not loaded, the following logic can throw errors
+      if (!map.isStyleLoaded()) return
       const features = map.queryRenderedFeatures(event.point)
       const feature = features?.[0]
       // If a feature is already hovered, reset its state

@@ -208,3 +208,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.ala_image_proxy]
 verify_jwt = false
+
+[functions.accept_invitation]
+verify_jwt = false

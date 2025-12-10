@@ -42,10 +42,17 @@ Deno.serve(async (req) => {
       })
     }
     // Parse the JSON body
-    const { email, name } = await req.json()
+    const { email, name, role } = await req.json()
 
     if (!email || !name) {
       return new Response("Missing email or name", {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (role && role !== "Admin" && role !== "Member") {
+      return new Response("Invalid role. Must be 'Admin' or 'Member'", {
         status: 400,
         headers: corsHeaders,
       })
@@ -127,7 +134,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (users.find((user) => user.email === email)) {
+    if (users.find((user: { email: string }) => user.email === email)) {
       return new Response("Email address already a user", {
         status: 400,
         headers: corsHeaders,
@@ -146,6 +153,7 @@ Deno.serve(async (req) => {
         token: invitationToken,
         created_at: new Date(),
         expires_at: expiresAt,
+        role: role || "Member",
       },
     ])
 

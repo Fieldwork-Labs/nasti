@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     const { error: linkError } = await supabaseClient.from("org_user").insert({
       user_id: authData.user.id,
       organisation_id: invitation.organisation_id,
-      role: "Member",
+      role: invitation.role,
     })
 
     if (linkError) {

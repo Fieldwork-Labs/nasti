@@ -30,5 +30,4 @@ export type Role = Database["public"]["Enums"]["org_user_types"]
 export enum ROLE {
   ADMIN = "Admin",
   MEMBER = "Member",
-  OWNER = "Owner",
 }
