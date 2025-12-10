@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router"
 import { useCallback } from "react"
 import { useForm } from "react-hook-form"
+import { z } from "zod"
 
 type FormData = {
   email: string
@@ -140,13 +141,13 @@ const InvitationAcceptPage = () => {
   )
 }
 
-type SearchParams = {
-  token: string
-}
+const searchSchema = z.object({
+  token: z.string(),
+})
 
 export const Route = createFileRoute("/invitations/accept")({
   component: InvitationAcceptPage,
-  validateSearch: (search) => search as SearchParams,
+  validateSearch: searchSchema,
   loaderDeps: ({ search: { token } }) => ({
     token,
   }),
