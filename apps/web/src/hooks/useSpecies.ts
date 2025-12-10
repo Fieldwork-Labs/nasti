@@ -73,7 +73,8 @@ export const getSpecies = async (id: string) => {
     .from("species")
     .select("*")
     .eq("id", id)
-    .single()
+    .maybeSingle()
+    .overrideTypes<Species>()
 
   if (error) throw new Error(error.message)
 

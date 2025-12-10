@@ -54,6 +54,8 @@ const useSpeciesForLocation = (trip?: Trip) => {
       lat: location?.latitude,
       lng: location?.longitude,
       pageSize: 500,
+      staleTime: 60 * 60 * 1000, // 1 hour
+      refetchInterval: 60 * 1000 * 5, // 5 minutes
     })
 
   useEffect(() => {

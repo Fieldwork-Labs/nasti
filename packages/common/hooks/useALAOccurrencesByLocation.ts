@@ -1,4 +1,8 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
+import {
+  InfiniteData,
+  UndefinedInitialDataInfiniteOptions,
+  useInfiniteQuery,
+} from "@tanstack/react-query"
 import {
   Occurrence,
   OccurrencesQueryResponse,
@@ -16,7 +20,15 @@ type UseALAOccurrencesOptions = {
   radius?: number
   maxResults?: number
   pageSize?: number
-}
+} & Partial<
+  UndefinedInitialDataInfiniteOptions<
+    OccurrencesQueryResponse | null,
+    Error,
+    InfiniteData<OccurrencesQueryResponse | null, unknown>,
+    readonly unknown[],
+    number
+  >
+>
 
 export const useALAOccurrencesByLocation = ({
   radius = 50,
@@ -24,6 +36,7 @@ export const useALAOccurrencesByLocation = ({
   pageSize = ITEMS_PER_PAGE,
   lat,
   lng,
+  ...options
 }: UseALAOccurrencesOptions): UseALAOccurrencesResult => {
   const {
     data,
@@ -35,6 +48,7 @@ export const useALAOccurrencesByLocation = ({
     isFetchingNextPage,
     fetchNextPage,
   } = useInfiniteQuery({
+    ...options,
     queryKey: [
       "alaOccurrences",
       "byLocation",
