@@ -105,7 +105,7 @@ type PhotoUploadFieldProps = {
   className?: string
 }
 
-export function CollectionPhotosUploadField({
+export function PhotosUploadField({
   onPhotosChange,
   className,
 }: PhotoUploadFieldProps) {

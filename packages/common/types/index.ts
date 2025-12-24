@@ -21,7 +21,10 @@ export type NewCollection = TablesInsert<"collection"> & {
   id: string // id not necessarily required in the insert type, but makes things much easier on the client side to ensure it is there
 }
 // TablesUpdate includes the id field as optional but it should really be requirec
-export type UpdateCollection = TablesUpdate<"collection"> & { id: string }
+export type UpdateCollection = TablesUpdate<"collection"> & {
+  id: string
+  location: string
+}
 
 export type CollectionPhoto = Table<"collection_photo">
 
@@ -33,6 +36,11 @@ export type NewScoutingNote = TablesInsert<"scouting_notes"> & {
   trip_id: string
   location: string
   id: string
+}
+
+export type UpdateScoutingNote = TablesUpdate<"scouting_notes"> & {
+  id: string
+  location: string
 }
 
 export type ScoutingNotePhoto = Table<"scouting_notes_photos">

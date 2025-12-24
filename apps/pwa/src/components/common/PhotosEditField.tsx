@@ -1,5 +1,8 @@
-import { PendingCollectionPhoto } from "@/hooks/usePhotosMutate"
-import { CollectionPhoto } from "@nasti/common/types"
+import {
+  PendingCollectionPhoto,
+  PendingScoutingNotePhoto,
+} from "@/hooks/usePhotosMutate"
+import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { cn } from "@nasti/ui/utils"
@@ -8,7 +11,11 @@ import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { usePhotoUrl } from "@/hooks/usePhotoUrl"
 
-export type ExistingPhoto = CollectionPhoto | PendingCollectionPhoto
+export type ExistingPhoto =
+  | CollectionPhoto
+  | PendingCollectionPhoto
+  | ScoutingNotePhoto
+  | PendingScoutingNotePhoto
 
 type PhotoThumbnailProps = {
   photo: ExistingPhoto
@@ -101,18 +108,18 @@ function PhotoThumbnail({
   )
 }
 
-type CollectionPhotosEditFieldProps = {
+type PhotosEditFieldProps = {
   label?: string
   existingPhotos: Array<ExistingPhoto>
   onPhotosChange: (photos: Array<ExistingPhoto>) => void
   className?: string
 }
 
-export const CollectionPhotosEditField = ({
+export const PhotosEditField = ({
   existingPhotos,
   onPhotosChange,
   className,
-}: CollectionPhotosEditFieldProps) => {
+}: PhotosEditFieldProps) => {
   const [newPhotos, setNewPhotos] =
     useState<Array<ExistingPhoto>>(existingPhotos)
 

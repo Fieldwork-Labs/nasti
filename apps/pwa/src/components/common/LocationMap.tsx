@@ -1,8 +1,7 @@
-import mapboxgl from "mapbox-gl"
-import Map, { Marker, MapRef } from "react-map-gl"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ShoppingBag } from "lucide-react"
 import { useGeoLocation } from "@/contexts/location"
+import mapboxgl from "mapbox-gl"
+import { useEffect, useMemo, useRef, useState } from "react"
+import Map, { MapRef, Marker } from "react-map-gl"
 
 export const LocationMap = ({
   coord,

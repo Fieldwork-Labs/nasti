@@ -5,14 +5,15 @@ import {
   useNavigate,
   useParams,
 } from "@tanstack/react-router"
-import { ChevronLeft, Pencil, X } from "lucide-react"
+import { Binoculars, ChevronLeft, Pencil, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useAuth } from "@/hooks/useAuth"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { useState } from "react"
-import { CollectionPhoto } from "@/components/collection/CollectionPhotos/CollectionPhoto"
+import { Photo } from "@/components/common/Photo"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 import { Button } from "@nasti/ui/button"
+import { Badge } from "@nasti/ui/badge"
 import { ROLE } from "@nasti/common/types"
 import { useScoutingNote } from "@/hooks/useScoutingNote"
 import { ScoutingNotesMap } from "@/components/scouting-notes/ScoutingNotesMap"
@@ -58,6 +59,11 @@ const ScoutingNotesDetail = () => {
           </Link>
         )}
       </div>
+      <div className="flex justify-end">
+        <Badge className="flex items-center gap-2 rounded text-lg">
+          <Binoculars className="h-5 w-5" /> Scouting Note
+        </Badge>
+      </div>
       <table>
         <thead>
           <tr className="text-muted-foreground text-left">
@@ -89,7 +95,7 @@ const ScoutingNotesDetail = () => {
         </tbody>
         <thead>
           <tr className="text-muted-foreground text-left">
-            <th>Collector</th>
+            <th>Recorder</th>
           </tr>
         </thead>
         <tbody>
@@ -129,7 +135,7 @@ const ScoutingNotesDetail = () => {
         <TabsContent value="photos" className="grid grid-cols-2 gap-2">
           {scoutingNote.photos.map((photo) => {
             return (
-              <CollectionPhoto
+              <Photo
                 id={photo.id}
                 onClick={setFullScreenPhoto}
                 key={photo.id}

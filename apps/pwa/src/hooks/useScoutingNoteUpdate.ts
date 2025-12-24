@@ -1,24 +1,25 @@
 import {
-  CollectionWithCoord,
-  UpdateCollection,
-  type Collection,
+  Collection,
+  ScoutingNote,
+  ScoutingNoteWithCoord,
+  UpdateScoutingNote,
 } from "@nasti/common/types"
 
-import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/queryClient"
+import { supabase } from "@nasti/common/supabase"
 import { useMutation } from "@tanstack/react-query"
 import { getMutationKey } from "./useEntityCreate"
 
-const updateCollection = async (updatedItem: UpdateCollection) => {
+const updateScoutingNote = async (updatedItem: UpdateScoutingNote) => {
   const query = supabase
-    .from("collection")
+    .from("scouting_notes")
     .upsert(updatedItem)
     .eq("id", updatedItem.id)
 
   const { data, error } = await query
     .select("*")
     .single()
-    .overrideTypes<Collection>()
+    .overrideTypes<ScoutingNote>()
 
   if (error) throw new Error(error.message)
   if (!data) throw new Error("No data returned from collection upsert")
@@ -26,13 +27,13 @@ const updateCollection = async (updatedItem: UpdateCollection) => {
   return data as Collection
 }
 
-export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
-  return useMutation<Collection, unknown, UpdateCollection>({
+export const useScoutingNoteUpdate = ({ tripId }: { tripId: string }) => {
+  return useMutation<ScoutingNoteWithCoord, unknown, UpdateScoutingNote>({
     mutationKey: getMutationKey(tripId),
-    mutationFn: (updatedItem) => updateCollection(updatedItem),
+    mutationFn: (updatedItem) => updateScoutingNote(updatedItem),
     onMutate: (variables) => {
-      queryClient.setQueryData<CollectionWithCoord[]>(
-        ["collections", "byTrip", tripId],
+      queryClient.setQueryData<ScoutingNoteWithCoord[]>(
+        ["scoutingNotes", "byTrip", tripId],
         (current) =>
           current?.map((item) =>
             item.id === variables.id ? { ...item, ...variables } : item,
@@ -41,13 +42,13 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
 
       // Update the individual item cache
       queryClient.setQueryData(
-        ["collections", "detail", variables.id],
+        ["scoutingNotes", "detail", variables.id],
         variables,
       )
 
       if (variables.species_id) {
-        queryClient.setQueryData<Array<Collection | UpdateCollection>>(
-          ["collections", "bySpecies", variables.species_id],
+        queryClient.setQueryData<Array<ScoutingNote | UpdateScoutingNote>>(
+          ["scoutingNotes", "bySpecies", variables.species_id],
           (oldData) => {
             if (!oldData) return [variables]
 
@@ -61,25 +62,25 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
     onSettled(data, error, variables) {
       if (error) {
         // remove the scouting note from optmistic cache
-        queryClient.setQueryData<CollectionWithCoord[]>(
-          ["collections", "byTrip", tripId],
+        queryClient.setQueryData<ScoutingNoteWithCoord[]>(
+          ["scoutingNotes", "byTrip", tripId],
           (current) => current?.filter((item) => item.id !== variables.id),
         )
 
         queryClient.removeQueries({
-          queryKey: ["collections", "detail", variables.id],
+          queryKey: ["scoutingNotes", "detail", variables.id],
         })
 
         if (variables.species_id) {
-          queryClient.setQueryData<Array<Collection | UpdateCollection>>(
-            ["collections", "bySpecies", variables.species_id],
+          queryClient.setQueryData<Array<ScoutingNote | UpdateScoutingNote>>(
+            ["scoutingNotes", "bySpecies", variables.species_id],
             (oldData) => {
               return oldData?.filter((item) => item.id !== variables.id) ?? []
             },
           )
         }
       }
-      if (!data) throw new Error("No data returned from collection insert")
+      if (!data) throw new Error("No data returned from scoutingNote insert")
     },
   })
 }

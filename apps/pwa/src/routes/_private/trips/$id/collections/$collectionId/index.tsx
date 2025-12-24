@@ -6,16 +6,17 @@ import {
   useNavigate,
   useParams,
 } from "@tanstack/react-router"
-import { ChevronLeft, Pencil, X } from "lucide-react"
+import { ChevronLeft, Pencil, ShoppingBag, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useAuth } from "@/hooks/useAuth"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionMap } from "@/components/collection/CollectionMap"
 import { useState } from "react"
-import { CollectionPhoto } from "@/components/collection/CollectionPhotos/CollectionPhoto"
+import { Photo } from "@/components/common/Photo"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 import { Button } from "@nasti/ui/button"
 import { ROLE } from "@nasti/common/types"
+import { Badge } from "@nasti/ui/badge"
 
 const CollectionDetail = () => {
   const { user, org } = useAuth()
@@ -56,6 +57,11 @@ const CollectionDetail = () => {
             </Button>
           </Link>
         )}
+      </div>
+      <div className="flex justify-end">
+        <Badge className="flex items-center gap-2 rounded text-lg">
+          <ShoppingBag className="h-5 w-5" /> Collection
+        </Badge>
       </div>
       <table>
         <thead>
@@ -158,7 +164,7 @@ const CollectionDetail = () => {
         <TabsContent value="photos" className="grid grid-cols-2 gap-2">
           {collection.photos.map((photo) => {
             return (
-              <CollectionPhoto
+              <Photo
                 id={photo.id}
                 onClick={setFullScreenPhoto}
                 key={photo.id}

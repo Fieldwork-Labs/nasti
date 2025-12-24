@@ -172,11 +172,10 @@ export const usePhotosMutate = ({
         const insertBase =
           entityType === "collection"
             ? { collection_id: entityId }
-            : { scouting_note_id: entityId }
+            : { scouting_notes_id: entityId }
         // Then, insert record into database
         const { data, error } = await supabase
           .from(table)
-          // @ts-expect-error
           .insert([
             {
               ...insertBase,

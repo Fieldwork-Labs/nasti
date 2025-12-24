@@ -51,7 +51,7 @@ import {
 import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
 import { Input } from "@nasti/ui/input"
 import { Link } from "@tanstack/react-router"
-import { CollectionPhoto as Photo } from "../collection/CollectionPhotos/CollectionPhoto"
+import { Photo } from "../common/Photo"
 
 // Base interface for entities that can be displayed in the list
 interface DisplayableEntity {

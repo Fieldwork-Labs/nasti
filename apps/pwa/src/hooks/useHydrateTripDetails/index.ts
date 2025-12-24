@@ -11,7 +11,6 @@ import { useTripDetails } from "@/hooks/useTripDetails"
 import { useMutationState } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
 import {
-  attachPhotos,
   useOrgMembers,
   getCollectionPhotoMap,
   getScoutingNotePhotoMap,
@@ -113,12 +112,14 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
     const result: TripDetails = {
       ...rest,
-      collections: newCollections.map((col) =>
-        attachPhotos(col, collectionPhotosMap),
-      ),
-      scoutingNotes: scoutingNotes.map((sn) =>
-        attachPhotos(sn, scoutingNotePhotosMap),
-      ),
+      collections: newCollections.map((col) => ({
+        ...col,
+        photos: collectionPhotosMap[col.id] ?? [],
+      })),
+      scoutingNotes: scoutingNotes.map((sn) => ({
+        ...sn,
+        photos: scoutingNotePhotosMap[sn.id] ?? [],
+      })),
     }
 
     return result

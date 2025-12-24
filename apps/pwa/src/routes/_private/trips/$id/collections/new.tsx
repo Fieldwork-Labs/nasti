@@ -23,7 +23,7 @@ import { InfoIcon, X } from "lucide-react"
 import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
-import { CollectionPhotosForm } from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
+import { PhotosForm } from "@/components/common/PhotosForm"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 
@@ -388,7 +388,7 @@ function AddCollection() {
               </div>
             )}
           </div>
-          <CollectionPhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
+          <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">

@@ -1,7 +1,3 @@
-import {
-  CollectionPhotosForm,
-  PhotoChanges,
-} from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { useAuth } from "@/hooks/useAuth"
 import { useCollection } from "@/hooks/useCollection"
@@ -23,6 +19,7 @@ import { InfoIcon, X } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
+import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
 
 // --- Schema & Types ---
 const stringToNumber = z.preprocess(
@@ -370,7 +367,7 @@ function CollectionForm() {
               </p>
             )}
           </div>
-          <CollectionPhotosForm
+          <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
           />
