@@ -4,14 +4,17 @@ import {
   Trip,
 } from "@nasti/common/types"
 
-import { TripCollectionPhotos } from "@/hooks/useCollectionPhotosForTrip"
+import {
+  TripCollectionPhotos,
+  TripScoutingNotePhotos,
+} from "@/hooks/usePhotosForTrip"
 
 export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
   photos: TripCollectionPhotos
 }
 
 export type ScoutingNoteWithCoordAndPhotos = ScoutingNoteWithCoord & {
-  photos: TripCollectionPhotos
+  photos: TripScoutingNotePhotos
 }
 
 export type TripDetails = Trip & {

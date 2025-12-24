@@ -1,7 +1,5 @@
 import {
-  Collection,
   CollectionPhoto,
-  CollectionWithCoord,
   ScoutingNotePhoto,
   Species,
   SpeciesPhoto,
@@ -11,8 +9,8 @@ import {
   PendingCollectionPhoto,
   PendingScoutingNotePhoto,
 } from "@/hooks/usePhotosMutate"
-import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
+import { useQuery } from "@tanstack/react-query"
 
 export function getCollectionPhotoMap(
   photos: Array<CollectionPhoto | PendingCollectionPhoto> | undefined,
@@ -43,15 +41,15 @@ export function getScoutingNotePhotoMap(
   )
 }
 
-export function parsePendingLocation(
-  coll: Collection & { isPending: boolean },
-): CollectionWithCoord {
-  if (!coll.location) return coll
-  // coll.location is a string with the format `POINT(lng lat)`
-  const innerString = coll.location.substring(6, coll.location.length - 1)
+export function parsePendingLocation<T extends { location: string | null }>(
+  obj: T,
+): T & { locationCoord?: { latitude: number; longitude: number } } {
+  if (!obj.location) return obj
+  // obj.location is a string with the format `POINT(lng lat)`
+  const innerString = obj.location.substring(6, obj.location.length - 1)
   const [lng, lat] = innerString.split(" ")
   return {
-    ...coll,
+    ...obj,
     locationCoord: {
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),

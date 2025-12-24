@@ -1,11 +1,8 @@
 import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { Label } from "@nasti/ui/label"
 import { cn } from "@nasti/ui/utils"
-import {
-  CollectionPhotosEditField,
-  ExistingPhoto,
-} from "./CollectionPhotosEditField"
-import { CollectionPhotosUploadField } from "./CollectionPhotosUploadField"
+import { PhotosEditField, ExistingPhoto } from "./PhotosEditField"
+import { PhotosUploadField } from "./PhotosUploadField"
 import { useCallback, useEffect, useState } from "react"
 
 export type PhotoChanges = {
@@ -13,17 +10,17 @@ export type PhotoChanges = {
   keep: Array<ExistingPhoto>
 }
 
-type CollectionPhotosFormProps = {
+type PhotosFormProps = {
   initialPhotos?: Array<ExistingPhoto>
   onPhotosChange?: (photos: PhotoChanges) => void
   className?: string
 }
 
-export const CollectionPhotosForm = ({
+export const PhotosForm = ({
   initialPhotos = [],
   onPhotosChange,
   className,
-}: CollectionPhotosFormProps) => {
+}: PhotosFormProps) => {
   const [changes, setChanges] = useState<PhotoChanges>({
     add: [],
     keep: initialPhotos,
@@ -56,12 +53,12 @@ export const CollectionPhotosForm = ({
   return (
     <div className={cn(className)}>
       <Label className="block text-lg">Photos</Label>
-      <CollectionPhotosEditField
+      <PhotosEditField
         existingPhotos={changes.keep}
         onPhotosChange={handleUpdateExisting}
       />
 
-      <CollectionPhotosUploadField onPhotosChange={handleNewPhotos} />
+      <PhotosUploadField onPhotosChange={handleNewPhotos} />
     </div>
   )
 }

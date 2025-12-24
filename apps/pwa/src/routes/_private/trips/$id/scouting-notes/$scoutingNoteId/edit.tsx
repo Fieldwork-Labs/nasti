@@ -1,16 +1,13 @@
-import {
-  CollectionPhotosForm,
-  PhotoChanges,
-} from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
+import { PhotoChanges, PhotosForm } from "@/components/common/PhotosForm"
 import { useAuth } from "@/hooks/useAuth"
-import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useScoutingNote } from "@/hooks/useScoutingNote"
+import { useScoutingNoteUpdate } from "@/hooks/useScoutingNoteUpdate"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ROLE, UpdateCollection } from "@nasti/common/types"
+import { ROLE, UpdateScoutingNote } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -92,7 +89,7 @@ function ScoutingNoteForm() {
     ...initialValues
   } = useScoutingNote({ scoutingNoteId, tripId })
 
-  const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
+  const { mutateAsync: updateScoutingNote } = useScoutingNoteUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
     usePhotosMutate({
       entityId: scoutingNoteId,
@@ -159,8 +156,8 @@ function ScoutingNoteForm() {
 
       const { latitude, longitude, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
-      console.log({ locationPoint })
-      const payload: UpdateCollection = {
+
+      const payload: UpdateScoutingNote = {
         id: scoutingNoteIdRef.current,
         trip_id: tripId,
         organisation_id: org.organisation_id,
@@ -175,7 +172,7 @@ function ScoutingNoteForm() {
           params: { id: tripId, scoutingNoteId },
         })
 
-      const updatePromise = updateCollection(payload)
+      const updatePromise = updateScoutingNote(payload)
       if (isOnline) await updatePromise
       photoChanges.add.map((photo) =>
         createPhotoMutation.mutateAsync(photo, { onError: console.error }),
@@ -245,7 +242,7 @@ function ScoutingNoteForm() {
 
   return (
     <div className="flex h-full flex-col">
-      <h2 className="p-2 text-2xl">{"Edit Collection"}</h2>
+      <h2 className="p-2 text-2xl">{"Edit Scouting Note"}</h2>
       <form
         className="flex flex-1 flex-col justify-between"
         onSubmit={hookSubmit(onFormSubmit)}
@@ -347,7 +344,7 @@ function ScoutingNoteForm() {
             />
           </div>
 
-          <CollectionPhotosForm
+          <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
           />

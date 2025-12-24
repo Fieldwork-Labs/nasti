@@ -1,10 +1,10 @@
 import { useALASpeciesImage } from "@nasti/common/hooks"
-import type { CollectionPhoto, Species } from "@nasti/common/types"
+import type { Species } from "@nasti/common/types"
 import { LeafIcon } from "lucide-react"
 
 import { usePhotoUploadProgress } from "@/hooks/usePhotosMutate"
 import { Spinner } from "@nasti/ui/spinner"
-import { useCollectionPhoto } from "@/hooks/useCollectionPhoto"
+import { usePhoto } from "@/hooks/usePhoto"
 import { cn } from "@nasti/ui/utils"
 import { Progress } from "@nasti/ui/progress"
 import { usePhotoUrl } from "@/hooks/usePhotoUrl"
@@ -19,7 +19,7 @@ type Props = {
   overlay?: React.ReactElement
 }
 
-export function CollectionPhoto({
+export function Photo({
   id,
   onClick,
   species,
@@ -28,7 +28,7 @@ export function CollectionPhoto({
   showUploadProgress,
   overlay,
 }: Props) {
-  const photo = useCollectionPhoto({ id })
+  const photo = usePhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
   const { data: url, status } = usePhotoUrl({ photoId: id })
   const displayUrl = Boolean(url) ? url : fallback
