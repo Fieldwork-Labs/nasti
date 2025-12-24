@@ -10,7 +10,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useCallback, useRef, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useGeoLocation } from "@/contexts/location"
-import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { Input } from "@nasti/ui/input"
@@ -22,98 +21,43 @@ import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
 import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
-import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
+import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { CollectionPhotosForm } from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
+import { usePhotosMutate } from "@/hooks/usePhotosMutate"
+import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
+import {
+  baseDefaultValues,
+  BaseFormData,
+  baseSchema,
+} from "@/components/common/dataSchema"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
 })
 
-export const Route = createFileRoute("/_private/trips/$id/collections/new")({
+export const Route = createFileRoute("/_private/trips/$id/scouting-notes/new")({
   component: AddCollection,
   validateSearch: (search) => addCollectionSearchSchema.parse(search),
 })
 
-type CollectionFormData = {
-  species_id: string | null
-  species_uncertain: boolean
-  field_name: string
-  specimen_collected: boolean
-  description: string
-  weight_estimate_kg: number | null
-  plants_sampled_estimate: number | null
-}
-
-const stringToNumber = z.preprocess(
-  (val) => {
-    if (typeof val === "string" && val.trim() === "") return null
-    const num = Number(val)
-    return isNaN(num) ? undefined : num
-  },
-  z.number({ message: "Please enter a valid number" }).nullable(),
-)
-
-const schema = z
-  .object({
-    species_id: z.preprocess((val) => {
-      if (val === "" || val === undefined) return null
-      return val
-    }, z.string().nullable()),
-    species_uncertain: z.boolean(),
-    field_name: z
-      .string()
-      .optional()
-      .transform((val) => val || ""),
-    specimen_collected: z.boolean(),
-    description: z
-      .string()
-      .optional()
-      .transform((val) => val || ""),
-    weight_estimate_kg: stringToNumber,
-    plants_sampled_estimate: stringToNumber,
-  })
-  .refine(
-    (data) => {
-      // Form is valid if either species_id OR field_name is provided
-      return (
-        Boolean(data.species_id) ||
-        (data.field_name && data.field_name.trim().length > 0)
-      )
-    },
-    {
-      message: "Field name is required when no species is selected",
-      path: ["field_name"],
-    },
-  )
-
-const defaultValues = {
-  species_id: null,
-  species_uncertain: false,
-  field_name: "",
-  specimen_collected: false,
-  description: "",
-  weight_estimate_kg: null,
-  plants_sampled_estimate: null,
-}
-
 function AddCollection() {
   const { id: tripId } = useParams({
-    from: "/_private/trips/$id/collections/new",
+    from: "/_private/trips/$id/scouting-notes/new",
   })
 
   const { speciesId: initialSpeciesId } = useSearch({
-    from: "/_private/trips/$id/collections/new",
+    from: "/_private/trips/$id/scouting-notes/new",
   })
   const { isOnline } = useNetwork()
 
   const { location, locationDisplay } = useGeoLocation()
-  const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
-  const collectionIdRef = useRef<string>(crypto.randomUUID())
+  const { mutateAsync: createScoutingNote } = useScoutingNoteCreate({ tripId })
+  const scoutingNoteIdRef = useRef<string>(crypto.randomUUID())
   const { createPhotoMutation } = usePhotosMutate({
-    entityId: collectionIdRef.current,
-    entityType: "collection",
+    entityId: scoutingNoteIdRef.current,
+    entityType: "scoutingNote",
     tripId,
   })
 
@@ -122,11 +66,11 @@ function AddCollection() {
     setValue,
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting, errors },
+    formState: { isValid, isSubmitting },
     control,
-  } = useForm<CollectionFormData>({
-    defaultValues: { ...defaultValues, species_id: initialSpeciesId },
-    resolver: zodResolver(schema),
+  } = useForm<BaseFormData>({
+    defaultValues: { ...baseDefaultValues, species_id: initialSpeciesId },
+    resolver: zodResolver(baseSchema),
     mode: "all",
     reValidateMode: "onChange",
   })
@@ -141,7 +85,7 @@ function AddCollection() {
   const navigate = useNavigate()
 
   const onSubmit = useCallback(
-    async (data: CollectionFormData) => {
+    async (data: BaseFormData) => {
       if (!user || !org) throw new Error("Not logged in")
 
       if (!tripId) throw new Error("tripId must be supplied to CollectionForm")
@@ -152,14 +96,14 @@ function AddCollection() {
         ...data,
         species_uncertain:
           data.species_uncertain || data.field_name.trim().length > 0,
-        id: collectionIdRef.current,
+        id: scoutingNoteIdRef.current,
         created_by: user.id,
         created_at: new Date().toISOString(),
         location: locationPoint,
         organisation_id: org.organisation_id,
         trip_id: tripId,
       }
-      const collectionPromise = createCollection(newCollection)
+      const collectionPromise = createScoutingNote(newCollection)
       // The UI will get stuck here when offline so only await if online
       if (isOnline) await collectionPromise
       // We need the collection to be created before we can create the photos
@@ -183,7 +127,7 @@ function AddCollection() {
       user,
       tripId,
       location,
-      createCollection,
+      createScoutingNote,
       createPhotoMutation,
       navigate,
       isOnline,
@@ -205,7 +149,7 @@ function AddCollection() {
   return (
     <div className="h-11/12 flex flex-col justify-between gap-2">
       <div className="overflow-y-scroll">
-        <div className="flex items-center p-2 text-2xl">New Collection</div>
+        <div className="flex items-center p-2 text-2xl">New Scouting Note</div>
         <div className="flex flex-col gap-4 px-1">
           {!enterFieldName && (
             <>
@@ -329,64 +273,6 @@ function AddCollection() {
               onFocus={() => setDescriptionFocus(true)}
               onBlur={() => setDescriptionFocus(false)}
             />
-          </div>
-          <div>
-            <Label
-              htmlFor="weight_estimate_kg"
-              className="flex items-center gap-2"
-            >
-              <span>Weight Estimated (kg)</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoIcon className="h-4 w-4" />
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  Estimate of the weight of seeds collected
-                </PopoverContent>
-              </Popover>
-            </Label>
-            <Input
-              autoComplete="off"
-              {...register("weight_estimate_kg")}
-              className={errors.weight_estimate_kg ? "border-amber-600" : ""}
-              id="weight_estimate_kg"
-              name="weight_estimate_kg"
-            />
-            {errors.weight_estimate_kg && (
-              <div className="mt-1 text-sm text-amber-600">
-                {errors.weight_estimate_kg.message}
-              </div>
-            )}
-          </div>
-          <div>
-            <Label
-              htmlFor="plants_sampled_estimate"
-              className="flex items-center gap-2"
-            >
-              <span>Number of plants sampled</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoIcon className="h-4 w-4" />
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  Estimate of the number of plants sampled in this collection
-                </PopoverContent>
-              </Popover>
-            </Label>
-            <Input
-              autoComplete="off"
-              {...register("plants_sampled_estimate")}
-              className={
-                errors.plants_sampled_estimate ? "border-amber-600" : ""
-              }
-              id="plants_sampled_estimate"
-              name="plants_sampled_estimate"
-            />
-            {errors.plants_sampled_estimate && (
-              <div className="mt-1 text-sm text-amber-600">
-                {errors.plants_sampled_estimate.message}
-              </div>
-            )}
           </div>
           <CollectionPhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>

@@ -1,4 +1,4 @@
-import { UploadPhotoVariables } from "@/hooks/useCollectionPhotosMutate"
+import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { Label } from "@nasti/ui/label"
 import { cn } from "@nasti/ui/utils"
 import {

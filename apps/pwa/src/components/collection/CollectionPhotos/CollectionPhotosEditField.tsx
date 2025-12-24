@@ -1,4 +1,4 @@
-import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
+import { PendingCollectionPhoto } from "@/hooks/usePhotosMutate"
 import { CollectionPhoto } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"

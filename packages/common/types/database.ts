@@ -293,6 +293,102 @@ export type Database = {
         }
         Relationships: []
       }
+      scouting_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          field_name: string | null
+          id: string
+          location: unknown | null
+          organisation_id: string | null
+          species_id: string | null
+          species_uncertain: boolean
+          specimen_collected: boolean | null
+          trip_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          field_name?: string | null
+          id?: string
+          location?: unknown | null
+          organisation_id?: string | null
+          species_id?: string | null
+          species_uncertain?: boolean
+          specimen_collected?: boolean | null
+          trip_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          field_name?: string | null
+          id?: string
+          location?: unknown | null
+          organisation_id?: string | null
+          species_id?: string | null
+          species_uncertain?: boolean
+          specimen_collected?: boolean | null
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouting_notes_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scouting_notes_species_id_fkey"
+            columns: ["species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scouting_notes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scouting_notes_photos: {
+        Row: {
+          caption: string | null
+          id: string
+          scouting_notes_id: string
+          uploaded_at: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          id?: string
+          scouting_notes_id: string
+          uploaded_at?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          id?: string
+          scouting_notes_id?: string
+          uploaded_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouting_notes_photo_scouting_notes_id_fkey"
+            columns: ["scouting_notes_id"]
+            isOneToOne: false
+            referencedRelation: "scouting_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -351,57 +447,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      species_photo: {
-        Row: {
-          caption: string | null
-          display_order: number
-          id: string
-          organisation_id: string
-          source_reference: string | null
-          source_type: string
-          species_id: string
-          uploaded_at: string | null
-          url: string
-        }
-        Insert: {
-          caption?: string | null
-          display_order?: number
-          id?: string
-          organisation_id: string
-          source_reference?: string | null
-          source_type: string
-          species_id: string
-          uploaded_at?: string | null
-          url: string
-        }
-        Update: {
-          caption?: string | null
-          display_order?: number
-          id?: string
-          organisation_id?: string
-          source_reference?: string | null
-          source_type?: string
-          species_id?: string
-          uploaded_at?: string | null
-          url?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "species_photo_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "species_photo_species_id_fkey"
-            columns: ["species_id"]
-            isOneToOne: false
-            referencedRelation: "species"
             referencedColumns: ["id"]
           },
         ]
@@ -2629,4 +2674,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -4,8 +4,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { cn } from "@nasti/ui/utils"
 
 import { Button } from "@nasti/ui/button"
-import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { ChevronLeft, LeafIcon, PlusCircle, RefreshCwIcon } from "lucide-react"
+import {
+  createFileRoute,
+  Link,
+  useNavigate,
+  useParams,
+} from "@tanstack/react-router"
+import {
+  Binoculars,
+  ChevronLeft,
+  LeafIcon,
+  PlusCircle,
+  RefreshCwIcon,
+  ShoppingBag,
+} from "lucide-react"
 
 import { TripCollectionList } from "@/components/trip/TripCollectionsList"
 import { TripCollectionsMap } from "@/components/trip/TripCollectionsMap"
@@ -14,7 +26,53 @@ import {
   SpeciesDrawerProvider,
   useSpeciesDrawer,
 } from "@/components/trip/TripSpeciesDrawer"
-import { ButtonLink } from "@nasti/ui/button-link"
+import { useOpenClose } from "@nasti/ui/hooks"
+import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+
+const NewDataButton = () => {
+  const { isOpen, setIsOpen } = useOpenClose()
+  const { id } = useParams({ from: "/_private/trips/$id/" })
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button className="fab from-secondary to-primary bg-linear-to-br z-50 flex items-center justify-center">
+          <PlusCircle width={42} height={42} />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="end" className="mb-6 w-80">
+        <div className="space-y-2">
+          <h3 className="mb-3 text-sm font-medium">Add New</h3>
+
+          <div className="space-y-1">
+            <Link
+              to="/trips/$id/collections/new"
+              params={{ id }}
+              className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-gray-50"
+              onClick={() => setIsOpen(false)}
+            >
+              <div className="shrink-0">
+                <ShoppingBag className="size-4 text-gray-600" />
+              </div>
+              <p className="text-lg font-medium">{"New Collection"}</p>
+            </Link>
+            <Link
+              to="/trips/$id/scouting-notes/new"
+              params={{ id }}
+              className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-gray-50"
+              onClick={() => setIsOpen(false)}
+            >
+              <div className="shrink-0">
+                <Binoculars className="size-4 text-gray-600" />
+              </div>
+              <p className="text-lg font-medium">{"New Scouting Note"}</p>
+            </Link>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
@@ -86,12 +144,7 @@ const TripDetail = () => {
         <TabsContent value="map">
           <TripCollectionsMap id={id} />
         </TabsContent>
-        <ButtonLink
-          to="/trips/$id/collections/new"
-          className="fab from-secondary to-primary z-50 flex items-center justify-center bg-gradient-to-br"
-        >
-          <PlusCircle width={42} height={42} />
-        </ButtonLink>
+        <NewDataButton />
       </Tabs>
       <SpeciesDrawer species={data.species} tripId={id} />
     </div>
