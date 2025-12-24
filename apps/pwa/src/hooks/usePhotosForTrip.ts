@@ -1,12 +1,19 @@
 import { supabase } from "@nasti/common/supabase"
-import { CollectionPhoto } from "@nasti/common/types"
+import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 
 import { useQuery } from "@tanstack/react-query"
-import { PendingCollectionPhoto } from "./useCollectionPhotosMutate"
+import {
+  PendingCollectionPhoto,
+  PendingScoutingNotePhoto,
+} from "./usePhotosMutate"
 import { getImage, putImage } from "@/lib/persistFiles"
 
 export type TripCollectionPhotos = Array<
   CollectionPhoto | PendingCollectionPhoto
+>
+
+export type TripScoutingNotePhotos = Array<
+  ScoutingNotePhoto | PendingScoutingNotePhoto
 >
 
 const imageUrlToBase64 = async (url: string): Promise<string> => {
@@ -25,38 +32,70 @@ const imageUrlToBase64 = async (url: string): Promise<string> => {
   })
 }
 
-export const getCollectionPhotosByTripQueryKey = (tripId?: string) =>
-  tripId ? ["collectionPhotos", "byTrip", tripId] : []
-
-export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
-  const collectionPhotosQuery = useQuery({
-    queryKey: getCollectionPhotosByTripQueryKey(tripId),
-    enabled: Boolean(tripId),
-    queryFn: async () => {
-      if (!tripId) return []
-      const collectionPhotos = await supabase
-        .from("collection_photo")
-        .select(
-          `
+const getTripCollectionPhotos = (tripId: string) =>
+  supabase
+    .from("collection_photo")
+    .select(
+      `
           *,
           collection!inner (
             id,
             trip_id
           )
         `,
-        )
-        .eq("collection.trip_id", tripId)
-        .order("collection_id", { ascending: false })
-        .order("uploaded_at", { ascending: false })
+    )
+    .eq("collection.trip_id", tripId)
+    .order("collection_id", { ascending: false })
+    .order("uploaded_at", { ascending: false })
+    .overrideTypes<CollectionPhoto[]>()
 
-      if (collectionPhotos.error)
-        throw new Error(collectionPhotos.error.message)
+const getTripScoutingNotesPhotos = (tripId: string) =>
+  supabase
+    .from("scouting_notes_photos")
+    .select(
+      `
+          *,
+          scouting_notes!inner (
+            id,
+            trip_id
+          )
+        `,
+    )
+    .eq("scouting_notes.trip_id", tripId)
+    .order("collection_id", { ascending: false })
+    .order("uploaded_at", { ascending: false })
+    .overrideTypes<ScoutingNotePhoto[]>()
+
+type EntityType = "collection" | "scoutingNote"
+export const getPhotosByTripQueryKey = (
+  entityType: EntityType,
+  tripId?: string,
+) => (tripId ? ["photos", entityType, "byTrip", tripId] : [])
+
+export const usePhotosForTrip = ({
+  tripId,
+  entityType,
+}: {
+  entityType: EntityType
+  tripId?: string
+}) => {
+  const photosQuery = useQuery({
+    queryKey: getPhotosByTripQueryKey(entityType, tripId),
+    enabled: Boolean(tripId),
+    queryFn: async () => {
+      if (!tripId) return []
+      const photos =
+        entityType === "collection"
+          ? await getTripCollectionPhotos(tripId)
+          : await getTripScoutingNotesPhotos(tripId)
+
+      if (photos.error) throw new Error(photos.error.message)
 
       // Get photos that we need to fetch
       type MissingPhotos = { id: string; url: string }
       const missingPhotos = (
         await Promise.all(
-          collectionPhotos?.data.map(({ id, url }) =>
+          photos?.data.map(({ id, url }) =>
             getImage(id).then((file) => (Boolean(file) ? null : { id, url })),
           ),
         )
@@ -82,11 +121,11 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
 
         if (error) console.log("Error when getting signed photos", { error })
       }
-      const result: TripCollectionPhotos = collectionPhotos?.data ?? []
+      const result = photos?.data ?? []
       return result
     },
     refetchInterval: 1000 * 60 * 60, // every 1 hour
   })
 
-  return collectionPhotosQuery
+  return photosQuery
 }

@@ -1,5 +1,9 @@
 import { supabase } from "@nasti/common/supabase"
-import { Collection, CollectionWithCoord } from "@nasti/common/types"
+import {
+  Collection,
+  CollectionWithCoord,
+  ScoutingNote,
+} from "@nasti/common/types"
 import { parsePostGISPoint } from "@nasti/common/utils"
 
 export const getTrip = (tripId: string) =>
@@ -17,11 +21,22 @@ export const getTripCollections = (tripId: string) =>
     .select("*")
     .eq("trip_id", tripId)
     .order("created_at", { ascending: false })
+    .overrideTypes<Collection[]>()
 
-export function parseLocation(coll: Collection): CollectionWithCoord {
-  if (!coll.location) return coll
+export const getTripScoutingNotes = (tripId: string) =>
+  supabase
+    .from("scouting_notes")
+    .select("*")
+    .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
+    .overrideTypes<ScoutingNote[]>()
+
+export function parseLocation<T extends { location: string | null }>(
+  obj: T,
+): T & { locationCoord?: { latitude: number; longitude: number } } {
+  if (!obj.location) return obj
   return {
-    ...coll,
-    locationCoord: parsePostGISPoint(coll.location),
+    ...obj,
+    locationCoord: parsePostGISPoint(obj.location),
   }
 }

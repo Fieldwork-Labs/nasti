@@ -16,8 +16,11 @@ import { Route as IndexImport } from './routes/index'
 import { Route as AuthLoginImport } from './routes/auth/login'
 import { Route as PrivateTripsIndexImport } from './routes/_private/trips/index'
 import { Route as PrivateTripsIdIndexImport } from './routes/_private/trips/$id/index'
+import { Route as PrivateTripsIdScoutingNotesNewImport } from './routes/_private/trips/$id/scouting-notes/new'
 import { Route as PrivateTripsIdCollectionsNewImport } from './routes/_private/trips/$id/collections/new'
+import { Route as PrivateTripsIdScoutingNotesScoutingNoteIdIndexImport } from './routes/_private/trips/$id/scouting-notes/$scoutingNoteId/index'
 import { Route as PrivateTripsIdCollectionsCollectionIdIndexImport } from './routes/_private/trips/$id/collections/$collectionId/index'
+import { Route as PrivateTripsIdScoutingNotesScoutingNoteIdEditImport } from './routes/_private/trips/$id/scouting-notes/$scoutingNoteId/edit'
 import { Route as PrivateTripsIdCollectionsCollectionIdEditImport } from './routes/_private/trips/$id/collections/$collectionId/edit'
 
 // Create/Update Routes
@@ -51,6 +54,13 @@ const PrivateTripsIdIndexRoute = PrivateTripsIdIndexImport.update({
   getParentRoute: () => PrivateRoute,
 } as any)
 
+const PrivateTripsIdScoutingNotesNewRoute =
+  PrivateTripsIdScoutingNotesNewImport.update({
+    id: '/trips/$id/scouting-notes/new',
+    path: '/trips/$id/scouting-notes/new',
+    getParentRoute: () => PrivateRoute,
+  } as any)
+
 const PrivateTripsIdCollectionsNewRoute =
   PrivateTripsIdCollectionsNewImport.update({
     id: '/trips/$id/collections/new',
@@ -58,10 +68,24 @@ const PrivateTripsIdCollectionsNewRoute =
     getParentRoute: () => PrivateRoute,
   } as any)
 
+const PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute =
+  PrivateTripsIdScoutingNotesScoutingNoteIdIndexImport.update({
+    id: '/trips/$id/scouting-notes/$scoutingNoteId/',
+    path: '/trips/$id/scouting-notes/$scoutingNoteId/',
+    getParentRoute: () => PrivateRoute,
+  } as any)
+
 const PrivateTripsIdCollectionsCollectionIdIndexRoute =
   PrivateTripsIdCollectionsCollectionIdIndexImport.update({
     id: '/trips/$id/collections/$collectionId/',
     path: '/trips/$id/collections/$collectionId/',
+    getParentRoute: () => PrivateRoute,
+  } as any)
+
+const PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute =
+  PrivateTripsIdScoutingNotesScoutingNoteIdEditImport.update({
+    id: '/trips/$id/scouting-notes/$scoutingNoteId/edit',
+    path: '/trips/$id/scouting-notes/$scoutingNoteId/edit',
     getParentRoute: () => PrivateRoute,
   } as any)
 
@@ -118,6 +142,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivateTripsIdCollectionsNewImport
       parentRoute: typeof PrivateImport
     }
+    '/_private/trips/$id/scouting-notes/new': {
+      id: '/_private/trips/$id/scouting-notes/new'
+      path: '/trips/$id/scouting-notes/new'
+      fullPath: '/trips/$id/scouting-notes/new'
+      preLoaderRoute: typeof PrivateTripsIdScoutingNotesNewImport
+      parentRoute: typeof PrivateImport
+    }
     '/_private/trips/$id/collections/$collectionId/edit': {
       id: '/_private/trips/$id/collections/$collectionId/edit'
       path: '/trips/$id/collections/$collectionId/edit'
@@ -125,11 +156,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivateTripsIdCollectionsCollectionIdEditImport
       parentRoute: typeof PrivateImport
     }
+    '/_private/trips/$id/scouting-notes/$scoutingNoteId/edit': {
+      id: '/_private/trips/$id/scouting-notes/$scoutingNoteId/edit'
+      path: '/trips/$id/scouting-notes/$scoutingNoteId/edit'
+      fullPath: '/trips/$id/scouting-notes/$scoutingNoteId/edit'
+      preLoaderRoute: typeof PrivateTripsIdScoutingNotesScoutingNoteIdEditImport
+      parentRoute: typeof PrivateImport
+    }
     '/_private/trips/$id/collections/$collectionId/': {
       id: '/_private/trips/$id/collections/$collectionId/'
       path: '/trips/$id/collections/$collectionId'
       fullPath: '/trips/$id/collections/$collectionId'
       preLoaderRoute: typeof PrivateTripsIdCollectionsCollectionIdIndexImport
+      parentRoute: typeof PrivateImport
+    }
+    '/_private/trips/$id/scouting-notes/$scoutingNoteId/': {
+      id: '/_private/trips/$id/scouting-notes/$scoutingNoteId/'
+      path: '/trips/$id/scouting-notes/$scoutingNoteId'
+      fullPath: '/trips/$id/scouting-notes/$scoutingNoteId'
+      preLoaderRoute: typeof PrivateTripsIdScoutingNotesScoutingNoteIdIndexImport
       parentRoute: typeof PrivateImport
     }
   }
@@ -141,18 +186,26 @@ interface PrivateRouteChildren {
   PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
   PrivateTripsIdIndexRoute: typeof PrivateTripsIdIndexRoute
   PrivateTripsIdCollectionsNewRoute: typeof PrivateTripsIdCollectionsNewRoute
+  PrivateTripsIdScoutingNotesNewRoute: typeof PrivateTripsIdScoutingNotesNewRoute
   PrivateTripsIdCollectionsCollectionIdEditRoute: typeof PrivateTripsIdCollectionsCollectionIdEditRoute
+  PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute: typeof PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute
   PrivateTripsIdCollectionsCollectionIdIndexRoute: typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute: typeof PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
   PrivateTripsIdIndexRoute: PrivateTripsIdIndexRoute,
   PrivateTripsIdCollectionsNewRoute: PrivateTripsIdCollectionsNewRoute,
+  PrivateTripsIdScoutingNotesNewRoute: PrivateTripsIdScoutingNotesNewRoute,
   PrivateTripsIdCollectionsCollectionIdEditRoute:
     PrivateTripsIdCollectionsCollectionIdEditRoute,
+  PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute:
+    PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute,
   PrivateTripsIdCollectionsCollectionIdIndexRoute:
     PrivateTripsIdCollectionsCollectionIdIndexRoute,
+  PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute:
+    PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute,
 }
 
 const PrivateRouteWithChildren =
@@ -165,8 +218,11 @@ export interface FileRoutesByFullPath {
   '/trips': typeof PrivateTripsIndexRoute
   '/trips/$id': typeof PrivateTripsIdIndexRoute
   '/trips/$id/collections/new': typeof PrivateTripsIdCollectionsNewRoute
+  '/trips/$id/scouting-notes/new': typeof PrivateTripsIdScoutingNotesNewRoute
   '/trips/$id/collections/$collectionId/edit': typeof PrivateTripsIdCollectionsCollectionIdEditRoute
+  '/trips/$id/scouting-notes/$scoutingNoteId/edit': typeof PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute
   '/trips/$id/collections/$collectionId': typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  '/trips/$id/scouting-notes/$scoutingNoteId': typeof PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -176,8 +232,11 @@ export interface FileRoutesByTo {
   '/trips': typeof PrivateTripsIndexRoute
   '/trips/$id': typeof PrivateTripsIdIndexRoute
   '/trips/$id/collections/new': typeof PrivateTripsIdCollectionsNewRoute
+  '/trips/$id/scouting-notes/new': typeof PrivateTripsIdScoutingNotesNewRoute
   '/trips/$id/collections/$collectionId/edit': typeof PrivateTripsIdCollectionsCollectionIdEditRoute
+  '/trips/$id/scouting-notes/$scoutingNoteId/edit': typeof PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute
   '/trips/$id/collections/$collectionId': typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  '/trips/$id/scouting-notes/$scoutingNoteId': typeof PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute
 }
 
 export interface FileRoutesById {
@@ -188,8 +247,11 @@ export interface FileRoutesById {
   '/_private/trips/': typeof PrivateTripsIndexRoute
   '/_private/trips/$id/': typeof PrivateTripsIdIndexRoute
   '/_private/trips/$id/collections/new': typeof PrivateTripsIdCollectionsNewRoute
+  '/_private/trips/$id/scouting-notes/new': typeof PrivateTripsIdScoutingNotesNewRoute
   '/_private/trips/$id/collections/$collectionId/edit': typeof PrivateTripsIdCollectionsCollectionIdEditRoute
+  '/_private/trips/$id/scouting-notes/$scoutingNoteId/edit': typeof PrivateTripsIdScoutingNotesScoutingNoteIdEditRoute
   '/_private/trips/$id/collections/$collectionId/': typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  '/_private/trips/$id/scouting-notes/$scoutingNoteId/': typeof PrivateTripsIdScoutingNotesScoutingNoteIdIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -201,8 +263,11 @@ export interface FileRouteTypes {
     | '/trips'
     | '/trips/$id'
     | '/trips/$id/collections/new'
+    | '/trips/$id/scouting-notes/new'
     | '/trips/$id/collections/$collectionId/edit'
+    | '/trips/$id/scouting-notes/$scoutingNoteId/edit'
     | '/trips/$id/collections/$collectionId'
+    | '/trips/$id/scouting-notes/$scoutingNoteId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -211,8 +276,11 @@ export interface FileRouteTypes {
     | '/trips'
     | '/trips/$id'
     | '/trips/$id/collections/new'
+    | '/trips/$id/scouting-notes/new'
     | '/trips/$id/collections/$collectionId/edit'
+    | '/trips/$id/scouting-notes/$scoutingNoteId/edit'
     | '/trips/$id/collections/$collectionId'
+    | '/trips/$id/scouting-notes/$scoutingNoteId'
   id:
     | '__root__'
     | '/'
@@ -221,8 +289,11 @@ export interface FileRouteTypes {
     | '/_private/trips/'
     | '/_private/trips/$id/'
     | '/_private/trips/$id/collections/new'
+    | '/_private/trips/$id/scouting-notes/new'
     | '/_private/trips/$id/collections/$collectionId/edit'
+    | '/_private/trips/$id/scouting-notes/$scoutingNoteId/edit'
     | '/_private/trips/$id/collections/$collectionId/'
+    | '/_private/trips/$id/scouting-notes/$scoutingNoteId/'
   fileRoutesById: FileRoutesById
 }
 
@@ -262,8 +333,11 @@ export const routeTree = rootRoute
         "/_private/trips/",
         "/_private/trips/$id/",
         "/_private/trips/$id/collections/new",
+        "/_private/trips/$id/scouting-notes/new",
         "/_private/trips/$id/collections/$collectionId/edit",
-        "/_private/trips/$id/collections/$collectionId/"
+        "/_private/trips/$id/scouting-notes/$scoutingNoteId/edit",
+        "/_private/trips/$id/collections/$collectionId/",
+        "/_private/trips/$id/scouting-notes/$scoutingNoteId/"
       ]
     },
     "/auth/login": {
@@ -281,12 +355,24 @@ export const routeTree = rootRoute
       "filePath": "_private/trips/$id/collections/new.tsx",
       "parent": "/_private"
     },
+    "/_private/trips/$id/scouting-notes/new": {
+      "filePath": "_private/trips/$id/scouting-notes/new.tsx",
+      "parent": "/_private"
+    },
     "/_private/trips/$id/collections/$collectionId/edit": {
       "filePath": "_private/trips/$id/collections/$collectionId/edit.tsx",
       "parent": "/_private"
     },
+    "/_private/trips/$id/scouting-notes/$scoutingNoteId/edit": {
+      "filePath": "_private/trips/$id/scouting-notes/$scoutingNoteId/edit.tsx",
+      "parent": "/_private"
+    },
     "/_private/trips/$id/collections/$collectionId/": {
       "filePath": "_private/trips/$id/collections/$collectionId/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/trips/$id/scouting-notes/$scoutingNoteId/": {
+      "filePath": "_private/trips/$id/scouting-notes/$scoutingNoteId/index.tsx",
       "parent": "/_private"
     }
   }

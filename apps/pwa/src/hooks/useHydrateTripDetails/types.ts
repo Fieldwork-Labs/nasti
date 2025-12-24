@@ -1,4 +1,8 @@
-import { CollectionWithCoord, Trip } from "@nasti/common/types"
+import {
+  CollectionWithCoord,
+  ScoutingNoteWithCoord,
+  Trip,
+} from "@nasti/common/types"
 
 import { TripCollectionPhotos } from "@/hooks/useCollectionPhotosForTrip"
 
@@ -6,8 +10,13 @@ export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
   photos: TripCollectionPhotos
 }
 
+export type ScoutingNoteWithCoordAndPhotos = ScoutingNoteWithCoord & {
+  photos: TripCollectionPhotos
+}
+
 export type TripDetails = Trip & {
   collections: Array<CollectionWithCoordAndPhotos>
+  scoutingNotes: Array<ScoutingNoteWithCoordAndPhotos>
   species:
     | {
         id: string

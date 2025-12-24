@@ -14,13 +14,29 @@ export type Collection = Table<"collection"> & { location: string | null }
 export type CollectionWithCoord = Collection & {
   locationCoord?: { latitude: number; longitude: number }
 }
+
 export type NewCollection = TablesInsert<"collection"> & {
+  trip_id: string
   location: string
+  id: string // id not necessarily required in the insert type, but makes things much easier on the client side to ensure it is there
 }
 // TablesUpdate includes the id field as optional but it should really be requirec
 export type UpdateCollection = TablesUpdate<"collection"> & { id: string }
 
 export type CollectionPhoto = Table<"collection_photo">
+
+export type ScoutingNote = Table<"scouting_notes"> & { location: string | null }
+export type ScoutingNoteWithCoord = ScoutingNote & {
+  locationCoord?: { latitude: number; longitude: number }
+}
+export type NewScoutingNote = TablesInsert<"scouting_notes"> & {
+  trip_id: string
+  location: string
+  id: string
+}
+
+export type ScoutingNotePhoto = Table<"scouting_notes_photos">
+
 export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">
 export type Person = GetOrgUsers["Returns"][number]

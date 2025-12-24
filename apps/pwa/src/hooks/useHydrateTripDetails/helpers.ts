@@ -2,14 +2,17 @@ import {
   Collection,
   CollectionPhoto,
   CollectionWithCoord,
+  ScoutingNotePhoto,
 } from "@nasti/common/types"
 
-import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
-import { CollectionWithCoordAndPhotos } from "./types"
+import {
+  PendingCollectionPhoto,
+  PendingScoutingNotePhoto,
+} from "@/hooks/usePhotosMutate"
 import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 
-export function getPhotoMap(
+export function getCollectionPhotoMap(
   photos: Array<CollectionPhoto | PendingCollectionPhoto> | undefined,
   error: unknown,
 ): Record<string, Array<CollectionPhoto | PendingCollectionPhoto>> {
@@ -21,6 +24,20 @@ export function getPhotoMap(
       return acc
     },
     {} as Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
+  )
+}
+export function getScoutingNotePhotoMap(
+  photos: Array<ScoutingNotePhoto | PendingScoutingNotePhoto> | undefined,
+  error: unknown,
+): Record<string, Array<ScoutingNotePhoto | PendingScoutingNotePhoto>> {
+  if (!photos || error) return {}
+  return photos.reduce(
+    (acc, photo) => {
+      if (!acc[photo.scouting_notes_id]) acc[photo.scouting_notes_id] = []
+      acc[photo.scouting_notes_id].push(photo)
+      return acc
+    },
+    {} as Record<string, Array<ScoutingNotePhoto | PendingScoutingNotePhoto>>,
   )
 }
 
@@ -40,10 +57,25 @@ export function parsePendingLocation(
   }
 }
 
-export function attachPhotos(
-  coll: CollectionWithCoord,
-  photosMap: Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
-): CollectionWithCoordAndPhotos {
+export function attachPhotos<T extends { id: string }>(
+  coll: T,
+  photosMap: Record<
+    string,
+    Array<
+      | CollectionPhoto
+      | PendingCollectionPhoto
+      | ScoutingNotePhoto
+      | PendingScoutingNotePhoto
+    >
+  >,
+): T & {
+  photos: Array<
+    | CollectionPhoto
+    | PendingCollectionPhoto
+    | ScoutingNotePhoto
+    | PendingScoutingNotePhoto
+  >
+} {
   return {
     ...coll,
     photos: photosMap[coll.id] ?? [],

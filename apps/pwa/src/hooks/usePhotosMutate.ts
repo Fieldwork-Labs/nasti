@@ -3,15 +3,17 @@ import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
 import { queryClient } from "@/lib/queryClient"
-import { CollectionPhoto } from "@nasti/common/types"
+import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 import { useCallback } from "react"
 import { deleteImage } from "@/lib/persistFiles"
-import {
-  getCollectionPhotosByTripQueryKey,
-  TripCollectionPhotos,
-} from "./useCollectionPhotosForTrip"
+
 import { Upload } from "tus-js-client"
 import { Session } from "@supabase/supabase-js"
+import {
+  getPhotosByTripQueryKey,
+  TripCollectionPhotos,
+  TripScoutingNotePhotos,
+} from "./usePhotosForTrip"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -22,6 +24,11 @@ export type UploadPhotoVariables = {
 
 export type PendingCollectionPhoto = Omit<UploadPhotoVariables, "file"> & {
   collection_id: string
+  url: string
+}
+
+export type PendingScoutingNotePhoto = Omit<UploadPhotoVariables, "file"> & {
+  scouting_notes_id: string
   url: string
 }
 
@@ -81,11 +88,13 @@ export const getUploadProgressQueryKey = (photoId: string) => [
   photoId,
 ]
 
-export const useCollectionPhotosMutate = ({
-  collectionId,
+export const usePhotosMutate = ({
+  entityId,
+  entityType,
   tripId,
 }: {
-  collectionId: string
+  entityId: string
+  entityType: "collection" | "scoutingNote"
   tripId: string
 }) => {
   const { org } = useAuth()
@@ -97,32 +106,30 @@ export const useCollectionPhotosMutate = ({
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
 
-      return `${org?.organisation_id}/collections/${collectionId}/${photoId}.${fileExt}`
+      return `${org?.organisation_id}/${entityType}s/${entityId}/${photoId}.${fileExt}`
     },
-    [org, tripId, collectionId],
+    [org, tripId, entityId, entityType],
   )
 
-  const updateUploadProgress = useCallback(
-    (photoId: string, percentage: number) => {
-      const queryKey = getUploadProgressQueryKey(photoId)
-      if (percentage !== 100)
-        queryClient.setQueryData<number>(queryKey, percentage)
-      else
-        queryClient.removeQueries({
-          queryKey,
-        })
-    },
-    [collectionId],
-  )
+  const updateUploadProgress = (photoId: string, percentage: number) => {
+    const queryKey = getUploadProgressQueryKey(photoId)
+    if (percentage !== 100)
+      queryClient.setQueryData<number>(queryKey, percentage)
+    else
+      queryClient.removeQueries({
+        queryKey,
+      })
+  }
 
   const createPhotoMutation = useMutation<
-    CollectionPhoto,
+    CollectionPhoto | ScoutingNotePhoto,
     Error,
     UploadPhotoVariables
   >({
-    mutationKey: ["collectionPhotos", "create", collectionId],
+    mutationKey: ["photos", "create", entityType, entityId],
     mutationFn: async ({ id: photoId, caption, file }) => {
-      if (!collectionId) throw new Error("No collection id specified")
+      if (!entityType || !entityId)
+        throw new Error("No entityId or entityType specified")
 
       if (!file) throw new Error(`No file found for ${photoId}`)
 
@@ -150,20 +157,30 @@ export const useCollectionPhotosMutate = ({
           filePath,
           file,
           {
-            collectionId,
+            entityType,
+            entityId,
             photoId,
           },
           session,
           (percentage) => updateUploadProgress(photoId, percentage),
         )
 
+        const table =
+          entityType === "collection"
+            ? "collection_photo"
+            : "scouting_notes_photos"
+        const insertBase =
+          entityType === "collection"
+            ? { collection_id: entityId }
+            : { scouting_note_id: entityId }
         // Then, insert record into database
         const { data, error } = await supabase
-          .from("collection_photo")
+          .from(table)
+          // @ts-expect-error
           .insert([
             {
+              ...insertBase,
               id: photoId,
-              collection_id: collectionId,
               url: filePath,
               caption: caption || null,
             },
@@ -181,7 +198,7 @@ export const useCollectionPhotosMutate = ({
           throw error
         }
 
-        return data as CollectionPhoto
+        return data as CollectionPhoto | ScoutingNotePhoto
       } catch (error) {
         console.error("Error creating collection photo:", error)
         throw error
@@ -190,34 +207,65 @@ export const useCollectionPhotosMutate = ({
     onMutate: async ({ file, ...variables }) => {
       // IndexedDB Put is not done here because it needs to be awaited regardless of online state
 
-      // Get the trip details data blob
-      const pendingItem: PendingCollectionPhoto = {
+      const base = {
         ...variables,
-        collection_id: collectionId,
         url: getFilePath(file, variables.id),
       }
-      queryClient.setQueriesData<TripCollectionPhotos>(
-        { queryKey: getCollectionPhotosByTripQueryKey(tripId) },
-        (oldData) => {
-          return [...(oldData || []), pendingItem]
-        },
-      )
+      // Get the trip details data blob
+      if (entityType === "collection") {
+        const pendingItem = {
+          ...base,
+          collection_id: entityId,
+        } satisfies PendingCollectionPhoto
+
+        queryClient.setQueriesData<TripCollectionPhotos>(
+          { queryKey: getPhotosByTripQueryKey(entityType, tripId) },
+          (oldData) => {
+            return [...(oldData || []), pendingItem]
+          },
+        )
+      } else {
+        const pendingItem = {
+          ...base,
+          scouting_notes_id: entityId,
+        } satisfies PendingScoutingNotePhoto
+
+        queryClient.setQueriesData<TripScoutingNotePhotos>(
+          { queryKey: getPhotosByTripQueryKey(entityType, tripId) },
+          (oldData) => {
+            return [...(oldData || []), pendingItem]
+          },
+        )
+      }
     },
     onSettled: async (createdItem, _, { id }) => {
       if (!createdItem) return
-
-      queryClient.setQueriesData<TripCollectionPhotos>(
-        { queryKey: ["collectionPhotos"] },
-        (oldData) => {
+      const options = { queryKey: getPhotosByTripQueryKey(entityType, tripId) }
+      if (entityType === "collection") {
+        queryClient.setQueriesData<TripCollectionPhotos>(options, (oldData) => {
           if (!oldData) return []
-          return [...oldData?.filter((c) => c.id !== id), createdItem]
-        },
-      )
+          return [
+            ...oldData?.filter((c) => c.id !== id),
+            createdItem as CollectionPhoto,
+          ]
+        })
+      } else {
+        queryClient.setQueriesData<TripScoutingNotePhotos>(
+          options,
+          (oldData) => {
+            if (!oldData) return []
+            return [
+              ...oldData?.filter((c) => c.id !== id),
+              createdItem as ScoutingNotePhoto,
+            ]
+          },
+        )
+      }
     },
   })
 
   // Delete photo mutation
-  const deletePhotoMutation = useMutation({
+  const deletePhotoMutationCollectionPhoto = useMutation({
     mutationFn: async (photoId: string) => {
       // Get the photo first to get the URL
       // TODO this is going to fail/throw error if the photo is pending
@@ -251,7 +299,7 @@ export const useCollectionPhotosMutate = ({
     },
     onMutate: (photoId) => {
       queryClient.setQueriesData<CollectionPhoto[]>(
-        { queryKey: ["collectionPhotos"] },
+        { queryKey: ["photos"] },
         (oldData) => {
           if (!oldData || oldData.length === 0) return []
           return oldData.filter((item) => item.id !== photoId)
@@ -265,12 +313,65 @@ export const useCollectionPhotosMutate = ({
     },
   })
 
+  const deletePhotoMutationScoutingNotesPhoto = useMutation({
+    mutationFn: async (photoId: string) => {
+      // Get the photo first to get the URL
+      // TODO this is going to fail/throw error if the photo is pending
+      const { data: photo, error: fetchError } = await supabase
+        .from("scouting_notes_photos")
+        .select("url")
+        .eq("id", photoId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from("collection-photos")
+        .remove([photo.url])
+
+      if (storageError) throw storageError
+
+      // delete record from supabase
+      const { error: deleteError } = await supabase
+        .from("scouting_notes_photos")
+        .delete()
+        .eq("id", photoId)
+
+      if (deleteError) throw deleteError
+
+      return photoId
+    },
+    onError: (error) => {
+      console.log("error deleting photo", error)
+    },
+    onMutate: (photoId) => {
+      queryClient.setQueriesData<ScoutingNotePhoto[]>(
+        { queryKey: ["photos"] },
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+          return oldData.filter((item) => item.id !== photoId)
+        },
+      )
+    },
+    onSettled: async (id) => {
+      if (!id) return
+      queryClient.removeQueries({ queryKey: ["photo", "url", id] })
+      await deleteImage(id)
+    },
+  })
+
+  const deletePhotoMutation =
+    entityType === "collection"
+      ? deletePhotoMutationCollectionPhoto
+      : deletePhotoMutationScoutingNotesPhoto
+
   type UpdateCaptionPayload = {
     caption?: string | null
     photoId: string
   }
   // Update photo caption
-  const updateCaptionMutation = useMutation<
+  const updateCaptionMutationCollectionPhoto = useMutation<
     CollectionPhoto,
     Error,
     UpdateCaptionPayload
@@ -289,7 +390,7 @@ export const useCollectionPhotosMutate = ({
     onMutate: (variables) => {
       // update query data
       queryClient.setQueriesData<CollectionPhoto[]>(
-        { queryKey: ["collectionPhotos"] },
+        { queryKey: ["photos"] },
         (oldData) => {
           if (!oldData || oldData.length === 0) return []
 
@@ -307,7 +408,56 @@ export const useCollectionPhotosMutate = ({
         throw new Error("No data returned from collection photo update")
 
       queryClient.setQueriesData<CollectionPhoto[]>(
-        { queryKey: ["collectionPhotos"] },
+        { queryKey: ["photos"] },
+
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+          return oldData.map((item) =>
+            item.id === variables.photoId ? { ...data } : item,
+          )
+        },
+      )
+    },
+  })
+
+  const updateCaptionMutationScoutingNotesPhoto = useMutation<
+    ScoutingNotePhoto,
+    Error,
+    UpdateCaptionPayload
+  >({
+    mutationFn: async ({ photoId, caption }) => {
+      const { data, error } = await supabase
+        .from("scouting_notes_photos")
+        .update({ caption })
+        .eq("id", photoId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onMutate: (variables) => {
+      // update query data
+      queryClient.setQueriesData<ScoutingNotePhoto[]>(
+        { queryKey: ["photos"] },
+        (oldData) => {
+          if (!oldData || oldData.length === 0) return []
+
+          return oldData.map((item) =>
+            item.id === variables.photoId
+              ? { ...item, caption: variables.caption || null }
+              : item,
+          )
+        },
+      )
+    },
+    async onSettled(data, error, variables) {
+      if (error) throw error
+      if (!data)
+        throw new Error("No data returned from collection photo update")
+
+      queryClient.setQueriesData<ScoutingNotePhoto[]>(
+        { queryKey: ["photos"] },
 
         (oldData) => {
           if (!oldData || oldData.length === 0) return []
@@ -321,7 +471,7 @@ export const useCollectionPhotosMutate = ({
 
   const isMutating = useMutationState({
     filters: {
-      mutationKey: ["collectionPhotos", "create", collectionId],
+      mutationKey: ["photos", "create", entityType, entityId],
       status: "pending",
     },
   })
@@ -335,7 +485,8 @@ export const useCollectionPhotosMutate = ({
     ({ id }: { id: string }) =>
       isMutating.find(
         ({ variables, isPaused }) =>
-          !isPaused && (variables as CollectionPhoto).id === id,
+          !isPaused &&
+          (variables as CollectionPhoto | ScoutingNotePhoto).id === id,
       ),
     [isMutating],
   )
@@ -347,10 +498,16 @@ export const useCollectionPhotosMutate = ({
   const getIsPending = useCallback(
     ({ id }: { id: string }) =>
       isMutating.find(
-        ({ variables }) => (variables as CollectionPhoto).id === id,
+        ({ variables }) =>
+          (variables as CollectionPhoto | ScoutingNotePhoto).id === id,
       ),
     [isMutating],
   )
+
+  const updateCaptionMutation =
+    entityType === "collection"
+      ? updateCaptionMutationCollectionPhoto
+      : updateCaptionMutationScoutingNotesPhoto
 
   return {
     createPhotoMutation,
@@ -361,7 +518,7 @@ export const useCollectionPhotosMutate = ({
   }
 }
 
-export const useCollectionPhotoUploadProgress = (photoId?: string) => {
+export const usePhotoUploadProgress = (photoId?: string) => {
   return queryClient.getQueryData<number>(
     getUploadProgressQueryKey(photoId ?? ""),
   )

@@ -1,8 +1,7 @@
 import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 
 import { useViewState } from "@nasti/common/hooks"
-import { CollectionWithCoord } from "@nasti/common/types"
-import { ShoppingBag } from "lucide-react"
+import { BinocularsIcon, ShoppingBag } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 import { useGeoLocation } from "@/contexts/location"
@@ -11,6 +10,7 @@ import Map, { MapRef, Marker, Popup } from "react-map-gl"
 import { Link } from "@tanstack/react-router"
 import { useCollection } from "@/hooks/useCollection"
 import "mapbox-gl/dist/mapbox-gl.css"
+import { useScoutingNote } from "@/hooks/useScoutingNote"
 
 const CollectionPopup = ({
   collectionId,
@@ -36,11 +36,38 @@ const CollectionPopup = ({
   )
 }
 
+const ScoutingNotePopup = ({
+  scoutingNoteId,
+  tripId,
+  onClose,
+}: {
+  scoutingNoteId: string
+  tripId: string
+  onClose: () => void
+}) => {
+  const scoutingNote = useScoutingNote({ scoutingNoteId, tripId })
+  if (!scoutingNote || !scoutingNote.locationCoord) return <></>
+  return (
+    <Popup onClose={onClose} {...scoutingNote.locationCoord}>
+      <Link
+        to={"/trips/$id/scouting-notes/$scoutingNoteId"}
+        params={{ id: tripId, scoutingNoteId: scoutingNote.id }}
+        className="text-primary"
+      >
+        {scoutingNote?.species?.name || scoutingNote.field_name} scouting note
+      </Link>
+    </Popup>
+  )
+}
+
 export const TripCollectionsMap = ({ id }: { id: string }) => {
   const { data } = useHydrateTripDetails({ id })
   const { location } = useGeoLocation()
 
-  const [showPopup, setShowPopup] = useState<CollectionWithCoord | null>(null)
+  const [showPopup, setShowPopup] = useState<{
+    entityType: "collection" | "scoutingNote"
+    id: string
+  } | null>(null)
   const [mapHeight, setMapHeight] = useState("calc(100vh - 100px)")
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapRef>(null)
@@ -68,34 +95,38 @@ export const TripCollectionsMap = ({ id }: { id: string }) => {
   const collections =
     data.trip?.collections.filter((col) => Boolean(col.locationCoord)) ?? []
 
-  const initialCollectionCoords: Array<[number, number]> = collections.map(
-    ({ locationCoord }) => [locationCoord!.longitude, locationCoord!.latitude],
-  )
+  const scoutingNotes =
+    data.trip?.scoutingNotes.filter((sn) => Boolean(sn.locationCoord)) ?? []
+
+  const initialDataCoords: Array<[number, number]> = [
+    ...collections,
+    ...scoutingNotes,
+  ].map(({ locationCoord }) => [
+    locationCoord!.longitude,
+    locationCoord!.latitude,
+  ])
 
   if (location) {
-    initialCollectionCoords.push([location.longitude, location.latitude])
+    initialDataCoords.push([location.longitude, location.latitude])
   }
   // Calculate bounds based on all trip coordinates
-  const initialViewState = useViewState(initialCollectionCoords)
+  const initialViewState = useViewState(initialDataCoords)
 
   useEffect(() => {
-    if (!mapRef.current || initialCollectionCoords.length === 0) return
+    if (!mapRef.current || initialDataCoords.length === 0) return
 
     mapRef.current.resize()
 
-    const bounds = initialCollectionCoords.reduce(
+    const bounds = initialDataCoords.reduce(
       (bounds, coord) => bounds.extend(coord),
-      new mapboxgl.LngLatBounds(
-        initialCollectionCoords[0],
-        initialCollectionCoords[0],
-      ),
+      new mapboxgl.LngLatBounds(initialDataCoords[0], initialDataCoords[0]),
     )
 
     mapRef.current.fitBounds(bounds, {
       padding: 120,
       duration: 200,
     })
-  }, [initialCollectionCoords, mapHeight])
+  }, [initialDataCoords, mapHeight])
 
   return (
     <div ref={mapContainerRef} className="w-full" style={{ height: mapHeight }}>
@@ -118,16 +149,42 @@ export const TripCollectionsMap = ({ id }: { id: string }) => {
                 className="text-primary h-5 w-5 cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setShowPopup(col)
+                  setShowPopup({
+                    entityType: "collection",
+                    id: col.id,
+                  })
                 }}
               />
             </div>
           </Marker>
         ))}
-        {showPopup && (
+        {scoutingNotes.map((sn) => (
+          <Marker {...sn.locationCoord!} key={sn.id}>
+            <div className="rounded-full bg-white/50 p-2">
+              <BinocularsIcon
+                className="text-primary h-5 w-5 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPopup({
+                    entityType: "scoutingNote",
+                    id: sn.id,
+                  })
+                }}
+              />
+            </div>
+          </Marker>
+        ))}
+        {showPopup && showPopup.entityType === "collection" && (
           <CollectionPopup
             tripId={id}
             collectionId={showPopup.id}
+            onClose={() => setShowPopup(null)}
+          />
+        )}
+        {showPopup && showPopup.entityType === "scoutingNote" && (
+          <ScoutingNotePopup
+            tripId={id}
+            scoutingNoteId={showPopup.id}
             onClose={() => setShowPopup(null)}
           />
         )}

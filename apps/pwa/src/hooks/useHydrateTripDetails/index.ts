@@ -1,7 +1,11 @@
-import { Collection } from "@nasti/common/types"
+import {
+  Collection,
+  CollectionPhoto,
+  ScoutingNotePhoto,
+} from "@nasti/common/types"
 
-import { getMutationKey } from "@/hooks/useCollectionCreate"
-import { useCollectionPhotosForTrip } from "@/hooks/useCollectionPhotosForTrip"
+import { getMutationKey } from "@/hooks/useEntityCreate"
+import { usePhotosForTrip } from "@/hooks/usePhotosForTrip"
 import { useNetwork } from "@/hooks/useNetwork"
 import { useTripDetails } from "@/hooks/useTripDetails"
 import { useMutationState } from "@tanstack/react-query"
@@ -9,7 +13,8 @@ import { useCallback, useMemo, useState } from "react"
 import {
   attachPhotos,
   useOrgMembers,
-  getPhotoMap,
+  getCollectionPhotoMap,
+  getScoutingNotePhotoMap,
   useTripFullSpecies,
   parsePendingLocation,
 } from "./helpers"
@@ -17,17 +22,36 @@ import { TripDetails } from "./types"
 
 export * from "./types"
 
-export const useCollectionPhotosMap = ({ tripId }: { tripId: string }) => {
+export const usePhotosMap = ({ tripId }: { tripId: string }) => {
   const {
-    data,
+    data: collectionPhotosData,
     refetch: collectionPhotosRefetch,
     error: collectionPhotosError,
     isFetching: collectionPhotosIsFetching,
-  } = useCollectionPhotosForTrip({ tripId })
+  } = usePhotosForTrip({ tripId, entityType: "collection" })
 
   const collectionPhotosMap = useMemo(
-    () => getPhotoMap(data, collectionPhotosError),
-    [data],
+    () =>
+      getCollectionPhotoMap(
+        collectionPhotosData as CollectionPhoto[],
+        collectionPhotosError,
+      ),
+    [collectionPhotosData],
+  )
+  const {
+    data: scoutingNotePhotosData,
+    refetch: scoutingNotePhotosRefetch,
+    error: scoutingNotePhotosError,
+    isFetching: scoutingNotePhotosIsFetching,
+  } = usePhotosForTrip({ tripId, entityType: "scoutingNote" })
+
+  const scoutingNotePhotosMap = useMemo(
+    () =>
+      getScoutingNotePhotoMap(
+        scoutingNotePhotosData as ScoutingNotePhoto[],
+        scoutingNotePhotosError,
+      ),
+    [scoutingNotePhotosData],
   )
 
   return {
@@ -35,6 +59,10 @@ export const useCollectionPhotosMap = ({ tripId }: { tripId: string }) => {
     collectionPhotosRefetch,
     collectionPhotosError,
     collectionPhotosIsFetching,
+    scoutingNotePhotosMap,
+    scoutingNotePhotosRefetch,
+    scoutingNotePhotosError,
+    scoutingNotePhotosIsFetching,
   }
 }
 
@@ -57,15 +85,18 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     collectionPhotosMap,
     collectionPhotosRefetch,
     collectionPhotosIsFetching,
-  } = useCollectionPhotosMap({ tripId: id })
+    scoutingNotePhotosMap,
+    scoutingNotePhotosRefetch,
+    scoutingNotePhotosIsFetching,
+  } = usePhotosMap({ tripId: id })
 
   const pendingCollections = usePendingCollections({ tripId: id })
 
   const tripDetailsQuery = useTripDetails({ tripId: id })
-  console.log({ tripDetailsQuery: tripDetailsQuery.data })
+
   const tripDetailsData = useMemo(() => {
     if (!tripDetailsQuery.data) return null
-    const { collections, ...rest } = tripDetailsQuery.data
+    const { collections, scoutingNotes, ...rest } = tripDetailsQuery.data
 
     const pendingCollectionsWithCoord =
       pendingCollections.map(parsePendingLocation)
@@ -85,6 +116,9 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       collections: newCollections.map((col) =>
         attachPhotos(col, collectionPhotosMap),
       ),
+      scoutingNotes: scoutingNotes.map((sn) =>
+        attachPhotos(sn, scoutingNotePhotosMap),
+      ),
     }
 
     return result
@@ -92,7 +126,6 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
   const peopleQuery = useOrgMembers()
 
-  console.log({ peopleQuery: peopleQuery.data })
   const tripSpecies = tripDetailsQuery.data?.species?.map((s) => s.species_id)
   const speciesQuery = useTripFullSpecies(id, tripSpecies)
 
@@ -106,6 +139,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     !isRefetching &&
     (tripDetailsQuery.isFetching ||
       collectionPhotosIsFetching ||
+      scoutingNotePhotosIsFetching ||
       speciesQuery.isFetching ||
       peopleQuery.isFetching)
 
@@ -121,8 +155,15 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     await speciesQuery.refetch()
     await peopleQuery.refetch()
     await collectionPhotosRefetch()
+    await scoutingNotePhotosRefetch()
     setIsRefetching(false)
-  }, [tripDetailsQuery, speciesQuery, peopleQuery, collectionPhotosRefetch])
+  }, [
+    tripDetailsQuery,
+    speciesQuery,
+    peopleQuery,
+    collectionPhotosRefetch,
+    scoutingNotePhotosRefetch,
+  ])
 
   const resultData = useMemo(
     () => ({

@@ -4,10 +4,10 @@ import {
 } from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { useAuth } from "@/hooks/useAuth"
-import { useCollection } from "@/hooks/useCollection"
-import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
+import { usePhotosMutate } from "@/hooks/usePhotosMutate"
+import { useScoutingNote } from "@/hooks/useScoutingNote"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ROLE, UpdateCollection } from "@nasti/common/types"
@@ -50,8 +50,6 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    weight_estimate_kg: stringToNumber,
-    plants_sampled_estimate: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
   })
@@ -73,19 +71,17 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
-  weight_estimate_kg: null,
-  plants_sampled_estimate: null,
 }
 
 export const Route = createFileRoute(
-  "/_private/trips/$id/collections/$collectionId/edit",
+  "/_private/trips/$id/scouting-notes/$scoutingNoteId/edit",
 )({
-  component: CollectionForm,
+  component: ScoutingNoteForm,
 })
 
-function CollectionForm() {
-  const { collectionId, id: tripId } = useParams({
-    from: "/_private/trips/$id/collections/$collectionId/edit",
+function ScoutingNoteForm() {
+  const { scoutingNoteId, id: tripId } = useParams({
+    from: "/_private/trips/$id/scouting-notes/$scoutingNoteId/edit",
   })
 
   const { user, org } = useAuth()
@@ -94,31 +90,31 @@ function CollectionForm() {
     photos: initialPhotos,
     species,
     ...initialValues
-  } = useCollection({ collectionId, tripId })
+  } = useScoutingNote({ scoutingNoteId, tripId })
 
   const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
     usePhotosMutate({
-      entityId: collectionId,
-      entityType: "collection",
+      entityId: scoutingNoteId,
+      entityType: "scoutingNote",
       tripId,
     })
 
   const { isOnline } = useNetwork()
 
   const navigate = useNavigate({
-    from: "/trips/$id/collections/$collectionId/edit",
+    from: "/trips/$id/scouting-notes/$scoutingNoteId/edit",
   })
 
   const handleBackClick = () => {
     navigate({
-      to: "/trips/$id/collections/$collectionId",
-      params: { id: tripId, collectionId },
+      to: "/trips/$id/scouting-notes/$scoutingNoteId",
+      params: { id: tripId, scoutingNoteId },
     })
   }
 
   // Unique ID: use provided or generate new
-  const collectionIdRef = useRef<string>(
+  const scoutingNoteIdRef = useRef<string>(
     initialValues?.id || crypto.randomUUID(),
   )
 
@@ -165,7 +161,7 @@ function CollectionForm() {
       const locationPoint = `POINT(${longitude} ${latitude})`
       console.log({ locationPoint })
       const payload: UpdateCollection = {
-        id: collectionIdRef.current,
+        id: scoutingNoteIdRef.current,
         trip_id: tripId,
         organisation_id: org.organisation_id,
         created_by: user.id,
@@ -175,8 +171,8 @@ function CollectionForm() {
       }
       if (!isDirty && photoChanges.add.length === 0)
         navigate({
-          to: "/trips/$id/collections/$collectionId",
-          params: { id: tripId, collectionId },
+          to: "/trips/$id/scouting-notes/$scoutingNoteId",
+          params: { id: tripId, scoutingNoteId },
         })
 
       const updatePromise = updateCollection(payload)
@@ -220,8 +216,8 @@ function CollectionForm() {
       }
 
       return navigate({
-        to: "/trips/$id/collections/$collectionId",
-        params: { id: tripId, collectionId },
+        to: "/trips/$id/scouting-notes/$scoutingNoteId",
+        params: { id: tripId, scoutingNoteId },
       })
     },
     [user, org, tripId, location, photoChanges, isDirty, isOnline],
@@ -243,8 +239,8 @@ function CollectionForm() {
   // You shouldn't be here
   if (initialValues.created_by !== user?.id || org?.role !== ROLE.ADMIN)
     return navigate({
-      to: "/trips/$id/collections/$collectionId",
-      params: { id: tripId, collectionId },
+      to: "/trips/$id/scouting-notes/$scoutingNoteId",
+      params: { id: tripId, scoutingNoteId },
     })
 
   return (
@@ -351,25 +347,6 @@ function CollectionForm() {
             />
           </div>
 
-          <div>
-            <Label>Weight Estimate (kg)</Label>
-            <Input {...register("weight_estimate_kg")} />
-            {errors.weight_estimate_kg && (
-              <p className="text-amber-600">
-                {errors.weight_estimate_kg.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label># Plants Sampled</Label>
-            <Input {...register("plants_sampled_estimate")} />
-            {errors.plants_sampled_estimate && (
-              <p className="text-amber-600">
-                {errors.plants_sampled_estimate.message}
-              </p>
-            )}
-          </div>
           <CollectionPhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
