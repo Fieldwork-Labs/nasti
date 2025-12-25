@@ -1,4 +1,4 @@
-// __tests__/useCollectionPhotosForTrip.test.tsx
+// __tests__/usePhotosForTrip.test.tsx
 import {
   describe,
   it,
@@ -10,10 +10,7 @@ import {
 } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import {
-  useCollectionPhotosForTrip,
-  getCollectionPhotosByTripQueryKey,
-} from "../useCollectionPhotosForTrip"
+import { usePhotosForTrip, getPhotosByTripQueryKey } from "../usePhotosForTrip"
 import type { CollectionPhoto } from "@nasti/common/types"
 
 type CollectionPhotoWithCollection = CollectionPhoto & {
@@ -79,7 +76,8 @@ vi.mock("@nasti/common/supabase", () => {
 
   // 1) supabase.from("collection_photo")... → resolves to { data: inlinePhotos, error: null }
   const selectResult = { data: inlinePhotos, error: null }
-  const orderFn2 = vi.fn(() => Promise.resolve(selectResult))
+  const overrideTypesFn = vi.fn(() => Promise.resolve(selectResult))
+  const orderFn2 = vi.fn(() => ({ overrideTypes: overrideTypesFn }))
   const orderFn1 = vi.fn(() => ({ order: orderFn2 }))
   const eqFn = vi.fn(() => ({ order: orderFn1 }))
   const selectFn = vi.fn(() => ({ eq: eqFn }))
@@ -108,7 +106,7 @@ vi.mock("@/lib/persistFiles", () => {
   }
 })
 
-describe("useCollectionPhotosForTrip", () => {
+describe("usePhotosForTrip", () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
@@ -125,7 +123,7 @@ describe("useCollectionPhotosForTrip", () => {
 
   it("returns the supabase data array when all images are already cached locally", async () => {
     const tripId = "trip123"
-    const queryKey = getCollectionPhotosByTripQueryKey(tripId)
+    const queryKey = getPhotosByTripQueryKey("collection", tripId)
 
     // Wrap the hook in a QueryClientProvider
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -134,7 +132,7 @@ describe("useCollectionPhotosForTrip", () => {
 
     // Render the hook
     const { result } = renderHook(
-      () => useCollectionPhotosForTrip({ tripId }),
+      () => usePhotosForTrip({ entityType: "collection", tripId }),
       { wrapper },
     )
 
@@ -193,7 +191,7 @@ describe("useCollectionPhotosForTrip", () => {
 
   it("fetches signed URLs and calls putImage for missing photos", async () => {
     const tripId = "trip123"
-    const queryKey = getCollectionPhotosByTripQueryKey(tripId)
+    const queryKey = getPhotosByTripQueryKey("collection", tripId)
 
     // ── Step A: Override getImage so that it returns null for every photo (all missing) ────
     const persist = await import("@/lib/persistFiles")
@@ -244,7 +242,7 @@ describe("useCollectionPhotosForTrip", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
     const { result } = renderHook(
-      () => useCollectionPhotosForTrip({ tripId }),
+      () => usePhotosForTrip({ entityType: "collection", tripId }),
       { wrapper },
     )
 

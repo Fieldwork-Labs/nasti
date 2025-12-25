@@ -11,9 +11,7 @@ import { parsePostGISPoint } from "@nasti/common/utils"
 // Entity configuration type
 export interface EntityConfig {
   tableName: "collection" | "scouting_notes"
-  queryKeyPrefix: "collections" | "scoutingNotes"
-  mutationKeyPrefix: "createCollection" | "createScoutingNote"
-  photoMutationKeySegment: "collection" | "scoutingNote"
+  entityName: "collection" | "scoutingNote"
 }
 
 // Base type constraint for entities with location
@@ -23,9 +21,7 @@ interface BaseEntity {
   species_id?: string | null
   trip_id: string | null
 }
-interface NewEntity extends BaseEntity {} //Omit<BaseEntity, "id"> {
-//   id: string | undefined
-// }
+interface NewEntity extends BaseEntity {}
 
 interface EntityWithCoord extends BaseEntity {
   locationCoord?: { latitude: number; longitude: number }
@@ -39,9 +35,9 @@ const createEntity = async <
   createdItem: TNewEntity,
   tableName: "collection" | "scouting_notes",
 ): Promise<TEntity> => {
-  const query = supabase.from(tableName).insert(createdItem)
-
-  const { data, error } = await query
+  const { data, error } = await supabase
+    .from(tableName)
+    .insert(createdItem)
     .select("*")
     .single()
     .overrideTypes<TEntity>()
@@ -62,8 +58,8 @@ const parseLocationCoord = (location: string) => {
   }
 }
 
-export const getMutationKey = (prefix: string, tripId?: string) => [
-  prefix,
+export const getMutationKey = (tableName: string, tripId?: string) => [
+  `create_${tableName}`,
   tripId,
 ]
 
@@ -73,15 +69,11 @@ export function useEntityCreate<
   TNewEntity extends NewEntity,
   TEntityWithCoord extends TEntity & EntityWithCoord,
 >(tripId: string, config: EntityConfig) {
-  const {
-    tableName,
-    queryKeyPrefix,
-    mutationKeyPrefix,
-    photoMutationKeySegment,
-  } = config
+  const { tableName, entityName } = config
+  const queryKeyPrefix = `${entityName}s`
 
   const mutation = useMutation<TEntity, unknown, TNewEntity>({
-    mutationKey: getMutationKey(mutationKeyPrefix, tripId),
+    mutationKey: getMutationKey(tableName, tripId),
     mutationFn: (createdItem) =>
       createEntity<TEntity, TNewEntity>(createdItem, tableName),
     onMutate: (variable) => {
@@ -147,7 +139,7 @@ export function useEntityCreate<
     MutationState<TEntity, Error, TNewEntity>
   >({
     filters: {
-      mutationKey: getMutationKey(mutationKeyPrefix, tripId),
+      mutationKey: getMutationKey(tableName, tripId),
       status: "pending",
       predicate: ({ state }) => !state.isPaused,
     },
@@ -160,7 +152,7 @@ export function useEntityCreate<
       )
       if (includeChildren) {
         const photos = queryClient.getMutationCache().findAll({
-          mutationKey: ["photos", "create", photoMutationKeySegment, id],
+          mutationKey: ["photos", "create", entityName, id],
           status: "pending",
           predicate: ({ state }) => !state.isPaused,
         })
@@ -168,7 +160,7 @@ export function useEntityCreate<
       }
       return Boolean(isItemMutating)
     },
-    [isMutating, photoMutationKeySegment],
+    [isMutating, entityName],
   )
 
   const getIsPending = useCallback(

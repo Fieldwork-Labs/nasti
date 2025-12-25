@@ -7,9 +7,7 @@ import { EntityConfig, useEntityCreate } from "./useEntityCreate"
 
 const scoutingNoteConfig = {
   tableName: "scouting_notes",
-  queryKeyPrefix: "scoutingNotes",
-  mutationKeyPrefix: "createScoutingNote",
-  photoMutationKeySegment: "scoutingNote",
+  entityName: "scoutingNote",
 } satisfies EntityConfig
 
 export const useScoutingNoteCreate = ({ tripId }: { tripId: string }) =>

@@ -116,7 +116,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         ...col,
         photos: collectionPhotosMap[col.id] ?? [],
       })),
-      scoutingNotes: scoutingNotes.map((sn) => ({
+      scoutingNotes: scoutingNotes?.map((sn) => ({
         ...sn,
         photos: scoutingNotePhotosMap[sn.id] ?? [],
       })),

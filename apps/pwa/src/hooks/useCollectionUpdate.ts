@@ -23,7 +23,7 @@ const updateCollection = async (updatedItem: UpdateCollection) => {
   if (error) throw new Error(error.message)
   if (!data) throw new Error("No data returned from collection upsert")
 
-  return data as Collection
+  return data
 }
 
 export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {

@@ -3,6 +3,7 @@ import type {
   CollectionPhoto,
   Person,
   Role,
+  Species,
 } from "@nasti/common/types"
 import {
   QueryClient,
@@ -11,10 +12,7 @@ import {
 } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import {
-  useCollectionPhotosMap,
-  useHydrateTripDetails,
-} from "../useHydrateTripDetails"
+import { usePhotosMap, useHydrateTripDetails } from "../useHydrateTripDetails"
 
 import { parseLocation } from "../useTripDetails/helpers"
 import { PostgrestResponse } from "@supabase/supabase-js"
@@ -26,9 +24,9 @@ vi.mock("@/lib/persistFiles", () => {
   }
 })
 
-vi.mock("../useCollectionPhotosForTrip", () => {
+vi.mock("../usePhotosForTrip", () => {
   return {
-    useCollectionPhotosForTrip: () => ({
+    usePhotosForTrip: () => ({
       data: mockCollectionPhotos,
     }),
   }
@@ -39,7 +37,10 @@ vi.mock(import("../useHydrateTripDetails/helpers"), async (importOriginal) => {
   return {
     ...original,
     useOrgMembers: vi.fn(() => {
-      return { ...mockOrgMembersRequest, refetch: vi.fn() }
+      return mockOrgMembersRequest
+    }),
+    useTripFullSpecies: vi.fn(() => {
+      return mockSpeciesRequest
     }),
   }
 })
@@ -99,7 +100,11 @@ const mockTrip = {
   statusText: "OK",
 }
 
-const mockTripSpecies = {
+const mockTripSpecies: PostgrestResponse<{
+  id: string
+  trip_id: string
+  species_id: string
+}> = {
   error: null,
   data: [
     {
@@ -242,7 +247,46 @@ const mockOrgMembersRequest: QueryObserverPlaceholderResult<
   isStale: false,
 }
 
-const mockSpeciesRequest = {
+const mockSpeciesResponse: PostgrestResponse<Species> = {
+  error: null,
+  data: [
+    {
+      id: "3ef49a8c-c020-4418-b3ef-9efbc9a80d57",
+      name: "Lenwebbia sp. Main Range (P.R.Sharpe+ 4877)",
+      description: null,
+      created_at: "2025-01-28T13:53:33.661023+00:00",
+      ala_guid: "https://id.biodiversity.org.au/taxon/apni/51440239",
+      indigenous_name: null,
+      organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
+    },
+    {
+      id: "1b31f525-3397-434f-82e6-73ad2e6b9ac3",
+      name: "Senna artemisioides subsp. zygophylla",
+      description: null,
+      created_at: "2025-01-28T13:56:16.139236+00:00",
+      ala_guid: "https://id.biodiversity.org.au/node/apni/2886823",
+      indigenous_name: "asdf",
+      organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
+    },
+    {
+      id: "a1f7381f-efed-4c9e-ac8a-84f29f1a61ea",
+      name: "Senna artemisioides subsp. James Range (P.L.Latz 18528)",
+      description: null,
+      created_at: "2025-01-28T13:56:16.139236+00:00",
+      ala_guid: "https://id.biodiversity.org.au/node/apni/2915881",
+      indigenous_name: "senna with long name",
+      organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
+    },
+  ],
+  count: null,
+  status: 200,
+  statusText: "OK",
+}
+
+const mockSpeciesRequest: QueryObserverPlaceholderResult<
+  PostgrestResponse<Species>
+> = {
+  refetch: vi.fn(),
   status: "success",
   fetchStatus: "idle",
   isPending: false,
@@ -250,41 +294,7 @@ const mockSpeciesRequest = {
   isError: false,
   isInitialLoading: false,
   isLoading: false,
-  data: {
-    error: null,
-    data: [
-      {
-        id: "3ef49a8c-c020-4418-b3ef-9efbc9a80d57",
-        name: "Lenwebbia sp. Main Range (P.R.Sharpe+ 4877)",
-        description: null,
-        created_at: "2025-01-28T13:53:33.661023+00:00",
-        ala_guid: "https://id.biodiversity.org.au/taxon/apni/51440239",
-        indigenous_name: null,
-        organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
-      },
-      {
-        id: "1b31f525-3397-434f-82e6-73ad2e6b9ac3",
-        name: "Senna artemisioides subsp. zygophylla",
-        description: null,
-        created_at: "2025-01-28T13:56:16.139236+00:00",
-        ala_guid: "https://id.biodiversity.org.au/node/apni/2886823",
-        indigenous_name: "asdf",
-        organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
-      },
-      {
-        id: "a1f7381f-efed-4c9e-ac8a-84f29f1a61ea",
-        name: "Senna artemisioides subsp. James Range (P.L.Latz 18528)",
-        description: null,
-        created_at: "2025-01-28T13:56:16.139236+00:00",
-        ala_guid: "https://id.biodiversity.org.au/node/apni/2915881",
-        indigenous_name: "senna with long name",
-        organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
-      },
-    ],
-    count: null,
-    status: 200,
-    statusText: "OK",
-  },
+  data: mockSpeciesResponse,
   dataUpdatedAt: 1749197956246,
   error: null,
   errorUpdatedAt: 0,
@@ -297,13 +307,10 @@ const mockSpeciesRequest = {
   isRefetching: false,
   isLoadingError: false,
   isPaused: false,
-  isPlaceholderData: false,
+  isPlaceholderData: true,
   isRefetchError: false,
   isStale: false,
-  promise: {
-    status: "rejected",
-    reason: {},
-  },
+  promise: Promise.resolve(mockSpeciesResponse),
 }
 
 const getExpectedPhotosMap = () => {
@@ -318,10 +325,10 @@ const getExpectedPhotosMap = () => {
   return expected
 }
 
-describe("useCollectionPhotosMap", () => {
+describe("usePhotosMap", () => {
   it("returns a collectionPhotosMap with the expected structure", () => {
     const { result } = renderHook(() =>
-      useCollectionPhotosMap({
+      usePhotosMap({
         tripId: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
       }),
     )
@@ -345,6 +352,7 @@ const getUseTripDetailsExpected = () => {
   return {
     ...mockTrip.data,
     collections: collectionsWithPhotos,
+    scoutingNotes: [],
     species: mockTripSpecies.data,
     members: mockTripMembers.data,
   }
@@ -354,7 +362,7 @@ describe("useHydrateTripDetails", () => {
   let queryClient: QueryClient
 
   beforeEach(async () => {
-    // Create a fresh QueryClient for each    test, disabling retries so that errors bubble immediately
+    // Create a fresh QueryClient for each test, disabling retries so that errors bubble immediately
     const { queryClient: importedQueryClient } = await import(
       "@/lib/queryClient"
     )
@@ -367,6 +375,15 @@ describe("useHydrateTripDetails", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
 
+    vi.mock("../useTripDetails", () => {
+      return {
+        useTripDetails: vi.fn(() => {
+          return {
+            data: getUseTripDetailsExpected(),
+          }
+        }),
+      }
+    })
     vi.mock("../useTripDetails", () => {
       return {
         useTripDetails: vi.fn(() => {
