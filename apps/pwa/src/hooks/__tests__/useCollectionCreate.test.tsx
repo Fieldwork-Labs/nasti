@@ -11,14 +11,15 @@ import { renderHook, act, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useCollectionCreate } from "../useCollectionCreate"
 import type { Collection } from "@nasti/common/types"
-import { getMutationKey } from "../useCollectionCreate"
+import { getMutationKey } from "../useEntityCreate"
 import { parsePostGISPoint } from "@nasti/common/utils"
 
 vi.mock("@nasti/common/supabase", () => {
   // Create a mock that matches how createCollection(...) is called:
-  const singleFn = vi.fn(() =>
+  const overrideTypesFn = vi.fn(() =>
     Promise.resolve({ data: mockCollection, error: null }),
   )
+  const singleFn = vi.fn(() => ({ overrideTypes: overrideTypesFn }))
   const selectFn = vi.fn(() => ({ single: singleFn }))
   const insertFn = vi.fn(() => ({ select: selectFn }))
   const fromFn = vi.fn(() => ({ insert: insertFn }))
@@ -46,19 +47,6 @@ const mockCollection = {
   plants_sampled_estimate: 0,
 }
 
-const mockTrip = {
-  created_at: Date.now().toString(),
-  created_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
-  end_date: null,
-  id: "trip123",
-  location_coordinate: null,
-  location_name: "test location",
-  metadata: {},
-  name: "test trip",
-  organisation_id: "orgId-123",
-  start_date: null,
-}
-
 describe("useCollectionCreate · mutateAsync", () => {
   let queryClient: QueryClient
 
@@ -78,10 +66,7 @@ describe("useCollectionCreate · mutateAsync", () => {
   it("mutateAsync should insert a new Collection and return it (and call supabase.from/insert)", async () => {
     // 1. Seed "trip details" so onMutate doesn’t throw:
     const tripId = mockCollection.trip_id
-    queryClient.setQueryData(["trip", "details", tripId], {
-      ...mockTrip,
-      collections: [],
-    })
+    queryClient.setQueryData(["collections", "byTrip", tripId], [])
 
     // 2. Immediately grab and spy on `supabase.from` before invoking mutateAsync:
     const { supabase } = await import("@nasti/common/supabase")
@@ -117,15 +102,12 @@ describe("useCollectionCreate · mutateAsync", () => {
     expect(insertMock).toHaveBeenCalledWith(mockCollection)
 
     // 8. Finally, ensure that the querydata cache now contains the new collection
-    const data = queryClient.getQueryData(["trip", "details", tripId])
+    const data = queryClient.getQueryData(["collections", "byTrip", tripId])
     const expectedCollection = {
       ...returned,
       locationCoord: parsePostGISPoint(returned!.location!),
     }
-    expect(data).toStrictEqual({
-      ...mockTrip,
-      collections: [expectedCollection],
-    })
+    expect(data).toStrictEqual([expectedCollection])
   })
 
   it("mutateAsync should throw an error if the tripId doesn't exist", async () => {
@@ -160,14 +142,14 @@ describe("useCollectionCreate · mutateAsync", () => {
 describe("getMutationKey", () => {
   it('returns ["createCollection", tripId] when tripId is provided', () => {
     const tripId = "abc123"
-    const key = getMutationKey(tripId)
+    const key = getMutationKey("collection", tripId)
     expect(Array.isArray(key)).toBe(true)
-    expect(key).toEqual(["createCollection", "abc123"])
+    expect(key).toEqual(["create_collection", "abc123"])
   })
 
-  it('still returns ["createCollection", undefined] if tripId is undefined', () => {
+  it('still returns ["create_collection", undefined] if tripId is undefined', () => {
     // Although our hook always passes a string, we guard against misuse:
-    const key = getMutationKey(undefined)
-    expect(key).toEqual(["createCollection", undefined])
+    const key = getMutationKey("collection", undefined)
+    expect(key).toEqual(["create_collection", undefined])
   })
 })

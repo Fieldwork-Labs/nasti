@@ -8,9 +8,7 @@ import { EntityConfig, useEntityCreate } from "./useEntityCreate"
 // Configs for each entity type
 const collectionConfig = {
   tableName: "collection",
-  queryKeyPrefix: "collections",
-  mutationKeyPrefix: "createCollection",
-  photoMutationKeySegment: "collection",
+  entityName: "collection",
 } satisfies EntityConfig
 
 export const useCollectionCreate = ({ tripId }: { tripId: string }) =>

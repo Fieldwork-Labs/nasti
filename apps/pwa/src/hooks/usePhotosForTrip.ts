@@ -62,7 +62,7 @@ const getTripScoutingNotesPhotos = (tripId: string) =>
         `,
     )
     .eq("scouting_notes.trip_id", tripId)
-    .order("collection_id", { ascending: false })
+    .order("scouting_notes_id", { ascending: false })
     .order("uploaded_at", { ascending: false })
     .overrideTypes<ScoutingNotePhoto[]>()
 
