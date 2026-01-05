@@ -7,6 +7,7 @@ export default defineConfig({
   headLinkOptions: {
     preset: "2023",
   },
+  overrideAssets: false,
   preset,
-  images: ["src/assets/logo.svg"],
+  images: ["src/assets/logo.png"],
 })

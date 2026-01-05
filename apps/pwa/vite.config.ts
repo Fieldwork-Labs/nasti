@@ -71,9 +71,9 @@ export default defineConfig({
 
       manifest: {
         id: "/",
-        name: "NASTI App",
-        short_name: "NASTI",
-        description: "NASTI PWA",
+        name: "Seed Scout",
+        short_name: "Seed Scout",
+        description: "Seed Scout PWA",
         start_url: "/",
         scope: "/",
         display: "standalone",
