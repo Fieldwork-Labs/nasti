@@ -2,6 +2,7 @@ import { Collection } from "@nasti/common/types"
 
 import { getMutationKey } from "@/hooks/useCollectionCreate"
 import { useCollectionPhotosForTrip } from "@/hooks/useCollectionPhotosForTrip"
+import { useSpeciesPhotosForTrip } from "@/hooks/useSpeciesPhotosForTrip"
 import { useNetwork } from "@/hooks/useNetwork"
 import { useTripDetails } from "@/hooks/useTripDetails"
 import { useMutationState } from "@tanstack/react-query"
@@ -10,6 +11,7 @@ import {
   attachPhotos,
   useOrgMembers,
   getPhotoMap,
+  getSpeciesPhotoMap,
   useTripFullSpecies,
   parsePendingLocation,
 } from "./helpers"
@@ -51,6 +53,27 @@ export const usePendingCollections = ({ tripId }: { tripId: string }) => {
   }))
 }
 
+export const useSpeciesPhotosMap = ({ tripId }: { tripId: string }) => {
+  const {
+    data,
+    refetch: speciesPhotosRefetch,
+    error: speciesPhotosError,
+    isFetching: speciesPhotosIsFetching,
+  } = useSpeciesPhotosForTrip({ tripId })
+
+  const speciesPhotosMap = useMemo(
+    () => getSpeciesPhotoMap(data, speciesPhotosError),
+    [data, speciesPhotosError],
+  )
+
+  return {
+    speciesPhotosMap,
+    speciesPhotosRefetch,
+    speciesPhotosError,
+    speciesPhotosIsFetching,
+  }
+}
+
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
   const {
@@ -59,10 +82,12 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     collectionPhotosIsFetching,
   } = useCollectionPhotosMap({ tripId: id })
 
+  const { speciesPhotosMap, speciesPhotosRefetch, speciesPhotosIsFetching } =
+    useSpeciesPhotosMap({ tripId: id })
+
   const pendingCollections = usePendingCollections({ tripId: id })
 
   const tripDetailsQuery = useTripDetails({ tripId: id })
-  console.log({ tripDetailsQuery: tripDetailsQuery.data })
   const tripDetailsData = useMemo(() => {
     if (!tripDetailsQuery.data) return null
     const { collections, ...rest } = tripDetailsQuery.data
@@ -92,7 +117,6 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
   const peopleQuery = useOrgMembers()
 
-  console.log({ peopleQuery: peopleQuery.data })
   const tripSpecies = tripDetailsQuery.data?.species?.map((s) => s.species_id)
   const speciesQuery = useTripFullSpecies(id, tripSpecies)
 
@@ -106,6 +130,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     !isRefetching &&
     (tripDetailsQuery.isFetching ||
       collectionPhotosIsFetching ||
+      speciesPhotosIsFetching ||
       speciesQuery.isFetching ||
       peopleQuery.isFetching)
 
@@ -121,8 +146,15 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     await speciesQuery.refetch()
     await peopleQuery.refetch()
     await collectionPhotosRefetch()
+    await speciesPhotosRefetch()
     setIsRefetching(false)
-  }, [tripDetailsQuery, speciesQuery, peopleQuery, collectionPhotosRefetch])
+  }, [
+    tripDetailsQuery,
+    speciesQuery,
+    peopleQuery,
+    collectionPhotosRefetch,
+    speciesPhotosRefetch,
+  ])
 
   const resultData = useMemo(
     () => ({
@@ -130,6 +162,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
         trip: tripDetailsData,
         species: speciesQuery.data?.data,
         people: peopleQuery.data?.data,
+        speciesPhotosMap,
       },
       isFetching,
       isPending,
@@ -141,6 +174,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       tripDetailsQuery,
       speciesQuery,
       peopleQuery,
+      speciesPhotosMap,
       isFetching,
       isPending,
       isError,

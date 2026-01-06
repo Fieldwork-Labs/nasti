@@ -17,6 +17,7 @@ export const getTripCollections = (tripId: string) =>
     .select("*")
     .eq("trip_id", tripId)
     .order("created_at", { ascending: false })
+    .overrideTypes<Collection[]>()
 
 export function parseLocation(coll: Collection): CollectionWithCoord {
   if (!coll.location) return coll

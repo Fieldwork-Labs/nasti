@@ -11,12 +11,12 @@ import { Modal, type ModalProps } from "@nasti/ui/modal"
 
 import { ButtonLink } from "@nasti/ui/button-link"
 import { LeafIcon, PlusIcon } from "lucide-react"
-import { useALAImage } from "@nasti/common/hooks/useALAImage"
 import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
 import { useOpenClose } from "@nasti/ui/hooks"
 import { useSpeciesForm, SpeciesForm } from "@/components/species/SpeciesForm"
 import { Button } from "@nasti/ui/button"
 import useUserStore from "@/store/userStore"
+import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 
 const AddSpeciesModal = ({
   open,
@@ -45,7 +45,7 @@ const AddSpeciesModal = ({
 export const SpeciesListItem = ({ id }: { id: string }) => {
   const { data: species, error } = useSpecies(id)
   const { data } = useALASpeciesDetail(species?.ala_guid)
-  const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
+  const { image } = useSpeciesDisplayImage(id, species?.ala_guid, "thumbnail")
 
   if (!species || !data || error) {
     return <></>

@@ -2,6 +2,7 @@ import {
   Collection,
   CollectionPhoto,
   CollectionWithCoord,
+  SpeciesPhoto,
 } from "@nasti/common/types"
 
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
@@ -66,3 +67,18 @@ export const useTripFullSpecies = (tripId: string, speciesIds: string[] = []) =>
         .in("id", speciesIds ?? []),
     enabled: Boolean(speciesIds) && speciesIds.length > 0,
   })
+
+export function getSpeciesPhotoMap(
+  photos: Array<SpeciesPhoto> | undefined,
+  error: unknown,
+): Record<string, Array<SpeciesPhoto>> {
+  if (!photos || error) return {}
+  return photos.reduce(
+    (acc, photo) => {
+      if (!acc[photo.species_id]) acc[photo.species_id] = []
+      acc[photo.species_id].push(photo)
+      return acc
+    },
+    {} as Record<string, Array<SpeciesPhoto>>,
+  )
+}

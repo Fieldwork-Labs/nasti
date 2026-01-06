@@ -40,6 +40,8 @@ import { Tabs, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 import { Spinner } from "@nasti/ui/spinner"
+import { SpeciesPhotoUpload } from "@/components/speciesPhotos/SpeciesPhotoUpload"
+import { AddSpeciesPhotoModal } from "@/components/speciesPhotos/AddSpeciesPhotoModal"
 
 type SourceNames = "trips" | "collections" | "occurrences"
 
@@ -313,6 +315,11 @@ const SpeciesDetail = () => {
 
   const { isOpen, setIsOpen, close, open } = useOpenClose()
   const [collectionHovered, setCollectionHovered] = useState<string>()
+  const {
+    isOpen: isAddPhotoModalOpen,
+    setIsOpen: setIsAddPhotoModalOpen,
+    open: openAddPhotoModal,
+  } = useOpenClose()
 
   if (!instance) return <div>No species found</div>
   return (
@@ -390,6 +397,13 @@ const SpeciesDetail = () => {
         <div className="border-foreground/50 rounded-lg border p-2">
           <SpeciesMap id={id} collectionHovered={collectionHovered} />
         </div>
+        <div className="border-foreground/50 space-y-2 rounded-lg border p-4">
+          <h4 className="mb-2 text-xl font-bold">Profile Photos</h4>
+          <SpeciesPhotoUpload
+            speciesId={id}
+            onAddPhotosClick={openAddPhotoModal}
+          />
+        </div>
         <div className="border-foreground/50 space-y-2 rounded-lg border p-2">
           <h4 className="mb-2 text-xl font-bold">Collections</h4>
 
@@ -447,6 +461,12 @@ const SpeciesDetail = () => {
           instance={instance}
         />
       </Modal>
+      <AddSpeciesPhotoModal
+        open={isAddPhotoModalOpen}
+        onOpenChange={setIsAddPhotoModalOpen}
+        speciesId={id}
+        alaGuid={instance.ala_guid}
+      />
     </div>
   )
 }

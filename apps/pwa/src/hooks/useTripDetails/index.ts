@@ -27,9 +27,7 @@ export const useTripDetails = ({ tripId }: { tripId: string }) =>
 
       if (collections.error) throw new Error(collections.error.message)
 
-      const collectionsWithCoord = (collections.data as Collection[]).map(
-        parseLocation,
-      )
+      const collectionsWithCoord = collections.data?.map(parseLocation) ?? []
 
       const collectionsData = [...collectionsWithCoord]
 
