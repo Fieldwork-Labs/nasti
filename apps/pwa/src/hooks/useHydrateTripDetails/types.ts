@@ -8,13 +8,6 @@ export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
 
 export type TripDetails = Trip & {
   collections: Array<CollectionWithCoordAndPhotos>
-  species:
-    | {
-        id: string
-        species_id: string
-        trip_id: string
-      }[]
-    | null
   members:
     | {
         id: string

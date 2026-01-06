@@ -32,6 +32,8 @@ export const useCollectionPhotosForTrip = ({ tripId }: { tripId?: string }) => {
   const collectionPhotosQuery = useQuery({
     queryKey: getCollectionPhotosByTripQueryKey(tripId),
     enabled: Boolean(tripId),
+    refetchOnMount: true,
+    refetchOnReconnect: true,
     queryFn: async () => {
       if (!tripId) return []
       const collectionPhotos = await supabase

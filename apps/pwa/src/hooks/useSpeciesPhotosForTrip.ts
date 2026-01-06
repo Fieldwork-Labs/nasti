@@ -28,8 +28,12 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
   const speciesPhotosQuery = useQuery({
     queryKey: getSpeciesPhotosByTripQueryKey(tripId),
     enabled: Boolean(tripId),
+    refetchOnMount: true,
+    refetchOnReconnect: true,
     queryFn: async () => {
       if (!tripId) return []
+
+      console.log("[useSpeciesPhotosForTrip] Starting sync for trip:", tripId)
 
       // Get all species for this trip
       const { data: tripSpecies, error: tripSpeciesError } = await supabase
@@ -39,9 +43,16 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
 
       if (tripSpeciesError) throw new Error(tripSpeciesError.message)
 
-      if (!tripSpecies || tripSpecies.length === 0) return []
+      if (!tripSpecies || tripSpecies.length === 0) {
+        console.log("[useSpeciesPhotosForTrip] No species found for trip")
+        return []
+      }
 
       const speciesIds = tripSpecies.map((ts) => ts.species_id)
+      console.log(
+        "[useSpeciesPhotosForTrip] Found species:",
+        speciesIds.length,
+      )
 
       // Get all species photos for these species
       const { data: speciesPhotos, error: speciesPhotosError } = await supabase
@@ -53,7 +64,15 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
 
       if (speciesPhotosError) throw new Error(speciesPhotosError.message)
 
-      if (!speciesPhotos || speciesPhotos.length === 0) return []
+      if (!speciesPhotos || speciesPhotos.length === 0) {
+        console.log("[useSpeciesPhotosForTrip] No species photos found")
+        return []
+      }
+
+      console.log(
+        "[useSpeciesPhotosForTrip] Found species photos:",
+        speciesPhotos.length,
+      )
 
       // Get photos that we need to fetch
       type MissingPhotos = { id: string; url: string }
@@ -65,6 +84,11 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
         )
       ).filter(Boolean) as MissingPhotos[]
 
+      console.log(
+        "[useSpeciesPhotosForTrip] Missing photos to download:",
+        missingPhotos.length,
+      )
+
       // Request to supabase storage for an empty array throws an error
       if (missingPhotos && missingPhotos.length > 0) {
         const { data, error } = await supabase.storage
@@ -74,19 +98,41 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
             60 * 10,
           )
 
-        await Promise.all(
-          data
-            ?.filter((d) => d.signedUrl)
-            .map(async ({ signedUrl }, i) => {
-              const base64 = await imageUrlToBase64(signedUrl)
-              await putImage(missingPhotos[i].id, base64)
-            }) ?? [],
-        )
+        if (error) {
+          console.error("[useSpeciesPhotosForTrip] Error getting signed URLs:", error)
+        } else {
+          console.log(
+            "[useSpeciesPhotosForTrip] Got signed URLs, downloading:",
+            data?.length,
+          )
 
-        if (error)
-          console.log("Error when getting signed species photos", { error })
+          await Promise.all(
+            data
+              ?.filter((d) => d.signedUrl)
+              .map(async ({ signedUrl }, i) => {
+                try {
+                  const base64 = await imageUrlToBase64(signedUrl)
+                  await putImage(missingPhotos[i].id, base64)
+                  console.log(
+                    "[useSpeciesPhotosForTrip] Stored image:",
+                    missingPhotos[i].id,
+                  )
+                } catch (err) {
+                  console.error(
+                    "[useSpeciesPhotosForTrip] Error storing image:",
+                    missingPhotos[i].id,
+                    err,
+                  )
+                }
+              }) ?? [],
+          )
+        }
       }
 
+      console.log(
+        "[useSpeciesPhotosForTrip] Sync complete, returning photos:",
+        speciesPhotos.length,
+      )
       const result = speciesPhotos ?? []
       return result
     },

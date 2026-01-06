@@ -14,7 +14,7 @@ import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
 import { CollectionDetailModal } from "./CollectionDetailModal"
 import { useTripDetail } from "@/hooks/useTripDetail"
 import { Spinner } from "@nasti/ui/spinner"
-import { useALASpeciesImage } from "@nasti/common/hooks"
+import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 
 export const CollectionListItem = ({
   id,
@@ -27,11 +27,16 @@ export const CollectionListItem = ({
 }) => {
   const { data: collection, error } = useCollection(id)
   const { data: species } = useSpecies(collection?.species_id)
-  const image = useALASpeciesImage({ guid: species?.ala_guid })
   const { photos, signedUrlsIsLoading } = useCollectionPhotos(id)
+  const { image: speciesProfileImage } = useSpeciesDisplayImage(
+    collection?.species_id,
+    species?.ala_guid,
+    "thumbnail",
+  )
   const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
-  const photo = photos?.[0]?.signedUrl ?? image
+  // Priority: collection photo > species profile photo > ALA image > placeholder
+  const photo = photos?.[0]?.signedUrl ?? speciesProfileImage
 
   const { open, isOpen, close } = useOpenClose()
 

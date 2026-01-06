@@ -12,10 +12,10 @@ import {
   useOrgMembers,
   getPhotoMap,
   getSpeciesPhotoMap,
-  useTripFullSpecies,
   parsePendingLocation,
 } from "./helpers"
 import { TripDetails } from "./types"
+import { useSpeciesForTrip } from "../useSpeciesForTrip"
 
 export * from "./types"
 
@@ -86,6 +86,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     useSpeciesPhotosMap({ tripId: id })
 
   const pendingCollections = usePendingCollections({ tripId: id })
+  const tripSpeciesQuery = useSpeciesForTrip(id)
 
   const tripDetailsQuery = useTripDetails({ tripId: id })
   const tripDetailsData = useMemo(() => {
@@ -99,9 +100,9 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     // filter out the pending collections from the collections array to prevent duplicates
     // pending collections have more recently updated data so should override
     const newCollections = [
-      ...collections.filter(
+      ...(collections?.filter(
         ({ id }) => !pendingCollectionsWithCoord.find((c) => c.id === id),
-      ),
+      ) ?? []),
       ...pendingCollectionsWithCoord,
     ]
 
@@ -117,13 +118,10 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
   const peopleQuery = useOrgMembers()
 
-  const tripSpecies = tripDetailsQuery.data?.species?.map((s) => s.species_id)
-  const speciesQuery = useTripFullSpecies(id, tripSpecies)
-
   const isPending =
     !isRefetching &&
     (tripDetailsQuery.isPending ||
-      speciesQuery.isPending ||
+      tripSpeciesQuery.isPending ||
       peopleQuery.isPending)
 
   const isFetching =
@@ -131,11 +129,11 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     (tripDetailsQuery.isFetching ||
       collectionPhotosIsFetching ||
       speciesPhotosIsFetching ||
-      speciesQuery.isFetching ||
+      tripSpeciesQuery.isFetching ||
       peopleQuery.isFetching)
 
   const isError =
-    tripDetailsQuery.isError || speciesQuery.isError || peopleQuery.isError
+    tripDetailsQuery.isError || peopleQuery.isError || tripSpeciesQuery.isError
 
   const { isOnline } = useNetwork()
 
@@ -143,24 +141,24 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     if (!isOnline) return
     setIsRefetching(true)
     await tripDetailsQuery.refetch()
-    await speciesQuery.refetch()
     await peopleQuery.refetch()
+    await tripSpeciesQuery.refetch()
     await collectionPhotosRefetch()
     await speciesPhotosRefetch()
     setIsRefetching(false)
   }, [
     tripDetailsQuery,
-    speciesQuery,
     peopleQuery,
+    tripSpeciesQuery,
     collectionPhotosRefetch,
     speciesPhotosRefetch,
   ])
 
-  const resultData = useMemo(
-    () => ({
+  const resultData = useMemo(() => {
+    return {
       data: {
         trip: tripDetailsData,
-        species: speciesQuery.data?.data,
+        species: tripSpeciesQuery.data,
         people: peopleQuery.data?.data,
         speciesPhotosMap,
       },
@@ -169,19 +167,18 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
       isError,
       refetch,
       isRefetching,
-    }),
-    [
-      tripDetailsQuery,
-      speciesQuery,
-      peopleQuery,
-      speciesPhotosMap,
-      isFetching,
-      isPending,
-      isError,
-      refetch,
-      isRefetching,
-      tripDetailsQuery.dataUpdatedAt,
-    ],
-  )
+    }
+  }, [
+    tripDetailsQuery,
+    peopleQuery,
+    tripSpeciesQuery,
+    speciesPhotosMap,
+    isFetching,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+    tripDetailsQuery.dataUpdatedAt,
+  ])
   return resultData
 }

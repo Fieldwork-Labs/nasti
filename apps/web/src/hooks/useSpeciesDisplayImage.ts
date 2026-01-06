@@ -8,7 +8,7 @@ import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
  * Priority: Profile photo (first by display_order) -> ALA image -> null
  */
 export const useSpeciesDisplayImage = (
-  speciesId?: string,
+  speciesId?: string | null,
   alaGuid?: string | null,
   format: "thumbnail" | "original" = "thumbnail",
 ) => {

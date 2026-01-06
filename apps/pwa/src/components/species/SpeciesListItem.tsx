@@ -9,6 +9,9 @@ import {
 } from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
 import { LeafIcon, X } from "lucide-react"
+import { useParams } from "@tanstack/react-router"
+import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
+import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 
 export const SpeciesListItem = ({
   species,
@@ -24,7 +27,19 @@ export const SpeciesListItem = ({
   onCloseClick?: () => void
 }) => {
   const { data } = useALASpeciesDetail(species?.ala_guid)
-  const { data: image } = useALAImage(data?.imageIdentifier, "thumbnail")
+  const { data: alaImage } = useALAImage(data?.imageIdentifier, "thumbnail")
+
+  // Get trip ID from route params
+  const { id: tripId } = useParams({ strict: false })
+
+  // Get species photos map from hydrated trip data
+  const { data: tripData } = useHydrateTripDetails({ id: tripId || "" })
+  const { image: profilePhotoImage } = useSpeciesDisplayImage(
+    species?.id,
+    tripData?.speciesPhotosMap,
+  )
+  // Priority: profile photo > ALA image > placeholder
+  const image = profilePhotoImage?.image || alaImage
 
   if (!species || !data) {
     return <></>

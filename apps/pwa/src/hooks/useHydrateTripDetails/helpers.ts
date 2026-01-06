@@ -2,6 +2,7 @@ import {
   Collection,
   CollectionPhoto,
   CollectionWithCoord,
+  Species,
   SpeciesPhoto,
 } from "@nasti/common/types"
 
@@ -57,16 +58,23 @@ export const useOrgMembers = () =>
     queryFn: async () => await supabase.rpc("get_organisation_users"),
   })
 
-export const useTripFullSpecies = (tripId: string, speciesIds: string[] = []) =>
-  useQuery({
-    queryKey: ["species", "forTrip", tripId],
-    queryFn: async () =>
-      await supabase
-        .from("species")
-        .select("*")
-        .in("id", speciesIds ?? []),
+const getSpeciesList = async (speciesIds: string[] = []) => {
+  const { data, error } = await supabase
+    .from("species")
+    .select("*")
+    .in("id", speciesIds)
+    .overrideTypes<Species[]>()
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export const useSpeciesList = (speciesIds: string[] = []) => {
+  return useQuery({
+    queryKey: ["species", "byIds", speciesIds],
+    queryFn: async () => getSpeciesList(speciesIds),
     enabled: Boolean(speciesIds) && speciesIds.length > 0,
   })
+}
 
 export function getSpeciesPhotoMap(
   photos: Array<SpeciesPhoto> | undefined,
