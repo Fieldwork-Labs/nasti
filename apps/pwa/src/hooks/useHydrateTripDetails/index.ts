@@ -19,6 +19,7 @@ import {
 } from "./helpers"
 import { TripDetails } from "./types"
 import { useSpeciesForTrip } from "../useSpeciesForTrip"
+import { useSpeciesPhotosForTrip } from "../useSpeciesPhotosForTrip"
 
 export * from "./types"
 
@@ -152,9 +153,6 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   }, [tripDetailsQuery.data, collectionPhotosMap, pendingCollections])
 
   const peopleQuery = useOrgMembers()
-
-  const tripSpecies = tripDetailsQuery.data?.species?.map((s) => s.species_id)
-  const speciesQuery = useTripFullSpecies(id, tripSpecies)
 
   const isPending =
     !isRefetching &&

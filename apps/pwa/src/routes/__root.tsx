@@ -88,7 +88,7 @@ export const Route = createRootRouteWithContext<{
         )}
         <Outlet />
         <UpdateNotification />
-        {/* <TanStackRouterDevtools /> */}
+        <TanStackRouterDevtools />
         <SettingsMenuModal isOpen={isOpen} close={close} />
         <Toaster />
       </div>

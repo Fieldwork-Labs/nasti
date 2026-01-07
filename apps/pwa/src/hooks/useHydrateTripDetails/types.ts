@@ -20,13 +20,6 @@ export type ScoutingNoteWithCoordAndPhotos = ScoutingNoteWithCoord & {
 export type TripDetails = Trip & {
   collections: Array<CollectionWithCoordAndPhotos>
   scoutingNotes: Array<ScoutingNoteWithCoordAndPhotos>
-  species:
-    | {
-        id: string
-        species_id: string
-        trip_id: string
-      }[]
-    | null
   members:
     | {
         id: string

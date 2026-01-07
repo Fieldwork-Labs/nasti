@@ -4,7 +4,6 @@ import {
   getTripCollections,
   getTripMembers,
   getTripScoutingNotes,
-  getTripSpecies,
   parseLocation,
 } from "./helpers"
 

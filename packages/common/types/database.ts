@@ -451,6 +451,57 @@ export type Database = {
           },
         ]
       }
+      species_photo: {
+        Row: {
+          caption: string | null
+          display_order: number
+          id: string
+          organisation_id: string
+          source_reference: string | null
+          source_type: string
+          species_id: string
+          uploaded_at: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          display_order?: number
+          id?: string
+          organisation_id: string
+          source_reference?: string | null
+          source_type: string
+          species_id: string
+          uploaded_at?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          display_order?: number
+          id?: string
+          organisation_id?: string
+          source_reference?: string | null
+          source_type?: string
+          species_id?: string
+          uploaded_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "species_photo_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "species_photo_species_id_fkey"
+            columns: ["species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip: {
         Row: {
           created_at: string
@@ -2674,3 +2725,4 @@ export const Constants = {
     },
   },
 } as const
+

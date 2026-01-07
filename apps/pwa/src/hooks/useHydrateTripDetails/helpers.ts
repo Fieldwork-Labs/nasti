@@ -26,19 +26,20 @@ export function getCollectionPhotoMap(
     {} as Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
   )
 }
+
+type ScoutingNotePhotoArray = Array<
+  ScoutingNotePhoto | PendingScoutingNotePhoto
+>
 export function getScoutingNotePhotoMap(
-  photos: Array<ScoutingNotePhoto | PendingScoutingNotePhoto> | undefined,
+  photos: ScoutingNotePhotoArray | undefined,
   error: unknown,
-): Record<string, Array<ScoutingNotePhoto | PendingScoutingNotePhoto>> {
+): Record<string, ScoutingNotePhotoArray> {
   if (!photos || error) return {}
-  return photos.reduce(
-    (acc, photo) => {
-      if (!acc[photo.scouting_notes_id]) acc[photo.scouting_notes_id] = []
-      acc[photo.scouting_notes_id].push(photo)
-      return acc
-    },
-    {} as Record<string, Array<ScoutingNotePhoto | PendingScoutingNotePhoto>>,
-  )
+  return photos.reduce<Record<string, ScoutingNotePhotoArray>>((acc, photo) => {
+    if (!acc[photo.scouting_notes_id]) acc[photo.scouting_notes_id] = []
+    acc[photo.scouting_notes_id].push(photo)
+    return acc
+  }, {})
 }
 
 export function parsePendingLocation<T extends { location: string | null }>(
