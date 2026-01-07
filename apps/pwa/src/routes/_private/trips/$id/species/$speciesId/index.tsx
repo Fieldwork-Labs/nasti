@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { ChevronLeft, ImageIcon, PlusCircle } from "lucide-react"
+import { ChevronLeft, ImageIcon, PlusCircle, XIcon } from "lucide-react"
 import { Spinner } from "@nasti/ui/spinner"
 import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 import { useState, useEffect } from "react"
 import { ButtonLink } from "@nasti/ui/button-link"
+import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch"
 
 const SpeciesDetail = () => {
   const { id: tripId, speciesId } = useParams({
@@ -83,19 +84,19 @@ const SpeciesDetail = () => {
             <>
               <div
                 onClick={() => openFullscreen(0)}
-                className="relative w-full cursor-pointer rounded-lg border border-gray-200"
+                className="relative w-full cursor-pointer rounded-lg"
               >
                 <SpeciesPhotoImage
                   photoId={primaryPhoto.id}
                   caption={primaryPhoto.caption}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="mt-2 grid grid-cols-3 gap-2">
                 {speciesPhotos.slice(1).map((photo, index) => (
                   <div
                     key={photo.id}
                     onClick={() => openFullscreen(index)}
-                    className="relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-gray-200"
+                    className="relative aspect-square cursor-pointer overflow-hidden rounded-lg"
                   >
                     <SpeciesPhotoImage
                       photoId={photo.id}
@@ -178,11 +179,15 @@ const SpeciesPhotoImage = ({
           <Spinner className="h-8 w-8" />
         </div>
       ) : imageData ? (
-        <img
-          src={imageData}
-          alt={caption || "Species photo"}
-          className="h-full w-full object-cover"
-        />
+        <TransformWrapper>
+          <TransformComponent wrapperClass="overflow-visible">
+            <img
+              src={imageData}
+              alt={caption || "Species photo"}
+              className="h-full w-full object-cover"
+            />
+          </TransformComponent>
+        </TransformWrapper>
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gray-100">
           <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -217,15 +222,15 @@ const FullscreenPhotoViewer = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
       <button
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white backdrop-blur-sm"
+        className="absolute right-4 top-4 z-10 rounded-full bg-gray-400/30 p-2 text-white backdrop-blur-sm"
       >
-        <ChevronLeft className="h-6 w-6" />
+        <XIcon className="h-6 w-6" />
       </button>
 
       {currentIndex > 0 && (
         <button
           onClick={onPrevious}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white backdrop-blur-sm"
+          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-gray-400/30 p-2 text-white backdrop-blur-sm"
         >
           <ChevronLeft className="h-8 w-8" />
         </button>
@@ -241,7 +246,7 @@ const FullscreenPhotoViewer = ({
       {currentIndex < photos.length - 1 && (
         <button
           onClick={onNext}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/20 p-2 text-white backdrop-blur-sm"
+          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-gray-400/30 p-2 text-white backdrop-blur-sm"
         >
           <ChevronLeft className="h-8 w-8 rotate-180" />
         </button>
