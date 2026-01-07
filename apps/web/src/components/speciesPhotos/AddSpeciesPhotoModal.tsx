@@ -19,6 +19,52 @@ import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@nasti/common/utils"
 import { useCollectionPhotosBySpecies } from "@/hooks/useCollectionPhotosBySpecies"
 
+const AlaImageButton = ({
+  imageUrl,
+  onClick,
+  isSelected,
+  isAlreadyAdded,
+}: {
+  imageUrl: string
+  onClick: () => void
+  isSelected: boolean
+  isAlreadyAdded: boolean
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={isAlreadyAdded}
+      className={`group relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+        isAlreadyAdded
+          ? "cursor-not-allowed border-gray-300 opacity-60"
+          : isSelected
+            ? "border-primary ring-primary ring-2"
+            : "border-gray-200 hover:border-gray-300"
+      }`}
+    >
+      <img
+        src={imageUrl}
+        alt={`ALA image ${imageUrl}`}
+        className="h-full w-full object-cover"
+      />
+      {isSelected && (
+        <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
+          <div className="rounded-full bg-green-500 p-2">
+            <Check className="h-6 w-6 text-white" />
+          </div>
+        </div>
+      )}
+      {isAlreadyAdded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/60">
+          <Badge variant="secondary" className="bg-white">
+            Already Added
+          </Badge>
+        </div>
+      )}
+    </button>
+  )
+}
+
 type AddSpeciesPhotoModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -48,8 +94,9 @@ export const AddSpeciesPhotoModal = ({
   // Get all collection photos for this species
   const { data: alaImages, isLoading: alaLoading } = useALAImages(
     alaGuid,
-    "original",
+    "thumbnail",
   )
+  const { data: alaOriginals } = useALAImages(alaGuid, "original")
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -180,7 +227,7 @@ export const AddSpeciesPhotoModal = ({
     setIsProcessing(true)
     try {
       for (const index of selectedALAIndices) {
-        const imageUrl = alaImages?.[index]
+        const imageUrl = alaOriginals?.[index]
         if (!imageUrl) continue
 
         // Download the image
@@ -221,8 +268,10 @@ export const AddSpeciesPhotoModal = ({
 
   // Helper to check if an ALA image is already added
   const isALAImageAlreadyAdded = (imageUrl: string) => {
-    return photos?.some(
-      (p) => p.source_type === "ala" && p.source_reference === imageUrl,
+    return Boolean(
+      photos?.some(
+        (p) => p.source_type === "ala" && p.source_reference === imageUrl,
+      ),
     )
   }
 
@@ -367,43 +416,17 @@ export const AddSpeciesPhotoModal = ({
                 No ALA images available for this species.
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+              <div className="h-full space-y-4">
+                <div className="grid grid-cols-6 gap-2 overflow-y-scroll">
                   {alaImages.map((imageUrl, index) => {
-                    const isAlreadyAdded = isALAImageAlreadyAdded(imageUrl)
                     return (
-                      <button
+                      <AlaImageButton
                         key={index}
+                        imageUrl={imageUrl}
                         onClick={() => toggleALAImage(index)}
-                        disabled={isAlreadyAdded}
-                        className={`group relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
-                          isAlreadyAdded
-                            ? "cursor-not-allowed border-gray-300 opacity-60"
-                            : selectedALAIndices.includes(index)
-                              ? "border-primary ring-primary ring-2"
-                              : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <img
-                          src={imageUrl}
-                          alt={`ALA image ${index + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                        {selectedALAIndices.includes(index) && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-green-500/20">
-                            <div className="rounded-full bg-green-500 p-2">
-                              <Check className="h-6 w-6 text-white" />
-                            </div>
-                          </div>
-                        )}
-                        {isAlreadyAdded && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/60">
-                            <Badge variant="secondary" className="bg-white">
-                              Already Added
-                            </Badge>
-                          </div>
-                        )}
-                      </button>
+                        isSelected={selectedALAIndices.includes(index)}
+                        isAlreadyAdded={isALAImageAlreadyAdded(imageUrl)}
+                      />
                     )
                   })}
                 </div>
@@ -417,7 +440,7 @@ export const AddSpeciesPhotoModal = ({
                       {isProcessing ? (
                         <>
                           <Spinner className="mr-2 h-4 w-4" />
-                          Downloading & Uploading...
+                          Storing...
                         </>
                       ) : (
                         `Add ${selectedALAIndices.length} Image(s)`
