@@ -2,6 +2,8 @@ import {
   Collection,
   CollectionPhoto,
   CollectionWithCoord,
+  Species,
+  SpeciesPhoto,
 } from "@nasti/common/types"
 
 import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
@@ -56,13 +58,35 @@ export const useOrgMembers = () =>
     queryFn: async () => await supabase.rpc("get_organisation_users"),
   })
 
-export const useTripFullSpecies = (tripId: string, speciesIds: string[] = []) =>
-  useQuery({
-    queryKey: ["species", "forTrip", tripId],
-    queryFn: async () =>
-      await supabase
-        .from("species")
-        .select("*")
-        .in("id", speciesIds ?? []),
+const getSpeciesList = async (speciesIds: string[] = []) => {
+  const { data, error } = await supabase
+    .from("species")
+    .select("*")
+    .in("id", speciesIds)
+    .overrideTypes<Species[]>()
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export const useSpeciesList = (speciesIds: string[] = []) => {
+  return useQuery({
+    queryKey: ["species", "byIds", speciesIds],
+    queryFn: async () => getSpeciesList(speciesIds),
     enabled: Boolean(speciesIds) && speciesIds.length > 0,
   })
+}
+
+export function getSpeciesPhotoMap(
+  photos: Array<SpeciesPhoto> | undefined,
+  error: unknown,
+): Record<string, Array<SpeciesPhoto>> {
+  if (!photos || error) return {}
+  return photos.reduce(
+    (acc, photo) => {
+      if (!acc[photo.species_id]) acc[photo.species_id] = []
+      acc[photo.species_id].push(photo)
+      return acc
+    },
+    {} as Record<string, Array<SpeciesPhoto>>,
+  )
+}

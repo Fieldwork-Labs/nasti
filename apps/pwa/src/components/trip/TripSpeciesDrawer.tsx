@@ -12,7 +12,6 @@ import { useNavigate } from "@tanstack/react-router"
 import { X } from "lucide-react"
 
 import { SpeciesSelectList } from "@/components/species/SpeciesSelectList"
-import "mapbox-gl/dist/mapbox-gl.css"
 import React, { useContext } from "react"
 import { useOpenClose } from "@nasti/ui/hooks"
 
@@ -71,16 +70,15 @@ export const SpeciesDrawer = ({
             </DrawerClose>
           </div>
           <DrawerDescription>
-            Select a species to record a collection
+            Select a species to view details and photos
           </DrawerDescription>
         </DrawerHeader>
         <SpeciesSelectList
           species={species ?? undefined}
           onSelectSpecies={(sp) =>
             navigate({
-              to: "/trips/$id/collections/new",
-              params: { id: tripId },
-              search: { speciesId: sp.id },
+              to: "/trips/$id/species/$speciesId",
+              params: { id: tripId, speciesId: sp.id },
             })
           }
         />

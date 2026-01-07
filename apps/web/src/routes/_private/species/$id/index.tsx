@@ -40,6 +40,9 @@ import { Tabs, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
 import { Spinner } from "@nasti/ui/spinner"
+import { SpeciesPhotoUpload } from "@/components/speciesPhotos/SpeciesPhotoUpload"
+import { AddSpeciesPhotoModal } from "@/components/speciesPhotos/AddSpeciesPhotoModal"
+import { useSpeciesPhotos } from "@/hooks/useSpeciesPhotos"
 
 type SourceNames = "trips" | "collections" | "occurrences"
 
@@ -272,17 +275,47 @@ const getSpeciesQueryOptions = (id: string) => ({
   refetchOnMount: false,
 })
 
-const useSpeciesImages = (alaGuid?: string | null) => {
-  const { data: alaData } = useALASpeciesDetail(alaGuid)
-  const { data: image } = useALAImage(alaData?.imageIdentifier)
+const useSpeciesImages = (species: Species) => {
+  const { data: alaData } = useALASpeciesDetail(species.ala_guid)
+  const { data: primaryAlaImage } = useALAImage(alaData?.imageIdentifier)
   const [modalImage, setModalImage] = useState<number>()
-  const { data: images } = useALAImages(alaGuid)
+  const { data: alaImages } = useALAImages(species.ala_guid)
+
+  const primaryAlaImageWithSource = useMemo(() => {
+    if (primaryAlaImage)
+      return {
+        url: primaryAlaImage,
+        source: "ala",
+      }
+    return null
+  }, [primaryAlaImage])
+
+  const alaImagesWithSource = useMemo(() => {
+    return alaImages?.map((image) => ({
+      url: image,
+      source: "ala",
+    }))
+  }, [alaImages])
+
+  const { photos } = useSpeciesPhotos(species.id)
+  const photosWithSource = useMemo(() => {
+    return photos?.map((photo) => ({
+      url: photo.signedUrl,
+      source: "species_photo",
+    }))
+  }, [photos])
+
   const { open, isOpen, close } = useOpenClose()
+  const mainImage = photosWithSource?.[0] || primaryAlaImageWithSource
+  const followingImages = [
+    ...(photosWithSource?.slice(1) ?? []),
+    ...alaImagesWithSource,
+  ]
 
   return {
-    mainImage: image,
-    images,
-    allImages: image ? [image, ...images] : images,
+    mainImage,
+    images: followingImages,
+    allImages: mainImage ? [mainImage, ...followingImages] : followingImages,
     modalImage,
     setModalImage,
     open,
@@ -309,10 +342,15 @@ const SpeciesDetail = () => {
   const { data: collections } = useCollectionsBySpecies(id)
   const { data: alaData } = useALASpeciesDetail(instance?.ala_guid)
   const { images, mainImage, allImages, setModalImage, modalImage } =
-    useSpeciesImages(instance?.ala_guid)
+    useSpeciesImages(instance)
 
   const { isOpen, setIsOpen, close, open } = useOpenClose()
   const [collectionHovered, setCollectionHovered] = useState<string>()
+  const {
+    isOpen: isAddPhotoModalOpen,
+    setIsOpen: setIsAddPhotoModalOpen,
+    open: openAddPhotoModal,
+  } = useOpenClose()
 
   if (!instance) return <div>No species found</div>
   return (
@@ -363,7 +401,11 @@ const SpeciesDetail = () => {
               onClick={() => setModalImage(0)}
             >
               <img
-                src={`${mainImage}%2Foriginal`}
+                src={
+                  mainImage.source === "species_photo"
+                    ? mainImage.url
+                    : `${mainImage.url}%2Foriginal`
+                }
                 alt={`${instance.name} Image`}
                 className="rounded-sm object-cover text-sm"
               />
@@ -375,11 +417,15 @@ const SpeciesDetail = () => {
             {images.map((image, i) => (
               <div
                 className="flex h-20 w-20 shrink-0 cursor-pointer rounded-sm"
-                key={image}
+                key={image.url}
                 onClick={() => setModalImage(i + 1)} // use +1 to account for main image coming first
               >
                 <img
-                  src={`${image}%2Fthumbnail`}
+                  src={
+                    image.source === "species_photo"
+                      ? image.url
+                      : `${image.url}%2Fthumbnail`
+                  }
                   alt={`${instance.name} Image`}
                   className="w-20 rounded-sm object-cover text-xs"
                 />
@@ -389,6 +435,13 @@ const SpeciesDetail = () => {
         )}
         <div className="border-foreground/50 rounded-lg border p-2">
           <SpeciesMap id={id} collectionHovered={collectionHovered} />
+        </div>
+        <div className="border-foreground/50 space-y-2 rounded-lg border p-4">
+          <h4 className="mb-2 text-xl font-bold">Profile Photos</h4>
+          <SpeciesPhotoUpload
+            speciesId={id}
+            onAddPhotosClick={openAddPhotoModal}
+          />
         </div>
         <div className="border-foreground/50 space-y-2 rounded-lg border p-2">
           <h4 className="mb-2 text-xl font-bold">Collections</h4>
@@ -418,11 +471,15 @@ const SpeciesDetail = () => {
             <CarouselContent>
               {allImages.map((img) => (
                 <CarouselItem
-                  key={img}
+                  key={img.url}
                   className="flex max-h-[650px] items-center justify-center p-0"
                 >
                   <img
-                    src={`${img}%2Foriginal`}
+                    src={
+                      img.source === "species_photo"
+                        ? img.url
+                        : `${img.url}%2Foriginal`
+                    }
                     className="max-w-full object-cover"
                   />
                 </CarouselItem>
@@ -447,6 +504,12 @@ const SpeciesDetail = () => {
           instance={instance}
         />
       </Modal>
+      <AddSpeciesPhotoModal
+        open={isAddPhotoModalOpen}
+        onOpenChange={setIsAddPhotoModalOpen}
+        speciesId={id}
+        alaGuid={instance.ala_guid}
+      />
     </div>
   )
 }
@@ -455,9 +518,11 @@ export const Route = createFileRoute("/_private/species/$id/")({
   loader: async ({ params }) => {
     const { id } = params
 
-    return queryClient.ensureQueryData<Species | null>(
+    const data = await queryClient.ensureQueryData<Species | null>(
       getSpeciesQueryOptions(id),
     )
+    if (!data) throw notFound()
+    return data
   },
   pendingComponent: () => (
     <div className="px-auto mx-auto mt-36">

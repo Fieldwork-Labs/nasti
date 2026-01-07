@@ -2,6 +2,7 @@ import { Collection } from "@nasti/common/types"
 
 import { getMutationKey } from "@/hooks/useCollectionCreate"
 import { useCollectionPhotosForTrip } from "@/hooks/useCollectionPhotosForTrip"
+import { useSpeciesPhotosForTrip } from "@/hooks/useSpeciesPhotosForTrip"
 import { useNetwork } from "@/hooks/useNetwork"
 import { useTripDetails } from "@/hooks/useTripDetails"
 import { useMutationState } from "@tanstack/react-query"
@@ -10,10 +11,11 @@ import {
   attachPhotos,
   useOrgMembers,
   getPhotoMap,
-  useTripFullSpecies,
+  getSpeciesPhotoMap,
   parsePendingLocation,
 } from "./helpers"
 import { TripDetails } from "./types"
+import { useSpeciesForTrip } from "../useSpeciesForTrip"
 
 export * from "./types"
 
@@ -51,6 +53,27 @@ export const usePendingCollections = ({ tripId }: { tripId: string }) => {
   }))
 }
 
+export const useSpeciesPhotosMap = ({ tripId }: { tripId: string }) => {
+  const {
+    data,
+    refetch: speciesPhotosRefetch,
+    error: speciesPhotosError,
+    isFetching: speciesPhotosIsFetching,
+  } = useSpeciesPhotosForTrip({ tripId })
+
+  const speciesPhotosMap = useMemo(
+    () => getSpeciesPhotoMap(data, speciesPhotosError),
+    [data, speciesPhotosError],
+  )
+
+  return {
+    speciesPhotosMap,
+    speciesPhotosRefetch,
+    speciesPhotosError,
+    speciesPhotosIsFetching,
+  }
+}
+
 export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const [isRefetching, setIsRefetching] = useState(false)
   const {
@@ -59,10 +82,13 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     collectionPhotosIsFetching,
   } = useCollectionPhotosMap({ tripId: id })
 
+  const { speciesPhotosMap, speciesPhotosRefetch, speciesPhotosIsFetching } =
+    useSpeciesPhotosMap({ tripId: id })
+
   const pendingCollections = usePendingCollections({ tripId: id })
+  const tripSpeciesQuery = useSpeciesForTrip(id)
 
   const tripDetailsQuery = useTripDetails({ tripId: id })
-  console.log({ tripDetailsQuery: tripDetailsQuery.data })
   const tripDetailsData = useMemo(() => {
     if (!tripDetailsQuery.data) return null
     const { collections, ...rest } = tripDetailsQuery.data
@@ -74,9 +100,9 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     // filter out the pending collections from the collections array to prevent duplicates
     // pending collections have more recently updated data so should override
     const newCollections = [
-      ...collections.filter(
+      ...(collections?.filter(
         ({ id }) => !pendingCollectionsWithCoord.find((c) => c.id === id),
-      ),
+      ) ?? []),
       ...pendingCollectionsWithCoord,
     ]
 
@@ -92,25 +118,22 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
   const peopleQuery = useOrgMembers()
 
-  console.log({ peopleQuery: peopleQuery.data })
-  const tripSpecies = tripDetailsQuery.data?.species?.map((s) => s.species_id)
-  const speciesQuery = useTripFullSpecies(id, tripSpecies)
-
   const isPending =
     !isRefetching &&
     (tripDetailsQuery.isPending ||
-      speciesQuery.isPending ||
+      tripSpeciesQuery.isPending ||
       peopleQuery.isPending)
 
   const isFetching =
     !isRefetching &&
     (tripDetailsQuery.isFetching ||
       collectionPhotosIsFetching ||
-      speciesQuery.isFetching ||
+      speciesPhotosIsFetching ||
+      tripSpeciesQuery.isFetching ||
       peopleQuery.isFetching)
 
   const isError =
-    tripDetailsQuery.isError || speciesQuery.isError || peopleQuery.isError
+    tripDetailsQuery.isError || peopleQuery.isError || tripSpeciesQuery.isError
 
   const { isOnline } = useNetwork()
 
@@ -118,36 +141,44 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     if (!isOnline) return
     setIsRefetching(true)
     await tripDetailsQuery.refetch()
-    await speciesQuery.refetch()
     await peopleQuery.refetch()
+    await tripSpeciesQuery.refetch()
     await collectionPhotosRefetch()
+    await speciesPhotosRefetch()
     setIsRefetching(false)
-  }, [tripDetailsQuery, speciesQuery, peopleQuery, collectionPhotosRefetch])
+  }, [
+    tripDetailsQuery,
+    peopleQuery,
+    tripSpeciesQuery,
+    collectionPhotosRefetch,
+    speciesPhotosRefetch,
+  ])
 
-  const resultData = useMemo(
-    () => ({
+  const resultData = useMemo(() => {
+    return {
       data: {
         trip: tripDetailsData,
-        species: speciesQuery.data?.data,
+        species: tripSpeciesQuery.data,
         people: peopleQuery.data?.data,
+        speciesPhotosMap,
       },
       isFetching,
       isPending,
       isError,
       refetch,
       isRefetching,
-    }),
-    [
-      tripDetailsQuery,
-      speciesQuery,
-      peopleQuery,
-      isFetching,
-      isPending,
-      isError,
-      refetch,
-      isRefetching,
-      tripDetailsQuery.dataUpdatedAt,
-    ],
-  )
+    }
+  }, [
+    tripDetailsQuery,
+    peopleQuery,
+    tripSpeciesQuery,
+    speciesPhotosMap,
+    isFetching,
+    isPending,
+    isError,
+    refetch,
+    isRefetching,
+    tripDetailsQuery.dataUpdatedAt,
+  ])
   return resultData
 }

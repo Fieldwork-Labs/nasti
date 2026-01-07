@@ -6,7 +6,7 @@ export const getTrip = (tripId: string) =>
   supabase.from("trip").select("*").eq("id", tripId).single()
 
 export const getTripSpecies = (tripId: string) =>
-  supabase.from("trip_species").select("*").eq("trip_id", tripId)
+  supabase.from("trip_species").select("*, species(*)").eq("trip_id", tripId)
 
 export const getTripMembers = (tripId: string) =>
   supabase.from("trip_member").select("*").eq("trip_id", tripId)
@@ -17,6 +17,7 @@ export const getTripCollections = (tripId: string) =>
     .select("*")
     .eq("trip_id", tripId)
     .order("created_at", { ascending: false })
+    .overrideTypes<Collection[]>()
 
 export function parseLocation(coll: Collection): CollectionWithCoord {
   if (!coll.location) return coll

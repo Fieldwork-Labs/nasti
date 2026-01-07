@@ -18,7 +18,7 @@ import { ButtonLink } from "@nasti/ui/button-link"
 
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
-  const { data, isFetching, isError, refetch, isRefetching } =
+  const { data, isPending, isError, refetch, isRefetching } =
     useHydrateTripDetails({ id })
   const navigate = useNavigate()
 
@@ -28,7 +28,7 @@ const TripDetail = () => {
     navigate({ to: "/trips" })
   }
 
-  if (isFetching)
+  if (isPending)
     return (
       <div className="px-auto mx-auto mt-36 flex flex-col items-center text-center">
         <Spinner size={"xl"} />

@@ -2,7 +2,8 @@ import { SpeciesSelectDrawer } from "@/components/collection/SpeciesSelectDrawer
 import { useOpenClose } from "@nasti/ui/hooks"
 import { Button } from "@nasti/ui/button"
 import { SpeciesListItem } from "@/components/species/SpeciesListItem"
-import { useTripSpecies, useTripSpeciesList } from "@/hooks/useTripSpecies"
+import { useSpeciesForTrip } from "@/hooks/useSpeciesForTrip"
+import { useSpecies } from "@/hooks/useSpecies"
 
 export const SpeciesSelectInput = ({
   selectedSpeciesId,
@@ -18,11 +19,8 @@ export const SpeciesSelectInput = ({
   const { isOpen: isOpenSpeciesDrawer, setIsOpen: setIsOpenSpeciesDrawer } =
     useOpenClose()
 
-  const selectedSpecies = useTripSpecies({
-    tripId,
-    speciesId: selectedSpeciesId,
-  })
-  const speciesList = useTripSpeciesList({ tripId })
+  const { data: selectedSpecies } = useSpecies(selectedSpeciesId)
+  const { data: allSpecies } = useSpeciesForTrip(tripId)
 
   return (
     <>
@@ -55,7 +53,7 @@ export const SpeciesSelectInput = ({
         />
       )}
       <SpeciesSelectDrawer
-        species={speciesList?.data}
+        species={allSpecies}
         isOpen={isOpenSpeciesDrawer}
         onOpenChange={setIsOpenSpeciesDrawer}
         onSelectSpecies={({ id }) => onSelectSpecies(id)}

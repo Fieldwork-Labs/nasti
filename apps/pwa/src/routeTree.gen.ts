@@ -17,6 +17,7 @@ import { Route as AuthLoginImport } from './routes/auth/login'
 import { Route as PrivateTripsIndexImport } from './routes/_private/trips/index'
 import { Route as PrivateTripsIdIndexImport } from './routes/_private/trips/$id/index'
 import { Route as PrivateTripsIdCollectionsNewImport } from './routes/_private/trips/$id/collections/new'
+import { Route as PrivateTripsIdSpeciesSpeciesIdIndexImport } from './routes/_private/trips/$id/species/$speciesId/index'
 import { Route as PrivateTripsIdCollectionsCollectionIdIndexImport } from './routes/_private/trips/$id/collections/$collectionId/index'
 import { Route as PrivateTripsIdCollectionsCollectionIdEditImport } from './routes/_private/trips/$id/collections/$collectionId/edit'
 
@@ -55,6 +56,13 @@ const PrivateTripsIdCollectionsNewRoute =
   PrivateTripsIdCollectionsNewImport.update({
     id: '/trips/$id/collections/new',
     path: '/trips/$id/collections/new',
+    getParentRoute: () => PrivateRoute,
+  } as any)
+
+const PrivateTripsIdSpeciesSpeciesIdIndexRoute =
+  PrivateTripsIdSpeciesSpeciesIdIndexImport.update({
+    id: '/trips/$id/species/$speciesId/',
+    path: '/trips/$id/species/$speciesId/',
     getParentRoute: () => PrivateRoute,
   } as any)
 
@@ -132,6 +140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivateTripsIdCollectionsCollectionIdIndexImport
       parentRoute: typeof PrivateImport
     }
+    '/_private/trips/$id/species/$speciesId/': {
+      id: '/_private/trips/$id/species/$speciesId/'
+      path: '/trips/$id/species/$speciesId'
+      fullPath: '/trips/$id/species/$speciesId'
+      preLoaderRoute: typeof PrivateTripsIdSpeciesSpeciesIdIndexImport
+      parentRoute: typeof PrivateImport
+    }
   }
 }
 
@@ -143,6 +158,7 @@ interface PrivateRouteChildren {
   PrivateTripsIdCollectionsNewRoute: typeof PrivateTripsIdCollectionsNewRoute
   PrivateTripsIdCollectionsCollectionIdEditRoute: typeof PrivateTripsIdCollectionsCollectionIdEditRoute
   PrivateTripsIdCollectionsCollectionIdIndexRoute: typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  PrivateTripsIdSpeciesSpeciesIdIndexRoute: typeof PrivateTripsIdSpeciesSpeciesIdIndexRoute
 }
 
 const PrivateRouteChildren: PrivateRouteChildren = {
@@ -153,6 +169,8 @@ const PrivateRouteChildren: PrivateRouteChildren = {
     PrivateTripsIdCollectionsCollectionIdEditRoute,
   PrivateTripsIdCollectionsCollectionIdIndexRoute:
     PrivateTripsIdCollectionsCollectionIdIndexRoute,
+  PrivateTripsIdSpeciesSpeciesIdIndexRoute:
+    PrivateTripsIdSpeciesSpeciesIdIndexRoute,
 }
 
 const PrivateRouteWithChildren =
@@ -167,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/trips/$id/collections/new': typeof PrivateTripsIdCollectionsNewRoute
   '/trips/$id/collections/$collectionId/edit': typeof PrivateTripsIdCollectionsCollectionIdEditRoute
   '/trips/$id/collections/$collectionId': typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  '/trips/$id/species/$speciesId': typeof PrivateTripsIdSpeciesSpeciesIdIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -178,6 +197,7 @@ export interface FileRoutesByTo {
   '/trips/$id/collections/new': typeof PrivateTripsIdCollectionsNewRoute
   '/trips/$id/collections/$collectionId/edit': typeof PrivateTripsIdCollectionsCollectionIdEditRoute
   '/trips/$id/collections/$collectionId': typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  '/trips/$id/species/$speciesId': typeof PrivateTripsIdSpeciesSpeciesIdIndexRoute
 }
 
 export interface FileRoutesById {
@@ -190,6 +210,7 @@ export interface FileRoutesById {
   '/_private/trips/$id/collections/new': typeof PrivateTripsIdCollectionsNewRoute
   '/_private/trips/$id/collections/$collectionId/edit': typeof PrivateTripsIdCollectionsCollectionIdEditRoute
   '/_private/trips/$id/collections/$collectionId/': typeof PrivateTripsIdCollectionsCollectionIdIndexRoute
+  '/_private/trips/$id/species/$speciesId/': typeof PrivateTripsIdSpeciesSpeciesIdIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -203,6 +224,7 @@ export interface FileRouteTypes {
     | '/trips/$id/collections/new'
     | '/trips/$id/collections/$collectionId/edit'
     | '/trips/$id/collections/$collectionId'
+    | '/trips/$id/species/$speciesId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -213,6 +235,7 @@ export interface FileRouteTypes {
     | '/trips/$id/collections/new'
     | '/trips/$id/collections/$collectionId/edit'
     | '/trips/$id/collections/$collectionId'
+    | '/trips/$id/species/$speciesId'
   id:
     | '__root__'
     | '/'
@@ -223,6 +246,7 @@ export interface FileRouteTypes {
     | '/_private/trips/$id/collections/new'
     | '/_private/trips/$id/collections/$collectionId/edit'
     | '/_private/trips/$id/collections/$collectionId/'
+    | '/_private/trips/$id/species/$speciesId/'
   fileRoutesById: FileRoutesById
 }
 
@@ -263,7 +287,8 @@ export const routeTree = rootRoute
         "/_private/trips/$id/",
         "/_private/trips/$id/collections/new",
         "/_private/trips/$id/collections/$collectionId/edit",
-        "/_private/trips/$id/collections/$collectionId/"
+        "/_private/trips/$id/collections/$collectionId/",
+        "/_private/trips/$id/species/$speciesId/"
       ]
     },
     "/auth/login": {
@@ -287,6 +312,10 @@ export const routeTree = rootRoute
     },
     "/_private/trips/$id/collections/$collectionId/": {
       "filePath": "_private/trips/$id/collections/$collectionId/index.tsx",
+      "parent": "/_private"
+    },
+    "/_private/trips/$id/species/$speciesId/": {
+      "filePath": "_private/trips/$id/species/$speciesId/index.tsx",
       "parent": "/_private"
     }
   }

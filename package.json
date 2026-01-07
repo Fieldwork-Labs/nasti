@@ -9,7 +9,8 @@
     "preview": "turbo run preview",
     "test": "turbo run test",
     "prepare": "husky",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "gen-types": "supabase gen types --lang=typescript --local > packages/common/types/database.ts"
   },
   "lint-staged": {
     "apps/web/**/*.{ts,tsx,js,jsx,css,scss,html,md,json}": "prettier --ignore-unknown --write --semi=false",
