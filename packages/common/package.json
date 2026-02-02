@@ -9,6 +9,7 @@
     "supabase.ts",
     "types/index.ts",
     "utils/index.ts",
+    "components/index.ts",
     "index.ts"
   ],
   "publishConfig": {

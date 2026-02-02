@@ -80,7 +80,7 @@ const InvitationAcceptPage = () => {
 
   return (
     <div>
-      <h1 className="text-lg">Welcome to NASTI</h1>
+      <h1 className="text-lg">Welcome to Seed Scout</h1>
       {invitation && (
         <div className="flex flex-col gap-2 lg:w-1/3">
           <p className="bg-secondary-background rounded p-4 text-sm">

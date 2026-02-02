@@ -50,13 +50,16 @@ import {
 } from "@/hooks/usePhotosForTrip"
 import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
 import { Input } from "@nasti/ui/input"
-import { Link } from "@tanstack/react-router"
+import { Link, useParams } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
+import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
+import { TaxonName } from "@nasti/common"
 
 // Base interface for entities that can be displayed in the list
 interface DisplayableEntity {
   id: string
   trip_id?: string | null
+  species_id?: string | null
   field_name?: string | null
   created_at?: string | null
   locationCoord?: { latitude: number; longitude: number } | null
@@ -99,9 +102,18 @@ function EntityListItem<TEntity extends DisplayableEntity>({
   isPending,
 }: EntityListItemProps<TEntity>) {
   const displayDistance = useDisplayDistance(entity.locationCoord ?? {})
-
+  const { id } = useParams({ from: "/_private/trips/$id/" })
+  const {
+    data: { speciesPhotosMap },
+  } = useHydrateTripDetails({ id })
+  const { image: speciesProfileImage } = useSpeciesDisplayImage(
+    entity?.species_id ?? undefined,
+    speciesPhotosMap,
+  )
   const firstPhoto =
     entity.photos && entity.photos.length > 0 ? entity.photos[0] : null
+
+  const photoId = speciesProfileImage?.id ?? firstPhoto?.id
 
   if (!entity || !entity.trip_id) return null
 
@@ -138,7 +150,7 @@ function EntityListItem<TEntity extends DisplayableEntity>({
           }
         >
           <Photo
-            id={firstPhoto?.id}
+            id={photoId}
             species={species}
             className="h-24 w-24"
             overlay={<Icon className="h-10 w-10" />}
@@ -149,7 +161,7 @@ function EntityListItem<TEntity extends DisplayableEntity>({
           <CardHeader className="p-2">
             <CardTitle className="m-0 w-52 truncate overflow-ellipsis text-lg md:w-96">
               {species?.name ? (
-                <i>{species.name}</i>
+                <TaxonName name={species.name} />
               ) : entity.field_name && entity.field_name !== "" ? (
                 entity.field_name
               ) : (

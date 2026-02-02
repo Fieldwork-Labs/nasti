@@ -33,6 +33,7 @@ export const CollectionListItem = ({
     species?.ala_guid,
     "thumbnail",
   )
+
   const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
   // Priority: collection photo > species profile photo > ALA image > placeholder

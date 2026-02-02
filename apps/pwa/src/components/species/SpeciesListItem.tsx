@@ -34,6 +34,7 @@ export const SpeciesListItem = ({
 
   // Get species photos map from hydrated trip data
   const { data: tripData } = useHydrateTripDetails({ id: tripId || "" })
+
   const { image: profilePhotoImage } = useSpeciesDisplayImage(
     species?.id,
     tripData?.speciesPhotosMap,

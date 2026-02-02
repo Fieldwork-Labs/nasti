@@ -32,15 +32,16 @@ export const HomePage = () => {
         )}
       </div>
       <div className="flex w-full flex-col justify-center gap-2 text-center">
+        Brought to you by
         <img
           src={fwlLogo}
           alt="Fieldwork Labs logo"
-          className="mx-auto w-2/3 lg:w-1/2"
+          className="mx-auto w-1/2 lg:w-1/2"
         />
         <img
           src={nastiLogo}
           alt="NASTI logo"
-          className="mx-auto w-2/3 lg:w-1/2"
+          className="mx-auto w-1/2 lg:w-1/2"
         />
       </div>
     </div>

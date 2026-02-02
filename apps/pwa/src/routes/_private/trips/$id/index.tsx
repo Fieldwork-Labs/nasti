@@ -130,7 +130,7 @@ const TripDetail = () => {
       <Tabs defaultValue="list">
         <TabsList className="bg-secondary-background mb-2 w-full">
           <TabsTrigger className="w-full" value="list">
-            Collection List
+            Data List
           </TabsTrigger>
           {data.trip?.collections && data.trip.collections.length > 0 && (
             <TabsTrigger className="w-full" value="map">
