@@ -54,7 +54,3 @@ COMMENT ON TABLE ibra_regions IS 'IBRA7 Regions - Read-only reference data for g
 COMMENT ON POLICY "Allow authenticated read access to ibra_regions" ON ibra_regions IS 'Allows all authenticated users to read IBRA regions data';
 COMMENT ON POLICY "Deny all write operations on ibra_regions" ON ibra_regions IS 'Prevents any modifications to the IBRA regions reference data';
 
-BEGIN;
--- put this in a transaction so that the extension is installed for sure
-create extension IF NOT EXISTS http with schema extensions;
-COMMIT;

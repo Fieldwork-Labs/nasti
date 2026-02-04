@@ -364,26 +364,5 @@ WHERE b.id = treatments.batch_id AND is_org_member(auth.uid(), cbc.organisation_
 ));
 
 
--- For tests: organisation members can access their org's tests
+-- For tests: current custodian org members can access tests
 ALTER TABLE tests ENABLE ROW LEVEL SECURITY;
-
--- Policy: read tests for your organisation
-CREATE POLICY org_members_can_select_tests ON tests
-  FOR SELECT
-  USING (is_org_member(auth.uid(), organisation_id));
-
--- Policy: insert tests for your organisation
-CREATE POLICY org_members_can_insert_tests ON tests
-  FOR INSERT
-  WITH CHECK (is_org_member(auth.uid(), organisation_id));
-
--- Policy: update tests for your organisation
-CREATE POLICY org_members_can_update_tests ON tests
-  FOR UPDATE
-  USING (is_org_member(auth.uid(), organisation_id))
-  WITH CHECK (is_org_member(auth.uid(), organisation_id));
-
--- Policy: delete tests for your organisation
-CREATE POLICY org_members_can_delete_tests ON tests
-  FOR DELETE
-  USING (is_org_member(auth.uid(), organisation_id));

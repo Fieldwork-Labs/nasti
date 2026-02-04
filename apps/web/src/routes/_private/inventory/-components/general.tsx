@@ -248,7 +248,10 @@ export function InventoryPageGeneral() {
                         <h3 className="mb-2 text-lg font-semibold">
                           No Batches Found
                         </h3>
-                        <p>Create your first batch to get started.</p>
+                        <p>
+                          Record your first seed collection to get started with
+                          batches.
+                        </p>
                       </div>
                     ) : (
                       <div>
