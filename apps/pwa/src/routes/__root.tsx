@@ -13,15 +13,15 @@ import { UpdateNotification } from "@/components/app/UpdateNotification"
 import { Toaster } from "@nasti/ui/toaster"
 
 const TanStackRouterDevtools = false // import.meta.env.DEV
-// ? React.lazy(() =>
-//     // Lazy load in development
-//     import("@tanstack/router-devtools").then((res) => ({
-//       default: res.TanStackRouterDevtools,
-//       // For Embedded Mode
-//       // default: res.TanStackRouterDevtoolsPanel
-//     })),
-//   )
-// : () => null // Render nothing in production
+  ? React.lazy(() =>
+      // Lazy load in development
+      import("@tanstack/router-devtools").then((res) => ({
+        default: res.TanStackRouterDevtools,
+        // For Embedded Mode
+        // default: res.TanStackRouterDevtoolsPanel
+      })),
+    )
+  : () => null // Render nothing in production
 
 /*
  * Indicator that the app is ready to go offline or is offline

@@ -43,6 +43,7 @@ import { Spinner } from "@nasti/ui/spinner"
 import { SpeciesPhotoUpload } from "@/components/speciesPhotos/SpeciesPhotoUpload"
 import { AddSpeciesPhotoModal } from "@/components/speciesPhotos/AddSpeciesPhotoModal"
 import { useSpeciesPhotos } from "@/hooks/useSpeciesPhotos"
+import { TaxonName } from "@nasti/common"
 
 type SourceNames = "trips" | "collections" | "occurrences"
 
@@ -351,6 +352,7 @@ const SpeciesDetail = () => {
     setIsOpen: setIsAddPhotoModalOpen,
     open: openAddPhotoModal,
   } = useOpenClose()
+  const name = alaData?.taxonConcept?.nameString ?? instance.name
 
   if (!instance) return <div>No species found</div>
   return (
@@ -366,8 +368,7 @@ const SpeciesDetail = () => {
         <div className="xs:flex-col justify-between md:flex">
           <div className="flex flex-col gap-1">
             <span className="text-xl font-bold">
-              <i>{alaData?.taxonConcept?.nameString}</i>{" "}
-              {alaData?.taxonConcept?.author}
+              <TaxonName name={name} /> {alaData?.taxonConcept?.author}
             </span>
             <span>{alaData?.classification?.family}</span>
             <span>{alaData?.commonNames?.[0]?.nameString}</span>

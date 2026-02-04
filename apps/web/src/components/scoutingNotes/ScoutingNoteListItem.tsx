@@ -1,23 +1,23 @@
+import { useSpecies } from "@/hooks/useSpecies"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@nasti/ui/tooltip"
-import { useSpecies } from "@/hooks/useSpecies"
 
-import { useCollection } from "@/hooks/useCollection"
-import { useOpenClose } from "@nasti/ui/hooks"
-import { usePeople } from "@/hooks/usePeople"
-import { LeafIcon } from "lucide-react"
 import { useCollectionPhotos } from "@/hooks/useCollectionPhotos"
-import { CollectionDetailModal } from "./CollectionDetailModal"
-import { useTripDetail } from "@/hooks/useTripDetail"
-import { Spinner } from "@nasti/ui/spinner"
+import { usePeople } from "@/hooks/usePeople"
+import { useScoutingNote } from "@/hooks/useScoutingNote"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
+import { useTripDetail } from "@/hooks/useTripDetail"
 import { TaxonName } from "@nasti/common"
+import { useOpenClose } from "@nasti/ui/hooks"
+import { Spinner } from "@nasti/ui/spinner"
+import { LeafIcon } from "lucide-react"
+import { ScoutingNoteDetailModal } from "./ScoutingNoteDetailModal"
 
-export const CollectionListItem = ({
+export const ScoutingNoteListItem = ({
   id,
   showTrip = false,
   onHover,
@@ -26,41 +26,33 @@ export const CollectionListItem = ({
   showTrip?: boolean
   onHover?: (id: string | undefined) => void
 }) => {
-  const { data: collection, error } = useCollection(id)
-  const { data: species } = useSpecies(collection?.species_id)
+  const { data: scoutingNote, error } = useScoutingNote(id)
+  const { data: species } = useSpecies(scoutingNote?.species_id)
   const { photos, signedUrlsIsLoading } = useCollectionPhotos(id)
   const { image: speciesProfileImage } = useSpeciesDisplayImage(
-    collection?.species_id,
+    scoutingNote?.species_id,
     species?.ala_guid,
     "thumbnail",
   )
 
-  const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
+  const { data: trip } = useTripDetail(scoutingNote?.trip_id ?? undefined)
 
-  // Priority: collection photo > species profile photo > ALA image > placeholder
+  // Priority: scoutingNote photo > species profile photo > ALA image > placeholder
   const photo = photos?.[0]?.signedUrl ?? speciesProfileImage
 
   const { open, isOpen, close } = useOpenClose()
 
   const { data: people } = usePeople()
 
-  if (!collection || error) {
+  if (!scoutingNote || error) {
     return <></>
   }
 
-  const speciesName = species?.name ?? collection.field_name
+  const speciesName = species?.name ?? scoutingNote.field_name
 
-  const creator = people?.find((person) => person.id === collection.created_by)
-  const details = [
-    collection.plants_sampled_estimate
-      ? `${collection.plants_sampled_estimate} plants`
-      : undefined,
-    collection.weight_estimate_kg
-      ? `${collection.weight_estimate_kg} kg`
-      : undefined,
-  ]
-    .filter(Boolean)
-    .join(" · ")
+  const creator = people?.find(
+    (person) => person.id === scoutingNote.created_by,
+  )
 
   return (
     <>
@@ -111,16 +103,14 @@ export const CollectionListItem = ({
             )}
             {showTrip && <span className="text-xs">{trip?.name}</span>}
           </div>
-          <div>{collection.code}</div>
           <div className="flex flex-col text-start text-xs">
-            {details && <span>{details}</span>}
             {creator && <span>{creator.name ?? "Unknown Person"}</span>}
-            {<span>{new Date(collection.created_at).toLocaleString()}</span>}
+            {<span>{new Date(scoutingNote.created_at).toLocaleString()}</span>}
           </div>
         </div>
       </div>
-      <CollectionDetailModal
-        collection={collection}
+      <ScoutingNoteDetailModal
+        scoutingNote={scoutingNote}
         open={isOpen}
         onClose={close}
       />

@@ -1,7 +1,7 @@
-import { ShoppingBag } from "lucide-react"
+import { Binoculars } from "lucide-react"
 import { DataItemMapMarker } from "../common/DataItemMapMarker"
 
-export const CollectionMapMarker = ({
+export const ScoutingNoteMapMarker = ({
   latitude,
   longitude,
   isHovered,
@@ -14,7 +14,7 @@ export const CollectionMapMarker = ({
 }) => {
   return (
     <DataItemMapMarker
-      Icon={ShoppingBag}
+      Icon={Binoculars}
       isHovered={isHovered}
       latitude={latitude}
       longitude={longitude}
