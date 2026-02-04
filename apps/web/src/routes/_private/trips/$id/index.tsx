@@ -1,37 +1,46 @@
-import { usePeople } from "@/hooks/usePeople"
-import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
-import { useTripSpecies } from "@/hooks/useTripSpecies"
-import { parsePostGISPoint } from "@nasti/common/utils"
-import { queryClient } from "@nasti/common/utils"
-import {
-  createFileRoute,
-  Link,
-  notFound,
-  useParams,
-} from "@tanstack/react-router"
-import { ArrowLeftIcon, ShoppingBag, MapPin, PencilIcon } from "lucide-react"
-import { Map, Marker } from "react-map-gl"
-import mapboxgl from "mapbox-gl"
-import { useCallback, useEffect, useState, useMemo } from "react"
-import { useOpenClose } from "@nasti/ui/hooks"
+import { AddCollectionWizardModal } from "@/components/collections/CollectionFormModal"
 import {
   TripDetailsModal,
   TripLocationModal,
   TripPeopleModal,
   TripSpeciesModal,
 } from "@/components/trips/modals"
-import { useTripMembers } from "@/hooks/useTripMembers"
-import useUserStore from "@/store/userStore"
 import { getTripCoordinates } from "@/components/trips/utils"
-import { SpeciesListItem } from "../../species"
+import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
+import { TripSpeciesWithDetails, useTripSpecies } from "@/hooks/useTripSpecies"
+import useUserStore from "@/store/userStore"
+import { parsePostGISPoint, queryClient } from "@nasti/common/utils"
 import { Button } from "@nasti/ui/button"
-import { AddCollectionWizardModal } from "@/components/collections/CollectionFormModal"
+import { useOpenClose } from "@nasti/ui/hooks"
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useParams,
+} from "@tanstack/react-router"
+import {
+  ArrowLeftIcon,
+  Binoculars,
+  MapPin,
+  PencilIcon,
+  ShoppingBag,
+} from "lucide-react"
+import mapboxgl from "mapbox-gl"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Map, Marker } from "react-map-gl"
+import { SpeciesListItem } from "../../species"
 
-import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
-import { useViewState } from "@nasti/common/hooks"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
-import { Spinner } from "@nasti/ui/spinner"
 import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
+import { AddScoutingNoteWizardModal } from "@/components/scoutingNotes/ScoutingNoteFormModal"
+import { ScoutingNoteListItem } from "@/components/scoutingNotes/ScoutingNoteListItem"
+import { ScoutingNoteMapMarker } from "@/components/scoutingNotes/ScoutingNoteMapMarker"
+import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
+import { useScoutingNotesByTrip } from "@/hooks/useScoutingNotesByTrip"
+import { Collection, ScoutingNote } from "@nasti/common"
+import { useViewState } from "@nasti/common/hooks"
+import { Spinner } from "@nasti/ui/spinner"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { useSuspenseQuery } from "@tanstack/react-query"
 
 const getTripQueryOptions = (id: string) => ({
@@ -46,21 +55,34 @@ type ModalComponentNames =
   | "people"
   | "species"
   | "collection"
+  | "scoutingNote"
 
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const { isAdmin } = useUserStore()
   const { data: instance } = useSuspenseQuery(getTripQueryOptions(id))
 
-  const { data: tripMembers } = useTripMembers(instance?.id)
-  const { data: people } = usePeople()
   const { data: tripSpecies } = useTripSpecies(instance?.id)
+  const tripSpeciesMap = useMemo(() => {
+    return (
+      tripSpecies?.reduce(
+        (acc, species) => ({
+          ...acc,
+          [species.species_id]: species,
+        }),
+        {} as Record<string, TripSpeciesWithDetails>,
+      ) ?? {}
+    )
+  }, [tripSpecies])
+
   const { data: collections, isPending: isPendingCollections } =
     useCollectionsByTrip(id)
+  const { data: scoutingNotes, isPending: isPendingScoutingNotes } =
+    useScoutingNotesByTrip(id)
 
   const { open, isOpen, close } = useOpenClose()
   const [modalComponent, setModalComponent] = useState<ModalComponentNames>()
-  const [collectionHovered, setCollectionHovered] = useState<string>()
+  const [itemHovered, setItemHovered] = useState<string>()
 
   const openModal = useCallback(
     (component: ModalComponentNames) => {
@@ -91,14 +113,6 @@ const TripDetail = () => {
     setViewState(initViewState)
   }, [initViewState])
 
-  const members = useMemo(() => {
-    if (tripMembers && people && people.length > 0) {
-      return tripMembers.map((member) =>
-        people.find((p) => p.id === member.user_id),
-      )
-    }
-  }, [tripMembers, people])
-
   if (!instance) return <div>No trip found</div>
   return (
     <div className="mt-2">
@@ -112,24 +126,39 @@ const TripDetail = () => {
       <div className="mt-6 flex flex-col gap-4 pb-6">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="mb-4 text-2xl font-semibold">{instance.name}</h2>
-          <div className="flex items-center gap-4">
-            <span className="bg-secondary-background rounded-lg p-2">
-              {instance.start_date &&
-                new Date(instance.start_date).toLocaleDateString()}{" "}
-              -{" "}
-              {instance.end_date &&
-                new Date(instance.end_date).toLocaleDateString()}
-            </span>
-            {isAdmin && (
-              <Button
-                size={"icon"}
-                onClick={() => openModal("details")}
-                title="Edit trip details"
-                className="hover:text-primary-foreground cursor-pointer bg-transparent text-black"
-              >
-                <PencilIcon className="h-4 w-4" />
-              </Button>
-            )}
+          <div className="flex gap-6">
+            <div className="bg-secondary-background flex items-center gap-2 rounded-lg pl-2">
+              <h4 className="text-lg">Members</h4>
+              {isAdmin && (
+                <Button
+                  size={"icon"}
+                  onClick={() => openModal("people")}
+                  title="Edit trip details"
+                  className="hover:text-primary-foreground cursor-pointer bg-transparent text-black"
+                >
+                  <PencilIcon className="h-4 w-4 cursor-pointer" />
+                </Button>
+              )}
+            </div>
+            <div className="bg-secondary-background flex items-center gap-2 rounded-lg pl-2">
+              <span className="">
+                {instance.start_date &&
+                  new Date(instance.start_date).toLocaleDateString()}{" "}
+                -{" "}
+                {instance.end_date &&
+                  new Date(instance.end_date).toLocaleDateString()}
+              </span>
+              {isAdmin && (
+                <Button
+                  size={"icon"}
+                  onClick={() => openModal("details")}
+                  title="Edit trip details"
+                  className="hover:text-primary-foreground cursor-pointer bg-transparent text-black"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         {(instance.location_name || instance.location_coordinate) && (
@@ -164,15 +193,15 @@ const TripDetail = () => {
                 {collections
                   ?.filter(({ location }) => Boolean(location))
                   .map((coll) => {
-                    const species = tripSpecies?.find(
-                      ({ species_id }) => species_id === coll.species_id,
-                    )
+                    const species = coll.species_id
+                      ? tripSpeciesMap[coll.species_id]
+                      : null
 
                     return (
                       <CollectionMapMarker
                         {...parsePostGISPoint(coll.location!)}
                         key={coll.id}
-                        isHovered={collectionHovered === coll.id}
+                        isHovered={itemHovered === coll.id}
                         popupContent={
                           coll.species_id ? (
                             <Link
@@ -191,13 +220,43 @@ const TripDetail = () => {
                       />
                     )
                   })}
+                {scoutingNotes
+                  ?.filter(({ location }) => Boolean(location))
+                  .map((sn) => {
+                    const species = sn.species_id
+                      ? tripSpeciesMap[sn.species_id]
+                      : null
+
+                    return (
+                      <ScoutingNoteMapMarker
+                        {...parsePostGISPoint(sn.location!)}
+                        key={sn.id}
+                        isHovered={itemHovered === sn.id}
+                        popupContent={
+                          sn.species_id ? (
+                            <Link
+                              className="text-primary"
+                              to="/species/$id"
+                              params={{ id: sn.species_id }}
+                            >
+                              {species?.species.name}
+                            </Link>
+                          ) : (
+                            <span className="text-primary">
+                              {sn.field_name}
+                            </span>
+                          )
+                        }
+                      />
+                    )
+                  })}
               </Map>
             )}
           </div>
         )}
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="col-span-2 flex flex-col gap-4">
-            <div className="grid gap-4 lg:grid-cols-2">
+            {/* <div className="grid gap-4 lg:grid-cols-2">
               <div className="border-foreground/50 rounded-lg border p-2">
                 <div className="flex justify-between">
                   <h4 className="mb-2 text-xl font-bold">Members</h4>
@@ -218,34 +277,42 @@ const TripDetail = () => {
                   )
                 )}
               </div>
-            </div>
-            <div className="border-foreground/50 space-y-2 rounded-lg border p-2">
-              <div className="flex justify-between">
-                <h4 className="mb-2 text-xl font-bold">Collections</h4>
-                {isAdmin && (
-                  <Button
-                    onClick={() => openModal("collection")}
-                    className="flex gap-1 px-2 py-1"
-                  >
-                    <ShoppingBag aria-label="New Collection" size={12} />{" "}
-                    <span className="text-sm">Add Collection</span>
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid flex-col gap-2 lg:grid-cols-2">
-                {isPendingCollections && <Spinner />}
-                {!collections ||
-                  (collections.length === 0 && "No collections yet")}
-                {collections?.map((coll) => (
-                  <CollectionListItem
-                    key={coll.id}
-                    id={coll.id}
-                    onHover={setCollectionHovered}
-                  />
-                ))}
-              </div>
-            </div>
+            </div> */}
+            <Tabs defaultValue="collections">
+              <TabsList>
+                <TabsTrigger
+                  value="collections"
+                  className="flex items-center gap-1"
+                >
+                  <ShoppingBag /> Collections
+                </TabsTrigger>
+                <TabsTrigger
+                  value="scoutingNotes"
+                  className="flex items-center gap-1"
+                >
+                  {" "}
+                  <Binoculars /> Scouting Notes
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="collections">
+                <CollectionsList
+                  setItemHovered={setItemHovered}
+                  onAddNew={() => openModal("collection")}
+                  canEdit={isAdmin}
+                  isLoading={isPendingCollections}
+                  collections={collections}
+                />
+              </TabsContent>
+              <TabsContent value="scoutingNotes">
+                <ScoutingNotesList
+                  setItemHovered={setItemHovered}
+                  onAddNew={() => openModal("scoutingNote")}
+                  canEdit={isAdmin}
+                  isLoading={isPendingScoutingNotes}
+                  scoutingNotes={scoutingNotes}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
           <div className="border-foreground/50 rounded-lg border p-2">
             <div className="flex justify-between">
@@ -298,8 +365,94 @@ const TripDetail = () => {
               open={isOpen && modalComponent === "collection"}
               close={close}
             />
+            <AddScoutingNoteWizardModal
+              tripId={instance.id}
+              open={isOpen && modalComponent === "scoutingNote"}
+              close={close}
+            />
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+const CollectionsList = ({
+  setItemHovered,
+  onAddNew,
+  canEdit,
+  isLoading,
+  collections,
+}: {
+  canEdit: boolean
+  onAddNew: () => void
+  setItemHovered: React.Dispatch<React.SetStateAction<string | undefined>>
+  isLoading: boolean
+  collections: Collection[] | undefined
+}) => {
+  return (
+    <div className="border-foreground/50 space-y-2 rounded-lg border p-2">
+      <div className="flex justify-between">
+        <h4 className="mb-2 text-xl font-bold">Collections</h4>
+        {canEdit && (
+          <Button onClick={onAddNew} className="flex gap-1 px-2 py-1">
+            <ShoppingBag aria-label="New Collection" size={12} />{" "}
+            <span className="text-sm">Add Collection</span>
+          </Button>
+        )}
+      </div>
+
+      <div className="grid flex-col gap-2 lg:grid-cols-2">
+        {isLoading && <Spinner />}
+        {!collections || (collections.length === 0 && "No collections yet")}
+        {collections?.map((coll) => (
+          <CollectionListItem
+            key={coll.id}
+            id={coll.id}
+            onHover={setItemHovered}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const ScoutingNotesList = ({
+  setItemHovered,
+  onAddNew,
+  canEdit,
+  isLoading,
+  scoutingNotes,
+}: {
+  canEdit: boolean
+  onAddNew: () => void
+  setItemHovered: React.Dispatch<React.SetStateAction<string | undefined>>
+  isLoading: boolean
+  scoutingNotes: ScoutingNote[] | undefined
+}) => {
+  return (
+    <div className="border-foreground/50 space-y-2 rounded-lg border p-2">
+      <div className="flex justify-between">
+        <h4 className="mb-2 text-xl font-bold">Scouting Notes</h4>
+        {canEdit && (
+          <Button onClick={onAddNew} className="flex gap-1 px-2 py-1">
+            <Binoculars aria-label="New Scouting Note" size={12} />{" "}
+            <span className="text-sm">Add Scouting Note</span>
+          </Button>
+        )}
+      </div>
+
+      <div className="grid flex-col gap-2 lg:grid-cols-2">
+        {isLoading && <Spinner />}
+        {!scoutingNotes ||
+          (scoutingNotes.length === 0 && "No Scouting Notes yet")}
+        {scoutingNotes?.map((sn) => (
+          <ScoutingNoteListItem
+            key={sn.id}
+            id={sn.id}
+            onHover={setItemHovered}
+          />
+        ))}
       </div>
     </div>
   )

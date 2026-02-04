@@ -12,7 +12,7 @@ import { useSwStatus } from "@/contexts/swStatus"
 import { UpdateNotification } from "@/components/app/UpdateNotification"
 import { Toaster } from "@nasti/ui/toaster"
 
-const TanStackRouterDevtools = import.meta.env.DEV
+const TanStackRouterDevtools = false // import.meta.env.DEV
   ? React.lazy(() =>
       // Lazy load in development
       import("@tanstack/router-devtools").then((res) => ({

@@ -15,6 +15,7 @@ import { useALASpeciesDetail } from "@nasti/common/hooks/useALASpeciesDetail"
 import { useOpenClose } from "@nasti/ui/hooks"
 import { useSpeciesForm, SpeciesForm } from "@/components/species/SpeciesForm"
 import { Button } from "@nasti/ui/button"
+import { TaxonName } from "@nasti/common"
 import useUserStore from "@/store/userStore"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 
@@ -75,11 +76,14 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <i className="max-w-56 truncate font-semibold">
-                  {species?.name}
-                </i>
+                <TaxonName
+                  name={species?.name}
+                  className="max-w-56 truncate font-semibold"
+                />
               </TooltipTrigger>
-              <TooltipContent>{species.name}</TooltipContent>
+              <TooltipContent>
+                <TaxonName name={species?.name} />
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>

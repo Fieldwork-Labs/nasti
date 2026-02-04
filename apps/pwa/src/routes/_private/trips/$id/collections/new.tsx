@@ -22,11 +22,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
 import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
-import {
-  UploadPhotoVariables,
-  useCollectionPhotosMutate,
-} from "@/hooks/useCollectionPhotosMutate"
-import { CollectionPhotosForm } from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
+import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
+import { PhotosForm } from "@/components/common/PhotosForm"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 
@@ -114,8 +111,9 @@ function AddCollection() {
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
   const collectionIdRef = useRef<string>(crypto.randomUUID())
-  const { createPhotoMutation } = useCollectionPhotosMutate({
-    collectionId: collectionIdRef.current,
+  const { createPhotoMutation } = usePhotosMutate({
+    entityId: collectionIdRef.current,
+    entityType: "collection",
     tripId,
   })
 
@@ -390,7 +388,7 @@ function AddCollection() {
               </div>
             )}
           </div>
-          <CollectionPhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
+          <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">

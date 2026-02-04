@@ -1,4 +1,4 @@
-import { UploadPhotoVariables } from "@/hooks/useCollectionPhotosMutate"
+import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { cn } from "@nasti/ui/utils"
@@ -105,7 +105,7 @@ type PhotoUploadFieldProps = {
   className?: string
 }
 
-export function CollectionPhotosUploadField({
+export function PhotosUploadField({
   onPhotosChange,
   className,
 }: PhotoUploadFieldProps) {

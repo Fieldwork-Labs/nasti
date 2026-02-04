@@ -49,10 +49,6 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
       }
 
       const speciesIds = tripSpecies.map((ts) => ts.species_id)
-      console.log(
-        "[useSpeciesPhotosForTrip] Found species:",
-        speciesIds.length,
-      )
 
       // Get all species photos for these species
       const { data: speciesPhotos, error: speciesPhotosError } = await supabase
@@ -99,7 +95,10 @@ export const useSpeciesPhotosForTrip = ({ tripId }: { tripId?: string }) => {
           )
 
         if (error) {
-          console.error("[useSpeciesPhotosForTrip] Error getting signed URLs:", error)
+          console.error(
+            "[useSpeciesPhotosForTrip] Error getting signed URLs:",
+            error,
+          )
         } else {
           console.log(
             "[useSpeciesPhotosForTrip] Got signed URLs, downloading:",

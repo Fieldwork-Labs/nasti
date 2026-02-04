@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --clearScreen false --port 5174",
+    "dev": "vite --clearScreen false --port 5172",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "preview": "vite preview --port 5174"
+    "preview": "vite preview --port 5172"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",

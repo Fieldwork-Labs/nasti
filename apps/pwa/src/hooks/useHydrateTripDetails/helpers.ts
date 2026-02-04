@@ -1,17 +1,18 @@
 import {
-  Collection,
   CollectionPhoto,
-  CollectionWithCoord,
+  ScoutingNotePhoto,
   Species,
   SpeciesPhoto,
 } from "@nasti/common/types"
 
-import { PendingCollectionPhoto } from "@/hooks/useCollectionPhotosMutate"
-import { CollectionWithCoordAndPhotos } from "./types"
-import { useQuery } from "@tanstack/react-query"
+import {
+  PendingCollectionPhoto,
+  PendingScoutingNotePhoto,
+} from "@/hooks/usePhotosMutate"
 import { supabase } from "@nasti/common/supabase"
+import { useQuery } from "@tanstack/react-query"
 
-export function getPhotoMap(
+export function getCollectionPhotoMap(
   photos: Array<CollectionPhoto | PendingCollectionPhoto> | undefined,
   error: unknown,
 ): Record<string, Array<CollectionPhoto | PendingCollectionPhoto>> {
@@ -26,15 +27,30 @@ export function getPhotoMap(
   )
 }
 
-export function parsePendingLocation(
-  coll: Collection & { isPending: boolean },
-): CollectionWithCoord {
-  if (!coll.location) return coll
-  // coll.location is a string with the format `POINT(lng lat)`
-  const innerString = coll.location.substring(6, coll.location.length - 1)
+type ScoutingNotePhotoArray = Array<
+  ScoutingNotePhoto | PendingScoutingNotePhoto
+>
+export function getScoutingNotePhotoMap(
+  photos: ScoutingNotePhotoArray | undefined,
+  error: unknown,
+): Record<string, ScoutingNotePhotoArray> {
+  if (!photos || error) return {}
+  return photos.reduce<Record<string, ScoutingNotePhotoArray>>((acc, photo) => {
+    if (!acc[photo.scouting_notes_id]) acc[photo.scouting_notes_id] = []
+    acc[photo.scouting_notes_id].push(photo)
+    return acc
+  }, {})
+}
+
+export function parsePendingLocation<T extends { location: string | null }>(
+  obj: T,
+): T & { locationCoord?: { latitude: number; longitude: number } } {
+  if (!obj.location) return obj
+  // obj.location is a string with the format `POINT(lng lat)`
+  const innerString = obj.location.substring(6, obj.location.length - 1)
   const [lng, lat] = innerString.split(" ")
   return {
-    ...coll,
+    ...obj,
     locationCoord: {
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
@@ -42,10 +58,25 @@ export function parsePendingLocation(
   }
 }
 
-export function attachPhotos(
-  coll: CollectionWithCoord,
-  photosMap: Record<string, Array<CollectionPhoto | PendingCollectionPhoto>>,
-): CollectionWithCoordAndPhotos {
+export function attachPhotos<T extends { id: string }>(
+  coll: T,
+  photosMap: Record<
+    string,
+    Array<
+      | CollectionPhoto
+      | PendingCollectionPhoto
+      | ScoutingNotePhoto
+      | PendingScoutingNotePhoto
+    >
+  >,
+): T & {
+  photos: Array<
+    | CollectionPhoto
+    | PendingCollectionPhoto
+    | ScoutingNotePhoto
+    | PendingScoutingNotePhoto
+  >
+} {
   return {
     ...coll,
     photos: photosMap[coll.id] ?? [],

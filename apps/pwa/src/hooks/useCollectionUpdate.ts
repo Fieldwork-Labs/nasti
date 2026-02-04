@@ -7,9 +7,7 @@ import {
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/queryClient"
 import { useMutation } from "@tanstack/react-query"
-import { TripDetails } from "./useHydrateTripDetails"
-import { parsePostGISPoint } from "@nasti/common/utils"
-import { getMutationKey } from "./useCollectionCreate"
+import { getMutationKey } from "./useEntityCreate"
 
 const updateCollection = async (updatedItem: UpdateCollection) => {
   const query = supabase
@@ -17,12 +15,15 @@ const updateCollection = async (updatedItem: UpdateCollection) => {
     .upsert(updatedItem)
     .eq("id", updatedItem.id)
 
-  const { data, error } = await query.select("*").single()
+  const { data, error } = await query
+    .select("*")
+    .single()
+    .overrideTypes<Collection>()
 
   if (error) throw new Error(error.message)
   if (!data) throw new Error("No data returned from collection upsert")
 
-  return data as Collection
+  return data
 }
 
 export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
@@ -30,22 +31,13 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
     mutationKey: getMutationKey(tripId),
     mutationFn: (updatedItem) => updateCollection(updatedItem),
     onMutate: (variables) => {
-      // Get the trip details data blob
-      const tripQuery = queryClient.getQueryData<TripDetails>([
-        "trip",
-        "details",
-        variables.trip_id,
-      ])
-      if (!tripQuery) throw new Error("Unknown trip")
-
-      const newCollections = tripQuery.collections.map((item) =>
-        item.id === variables.id ? { ...item, ...variables } : item,
+      queryClient.setQueryData<CollectionWithCoord[]>(
+        ["collections", "byTrip", tripId],
+        (current) =>
+          current?.map((item) =>
+            item.id === variables.id ? { ...item, ...variables } : item,
+          ),
       )
-
-      queryClient.setQueryData(["trip", "details", variables.trip_id], {
-        ...tripQuery,
-        collections: newCollections,
-      })
 
       // Update the individual item cache
       queryClient.setQueryData(
@@ -57,7 +49,7 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
         queryClient.setQueryData<Array<Collection | UpdateCollection>>(
           ["collections", "bySpecies", variables.species_id],
           (oldData) => {
-            if (!oldData || oldData.length === 0) return [variables]
+            if (!oldData) return [variables]
 
             return oldData.map((item) =>
               item.id === variables.id ? { ...item, ...variables } : item,
@@ -67,30 +59,27 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
       }
     },
     onSettled(data, error, variables) {
-      if (error) throw error
-      if (!data) throw new Error("No data returned from collection insert")
-      // Get the trip details data blob
-      const tripQuery = queryClient.getQueryData<TripDetails>([
-        "trip",
-        "details",
-        variables.trip_id,
-      ])
-      if (!tripQuery) throw new Error("Unknown trip")
-
-      const updatedCollection: CollectionWithCoord = { ...data }
-      if (updatedCollection.location) {
-        updatedCollection.locationCoord = parsePostGISPoint(
-          updatedCollection.location,
+      if (error) {
+        // remove the scouting note from optmistic cache
+        queryClient.setQueryData<CollectionWithCoord[]>(
+          ["collections", "byTrip", tripId],
+          (current) => current?.filter((item) => item.id !== variables.id),
         )
+
+        queryClient.removeQueries({
+          queryKey: ["collections", "detail", variables.id],
+        })
+
+        if (variables.species_id) {
+          queryClient.setQueryData<Array<Collection | UpdateCollection>>(
+            ["collections", "bySpecies", variables.species_id],
+            (oldData) => {
+              return oldData?.filter((item) => item.id !== variables.id) ?? []
+            },
+          )
+        }
       }
-
-      tripQuery.collections = tripQuery.collections.map((item) =>
-        item.id === variables.id ? { ...item, ...updatedCollection } : item,
-      )
-
-      queryClient.setQueryData(["trip", "details", variables.trip_id], {
-        ...tripQuery,
-      })
+      if (!data) throw new Error("No data returned from collection insert")
     },
   })
 }

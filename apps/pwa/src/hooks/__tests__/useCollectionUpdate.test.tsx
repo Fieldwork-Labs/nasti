@@ -15,9 +15,10 @@ import { parsePostGISPoint } from "@nasti/common/utils"
 
 vi.mock("@nasti/common/supabase", () => {
   // Create a mock that matches how supabase api is called in updateCollection(...):
-  const singleFn = vi.fn(() =>
+  const overrideTypesFn = vi.fn(() =>
     Promise.resolve({ data: mockUpdatedCollection, error: null }),
   )
+  const singleFn = vi.fn(() => ({ overrideTypes: overrideTypesFn }))
   const selectFn = vi.fn(() => ({ single: singleFn }))
   const eqFn = vi.fn(() => ({ select: selectFn }))
   const updateFn = vi.fn(() => ({ eq: eqFn }))
@@ -53,19 +54,6 @@ const mockUpdatedCollection = {
   field_name,
 }
 
-const mockTrip = {
-  created_at: Date.now().toString(),
-  created_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
-  end_date: null,
-  id: "trip123",
-  location_coordinate: null,
-  location_name: "test location",
-  metadata: {},
-  name: "test trip",
-  organisation_id: "orgId-123",
-  start_date: null,
-}
-
 describe("useCollectionCreate · mutateAsync", () => {
   let queryClient: QueryClient
 
@@ -85,14 +73,15 @@ describe("useCollectionCreate · mutateAsync", () => {
   it("mutateAsync should update a Collection and return it (and call supabase.from/upsert)", async () => {
     // 1. Seed query cache so onMutate doesn’t throw:
     const tripId = mockCollection.trip_id
-    queryClient.setQueryData(["trip", "details", tripId], {
-      ...mockTrip,
-      collections: [mockCollection],
-    })
-
-    queryClient.setQueryData(["collections", "detail", mockCollection.id], {
-      ...mockCollection,
-    })
+    queryClient.setQueryData(
+      ["collections", "byTrip", tripId],
+      [
+        {
+          ...mockCollection,
+          locationCoord: parsePostGISPoint(mockCollection.location),
+        },
+      ],
+    )
 
     // 2. Immediately grab and spy on `supabase.from` before invoking mutateAsync:
     const { supabase } = await import("@nasti/common/supabase")
@@ -128,15 +117,18 @@ describe("useCollectionCreate · mutateAsync", () => {
     expect(upsertMock).toHaveBeenCalledWith(mockUpdatedCollection)
 
     // 8. Finally, ensure that the querydata cache now contains the new collection
-    const data = queryClient.getQueryData(["trip", "details", tripId])
-    const expectedCollection = {
-      ...returned,
-      locationCoord: parsePostGISPoint(returned!.location!),
-    }
-    expect(data).toStrictEqual({
-      ...mockTrip,
-      collections: [expectedCollection],
-    })
+    const collections = queryClient.getQueryData([
+      "collections",
+      "byTrip",
+      tripId,
+    ])
+    const expectedUpdatedCollections = [
+      {
+        ...returned,
+        locationCoord: parsePostGISPoint(returned!.location!),
+      },
+    ]
+    expect(collections).toStrictEqual(expectedUpdatedCollections)
   })
 
   it("mutateAsync should throw an error if the tripId doesn't exist", async () => {

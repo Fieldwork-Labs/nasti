@@ -1,11 +1,7 @@
-import {
-  CollectionPhotosForm,
-  PhotoChanges,
-} from "@/components/collection/CollectionPhotos/CollectionPhotosForm"
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { useAuth } from "@/hooks/useAuth"
 import { useCollection } from "@/hooks/useCollection"
-import { useCollectionPhotosMutate } from "@/hooks/useCollectionPhotosMutate"
+import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
@@ -23,6 +19,7 @@ import { InfoIcon, X } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
+import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
 
 // --- Schema & Types ---
 const stringToNumber = z.preprocess(
@@ -98,7 +95,11 @@ function CollectionForm() {
 
   const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
-    useCollectionPhotosMutate({ collectionId, tripId })
+    usePhotosMutate({
+      entityId: collectionId,
+      entityType: "collection",
+      tripId,
+    })
 
   const { isOnline } = useNetwork()
 
@@ -366,7 +367,7 @@ function CollectionForm() {
               </p>
             )}
           </div>
-          <CollectionPhotosForm
+          <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
           />

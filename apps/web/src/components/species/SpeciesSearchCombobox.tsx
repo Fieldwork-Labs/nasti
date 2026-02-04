@@ -112,6 +112,7 @@ export const SpeciesSearchCombobox = ({
                     "bg-secondary-background w-full border-none py-2 pl-3 pr-10 text-sm leading-5",
                     "focus:outline-hidden focus:ring-0",
                   )}
+                  autoComplete="off"
                   displayValue={(id: string) =>
                     speciesList?.find((s) => s.id === id)?.name ?? ""
                   }
@@ -153,7 +154,7 @@ export const SpeciesSearchCombobox = ({
                     className={({ active }) =>
                       cn(
                         "relative cursor-default select-none py-2 pl-6 pr-4",
-                        active ? "bg-secondary" : "text-secondary",
+                        active ? "bg-secondary" : "text-primary",
                       )
                     }
                   >

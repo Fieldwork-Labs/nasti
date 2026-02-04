@@ -1,4 +1,4 @@
-import logo from "@/assets/logo.svg"
+import logo from "@/assets/logo.png"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@nasti/common/supabase"

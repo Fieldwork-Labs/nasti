@@ -15,6 +15,7 @@ import { CollectionDetailModal } from "./CollectionDetailModal"
 import { useTripDetail } from "@/hooks/useTripDetail"
 import { Spinner } from "@nasti/ui/spinner"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
+import { TaxonName } from "@nasti/common"
 
 export const CollectionListItem = ({
   id,
@@ -33,6 +34,7 @@ export const CollectionListItem = ({
     species?.ala_guid,
     "thumbnail",
   )
+
   const { data: trip } = useTripDetail(collection?.trip_id ?? undefined)
 
   // Priority: collection photo > species profile photo > ALA image > placeholder
@@ -92,16 +94,21 @@ export const CollectionListItem = ({
         )}
         <div className="text-foreground flex h-full w-full flex-col py-1 pr-2">
           <div className="flex items-center justify-start gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <i className="max-w-56 truncate font-semibold">
-                    {speciesName}
-                  </i>
-                </TooltipTrigger>
-                <TooltipContent>{speciesName}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {speciesName && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TaxonName
+                      name={speciesName}
+                      className="max-w-56 truncate font-semibold"
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <TaxonName name={speciesName} />
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             {showTrip && <span className="text-xs">{trip?.name}</span>}
           </div>
           <div>{collection.code}</div>

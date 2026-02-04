@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
+import appLogo from "@/assets/logo.png"
 import nastiLogo from "@/assets/nasti-logo.png"
+import fwlLogo from "@/assets/fwl-logo.png"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -8,8 +10,8 @@ export const HomePage = () => {
   return (
     <div className="flex h-full flex-col justify-center">
       <div className="md:bg-background relative -top-20 mx-auto flex flex-col items-center justify-center gap-8 p-6 text-center md:w-2/3 md:rounded-xl lg:w-1/2">
-        <h1 className="font-serif text-2xl">Welcome To Seed Store</h1>
-        <img src={nastiLogo} alt="nasti logo" className="w-2/3 lg:w-1/2" />
+        <h1 className="font-serif text-2xl">Welcome To Seed Scout</h1>
+        <img src={appLogo} alt="Seed Scout logo" className="w-2/3 lg:w-1/2" />
         {!isLoggedIn && (
           <ButtonLink
             size={"lg"}
@@ -28,6 +30,19 @@ export const HomePage = () => {
             Enter
           </ButtonLink>
         )}
+      </div>
+      <div className="flex w-full flex-col justify-center gap-2 text-center">
+        Brought to you by
+        <img
+          src={fwlLogo}
+          alt="Fieldwork Labs logo"
+          className="mx-auto w-1/2 lg:w-1/2"
+        />
+        <img
+          src={nastiLogo}
+          alt="NASTI logo"
+          className="mx-auto w-1/2 lg:w-1/2"
+        />
       </div>
     </div>
   )

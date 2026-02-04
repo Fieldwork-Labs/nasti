@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { useNavigate, Link } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
-
+import appLogo from "@/assets/logo.png"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -77,7 +77,12 @@ const LoginForm = () => {
           </div>
         ) : (
           <div className="bg-secondary-background/60 pwa:text-lg w-full max-w-md flex-grow p-4 shadow-md md:rounded-lg md:p-8">
-            <h2 className="mb-6 text-center text-2xl font-bold text-gray-700 dark:text-gray-300">
+            <img
+              src={appLogo}
+              alt="Seed Scout logo"
+              className="mx-auto w-2/3 lg:w-1/2"
+            />
+            <h2 className="mb-6 mt-4 text-center text-2xl font-bold text-gray-700 dark:text-gray-300">
               Login
             </h2>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
