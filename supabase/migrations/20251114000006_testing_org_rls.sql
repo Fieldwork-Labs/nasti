@@ -264,16 +264,6 @@ CREATE POLICY org_members_can_select_batches
 -- UPDATE TESTS RLS: Include testing organisations
 -- =====================================================
 
--- First, check if tests table has RLS enabled and policies exist
-DO $$
-BEGIN
-  -- Drop existing policies if they exist
-  DROP POLICY IF EXISTS org_members_can_view_tests ON tests;
-  DROP POLICY IF EXISTS org_members_can_insert_tests ON tests;
-  DROP POLICY IF EXISTS org_members_can_update_tests ON tests;
-  DROP POLICY IF EXISTS org_members_can_delete_tests ON tests;
-END $$;
-
 -- Enable RLS on tests if not already enabled
 ALTER TABLE tests ENABLE ROW LEVEL SECURITY;
 
@@ -362,7 +352,6 @@ COMMENT ON POLICY org_members_can_update_tests ON tests IS 'Only the org that pe
 COMMENT ON POLICY org_members_can_delete_tests ON tests IS 'Only the org that performed the test can delete it';
 
 -- Add comments for organisation link policies
-COMMENT ON POLICY general_org_can_insert_links ON organisation_link IS 'Only General org admins can create links';
 COMMENT ON POLICY general_org_can_delete_links ON organisation_link IS 'Only General org admins can delete their links';
 COMMENT ON POLICY general_org_can_update_links ON organisation_link IS 'Only General org admins can update link permissions';
 
