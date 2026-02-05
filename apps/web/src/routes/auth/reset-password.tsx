@@ -29,20 +29,6 @@ const ResetPasswordPage = () => {
   const p1 = watch("password")
   const p2 = watch("password2")
 
-  // useEffect(() => {
-  //   const { data: authListener } = supabase.auth.onAuthStateChange(
-  //     async (event) => {
-  //       if (event == "PASSWORD_RECOVERY") {
-  //         setReady(true)
-  //       }
-  //     },
-  //   )
-
-  //   return () => {
-  //     authListener.subscription.unsubscribe()
-  //   }
-  // }, [setError])
-
   useEffect(() => {
     if (ready && errors.root?.login) clearErrors("root.login")
   }, [clearErrors, ready, errors.root?.login, p1, p2])
