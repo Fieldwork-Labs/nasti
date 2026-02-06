@@ -3,6 +3,6 @@ import { Database } from "./types/database"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabasePubKey = import.meta.env.VITE_SB_PUBLISHABLE_KEY
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabasePubKey)
