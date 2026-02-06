@@ -12,10 +12,12 @@ import {
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
 import {
+  BrushCleaning,
   Calendar,
   ChevronDown,
   ChevronRight,
   FileWarningIcon,
+  FlaskConical,
   Package,
   Pencil,
   Trash2,
@@ -45,6 +47,7 @@ import { CollectionDetailModal } from "@/components/collections/CollectionDetail
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import useUserStore from "@/store/userStore"
+import { TaxonName } from "@nasti/common"
 
 // =============================================================================
 // Types
@@ -70,6 +73,14 @@ const ParentBatchBadge = withTooltip(
 
 export const NeedsProcessingIcon = withTooltip(
   <FileWarningIcon className="h-4 w-4 text-orange-600" />,
+)
+
+export const StatusProcessedIcon = withTooltip(
+  <BrushCleaning className="h-4 w-4" />,
+)
+
+export const StatusTestedIcon = withTooltip(
+  <FlaskConical className="h-4 w-4" />,
 )
 
 /**
@@ -227,7 +238,28 @@ export const BatchSpeciesNameField = ({
 }: {
   batch: BatchWithCurrentLocationAndSpecies
 }) => {
-  return <span className="text-sm italic">{batch.species?.name}</span>
+  if (!batch.species) return null
+  return <TaxonName name={batch.species.name} className="text-sm" />
+}
+
+/**
+ * Displays the status of the batch
+ */
+export const BatchStatusField = ({
+  batch,
+}: {
+  batch: BatchWithCurrentLocationAndSpecies
+}) => {
+  return (
+    <span className="flex gap-1 text-sm">
+      {batch.is_processed && (
+        <StatusProcessedIcon>Processed</StatusProcessedIcon>
+      )}
+      {batch.latest_quality_statistics && (
+        <StatusTestedIcon>Tested</StatusTestedIcon>
+      )}
+    </span>
+  )
 }
 
 /**
@@ -660,6 +692,10 @@ export const BatchTableRowContainer = ({
 
       <td className="px-4 py-3">
         <BatchSpeciesNameField batch={batch} />
+      </td>
+
+      <td className="px-4 py-3">
+        <BatchStatusField batch={batch} />
       </td>
 
       <td className="px-4 py-3">
