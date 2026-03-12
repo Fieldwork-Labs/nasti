@@ -104,7 +104,11 @@ export const CollectionListItem = ({
           <div>{collection.code}</div>
           <div className="flex flex-col text-start text-xs">
             {creator && <span>{creator.name ?? "Unknown Person"}</span>}
-            {<span>{new Date(collection.created_at).toLocaleString()}</span>}
+            {
+              <span>
+                {new Date(collection.collected_on).toLocaleDateString()}
+              </span>
+            }
           </div>
         </div>
       </div>

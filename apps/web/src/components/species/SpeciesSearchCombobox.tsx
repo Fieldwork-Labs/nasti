@@ -21,6 +21,7 @@ import {
   TooltipContent,
 } from "@nasti/ui/tooltip"
 import { Button } from "@nasti/ui/button"
+import { TaxonName } from "@nasti/common"
 
 type SpeciesComboboxProps = {
   value: string | null
@@ -70,9 +71,7 @@ export const SpeciesSearchCombobox = ({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <i className="max-w-56 truncate font-semibold">
-                      {selectedSpecies?.name}
-                    </i>
+                    <TaxonName name={selectedSpecies?.name} />
                   </TooltipTrigger>
                   <TooltipContent>{selectedSpecies.name}</TooltipContent>
                 </Tooltip>
@@ -154,7 +153,9 @@ export const SpeciesSearchCombobox = ({
                     className={({ active }) =>
                       cn(
                         "relative cursor-default select-none py-2 pl-6 pr-4",
-                        active ? "bg-secondary" : "text-primary",
+                        active
+                          ? "bg-secondary dark:text-black"
+                          : "text-primary dark:text-white",
                       )
                     }
                   >

@@ -19,6 +19,7 @@ type CollectionFormData = {
   species_uncertain: boolean
   field_name: string
   specimen_collected: boolean
+  collected_on: string
   latitude: number
   longitude: number
   description: string
@@ -32,6 +33,7 @@ const schema = z
     species_uncertain: z.boolean(),
     field_name: z.string(),
     specimen_collected: z.boolean(),
+    collected_on: z.string().transform((val) => val ?? new Date().toDateString),
     latitude: z
       .number({
         required_error: "Latitude is required",
@@ -104,6 +106,7 @@ export const useCollectionForm = ({
           latitude: undefined,
           longitude: undefined,
           specimen_collected: false,
+          collected_on: new Date().toLocaleDateString(),
           description: "",
           amount_description: "",
           plants_sampled_estimate: null,
@@ -201,8 +204,8 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
   const speciesValue = watch("species_id")
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
+    <div className="space-y-6 overflow-y-scroll">
+      <div className="space-y-2">
         {/* Species Selector */}
         <SpeciesSearchCombobox
           onChange={(id) => setValue("species_id", id, { shouldDirty: true })}
@@ -271,6 +274,13 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
               </label>
             </div>
           )}
+        />
+        <FormField
+          label="Collected On"
+          type="date"
+          autoComplete="off"
+          {...register("collected_on")}
+          error={errors.collected_on}
         />
 
         {/* Location */}

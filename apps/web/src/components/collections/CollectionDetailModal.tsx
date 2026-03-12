@@ -189,6 +189,9 @@ export const CollectionDetailModal = ({
                           Trip
                         </th>
                         <th className="text-muted-foreground h-min text-left align-middle font-medium">
+                          Collected on
+                        </th>
+                        <th className="text-muted-foreground h-min text-left align-middle font-medium">
                           Recorded at
                         </th>
                         <th className="text-muted-foreground h-min text-left align-middle font-medium">
@@ -221,6 +224,11 @@ export const CollectionDetailModal = ({
                               )}
                             </>
                           )}
+                        </td>
+                        <td className="h-min align-middle">
+                          {new Date(
+                            collection.collected_on,
+                          ).toLocaleDateString()}
                         </td>
                         <td className="h-min align-middle">
                           {new Date(collection.created_at).toLocaleString()}

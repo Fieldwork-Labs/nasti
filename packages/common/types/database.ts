@@ -563,6 +563,7 @@ export type Database = {
         Row: {
           amount_description: string | null
           code: string | null
+          collected_on: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -579,6 +580,7 @@ export type Database = {
         Insert: {
           amount_description?: string | null
           code?: string | null
+          collected_on?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -595,6 +597,7 @@ export type Database = {
         Update: {
           amount_description?: string | null
           code?: string | null
+          collected_on?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
