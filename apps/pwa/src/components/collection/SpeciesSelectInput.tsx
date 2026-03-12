@@ -41,7 +41,7 @@ export const SpeciesSelectInput = ({
             variant={"outline"}
             className="h-12 w-full text-lg"
           >
-            Enter Field Name
+            Enter Specimen Name
           </Button>
         </div>
       )}

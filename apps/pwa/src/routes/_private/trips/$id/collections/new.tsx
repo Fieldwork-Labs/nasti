@@ -86,7 +86,7 @@ const schema = z
       )
     },
     {
-      message: "Field name is required when no species is selected",
+      message: "Specimen name is required when no species is selected",
       path: ["field_name"],
     },
   )
@@ -110,6 +110,7 @@ function AddCollection() {
     from: "/_private/trips/$id/collections/new",
   })
   const { isOnline } = useNetwork()
+  const { user, org } = useAuth()
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
@@ -128,7 +129,10 @@ function AddCollection() {
     formState: { isValid, isSubmitting, errors },
     control,
   } = useForm<CollectionFormData>({
-    defaultValues: { ...defaultValues, species_id: initialSpeciesId },
+    defaultValues: {
+      ...defaultValues,
+      species_id: initialSpeciesId,
+    },
     resolver: zodResolver(schema),
     mode: "all",
     reValidateMode: "onChange",
@@ -138,8 +142,6 @@ function AddCollection() {
 
   const [enterFieldName, setEnterFieldName] = useState(false)
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
-
-  const { user, org } = useAuth()
 
   const navigate = useNavigate()
 
@@ -157,7 +159,9 @@ function AddCollection() {
           data.species_uncertain || data.field_name.trim().length > 0,
         id: collectionIdRef.current,
         created_by: user.id,
+        collected_by: user.id,
         created_at: new Date().toISOString(),
+        collected_on: new Date().toDateString(),
         location: locationPoint,
         organisation_id: org.organisation_id,
         trip_id: tripId,
@@ -230,7 +234,7 @@ function AddCollection() {
           )}
           {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
+              <Label>Specimen Name</Label>
               <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
@@ -274,7 +278,7 @@ function AddCollection() {
                 <PopoverContent className="w-80">
                   Select this if you are not 100% certain about the
                   identification of the species. Set by default when entering a
-                  field name rather than selecting a known species.
+                  specimen name rather than selecting a known species.
                 </PopoverContent>
               </Popover>
             </div>

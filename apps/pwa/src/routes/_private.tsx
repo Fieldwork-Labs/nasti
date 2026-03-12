@@ -1,5 +1,6 @@
 import { GeoLocationProvider } from "@/contexts/location"
 import { useAuth } from "@/hooks/useAuth"
+import { queryClient } from "@/lib/queryClient"
 import { supabase } from "@nasti/common/supabase"
 import { Spinner } from "@nasti/ui/spinner"
 import {
@@ -13,7 +14,6 @@ import { Suspense, useEffect } from "react"
 function AuthLayout() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
-
   useEffect(() => {
     if (!isLoggedIn) {
       navigate({
@@ -43,6 +43,8 @@ export const Route = createFileRoute("/_private")({
           },
         })
       } else {
+        queryClient.setQueryData(["auth", "user"], session.user)
+        queryClient.setQueryData(["auth", "loggedIn"], true)
         return {
           isLoggedIn: true,
         }

@@ -8,11 +8,21 @@ import { z } from "zod"
 import { Checkbox } from "@nasti/ui/checkbox"
 import useUserStore from "@/store/userStore"
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nasti/ui/select"
+
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
 import { withTooltip } from "@nasti/ui/tooltip"
 import { useUpdateCollection } from "../../hooks/useUpdateCollection"
 import { parsePostGISPoint } from "@nasti/common/utils"
+import { usePeople } from "@/hooks/usePeople"
 
 type CollectionFormData = {
   species_id: string | null
@@ -25,6 +35,7 @@ type CollectionFormData = {
   description: string
   amount_description: string
   plants_sampled_estimate: number | null
+  collected_by: string
 }
 
 const schema = z
@@ -55,6 +66,7 @@ const schema = z
       .optional()
       .transform((val) => val ?? ""),
     plants_sampled_estimate: z.number().nullable(),
+    collected_by: z.string().uuid(),
   })
   .refine(
     (data) => {
@@ -107,11 +119,12 @@ export const useCollectionForm = ({
           longitude: undefined,
           specimen_collected: false,
           collected_on: new Date().toLocaleDateString(),
+          collected_by: user?.id,
           description: "",
           amount_description: "",
           plants_sampled_estimate: null,
         }
-  }, [collection])
+  }, [collection, user])
 
   const form = useForm<CollectionFormData>({
     defaultValues,
@@ -203,6 +216,8 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
 
   const speciesValue = watch("species_id")
 
+  const { data: people } = usePeople()
+
   return (
     <div className="space-y-6 overflow-y-scroll">
       <div className="space-y-2">
@@ -241,7 +256,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         <FormField
           label={
             <span className="inline-flex items-center gap-2">
-              <span className={labelVariants()}>Field Name</span>
+              <span className={labelVariants()}>Specimen Name</span>
               <InfoIconWithTooltip>
                 An informal name given to the species in the field if taxonomic
                 identification uncertain.
@@ -282,6 +297,32 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           {...register("collected_on")}
           error={errors.collected_on}
         />
+
+        <div className="space-y-2">
+          <Label>Collector</Label>
+          <Controller
+            control={control}
+            name="collected_by"
+            render={({ field }) => (
+              <Select onValueChange={field.onChange}>
+                <SelectTrigger
+                  className="w-full max-w-48"
+                  value={field.value}
+                  onBlur={field.onBlur}
+                >
+                  <SelectValue placeholder="Select a person" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {people?.map((person) => (
+                      <SelectItem value={person.id}>{person.name}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
 
         {/* Location */}
         <div className="grid grid-cols-2 gap-4">
