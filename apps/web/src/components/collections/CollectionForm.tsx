@@ -22,7 +22,7 @@ type CollectionFormData = {
   latitude: number
   longitude: number
   description: string
-  weight_estimate_kg: number | null
+  amount_description: string
   plants_sampled_estimate: number | null
 }
 
@@ -48,7 +48,10 @@ const schema = z
       .max(180),
 
     description: z.string(),
-    weight_estimate_kg: z.number().nullable(),
+    amount_description: z
+      .string()
+      .optional()
+      .transform((val) => val ?? ""),
     plants_sampled_estimate: z.number().nullable(),
   })
   .refine(
@@ -91,7 +94,7 @@ export const useCollectionForm = ({
               }),
           specimen_collected: Boolean(collection.specimen_collected),
           description: collection.description ?? "",
-          weight_estimate_kg: collection.weight_estimate_kg,
+          amount_description: collection.amount_description ?? "",
           plants_sampled_estimate: collection.plants_sampled_estimate,
         }
       : {
@@ -102,7 +105,7 @@ export const useCollectionForm = ({
           longitude: undefined,
           specimen_collected: false,
           description: "",
-          weight_estimate_kg: null,
+          amount_description: "",
           plants_sampled_estimate: null,
         }
   }, [collection])
@@ -307,16 +310,13 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           error={errors.description}
         />
 
-        {/* Weight Estimate */}
         <FormField
-          label="Weight Estimate (kg)"
-          type="number"
+          label="Amount Description"
+          type="input"
           step="any"
           autoComplete="off"
-          {...register("weight_estimate_kg", {
-            valueAsNumber: true, // Transform string to number
-          })}
-          error={errors.weight_estimate_kg}
+          {...register("amount_description")}
+          error={errors.amount_description}
         />
 
         {/* Plants Sampled Estimate */}

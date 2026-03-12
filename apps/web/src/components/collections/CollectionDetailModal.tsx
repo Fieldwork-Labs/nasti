@@ -242,8 +242,8 @@ export const CollectionDetailModal = ({
                     {collection.specimen_collected && (
                       <Badge>Specimen Collected</Badge>
                     )}
-                    {collection.weight_estimate_kg && (
-                      <Badge>{collection.weight_estimate_kg} kg</Badge>
+                    {collection.amount_description && (
+                      <Badge>{collection.amount_description}</Badge>
                     )}
                     {collection.plants_sampled_estimate && (
                       <Badge>{collection.plants_sampled_estimate} plants</Badge>

@@ -51,16 +51,6 @@ export const CollectionListItem = ({
   const speciesName = species?.name ?? collection.field_name
 
   const creator = people?.find((person) => person.id === collection.created_by)
-  const details = [
-    collection.plants_sampled_estimate
-      ? `${collection.plants_sampled_estimate} plants`
-      : undefined,
-    collection.weight_estimate_kg
-      ? `${collection.weight_estimate_kg} kg`
-      : undefined,
-  ]
-    .filter(Boolean)
-    .join(" · ")
 
   return (
     <>
@@ -113,7 +103,6 @@ export const CollectionListItem = ({
           </div>
           <div>{collection.code}</div>
           <div className="flex flex-col text-start text-xs">
-            {details && <span>{details}</span>}
             {creator && <span>{creator.name ?? "Unknown Person"}</span>}
             {<span>{new Date(collection.created_at).toLocaleString()}</span>}
           </div>

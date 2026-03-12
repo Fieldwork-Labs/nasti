@@ -47,7 +47,10 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    weight_estimate_kg: stringToNumber,
+    amount_description: z
+      .string()
+      .optional()
+      .transform((val) => val || ""),
     plants_sampled_estimate: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
@@ -70,7 +73,7 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
-  weight_estimate_kg: null,
+  amount_description: "",
   plants_sampled_estimate: null,
 }
 
@@ -349,11 +352,11 @@ function CollectionForm() {
           </div>
 
           <div>
-            <Label>Weight Estimate (kg)</Label>
-            <Input {...register("weight_estimate_kg")} />
-            {errors.weight_estimate_kg && (
+            <Label>Amount Desription</Label>
+            <Input {...register("amount_description")} />
+            {errors.amount_description && (
               <p className="text-amber-600">
-                {errors.weight_estimate_kg.message}
+                {errors.amount_description.message}
               </p>
             )}
           </div>
