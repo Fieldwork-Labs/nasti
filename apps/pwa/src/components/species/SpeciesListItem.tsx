@@ -12,6 +12,7 @@ import { LeafIcon, X } from "lucide-react"
 import { useParams } from "@tanstack/react-router"
 import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
+import { TaxonName } from "@nasti/common"
 
 export const SpeciesListItem = ({
   species,
@@ -74,9 +75,10 @@ export const SpeciesListItem = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <i className="max-w-56 truncate font-semibold">
-                    {species?.name}
-                  </i>
+                  <TaxonName
+                    name={species.name}
+                    className="max-w-56 truncate font-semibold"
+                  />
                 </TooltipTrigger>
                 <TooltipContent>{species.name}</TooltipContent>
               </Tooltip>

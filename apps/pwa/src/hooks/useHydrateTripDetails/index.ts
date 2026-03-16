@@ -20,6 +20,8 @@ import {
 import { TripDetails } from "./types"
 import { useSpeciesForTrip } from "../useSpeciesForTrip"
 import { useSpeciesPhotosForTrip } from "../useSpeciesPhotosForTrip"
+import { getSpeciesListQueryOptions } from "../useSpeciesList"
+import { queryClient } from "@/lib/queryClient"
 
 export * from "./types"
 
@@ -117,6 +119,8 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
 
   const pendingCollections = usePendingCollections({ tripId: id })
   const tripSpeciesQuery = useSpeciesForTrip(id)
+  // we don't use this data directly here, but we should ensure it's up to date
+  queryClient.ensureQueryData(getSpeciesListQueryOptions())
 
   const tripDetailsQuery = useTripDetails({ tripId: id })
 
