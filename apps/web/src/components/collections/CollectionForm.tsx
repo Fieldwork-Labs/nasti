@@ -1,7 +1,7 @@
 import { type Collection } from "@nasti/common/types"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { InfoIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -23,6 +23,9 @@ import { withTooltip } from "@nasti/ui/tooltip"
 import { useUpdateCollection } from "../../hooks/useUpdateCollection"
 import { parsePostGISPoint } from "@nasti/common/utils"
 import { usePeople } from "@/hooks/usePeople"
+import { LocationSelectorMap } from "../common/LocationSelectorMap"
+import { useTripDetail } from "@/hooks/useTripDetail"
+import { Button } from "@nasti/ui/button"
 
 type CollectionFormData = {
   species_id: string | null
@@ -35,10 +38,10 @@ type CollectionFormData = {
   description: string
   amount_description: string
   plants_sampled_estimate: number | null
-  collected_by: string
+  collected_by: string | null
 }
 
-const schema = z
+export const schema = z
   .object({
     species_id: z.string().nullable(),
     species_uncertain: z.boolean(),
@@ -66,7 +69,7 @@ const schema = z
       .optional()
       .transform((val) => val ?? ""),
     plants_sampled_estimate: z.number().nullable(),
-    collected_by: z.string().uuid(),
+    collected_by: z.string().uuid().nullable(),
   })
   .refine(
     (data) => {
@@ -77,7 +80,7 @@ const schema = z
       return true
     },
     {
-      message: "Field name is required when no species is selected",
+      message: "Specimen name is required when no species is selected",
       path: ["field_name"],
     },
   )
@@ -93,6 +96,7 @@ export const useCollectionForm = ({
 }) => {
   const { organisation, user } = useUserStore()
   const [collection, setCollection] = useState<Collection | undefined>(instance)
+  const [showLocationMap, setShowLocationMap] = useState(false)
 
   const defaultValues = useMemo(() => {
     return collection
@@ -110,6 +114,8 @@ export const useCollectionForm = ({
           description: collection.description ?? "",
           amount_description: collection.amount_description ?? "",
           plants_sampled_estimate: collection.plants_sampled_estimate,
+          collected_on: collection.collected_on,
+          collected_by: collection.collected_by,
         }
       : {
           species_id: null,
@@ -124,22 +130,13 @@ export const useCollectionForm = ({
           amount_description: "",
           plants_sampled_estimate: null,
         }
-  }, [collection, user])
+  }, [collection, user?.id])
 
   const form = useForm<CollectionFormData>({
     defaultValues,
     resolver: zodResolver(schema),
     mode: "onChange",
-    criteriaMode: "all",
-    reValidateMode: "onChange",
   })
-
-  useEffect(() => {
-    // Only reset if the form has been mounted already
-    if (form) {
-      form.reset(defaultValues)
-    }
-  }, [defaultValues, form])
 
   const {
     mutateAsync: updateCollection,
@@ -175,10 +172,11 @@ export const useCollectionForm = ({
 
       if (onSuccess && updatedRecord) {
         setCollection(updatedRecord)
+        form.reset(data)
         onSuccess(updatedRecord)
       }
     },
-    [user, organisation, tripId, collection, updateCollection, onSuccess],
+    [user, organisation, tripId, collection, updateCollection, onSuccess, form],
   )
 
   return {
@@ -186,13 +184,15 @@ export const useCollectionForm = ({
     collection,
     form,
     onSubmit: form.handleSubmit(onSubmit),
+    showLocationMap,
+    setShowLocationMap,
     isPending,
   }
 }
 
 type CollectionFormProps = Pick<
   ReturnType<typeof useCollectionForm>,
-  "form" | "tripId"
+  "form" | "tripId" | "setShowLocationMap"
 >
 
 // Create tooltip-wrapped component
@@ -200,19 +200,90 @@ const InfoIconWithTooltip = withTooltip(
   <InfoIcon className="h-4 w-4 text-xs" />,
 )
 
-export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
+export const CollectionLocationSelector = ({
+  tripId,
+  onLocationSelected,
+  initialLocation,
+  onClose,
+}: {
+  tripId: string
+  onLocationSelected: ({ lat, lng }: { lat: number; lng: number }) => void
+  initialLocation?: { lat: number; lng: number }
+  onClose: () => void
+}) => {
+  const { data: trip } = useTripDetail(tripId)
+  const [location, setLocation] = useState<
+    { lat: number; lng: number } | undefined
+  >(initialLocation)
+
+  const initialViewCoord = useMemo(() => {
+    if (initialLocation) return initialLocation
+    if (trip?.location_coordinate) {
+      const parsedLocation = parsePostGISPoint(trip?.location_coordinate)
+      return {
+        lat: parsedLocation.latitude,
+        lng: parsedLocation.longitude,
+      }
+    }
+    return {
+      lat: -28,
+      lng: 124,
+    }
+  }, [initialLocation, trip])
+
+  const [viewState, setViewState] = useState({
+    latitude: initialViewCoord.lat,
+    longitude: initialViewCoord.lng,
+    zoom: 10,
+  })
+
+  const handleSave = () => {
+    if (location) {
+      onLocationSelected(location)
+      onClose()
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <LocationSelectorMap
+        onLocationSelected={setLocation}
+        location={location}
+        viewState={viewState}
+        setViewState={setViewState}
+      />
+      <div className="flex w-full justify-between gap-2">
+        <Button
+          className="w-full cursor-pointer"
+          onClick={onClose}
+          variant="secondary"
+        >
+          Cancel
+        </Button>
+        <Button
+          className="w-full cursor-pointer"
+          onClick={handleSave}
+          disabled={!location}
+        >
+          Save
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export const CollectionForm = ({
+  form,
+  tripId,
+  setShowLocationMap,
+}: CollectionFormProps) => {
   const {
     register,
     control,
     formState: { errors },
-    reset,
     setValue,
     watch,
   } = form
-
-  useEffect(() => {
-    return () => reset()
-  }, [reset])
 
   const speciesValue = watch("species_id")
 
@@ -304,10 +375,13 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
             control={control}
             name="collected_by"
             render={({ field }) => (
-              <Select onValueChange={field.onChange}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value ?? undefined}
+              >
                 <SelectTrigger
                   className="w-full max-w-48"
-                  value={field.value}
+                  value={field.value ?? undefined}
                   onBlur={field.onBlur}
                 >
                   <SelectValue placeholder="Select a person" />
@@ -315,7 +389,9 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
                 <SelectContent>
                   <SelectGroup>
                     {people?.map((person) => (
-                      <SelectItem value={person.id}>{person.name}</SelectItem>
+                      <SelectItem key={person.id} value={person.id}>
+                        {person.name}
+                      </SelectItem>
                     ))}
                   </SelectGroup>
                 </SelectContent>
@@ -325,10 +401,19 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         </div>
 
         {/* Location */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-center justify-between">
           <Label className="col-span-2">
             Location Coordinate (decimal degrees, WGS84)
           </Label>
+          <Button
+            variant={"outline"}
+            size={"sm"}
+            onClick={() => setShowLocationMap(true)}
+          >
+            Select on Map
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             label="Latitude"
             type="number"

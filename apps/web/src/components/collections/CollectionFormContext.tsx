@@ -42,7 +42,14 @@ export const CollectionFormProvider = ({
   close: () => void
   children: React.ReactNode
 }) => {
-  const { onSubmit, isPending, form, collection } = useCollectionForm({
+  const {
+    onSubmit,
+    isPending,
+    form,
+    collection,
+    showLocationMap,
+    setShowLocationMap,
+  } = useCollectionForm({
     tripId,
     instance,
     onSuccess: (_) => {
@@ -61,6 +68,8 @@ export const CollectionFormProvider = ({
         setStage,
         close,
         onSubmit,
+        showLocationMap,
+        setShowLocationMap,
         collection,
         isPending,
         form,

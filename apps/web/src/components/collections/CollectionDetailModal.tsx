@@ -59,6 +59,34 @@ const PhotosTab = ({
   )
 }
 
+const EditButtons = ({
+  openUpdateModal,
+  openDeleteModal,
+}: {
+  openUpdateModal: () => void
+  openDeleteModal: () => void
+}) => (
+  <span className="inline-flex space-x-2">
+    <Button
+      size={"icon"}
+      onClick={openUpdateModal}
+      title="Edit Collection"
+      variant={"ghost"}
+    >
+      <PencilIcon className="h-4 w-4" />
+    </Button>
+    <Button
+      size={"icon"}
+      onClick={openDeleteModal}
+      title="Delete Collection"
+      className="dark:text-primary-foreground cursor-pointer bg-transparent text-black"
+      variant={"destructive"}
+    >
+      <TrashIcon className="h-4 w-4" />
+    </Button>
+  </span>
+)
+
 export const CollectionDetailModal = ({
   collection,
   open,
@@ -121,27 +149,6 @@ export const CollectionDetailModal = ({
   const { data: people } = usePeople()
   const creator = people?.find((person) => person.id === collection?.created_by)
 
-  const EditButtons = () => (
-    <span className="inline-flex space-x-2">
-      <Button
-        size={"icon"}
-        onClick={openUpdateModal}
-        title="Edit Collection"
-        className="bg-transparent"
-      >
-        <PencilIcon className="h-4 w-4 text-white" />
-      </Button>
-      <Button
-        size={"icon"}
-        onClick={openDeleteModal}
-        title="Delete Collection"
-        className="bg-transparent"
-        variant={"destructive"}
-      >
-        <TrashIcon className="h-4 w-4" />
-      </Button>
-    </span>
-  )
   if (!collection) return null
 
   return (
@@ -152,7 +159,12 @@ export const CollectionDetailModal = ({
         title={
           <div className="flex justify-between">
             <span>Collection</span>
-            {isAdmin && <EditButtons />}
+            {isAdmin && (
+              <EditButtons
+                openUpdateModal={openUpdateModal}
+                openDeleteModal={openDeleteModal}
+              />
+            )}
           </div>
         }
       >

@@ -11,11 +11,12 @@ import { Collection } from "@nasti/common/types"
 import React, { useCallback, useMemo, useState } from "react"
 import { CollectionPhotoUpload } from "../collectionPhotos/CollectionPhotoUpload"
 import { Spinner } from "@nasti/ui/spinner"
-import { CollectionForm } from "./CollectionForm"
+import { CollectionForm, CollectionLocationSelector } from "./CollectionForm"
 import {
   CollectionFormProvider,
   useCollectionFormContext,
 } from "./CollectionFormContext"
+import { useParams } from "@tanstack/react-router"
 
 export type ModalProps = {
   open: boolean
@@ -56,15 +57,61 @@ export const CollectionFormPhotosModal = () => {
 }
 
 export const AddCollectionFormModal = () => {
-  const { close, form, onSubmit, isPending, tripId } =
-    useCollectionFormContext()
+  const {
+    close,
+    form,
+    onSubmit,
+    isPending,
+    tripId,
+    showLocationMap,
+    setShowLocationMap,
+  } = useCollectionFormContext()
+
+  const handleSelectLocation = useCallback(
+    ({ lat, lng }: { lat: number; lng: number }) => {
+      const latValue = parseFloat(lat.toPrecision(8))
+      const lngValue = parseFloat(lng.toPrecision(9))
+      form.setValue("latitude", latValue, { shouldValidate: true })
+      form.setValue("longitude", lngValue, { shouldValidate: true })
+    },
+    [form],
+  )
+
+  const initialLocation = useMemo(() => {
+    if (!form.watch("latitude") || !form.watch("longitude")) return undefined
+    return {
+      lat: form.watch("latitude"),
+      lng: form.watch("longitude"),
+    }
+  }, [form])
+
+  if (!tripId) return null
+
+  if (showLocationMap)
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select Collection Location</AlertDialogTitle>
+          <CollectionLocationSelector
+            tripId={tripId}
+            initialLocation={initialLocation}
+            onLocationSelected={handleSelectLocation}
+            onClose={() => setShowLocationMap(false)}
+          />
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    )
 
   return (
-    <AlertDialogContent>
+    <AlertDialogContent className="h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>New collection</AlertDialogTitle>
 
-        <CollectionForm {...{ form }} tripId={tripId} />
+        <CollectionForm
+          {...{ form }}
+          tripId={tripId}
+          setShowLocationMap={setShowLocationMap}
+        />
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel className="w-full" onClick={close}>
@@ -134,12 +181,14 @@ export const UpdateCollectionWizardModal = ({
 }) => {
   const [stage, setStage] = useState<"form" | "photos">("form")
 
+  const { id: tripId } = useParams({ from: "/_private/trips/$id/" })
   return (
     <CollectionFormProvider
       stage={stage}
       setStage={setStage}
       instance={instance}
       close={close}
+      tripId={tripId}
     >
       <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
         {/* unmount the form on modal close, resets the form values */}
@@ -150,9 +199,17 @@ export const UpdateCollectionWizardModal = ({
   )
 }
 
-export const UpdateCollectionFormModal = () => {
-  const { close, form, onSubmit, isPending, setStage, tripId } =
-    useCollectionFormContext()
+const UpdateCollectionFormModal = () => {
+  const {
+    close,
+    form,
+    onSubmit,
+    isPending,
+    setStage,
+    tripId,
+    showLocationMap,
+    setShowLocationMap,
+  } = useCollectionFormContext()
 
   const handleGoToPhotos = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -172,19 +229,64 @@ export const UpdateCollectionFormModal = () => {
     else return "Save and Update Photos"
   }, [form.formState.isDirty])
 
+  const handleSelectLocation = useCallback(
+    ({ lat, lng }: { lat: number; lng: number }) => {
+      form.setValue("latitude", parseFloat(lat.toPrecision(8)), {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+      form.setValue("longitude", parseFloat(lng.toPrecision(9)), {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+    },
+    [form],
+  )
+
+  const initialLocation = useMemo(() => {
+    if (!form.watch("latitude") || !form.watch("longitude")) return undefined
+    return {
+      lat: form.watch("latitude"),
+      lng: form.watch("longitude"),
+    }
+  }, [form])
+
+  if (!tripId) return null
+
+  if (showLocationMap)
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select Collection Location</AlertDialogTitle>
+          <CollectionLocationSelector
+            tripId={tripId}
+            initialLocation={initialLocation}
+            onLocationSelected={handleSelectLocation}
+            onClose={() => setShowLocationMap(false)}
+          />
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    )
+
   return (
-    <AlertDialogContent>
+    <AlertDialogContent className="h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>Update collection</AlertDialogTitle>
-        <CollectionForm {...{ form }} tripId={tripId} />
+        <CollectionForm
+          {...{ form }}
+          tripId={tripId}
+          setShowLocationMap={setShowLocationMap}
+        />
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel className="w-full" onClick={close}>
+        <AlertDialogCancel className="w-full cursor-pointer" onClick={close}>
           Cancel
         </AlertDialogCancel>
         <AlertDialogAction
           onClick={handleGoToPhotos}
-          className="w-full"
+          className="w-full cursor-pointer"
           disabled={isPending || !form.formState.isValid}
         >
           {!isPending && <span>{goToPhotosText}</span>}
@@ -192,7 +294,7 @@ export const UpdateCollectionFormModal = () => {
         </AlertDialogAction>
         <AlertDialogAction
           onClick={onSubmit}
-          className="w-full"
+          className="w-full cursor-pointer"
           disabled={
             isPending || !form.formState.isValid || !form.formState.isDirty
           }
