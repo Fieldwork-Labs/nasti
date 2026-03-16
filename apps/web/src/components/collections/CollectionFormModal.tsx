@@ -92,11 +92,7 @@ export const AddCollectionFormModal = () => {
       <AlertDialogHeader>
         <AlertDialogTitle>New collection</AlertDialogTitle>
 
-        <CollectionForm
-          {...{ form }}
-          tripId={tripId}
-          setShowLocationMap={setShowLocationMap}
-        />
+        <CollectionForm {...{ form }} tripId={tripId} />
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel className="w-full" onClick={close}>
@@ -237,11 +233,7 @@ const UpdateCollectionFormModal = () => {
     <AlertDialogContent className="h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>Update collection</AlertDialogTitle>
-        <CollectionForm
-          {...{ form }}
-          tripId={tripId}
-          setShowLocationMap={setShowLocationMap}
-        />
+        <CollectionForm {...{ form }} tripId={tripId} />
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel className="w-full cursor-pointer" onClick={close}>
