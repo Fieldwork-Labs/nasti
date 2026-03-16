@@ -49,6 +49,8 @@ export const CollectionFormProvider = ({
     collection,
     showLocationMap,
     setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
   } = useCollectionForm({
     tripId,
     instance,
@@ -70,6 +72,8 @@ export const CollectionFormProvider = ({
         onSubmit,
         showLocationMap,
         setShowLocationMap,
+        handleSelectLocation,
+        initialLocation,
         collection,
         isPending,
         form,

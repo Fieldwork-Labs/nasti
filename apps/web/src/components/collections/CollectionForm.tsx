@@ -1,13 +1,12 @@
-import { type Collection } from "@nasti/common/types"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { type Collection } from "@nasti/common/types"
 import { InfoIcon } from "lucide-react"
 import { useCallback, useMemo, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 
-import { Checkbox } from "@nasti/ui/checkbox"
 import useUserStore from "@/store/userStore"
-import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
+import { Checkbox } from "@nasti/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -16,16 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@nasti/ui/select"
+import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
 
+import { usePeople } from "@/hooks/usePeople"
+import { parsePostGISPoint } from "@nasti/common/utils"
+import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
 import { withTooltip } from "@nasti/ui/tooltip"
 import { useUpdateCollection } from "../../hooks/useUpdateCollection"
-import { parsePostGISPoint } from "@nasti/common/utils"
-import { usePeople } from "@/hooks/usePeople"
-import { LocationSelectorMap } from "../common/LocationSelectorMap"
-import { useTripDetail } from "@/hooks/useTripDetail"
-import { Button } from "@nasti/ui/button"
 
 type CollectionFormData = {
   species_id: string | null
@@ -179,11 +177,37 @@ export const useCollectionForm = ({
     [user, organisation, tripId, collection, updateCollection, onSuccess, form],
   )
 
+  const handleSelectLocation = useCallback(
+    ({ lat, lng }: { lat: number; lng: number }) => {
+      form.setValue("latitude", parseFloat(lat.toPrecision(8)), {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+      form.setValue("longitude", parseFloat(lng.toPrecision(9)), {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      })
+    },
+    [form],
+  )
+
+  const initialLocation = useMemo(() => {
+    if (!form.watch("latitude") || !form.watch("longitude")) return undefined
+    return {
+      lat: form.watch("latitude"),
+      lng: form.watch("longitude"),
+    }
+  }, [form])
+
   return {
     tripId,
     collection,
     form,
     onSubmit: form.handleSubmit(onSubmit),
+    handleSelectLocation,
+    initialLocation,
     showLocationMap,
     setShowLocationMap,
     isPending,
@@ -199,78 +223,6 @@ type CollectionFormProps = Pick<
 const InfoIconWithTooltip = withTooltip(
   <InfoIcon className="h-4 w-4 text-xs" />,
 )
-
-export const CollectionLocationSelector = ({
-  tripId,
-  onLocationSelected,
-  initialLocation,
-  onClose,
-}: {
-  tripId: string
-  onLocationSelected: ({ lat, lng }: { lat: number; lng: number }) => void
-  initialLocation?: { lat: number; lng: number }
-  onClose: () => void
-}) => {
-  const { data: trip } = useTripDetail(tripId)
-  const [location, setLocation] = useState<
-    { lat: number; lng: number } | undefined
-  >(initialLocation)
-
-  const initialViewCoord = useMemo(() => {
-    if (initialLocation) return initialLocation
-    if (trip?.location_coordinate) {
-      const parsedLocation = parsePostGISPoint(trip?.location_coordinate)
-      return {
-        lat: parsedLocation.latitude,
-        lng: parsedLocation.longitude,
-      }
-    }
-    return {
-      lat: -28,
-      lng: 124,
-    }
-  }, [initialLocation, trip])
-
-  const [viewState, setViewState] = useState({
-    latitude: initialViewCoord.lat,
-    longitude: initialViewCoord.lng,
-    zoom: 10,
-  })
-
-  const handleSave = () => {
-    if (location) {
-      onLocationSelected(location)
-      onClose()
-    }
-  }
-
-  return (
-    <div className="space-y-2">
-      <LocationSelectorMap
-        onLocationSelected={setLocation}
-        location={location}
-        viewState={viewState}
-        setViewState={setViewState}
-      />
-      <div className="flex w-full justify-between gap-2">
-        <Button
-          className="w-full cursor-pointer"
-          onClick={onClose}
-          variant="secondary"
-        >
-          Cancel
-        </Button>
-        <Button
-          className="w-full cursor-pointer"
-          onClick={handleSave}
-          disabled={!location}
-        >
-          Save
-        </Button>
-      </div>
-    </div>
-  )
-}
 
 export const CollectionForm = ({
   form,

@@ -11,12 +11,13 @@ import { Collection } from "@nasti/common/types"
 import React, { useCallback, useMemo, useState } from "react"
 import { CollectionPhotoUpload } from "../collectionPhotos/CollectionPhotoUpload"
 import { Spinner } from "@nasti/ui/spinner"
-import { CollectionForm, CollectionLocationSelector } from "./CollectionForm"
+import { CollectionForm } from "./CollectionForm"
 import {
   CollectionFormProvider,
   useCollectionFormContext,
 } from "./CollectionFormContext"
 import { useParams } from "@tanstack/react-router"
+import { DataItemLocationSelectorMap } from "../common/DataItemLocationSelectorMap"
 
 export type ModalProps = {
   open: boolean
@@ -65,25 +66,9 @@ export const AddCollectionFormModal = () => {
     tripId,
     showLocationMap,
     setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
   } = useCollectionFormContext()
-
-  const handleSelectLocation = useCallback(
-    ({ lat, lng }: { lat: number; lng: number }) => {
-      const latValue = parseFloat(lat.toPrecision(8))
-      const lngValue = parseFloat(lng.toPrecision(9))
-      form.setValue("latitude", latValue, { shouldValidate: true })
-      form.setValue("longitude", lngValue, { shouldValidate: true })
-    },
-    [form],
-  )
-
-  const initialLocation = useMemo(() => {
-    if (!form.watch("latitude") || !form.watch("longitude")) return undefined
-    return {
-      lat: form.watch("latitude"),
-      lng: form.watch("longitude"),
-    }
-  }, [form])
 
   if (!tripId) return null
 
@@ -92,7 +77,7 @@ export const AddCollectionFormModal = () => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Select Collection Location</AlertDialogTitle>
-          <CollectionLocationSelector
+          <DataItemLocationSelectorMap
             tripId={tripId}
             initialLocation={initialLocation}
             onLocationSelected={handleSelectLocation}
@@ -209,6 +194,8 @@ const UpdateCollectionFormModal = () => {
     tripId,
     showLocationMap,
     setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
   } = useCollectionFormContext()
 
   const handleGoToPhotos = useCallback(
@@ -229,30 +216,6 @@ const UpdateCollectionFormModal = () => {
     else return "Save and Update Photos"
   }, [form.formState.isDirty])
 
-  const handleSelectLocation = useCallback(
-    ({ lat, lng }: { lat: number; lng: number }) => {
-      form.setValue("latitude", parseFloat(lat.toPrecision(8)), {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      })
-      form.setValue("longitude", parseFloat(lng.toPrecision(9)), {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      })
-    },
-    [form],
-  )
-
-  const initialLocation = useMemo(() => {
-    if (!form.watch("latitude") || !form.watch("longitude")) return undefined
-    return {
-      lat: form.watch("latitude"),
-      lng: form.watch("longitude"),
-    }
-  }, [form])
-
   if (!tripId) return null
 
   if (showLocationMap)
@@ -260,7 +223,7 @@ const UpdateCollectionFormModal = () => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Select Collection Location</AlertDialogTitle>
-          <CollectionLocationSelector
+          <DataItemLocationSelectorMap
             tripId={tripId}
             initialLocation={initialLocation}
             onLocationSelected={handleSelectLocation}
