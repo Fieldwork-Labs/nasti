@@ -164,7 +164,7 @@ function CollectionForm() {
 
       const { latitude, longitude, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
-      console.log({ locationPoint })
+
       const payload: UpdateCollection = {
         id: collectionIdRef.current,
         trip_id: tripId,
@@ -242,7 +242,7 @@ function CollectionForm() {
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   // You shouldn't be here
-  if (initialValues.created_by !== user?.id || org?.role !== ROLE.ADMIN)
+  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN)
     return navigate({
       to: "/trips/$id/collections/$collectionId",
       params: { id: tripId, collectionId },
