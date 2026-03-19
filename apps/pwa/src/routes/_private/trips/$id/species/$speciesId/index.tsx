@@ -5,6 +5,7 @@ import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 import { useState, useEffect } from "react"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch"
+import { useSpeciesList } from "@/hooks/useSpeciesList"
 
 const SpeciesDetail = () => {
   const { id: tripId, speciesId } = useParams({
@@ -17,8 +18,9 @@ const SpeciesDetail = () => {
 
   const { data: tripData, isFetching } = useHydrateTripDetails({ id: tripId })
 
-  // Get species from trip data (offline-safe)
-  const species = tripData?.species?.find((s) => s.id === speciesId)
+  // Get species from species list (offline-safe)
+  const { data: speciesList } = useSpeciesList()
+  const species = speciesList?.find((s) => s.id === speciesId)
   const speciesPhotos = tripData?.speciesPhotosMap?.[speciesId] || []
   const primaryPhoto = speciesPhotos[0]
 
@@ -46,9 +48,7 @@ const SpeciesDetail = () => {
   if (!species) {
     return (
       <div className="px-auto mx-auto mt-36 flex flex-col items-center text-center">
-        <span className="text-2xl text-orange-600/80">
-          Species not found in trip
-        </span>
+        <span className="text-2xl text-orange-600/80">Species not found</span>
       </div>
     )
   }
