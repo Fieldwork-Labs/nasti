@@ -11,6 +11,7 @@ import {
   useScoutingNoteFormContext,
 } from "./ScoutingNoteFormContext"
 import { Button } from "@nasti/ui/button"
+import { useState } from "react"
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
@@ -30,78 +31,114 @@ export const ScoutingNoteForm = ({ form, tripId }: ScoutingNoteFormProps) => {
 
   const speciesValue = watch("species_id")
 
+  const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(null)
+
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        {/* Species Selector */}
-        <SpeciesSearchCombobox
-          onChange={(id) => setValue("species_id", id, { shouldDirty: true })}
-          value={speciesValue}
-          tripId={tripId}
-        />
-
-        {/* Species Uncertain Checkbox */}
-        <Controller
-          control={control}
-          name="species_uncertain"
-          render={({ field }) => (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="species_uncertain"
-                checked={field.value}
-                onCheckedChange={field.onChange}
+      <div className="space-y-2">
+        {showSpeciesInput === null && (
+          <div className="flex w-full gap-2">
+            <Button
+              className="w-full"
+              onClick={() => setShowSpeciesInput(true)}
+              variant="outline"
+            >
+              Select Species
+            </Button>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setValue("species_uncertain", true, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+                setShowSpeciesInput(false)
+              }}
+              variant="outline"
+            >
+              Enter Specimen Name
+            </Button>
+          </div>
+        )}
+        {showSpeciesInput !== null && (
+          <div className="space-y-2">
+            {showSpeciesInput && (
+              <SpeciesSearchCombobox
+                onChange={(id) =>
+                  setValue("species_id", id, { shouldDirty: true })
+                }
+                value={speciesValue}
+                tripId={tripId}
               />
-              <label htmlFor="species_uncertain">
-                <span className="inline-flex items-center gap-2">
-                  <span className={labelVariants()}>Species Uncertain</span>
-                  <InfoIconWithTooltip>
-                    Check this box if you are uncertain about the identification
-                    of the species.
-                  </InfoIconWithTooltip>
-                </span>
-              </label>
-            </div>
-          )}
-        />
+            )}
 
-        {/* Field Name */}
-        <FormField
-          label={
-            <span className="inline-flex items-center gap-2">
-              <span className={labelVariants()}>Field Name</span>
-              <InfoIconWithTooltip>
-                An informal name given to the species in the field if taxonomic
-                identification uncertain.
-              </InfoIconWithTooltip>
-            </span>
-          }
-          {...register("field_name")}
-          autoComplete="off"
-          error={errors.field_name}
-        />
-
-        {/* Specimen Collected Checkbox */}
-        <Controller
-          control={control}
-          name="specimen_collected"
-          render={({ field }) => (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="specimen_collected"
-                checked={field.value}
-                onCheckedChange={field.onChange}
+            {/* Field Name */}
+            {showSpeciesInput === false && (
+              <FormField
+                label={
+                  <span className="inline-flex items-center gap-2">
+                    <span className={labelVariants()}>Specimen Name</span>
+                    <InfoIconWithTooltip>
+                      An informal name given to the species in the field if
+                      taxonomic identification uncertain.
+                    </InfoIconWithTooltip>
+                  </span>
+                }
+                {...register("field_name")}
+                autoComplete="off"
+                error={errors.field_name}
               />
-              <label htmlFor="specimen_collected">
-                <span className="inline-flex items-center gap-2">
-                  <span className={labelVariants()}>Specimen Collected</span>
-                  <InfoIconWithTooltip>
-                    Check this box if a specimen was collected.
-                  </InfoIconWithTooltip>
-                </span>
-              </label>
-            </div>
-          )}
-        />
+            )}
+
+            <Controller
+              control={control}
+              name="species_uncertain"
+              render={({ field }) => (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="species_uncertain"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <label htmlFor="species_uncertain">
+                    <span className="inline-flex items-center gap-2">
+                      <span className={labelVariants()}>Species Uncertain</span>
+                      <InfoIconWithTooltip>
+                        Check this box if you are uncertain about the
+                        identification of the species.
+                      </InfoIconWithTooltip>
+                    </span>
+                  </label>
+                </div>
+              )}
+            />
+
+            {/* Specimen Collected Checkbox */}
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field }) => (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="specimen_collected"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <label htmlFor="specimen_collected">
+                    <span className="inline-flex items-center gap-2">
+                      <span className={labelVariants()}>
+                        Specimen Collected
+                      </span>
+                      <InfoIconWithTooltip>
+                        Check this box if a specimen was collected.
+                      </InfoIconWithTooltip>
+                    </span>
+                  </label>
+                </div>
+              )}
+            />
+          </div>
+        )}
 
         {/* Location */}
         <div className="flex items-center justify-between">
