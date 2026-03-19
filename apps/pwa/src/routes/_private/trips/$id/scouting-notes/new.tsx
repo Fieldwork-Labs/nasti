@@ -148,7 +148,7 @@ function AddCollection() {
 
   return (
     <div className="h-11/12 flex flex-col justify-between gap-2">
-      <div className="overflow-y-scroll">
+      <div>
         <div className="flex items-center p-2 text-2xl">New Scouting Note</div>
         <div className="flex flex-col gap-4 px-1">
           {!enterFieldName && (

@@ -89,7 +89,7 @@ export const AddScoutingNoteFormModal = () => {
     )
 
   return (
-    <AlertDialogContent>
+    <AlertDialogContent className="max-h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>New scouting note</AlertDialogTitle>
 
@@ -215,7 +215,7 @@ export const UpdateScoutingNoteFormModal = () => {
 
   if (showLocationMap)
     return (
-      <AlertDialogContent>
+      <AlertDialogContent className="max-h-screen overflow-y-scroll">
         <AlertDialogHeader>
           <AlertDialogTitle>Select Scouting Note Location</AlertDialogTitle>
           <DataItemLocationSelectorMap

@@ -46,7 +46,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
   const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(null)
 
   return (
-    <div className="space-y-6 overflow-y-scroll">
+    <div className="space-y-6">
       {showSpeciesInput === null && (
         <div className="flex w-full gap-2">
           <Button

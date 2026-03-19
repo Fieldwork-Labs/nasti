@@ -88,7 +88,7 @@ export const AddCollectionFormModal = () => {
     )
 
   return (
-    <AlertDialogContent className="h-screen overflow-y-scroll">
+    <AlertDialogContent className="max-h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>New collection</AlertDialogTitle>
 
@@ -230,7 +230,7 @@ const UpdateCollectionFormModal = () => {
     )
 
   return (
-    <AlertDialogContent className="h-screen overflow-y-scroll">
+    <AlertDialogContent className="max-h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>Update collection</AlertDialogTitle>
         <CollectionForm {...{ form }} tripId={tripId} />
