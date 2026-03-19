@@ -54,6 +54,7 @@ import { Link, useParams } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
+import { useSpeciesList } from "@/hooks/useSpeciesList"
 
 // Base interface for entities that can be displayed in the list
 interface DisplayableEntity {
@@ -262,17 +263,18 @@ export const TripCollectionList = ({ id }: { id: string }) => {
   const { getDistanceKm } = useGeoLocation()
 
   const miniSearchRef = useRef<MiniSearch<DataWithSpecies> | null>(null)
-
+  const { data: speciesList } = useSpeciesList()
   const speciesMap = useMemo(() => {
-    const species = data.species ?? []
-    return species.reduce(
-      (acc, species) => {
-        acc[species.id] = species
-        return acc
-      },
-      {} as Record<string, Species>,
+    return (
+      speciesList?.reduce(
+        (acc, species) => {
+          acc[species.id] = species
+          return acc
+        },
+        {} as Record<string, Species>,
+      ) ?? {}
     )
-  }, [data.species])
+  }, [speciesList])
 
   const peopleMap = useMemo(() => {
     const people = data.people ?? []
