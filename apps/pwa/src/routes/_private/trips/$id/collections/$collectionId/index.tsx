@@ -17,6 +17,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 import { Button } from "@nasti/ui/button"
 import { ROLE } from "@nasti/common/types"
 import { Badge } from "@nasti/ui/badge"
+import { TaxonName } from "@nasti/common"
 
 const CollectionDetail = () => {
   const { user, org } = useAuth()
@@ -45,7 +46,11 @@ const CollectionDetail = () => {
       <div className="flex items-center justify-between align-middle">
         <div className="flex items-center text-2xl">
           <ChevronLeft onClick={handleBackClick} width={36} height={36} />{" "}
-          {collection?.species?.name || collection.field_name}
+          {collection?.species?.name ? (
+            <TaxonName name={collection?.species?.name} />
+          ) : (
+            collection.field_name
+          )}
         </div>
         {canEdit && (
           <Link
