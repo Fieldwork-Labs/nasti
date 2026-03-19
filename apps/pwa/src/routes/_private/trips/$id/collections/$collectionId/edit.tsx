@@ -50,6 +50,7 @@ const schema = z
     amount_description: z
       .string()
       .optional()
+      .nullish()
       .transform((val) => val || ""),
     plants_sampled_estimate: stringToNumber,
     latitude: stringToNumber,
