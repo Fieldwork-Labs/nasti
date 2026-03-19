@@ -74,7 +74,7 @@ export const SpeciesDrawer = ({
           </DrawerDescription>
         </DrawerHeader>
         <SpeciesSelectList
-          species={species ?? undefined}
+          targetSpecies={species ?? undefined}
           onSelectSpecies={(sp) =>
             navigate({
               to: "/trips/$id/species/$speciesId",
