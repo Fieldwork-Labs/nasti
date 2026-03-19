@@ -43,6 +43,23 @@ const AddSpeciesModal = ({
   )
 }
 
+const TruncateTooltip = ({
+  tooltipTrigger,
+  tooltipContent,
+}: {
+  tooltipTrigger: React.ReactNode
+  tooltipContent: React.ReactNode
+}) => {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{tooltipTrigger}</TooltipTrigger>
+        <TooltipContent>{tooltipContent}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 export const SpeciesListItem = ({ id }: { id: string }) => {
   const { data: species, error } = useSpecies(id)
   const { data } = useALASpeciesDetail(species?.ala_guid)
@@ -73,28 +90,29 @@ export const SpeciesListItem = ({ id }: { id: string }) => {
       )}
       <div className="text-foreground flex h-full w-full flex-col py-1 pr-2">
         <div className="flex items-center justify-between">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <TaxonName
-                  name={species?.name}
-                  className="max-w-56 truncate font-semibold"
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <TaxonName name={species?.name} />
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <TruncateTooltip
+            tooltipTrigger={
+              <TaxonName
+                name={species.name}
+                className="max-w-56 truncate font-semibold"
+              />
+            }
+            tooltipContent={species.name}
+          />
         </div>
         <div className="flex flex-col items-start text-xs">
-          {data.commonNames && data.commonNames.length > 0 && (
+          {data.commonNames && data.commonNames?.length > 0 && (
             <span>{data.commonNames[0].nameString}</span>
           )}
           {species.indigenous_name && (
-            <span>
-              <i>{species.indigenous_name}</i>
-            </span>
+            <TruncateTooltip
+              tooltipTrigger={
+                <span className="max-w-56 truncate">
+                  {species.indigenous_name}
+                </span>
+              }
+              tooltipContent={<span>{species.indigenous_name}</span>}
+            />
           )}
         </div>
       </div>

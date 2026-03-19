@@ -12,13 +12,13 @@ import { X } from "lucide-react"
 import { useCallback } from "react"
 
 export const SpeciesSelectDrawer = ({
-  species,
+  targetSpecies,
   isOpen,
   selectedSpeciesId,
   onSelectSpecies,
   onOpenChange,
 }: {
-  species?: Species[] | null
+  targetSpecies?: Species[] | null
   isOpen: boolean
   selectedSpeciesId?: string
   onSelectSpecies: (species: Species) => void
@@ -34,7 +34,7 @@ export const SpeciesSelectDrawer = ({
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
-      <DrawerContent>
+      <DrawerContent className="h-[70%]">
         <DrawerHeader>
           <div className="flex justify-between">
             <DrawerTitle>Species</DrawerTitle>
@@ -43,11 +43,11 @@ export const SpeciesSelectDrawer = ({
             </DrawerClose>
           </div>
           <DrawerDescription>
-            Select the species for this collection
+            Select or search for the species for this collection
           </DrawerDescription>
         </DrawerHeader>
         <SpeciesSelectList
-          species={species ?? undefined}
+          targetSpecies={targetSpecies ?? undefined}
           selectedSpeciesId={selectedSpeciesId}
           onSelectSpecies={handeSelectSpecies}
         />

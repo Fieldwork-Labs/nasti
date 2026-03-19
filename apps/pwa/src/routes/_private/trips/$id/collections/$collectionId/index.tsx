@@ -107,7 +107,7 @@ const CollectionDetail = () => {
       </table>
       {Boolean(
         collection.plants_sampled_estimate ||
-          collection.weight_estimate_kg ||
+          collection.amount_description ||
           collection.description,
       ) && (
         <div>
@@ -118,8 +118,8 @@ const CollectionDetail = () => {
                 {Boolean(collection.plants_sampled_estimate) && (
                   <th>Plants Sampled</th>
                 )}
-                {Boolean(collection.weight_estimate_kg) && (
-                  <th>Weight Estimate</th>
+                {Boolean(collection.amount_description) && (
+                  <th>Amount Description</th>
                 )}
               </tr>
             </thead>
@@ -130,8 +130,8 @@ const CollectionDetail = () => {
                     {collection.plants_sampled_estimate}
                   </td>
                 )}
-                {Boolean(collection.weight_estimate_kg) && (
-                  <td>{collection.weight_estimate_kg} kg</td>
+                {Boolean(collection.amount_description) && (
+                  <td>{collection.amount_description}</td>
                 )}
               </tr>
             </tbody>

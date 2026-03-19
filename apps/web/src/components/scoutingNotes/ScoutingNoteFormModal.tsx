@@ -16,6 +16,7 @@ import {
   ScoutingNoteFormProvider,
   useScoutingNoteFormContext,
 } from "./ScoutingNoteFormContext"
+import { DataItemLocationSelectorMap } from "../common/DataItemLocationSelectorMap"
 
 export type ModalProps = {
   open: boolean
@@ -58,8 +59,34 @@ export const ScoutingNoteFormPhotosModal = () => {
 }
 
 export const AddScoutingNoteFormModal = () => {
-  const { close, form, onSubmit, isPending, tripId } =
-    useScoutingNoteFormContext()
+  const {
+    close,
+    form,
+    onSubmit,
+    isPending,
+    tripId,
+    showLocationMap,
+    setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
+  } = useScoutingNoteFormContext()
+
+  if (!tripId) return null
+
+  if (showLocationMap)
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select Scouting Note Location</AlertDialogTitle>
+          <DataItemLocationSelectorMap
+            tripId={tripId}
+            initialLocation={initialLocation}
+            onLocationSelected={handleSelectLocation}
+            onClose={() => setShowLocationMap(false)}
+          />
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    )
 
   return (
     <AlertDialogContent>
@@ -153,8 +180,18 @@ export const UpdateScoutingNoteWizardModal = ({
 }
 
 export const UpdateScoutingNoteFormModal = () => {
-  const { close, form, onSubmit, isPending, setStage, tripId } =
-    useScoutingNoteFormContext()
+  const {
+    close,
+    form,
+    onSubmit,
+    isPending,
+    setStage,
+    tripId,
+    showLocationMap,
+    setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
+  } = useScoutingNoteFormContext()
 
   const handleGoToPhotos = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -173,6 +210,23 @@ export const UpdateScoutingNoteFormModal = () => {
     if (!form.formState.isDirty) return "Update Photos"
     else return "Save and Update Photos"
   }, [form.formState.isDirty])
+
+  if (!tripId) return null
+
+  if (showLocationMap)
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select Scouting Note Location</AlertDialogTitle>
+          <DataItemLocationSelectorMap
+            tripId={tripId}
+            initialLocation={initialLocation}
+            onLocationSelected={handleSelectLocation}
+            onClose={() => setShowLocationMap(false)}
+          />
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    )
 
   return (
     <AlertDialogContent>

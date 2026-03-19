@@ -1,180 +1,27 @@
-import { type Collection } from "@nasti/common/types"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { InfoIcon } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Controller, useForm } from "react-hook-form"
-import { z } from "zod"
+import { Controller } from "react-hook-form"
 
 import { Checkbox } from "@nasti/ui/checkbox"
-import useUserStore from "@/store/userStore"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nasti/ui/select"
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
+
+import { usePeople } from "@/hooks/usePeople"
+import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
 import { withTooltip } from "@nasti/ui/tooltip"
-import { useUpdateCollection } from "../../hooks/useUpdateCollection"
-import { parsePostGISPoint } from "@nasti/common/utils"
-
-type CollectionFormData = {
-  species_id: string | null
-  species_uncertain: boolean
-  field_name: string
-  specimen_collected: boolean
-  latitude: number
-  longitude: number
-  description: string
-  weight_estimate_kg: number | null
-  plants_sampled_estimate: number | null
-}
-
-const schema = z
-  .object({
-    species_id: z.string().nullable(),
-    species_uncertain: z.boolean(),
-    field_name: z.string(),
-    specimen_collected: z.boolean(),
-    latitude: z
-      .number({
-        required_error: "Latitude is required",
-        invalid_type_error: "Latitude must be a number",
-      })
-      .min(-90)
-      .max(90),
-    longitude: z
-      .number({
-        required_error: "Longitude is required",
-        invalid_type_error: "Longitude must be a number",
-      })
-      .min(-180)
-      .max(180),
-
-    description: z.string(),
-    weight_estimate_kg: z.number().nullable(),
-    plants_sampled_estimate: z.number().nullable(),
-  })
-  .refine(
-    (data) => {
-      // If species_id is not specified, field_name should be specified
-      if (!data.species_id) {
-        return data.field_name.trim().length > 0
-      }
-      return true
-    },
-    {
-      message: "Field name is required when no species is selected",
-      path: ["field_name"],
-    },
-  )
-
-export const useCollectionForm = ({
-  instance,
-  tripId,
-  onSuccess,
-}: {
-  instance?: Collection
-  tripId?: string
-  onSuccess: (collection: Collection) => void
-}) => {
-  const { organisation, user } = useUserStore()
-  const [collection, setCollection] = useState<Collection | undefined>(instance)
-
-  const defaultValues = useMemo(() => {
-    return collection
-      ? {
-          species_id: collection.species_id,
-          species_uncertain: Boolean(collection.species_uncertain),
-          field_name: collection.field_name ?? "",
-          ...(collection?.location
-            ? parsePostGISPoint(collection.location)
-            : {
-                latitude: undefined,
-                longitude: undefined,
-              }),
-          specimen_collected: Boolean(collection.specimen_collected),
-          description: collection.description ?? "",
-          weight_estimate_kg: collection.weight_estimate_kg,
-          plants_sampled_estimate: collection.plants_sampled_estimate,
-        }
-      : {
-          species_id: null,
-          species_uncertain: false,
-          field_name: "",
-          latitude: undefined,
-          longitude: undefined,
-          specimen_collected: false,
-          description: "",
-          weight_estimate_kg: null,
-          plants_sampled_estimate: null,
-        }
-  }, [collection])
-
-  const form = useForm<CollectionFormData>({
-    defaultValues,
-    resolver: zodResolver(schema),
-    mode: "onChange",
-    criteriaMode: "all",
-    reValidateMode: "onChange",
-  })
-
-  useEffect(() => {
-    // Only reset if the form has been mounted already
-    if (form) {
-      form.reset(defaultValues)
-    }
-  }, [defaultValues, form])
-
-  const {
-    mutateAsync: updateCollection,
-    isPending,
-    error: updateCollectionError,
-  } = useUpdateCollection()
-
-  if (updateCollectionError) form.setError("root", updateCollectionError)
-
-  const onSubmit = useCallback(
-    async (data: CollectionFormData) => {
-      if (!user || !organisation?.id) throw new Error("Not logged in")
-
-      if (!tripId && !collection?.trip_id)
-        throw new Error(
-          "tripId or collection must be supplied to CollectionForm",
-        )
-
-      // type assertion safe because of check above
-      const trip_id = (collection ? collection.trip_id : tripId) as string
-
-      const { latitude, longitude, ...rest } = data
-      const location = `POINT(${longitude} ${latitude})`
-      const newCollection = {
-        ...rest,
-        id: collection?.id,
-        created_by: user.id,
-        location,
-        organisation_id: organisation.id,
-        trip_id,
-      }
-      const updatedRecord = await updateCollection(newCollection)
-
-      if (onSuccess && updatedRecord) {
-        setCollection(updatedRecord)
-        onSuccess(updatedRecord)
-      }
-    },
-    [user, organisation, tripId, collection, updateCollection, onSuccess],
-  )
-
-  return {
-    tripId,
-    collection,
-    form,
-    onSubmit: form.handleSubmit(onSubmit),
-    isPending,
-  }
-}
-
-type CollectionFormProps = Pick<
-  ReturnType<typeof useCollectionForm>,
-  "form" | "tripId"
->
+import {
+  CollectionFormProps,
+  useCollectionFormContext,
+} from "./CollectionFormContext"
+import { useState } from "react"
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
@@ -186,151 +33,227 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
     register,
     control,
     formState: { errors },
-    reset,
     setValue,
     watch,
   } = form
 
-  useEffect(() => {
-    return () => reset()
-  }, [reset])
+  const { setShowLocationMap } = useCollectionFormContext()
 
   const speciesValue = watch("species_id")
 
+  const { data: people } = usePeople()
+
+  const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(null)
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        {/* Species Selector */}
-        <SpeciesSearchCombobox
-          onChange={(id) => setValue("species_id", id, { shouldDirty: true })}
-          value={speciesValue}
-          tripId={tripId}
-        />
+    <div className="space-y-6 overflow-y-scroll">
+      {showSpeciesInput === null && (
+        <div className="flex w-full gap-2">
+          <Button
+            className="w-full"
+            onClick={() => setShowSpeciesInput(true)}
+            variant="outline"
+          >
+            Select Species
+          </Button>
+          <Button
+            className="w-full"
+            onClick={() => {
+              setValue("species_uncertain", true, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              setShowSpeciesInput(false)
+            }}
+            variant="outline"
+          >
+            Enter Specimen Name
+          </Button>
+        </div>
+      )}
+      {showSpeciesInput !== null && (
+        <div className="space-y-2">
+          {showSpeciesInput && (
+            <SpeciesSearchCombobox
+              onChange={(id) =>
+                setValue("species_id", id, { shouldDirty: true })
+              }
+              value={speciesValue}
+              tripId={tripId}
+            />
+          )}
 
-        {/* Species Uncertain Checkbox */}
-        <Controller
-          control={control}
-          name="species_uncertain"
-          render={({ field }) => (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="species_uncertain"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <label htmlFor="species_uncertain">
+          {/* Field Name */}
+          {showSpeciesInput === false && (
+            <FormField
+              label={
                 <span className="inline-flex items-center gap-2">
-                  <span className={labelVariants()}>Species Uncertain</span>
+                  <span className={labelVariants()}>Specimen Name</span>
                   <InfoIconWithTooltip>
-                    Check this box if you are uncertain about the identification
-                    of the species.
+                    An informal name given to the species in the field if
+                    taxonomic identification uncertain.
                   </InfoIconWithTooltip>
                 </span>
-              </label>
-            </div>
+              }
+              {...register("field_name")}
+              autoComplete="off"
+              error={errors.field_name}
+            />
           )}
-        />
 
-        {/* Field Name */}
-        <FormField
-          label={
-            <span className="inline-flex items-center gap-2">
-              <span className={labelVariants()}>Field Name</span>
-              <InfoIconWithTooltip>
-                An informal name given to the species in the field if taxonomic
-                identification uncertain.
-              </InfoIconWithTooltip>
-            </span>
-          }
-          {...register("field_name")}
-          autoComplete="off"
-          error={errors.field_name}
-        />
-
-        {/* Specimen Collected Checkbox */}
-        <Controller
-          control={control}
-          name="specimen_collected"
-          render={({ field }) => (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="specimen_collected"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-              <label htmlFor="specimen_collected">
-                <span className="inline-flex items-center gap-2">
-                  <span className={labelVariants()}>Specimen Collected</span>
-                  <InfoIconWithTooltip>
-                    Check this box if a specimen was collected.
-                  </InfoIconWithTooltip>
-                </span>
-              </label>
-            </div>
-          )}
-        />
-
-        {/* Location */}
-        <div className="grid grid-cols-2 gap-4">
-          <Label className="col-span-2">
-            Location Coordinate (decimal degrees, WGS84)
-          </Label>
-          <FormField
-            label="Latitude"
-            type="number"
-            step="any"
-            autoComplete="off"
-            {...register("latitude", {
-              valueAsNumber: true, // Transform string to number
-            })}
-            error={errors.latitude}
-            placeholder="-32"
+          <Controller
+            control={control}
+            name="species_uncertain"
+            render={({ field }) => (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="species_uncertain"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+                <label htmlFor="species_uncertain">
+                  <span className="inline-flex items-center gap-2">
+                    <span className={labelVariants()}>Species Uncertain</span>
+                    <InfoIconWithTooltip>
+                      Check this box if you are uncertain about the
+                      identification of the species.
+                    </InfoIconWithTooltip>
+                  </span>
+                </label>
+              </div>
+            )}
           />
-          <FormField
-            label="Longitude"
-            type="number"
-            step="any"
-            autoComplete="off"
-            {...register("longitude", {
-              valueAsNumber: true, // Transform string to number
-            })}
-            error={errors.longitude}
-            placeholder="122"
+
+          {/* Specimen Collected Checkbox */}
+          <Controller
+            control={control}
+            name="specimen_collected"
+            render={({ field }) => (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="specimen_collected"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+                <label htmlFor="specimen_collected">
+                  <span className="inline-flex items-center gap-2">
+                    <span className={labelVariants()}>Specimen Collected</span>
+                    <InfoIconWithTooltip>
+                      Check this box if a specimen was collected.
+                    </InfoIconWithTooltip>
+                  </span>
+                </label>
+              </div>
+            )}
           />
         </div>
+      )}
 
-        {/* Description */}
-        <FormField
-          label="Description"
-          autoComplete="off"
-          {...register("description")}
-          error={errors.description}
+      <FormField
+        label="Collected On"
+        type="date"
+        autoComplete="off"
+        {...register("collected_on")}
+        error={errors.collected_on}
+      />
+
+      <div className="space-y-2">
+        <Label>Collector</Label>
+        <Controller
+          control={control}
+          name="collected_by"
+          render={({ field }) => (
+            <Select
+              onValueChange={field.onChange}
+              value={field.value ?? undefined}
+            >
+              <SelectTrigger
+                className="w-full max-w-48"
+                value={field.value ?? undefined}
+                onBlur={field.onBlur}
+              >
+                <SelectValue placeholder="Select a person" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {people?.map((person) => (
+                    <SelectItem key={person.id} value={person.id}>
+                      {person.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          )}
         />
+      </div>
 
-        {/* Weight Estimate */}
+      {/* Location */}
+      <div className="flex items-center justify-between">
+        <Label className="col-span-2">
+          Location Coordinate (decimal degrees, WGS84)
+        </Label>
+        <Button
+          variant={"outline"}
+          size={"sm"}
+          onClick={() => setShowLocationMap(true)}
+        >
+          Select on Map
+        </Button>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
         <FormField
-          label="Weight Estimate (kg)"
+          label="Latitude"
           type="number"
           step="any"
           autoComplete="off"
-          {...register("weight_estimate_kg", {
+          {...register("latitude", {
             valueAsNumber: true, // Transform string to number
           })}
-          error={errors.weight_estimate_kg}
+          error={errors.latitude}
+          placeholder="-32"
         />
-
-        {/* Plants Sampled Estimate */}
         <FormField
-          label="Plants Sampled Estimate"
+          label="Longitude"
           type="number"
+          step="any"
           autoComplete="off"
-          step="1"
-          {...register("plants_sampled_estimate", {
+          {...register("longitude", {
             valueAsNumber: true, // Transform string to number
           })}
-          error={errors.plants_sampled_estimate}
+          error={errors.longitude}
+          placeholder="122"
         />
       </div>
+
+      {/* Description */}
+      <FormField
+        label="Description"
+        autoComplete="off"
+        {...register("description")}
+        error={errors.description}
+      />
+
+      <FormField
+        label="Amount Description"
+        type="input"
+        step="any"
+        autoComplete="off"
+        {...register("amount_description")}
+        error={errors.amount_description}
+      />
+
+      {/* Plants Sampled Estimate */}
+      <FormField
+        label="Plants Sampled Estimate"
+        type="number"
+        autoComplete="off"
+        step="1"
+        {...register("plants_sampled_estimate", {
+          valueAsNumber: true, // Transform string to number
+        })}
+        error={errors.plants_sampled_estimate}
+      />
       {errors.root && (
         <div className="flex h-4 justify-end text-xs text-orange-800">
           {errors.root.message}

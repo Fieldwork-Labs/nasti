@@ -58,7 +58,7 @@ export const LocationSelectorMap: React.FC<LocationSelectorProps> = ({
         onClick={handleMapClick}
       >
         {location && (
-          <span className="bg-accent-foreground relative ml-1 mt-1 inline-flex rounded-lg p-1 text-right text-sm font-medium leading-none">
+          <span className="dark:bg-accent-foreground bg-accent relative ml-1 mt-1 inline-flex rounded-lg p-1 text-right text-sm font-medium leading-none">
             {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
           </span>
         )}
