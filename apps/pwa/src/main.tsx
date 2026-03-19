@@ -10,11 +10,6 @@ import { useAuth } from "./hooks/useAuth"
 import { SwStatusProvider } from "./contexts/swStatus"
 import * as Sentry from "@sentry/react"
 
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  sendDefaultPii: true,
-})
-
 // Create a new router instance
 const router = createRouter({
   routeTree,
@@ -31,6 +26,13 @@ const router = createRouter({
     isLoggedIn: false,
     getSession: undefined,
   },
+})
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  sendDefaultPii: true,
+  integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+  transport: Sentry.makeBrowserOfflineTransport(Sentry.makeFetchTransport),
 })
 
 // Register the router instance for type safety

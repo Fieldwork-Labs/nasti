@@ -10,11 +10,6 @@ import { PostHogProvider } from "posthog-js/react"
 import * as Sentry from "@sentry/react"
 import { PostHogConfig } from "posthog-js"
 
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  sendDefaultPii: true,
-})
-
 // Create a new router instance
 const router = createRouter({
   routeTree,
@@ -33,6 +28,13 @@ const router = createRouter({
     orgId: null,
     getUser: () => Promise.resolve(null),
   },
+})
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  sendDefaultPii: true,
+  integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+  transport: Sentry.makeBrowserOfflineTransport(Sentry.makeFetchTransport),
 })
 
 // Register the router instance for type safety
