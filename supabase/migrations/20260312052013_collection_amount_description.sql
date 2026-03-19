@@ -5,10 +5,11 @@ ALTER TABLE "public"."collection"
     ADD COLUMN "collected_by" uuid REFERENCES "auth"."users"("id");
 
 UPDATE "public"."collection"
-    SET "collected_on" = "created_at"::date,
+    SET "collected_on" = "created_at"::date;
+UPDATE "public"."collection"
     SET "collected_by" = "created_by";
 
 ALTER TABLE "public"."collection"
     ALTER COLUMN "collected_on" SET DEFAULT CURRENT_DATE,
     ALTER COLUMN "collected_on" SET NOT NULL,
-    ALTER COLUMN "collected_by" SET NOT NULL,
+    ALTER COLUMN "collected_by" SET NOT NULL;
