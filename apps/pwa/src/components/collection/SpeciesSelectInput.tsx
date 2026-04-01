@@ -20,7 +20,7 @@ export const SpeciesSelectInput = ({
     useOpenClose()
 
   const { data: selectedSpecies } = useSpecies(selectedSpeciesId)
-  const { data: allSpecies } = useSpeciesForTrip(tripId)
+  const { data: targetSpecies } = useSpeciesForTrip(tripId)
 
   return (
     <>
@@ -41,7 +41,7 @@ export const SpeciesSelectInput = ({
             variant={"outline"}
             className="h-12 w-full text-lg"
           >
-            Enter Field Name
+            Enter Specimen Name
           </Button>
         </div>
       )}
@@ -53,7 +53,7 @@ export const SpeciesSelectInput = ({
         />
       )}
       <SpeciesSelectDrawer
-        species={allSpecies}
+        targetSpecies={targetSpecies}
         isOpen={isOpenSpeciesDrawer}
         onOpenChange={setIsOpenSpeciesDrawer}
         onSelectSpecies={({ id }) => onSelectSpecies(id)}

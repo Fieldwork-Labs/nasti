@@ -15,7 +15,7 @@ type FormData = {
 const ResetPasswordPage = () => {
   const navigate = useNavigate()
 
-  const [ready, setReady] = useState(false)
+  const [ready] = useState(true)
 
   const {
     register,
@@ -28,20 +28,6 @@ const ResetPasswordPage = () => {
 
   const p1 = watch("password")
   const p2 = watch("password2")
-
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event) => {
-        if (event == "PASSWORD_RECOVERY") {
-          setReady(true)
-        }
-      },
-    )
-
-    return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, [setError])
 
   useEffect(() => {
     if (ready && errors.root?.login) clearErrors("root.login")

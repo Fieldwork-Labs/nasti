@@ -44,7 +44,7 @@ const mockCollection = {
   created_at: "2025-05-13T08:58:52.807+00:00",
   trip_id: "trip123",
   description: "",
-  weight_estimate_kg: 0,
+  amount_description: "0",
   plants_sampled_estimate: 0,
 }
 

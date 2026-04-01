@@ -561,7 +561,10 @@ export type Database = {
       }
       collection: {
         Row: {
+          amount_description: string | null
           code: string | null
+          collected_by: string | null
+          collected_on: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -574,10 +577,12 @@ export type Database = {
           species_uncertain: boolean
           specimen_collected: boolean | null
           trip_id: string | null
-          weight_estimate_kg: number | null
         }
         Insert: {
+          amount_description?: string | null
           code?: string | null
+          collected_by?: string | null
+          collected_on?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -590,10 +595,12 @@ export type Database = {
           species_uncertain?: boolean
           specimen_collected?: boolean | null
           trip_id?: string | null
-          weight_estimate_kg?: number | null
         }
         Update: {
+          amount_description?: string | null
           code?: string | null
+          collected_by?: string | null
+          collected_on?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -606,7 +613,6 @@ export type Database = {
           species_uncertain?: boolean
           specimen_collected?: boolean | null
           trip_id?: string | null
-          weight_estimate_kg?: number | null
         }
         Relationships: [
           {
@@ -2970,4 +2976,3 @@ export const Constants = {
     },
   },
 } as const
-

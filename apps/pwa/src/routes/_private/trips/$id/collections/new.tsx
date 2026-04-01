@@ -42,7 +42,7 @@ type CollectionFormData = {
   field_name: string
   specimen_collected: boolean
   description: string
-  weight_estimate_kg: number | null
+  amount_description: string
   plants_sampled_estimate: number | null
 }
 
@@ -71,7 +71,10 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    weight_estimate_kg: stringToNumber,
+    amount_description: z
+      .string()
+      .optional()
+      .transform((val) => val ?? ""),
     plants_sampled_estimate: stringToNumber,
   })
   .refine(
@@ -83,7 +86,7 @@ const schema = z
       )
     },
     {
-      message: "Field name is required when no species is selected",
+      message: "Specimen name is required when no species is selected",
       path: ["field_name"],
     },
   )
@@ -94,7 +97,7 @@ const defaultValues = {
   field_name: "",
   specimen_collected: false,
   description: "",
-  weight_estimate_kg: null,
+  amount_description: "",
   plants_sampled_estimate: null,
 }
 
@@ -107,6 +110,7 @@ function AddCollection() {
     from: "/_private/trips/$id/collections/new",
   })
   const { isOnline } = useNetwork()
+  const { user, org } = useAuth()
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
@@ -125,7 +129,10 @@ function AddCollection() {
     formState: { isValid, isSubmitting, errors },
     control,
   } = useForm<CollectionFormData>({
-    defaultValues: { ...defaultValues, species_id: initialSpeciesId },
+    defaultValues: {
+      ...defaultValues,
+      species_id: initialSpeciesId,
+    },
     resolver: zodResolver(schema),
     mode: "all",
     reValidateMode: "onChange",
@@ -135,8 +142,6 @@ function AddCollection() {
 
   const [enterFieldName, setEnterFieldName] = useState(false)
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
-
-  const { user, org } = useAuth()
 
   const navigate = useNavigate()
 
@@ -154,7 +159,9 @@ function AddCollection() {
           data.species_uncertain || data.field_name.trim().length > 0,
         id: collectionIdRef.current,
         created_by: user.id,
+        collected_by: user.id,
         created_at: new Date().toISOString(),
+        collected_on: new Date().toDateString(),
         location: locationPoint,
         organisation_id: org.organisation_id,
         trip_id: tripId,
@@ -204,7 +211,7 @@ function AddCollection() {
 
   return (
     <div className="h-11/12 flex flex-col justify-between gap-2">
-      <div className="overflow-y-scroll">
+      <div>
         <div className="flex items-center p-2 text-2xl">New Collection</div>
         <div className="flex flex-col gap-4 px-1">
           {!enterFieldName && (
@@ -227,7 +234,7 @@ function AddCollection() {
           )}
           {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
+              <Label>Specimen Name</Label>
               <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
@@ -271,7 +278,7 @@ function AddCollection() {
                 <PopoverContent className="w-80">
                   Select this if you are not 100% certain about the
                   identification of the species. Set by default when entering a
-                  field name rather than selecting a known species.
+                  specimen name rather than selecting a known species.
                 </PopoverContent>
               </Popover>
             </div>
@@ -332,29 +339,30 @@ function AddCollection() {
           </div>
           <div>
             <Label
-              htmlFor="weight_estimate_kg"
+              htmlFor="amount_description"
               className="flex items-center gap-2"
             >
-              <span>Weight Estimated (kg)</span>
+              <span>Amount Description</span>
               <Popover>
                 <PopoverTrigger asChild>
                   <InfoIcon className="h-4 w-4" />
                 </PopoverTrigger>
                 <PopoverContent className="w-80">
-                  Estimate of the weight of seeds collected
+                  Description of the amount collection (eg, "Three large
+                  buckets" or "10 bags")
                 </PopoverContent>
               </Popover>
             </Label>
             <Input
               autoComplete="off"
-              {...register("weight_estimate_kg")}
-              className={errors.weight_estimate_kg ? "border-amber-600" : ""}
-              id="weight_estimate_kg"
-              name="weight_estimate_kg"
+              {...register("amount_description")}
+              className={errors.amount_description ? "border-amber-600" : ""}
+              id="amount_description"
+              name="amount_description"
             />
-            {errors.weight_estimate_kg && (
+            {errors.amount_description && (
               <div className="mt-1 text-sm text-amber-600">
-                {errors.weight_estimate_kg.message}
+                {errors.amount_description.message}
               </div>
             )}
           </div>

@@ -16,6 +16,8 @@ import {
   CollectionFormProvider,
   useCollectionFormContext,
 } from "./CollectionFormContext"
+import { useParams } from "@tanstack/react-router"
+import { DataItemLocationSelectorMap } from "../common/DataItemLocationSelectorMap"
 
 export type ModalProps = {
   open: boolean
@@ -56,11 +58,37 @@ export const CollectionFormPhotosModal = () => {
 }
 
 export const AddCollectionFormModal = () => {
-  const { close, form, onSubmit, isPending, tripId } =
-    useCollectionFormContext()
+  const {
+    close,
+    form,
+    onSubmit,
+    isPending,
+    tripId,
+    showLocationMap,
+    setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
+  } = useCollectionFormContext()
+
+  if (!tripId) return null
+
+  if (showLocationMap)
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select Collection Location</AlertDialogTitle>
+          <DataItemLocationSelectorMap
+            tripId={tripId}
+            initialLocation={initialLocation}
+            onLocationSelected={handleSelectLocation}
+            onClose={() => setShowLocationMap(false)}
+          />
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    )
 
   return (
-    <AlertDialogContent>
+    <AlertDialogContent className="max-h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>New collection</AlertDialogTitle>
 
@@ -134,12 +162,14 @@ export const UpdateCollectionWizardModal = ({
 }) => {
   const [stage, setStage] = useState<"form" | "photos">("form")
 
+  const { id: tripId } = useParams({ from: "/_private/trips/$id/" })
   return (
     <CollectionFormProvider
       stage={stage}
       setStage={setStage}
       instance={instance}
       close={close}
+      tripId={tripId}
     >
       <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
         {/* unmount the form on modal close, resets the form values */}
@@ -150,9 +180,19 @@ export const UpdateCollectionWizardModal = ({
   )
 }
 
-export const UpdateCollectionFormModal = () => {
-  const { close, form, onSubmit, isPending, setStage, tripId } =
-    useCollectionFormContext()
+const UpdateCollectionFormModal = () => {
+  const {
+    close,
+    form,
+    onSubmit,
+    isPending,
+    setStage,
+    tripId,
+    showLocationMap,
+    setShowLocationMap,
+    handleSelectLocation,
+    initialLocation,
+  } = useCollectionFormContext()
 
   const handleGoToPhotos = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -172,19 +212,36 @@ export const UpdateCollectionFormModal = () => {
     else return "Save and Update Photos"
   }, [form.formState.isDirty])
 
+  if (!tripId) return null
+
+  if (showLocationMap)
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select Collection Location</AlertDialogTitle>
+          <DataItemLocationSelectorMap
+            tripId={tripId}
+            initialLocation={initialLocation}
+            onLocationSelected={handleSelectLocation}
+            onClose={() => setShowLocationMap(false)}
+          />
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    )
+
   return (
-    <AlertDialogContent>
+    <AlertDialogContent className="max-h-screen overflow-y-scroll">
       <AlertDialogHeader>
         <AlertDialogTitle>Update collection</AlertDialogTitle>
         <CollectionForm {...{ form }} tripId={tripId} />
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel className="w-full" onClick={close}>
+        <AlertDialogCancel className="w-full cursor-pointer" onClick={close}>
           Cancel
         </AlertDialogCancel>
         <AlertDialogAction
           onClick={handleGoToPhotos}
-          className="w-full"
+          className="w-full cursor-pointer"
           disabled={isPending || !form.formState.isValid}
         >
           {!isPending && <span>{goToPhotosText}</span>}
@@ -192,7 +249,7 @@ export const UpdateCollectionFormModal = () => {
         </AlertDialogAction>
         <AlertDialogAction
           onClick={onSubmit}
-          className="w-full"
+          className="w-full cursor-pointer"
           disabled={
             isPending || !form.formState.isValid || !form.formState.isDirty
           }

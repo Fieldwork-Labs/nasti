@@ -73,11 +73,10 @@ INSERT INTO "public"."trip" ("id", "organisation_id", "name", "metadata", "start
 -- Data for Name: collection; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."collection" ("id", "species_id", "species_uncertain", "field_name", "specimen_collected", "organisation_id", "location", "created_by", "created_at", "trip_id", "description", "weight_estimate_kg", "plants_sampled_estimate", "code") VALUES
-	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '9c5d25d7-a230-4591-8861-7e9d3a590f04', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E61000006DE7FBA9F1A25D4085EB51B81E1540C0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:40:55.681459+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', 1, 230, 'ALYSPGER-CO.MAL.25-1'),
-	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000031C967762A95C40CA08D12760CB3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:39:18.702834+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '-28.794435967000744, 114.64663495692373', 1, 10, 'DIPGER-CO.GES.25-1'),
-	('50d59d29-0eed-4f79-acd6-2a62c995bc45', 'd2b02f1c-905e-46d0-a3e0-4b253d2a1349', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E610000002BC051214635E40D50968226CA83FC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:47:18.690457+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', 1, 10, 'CHAUNC-CO.COO.25-1');
-
+INSERT INTO "public"."collection" ("id", "species_id", "species_uncertain", "field_name", "specimen_collected", "organisation_id", "location", "created_by", "created_at", "trip_id", "description", "amount_description", "plants_sampled_estimate", "code") VALUES
+	('50d59d29-0eed-4f79-acd6-2a62c995bc45', 'd2b02f1c-905e-46d0-a3e0-4b253d2a1349', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000508D976E12635E40D50968226CA83FC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:47:18.690457+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', "1 bag", 10, 'CHAUNC-CO.COO.25'),
+	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '9c5d25d7-a230-4591-8861-7e9d3a590f04', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E61000006DE7FBA9F1A25D4085EB51B81E1540C0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:40:55.681459+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', "1 bucket", 230, 'ALOSPGER (R.Davis 3487)-CO.MAL.25'),
+	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000051C967762A95C40CA08D12760CB3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:39:18.702834+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '-28.794435967000744, 114.64663495692373', "1 bucket", 10, 'DIPGER-CO.GES.25');
 
 
 --

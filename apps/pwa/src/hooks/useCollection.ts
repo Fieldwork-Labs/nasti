@@ -3,6 +3,7 @@ import {
   useHydrateTripDetails,
 } from "./useHydrateTripDetails"
 import { Species } from "@nasti/common/types"
+import { useSpeciesList } from "./useSpeciesList"
 
 export type FullCollection = CollectionWithCoordAndPhotos & {
   species?: Species
@@ -19,8 +20,9 @@ export const useCollection = ({
   const collection = tripDetails.data.trip?.collections.find(
     (c) => c.id === collectionId,
   )
+  const { data: speciesList } = useSpeciesList()
   const species =
-    tripDetails.data.species?.find((s) => s.id === collection?.species_id) ?? {}
+    speciesList?.find((s) => s.id === collection?.species_id) ?? {}
 
   return { ...collection, species } as FullCollection
 }

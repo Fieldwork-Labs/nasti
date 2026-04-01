@@ -47,7 +47,11 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    weight_estimate_kg: stringToNumber,
+    amount_description: z
+      .string()
+      .optional()
+      .nullish()
+      .transform((val) => val || ""),
     plants_sampled_estimate: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
@@ -70,7 +74,7 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
-  weight_estimate_kg: null,
+  amount_description: "",
   plants_sampled_estimate: null,
 }
 
@@ -160,7 +164,7 @@ function CollectionForm() {
 
       const { latitude, longitude, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
-      console.log({ locationPoint })
+
       const payload: UpdateCollection = {
         id: collectionIdRef.current,
         trip_id: tripId,
@@ -238,7 +242,7 @@ function CollectionForm() {
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   // You shouldn't be here
-  if (initialValues.created_by !== user?.id || org?.role !== ROLE.ADMIN)
+  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN)
     return navigate({
       to: "/trips/$id/collections/$collectionId",
       params: { id: tripId, collectionId },
@@ -349,11 +353,11 @@ function CollectionForm() {
           </div>
 
           <div>
-            <Label>Weight Estimate (kg)</Label>
-            <Input {...register("weight_estimate_kg")} />
-            {errors.weight_estimate_kg && (
+            <Label>Amount Desription</Label>
+            <Input {...register("amount_description")} />
+            {errors.amount_description && (
               <p className="text-amber-600">
-                {errors.weight_estimate_kg.message}
+                {errors.amount_description.message}
               </p>
             )}
           </div>

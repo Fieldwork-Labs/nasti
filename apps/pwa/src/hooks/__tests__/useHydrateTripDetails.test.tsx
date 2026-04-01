@@ -166,7 +166,7 @@ const mockTripCollections = {
       created_at: "2025-05-13T08:58:52.807+00:00",
       trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
       description: "",
-      weight_estimate_kg: 0,
+      amount_description: "0",
       plants_sampled_estimate: 0,
     },
     {
@@ -181,7 +181,7 @@ const mockTripCollections = {
       created_at: "2025-05-13T08:58:52.807+00:00",
       trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
       description: "",
-      weight_estimate_kg: 0,
+      amount_description: "0",
       plants_sampled_estimate: 0,
     },
   ],
