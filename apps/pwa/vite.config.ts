@@ -100,24 +100,63 @@ export default defineConfig({
         navigateFallback: "index.html",
         runtimeCaching: [
           {
+<<<<<<< Updated upstream
             // match   /functions/v1/ala_image_proxy?url=…
             urlPattern: ({ url }) =>
               url.pathname.startsWith("/functions/v1/ala_image_proxy"),
 
             handler: "CacheFirst", // serve from cache when offline
+=======
+            // Cache ALA API responses (species search, detail, occurrences, etc.)
+            urlPattern: ({ url }) =>
+              url.hostname === "api.ala.org.au" ||
+              url.hostname === "images.ala.org.au",
+            handler: "NetworkFirst",
+            method: "GET",
+            options: {
+              cacheName: "ala-api",
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              networkTimeoutSeconds: 5, // fall back to cache after 5s
+            },
+          },
+          {
+            // Cache ALA image proxy responses
+            urlPattern: ({ url }) =>
+              url.hostname.endsWith("nasti.pages.dev") &&
+              url.pathname.startsWith("/api/ala_image_proxy"),
+            handler: "CacheFirst",
+>>>>>>> Stashed changes
             method: "GET",
             options: {
               cacheName: "ala-remote-images",
               expiration: {
-                maxEntries: 300, // keep at most 300 images
-                maxAgeSeconds: 60 * 60 * 24 * 7, // …for 7 days
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
               },
               cacheableResponse: {
-                // opaque responses from CORS proxies come back with status 0
                 statuses: [0, 200],
               },
-              matchOptions: {
-                ignoreSearch: false, // each unique ?url=… gets its own entry
+            },
+          },
+          {
+            // Cache Mapbox tiles
+            urlPattern: ({ url }) => url.hostname.endsWith("mapbox.com"),
+            handler: "CacheFirst",
+            method: "GET",
+            options: {
+              cacheName: "mapbox-tiles",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
               },
             },
           },
