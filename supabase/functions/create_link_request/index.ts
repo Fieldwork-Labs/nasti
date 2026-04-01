@@ -4,8 +4,6 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { type Role, ROLE, type OrganisationType } from "@/common-types"
-import { type Database } from "@/common-types/database"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +23,7 @@ Deno.serve(async (req) => {
 
   try {
     // Create Supabase client with service role key for admin operations
-    const supabaseClient = createClient<Database>(
+    const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     )
@@ -83,14 +81,6 @@ Deno.serve(async (req) => {
       .select("organisation_id, role, organisation(name, type)")
       .eq("user_id", userData.user.id)
       .single()
-      .overrideTypes<{
-        organisation_id: string
-        role: Role
-        organisation: {
-          name: string
-          type: OrganisationType
-        }
-      }>()
 
     if (orgUserError || !orgUser) {
       return new Response(
@@ -102,7 +92,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    if (orgUser.role !== ROLE.ADMIN) {
+    if (orgUser.role !== "Admin") {
       return new Response(
         JSON.stringify({ error: "Only Admins can create link requests" }),
         {
