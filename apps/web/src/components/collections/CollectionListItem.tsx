@@ -112,11 +112,7 @@ export const CollectionListItem = ({
           </div>
         </div>
       </div>
-      <CollectionDetailModal
-        collection={collection}
-        open={isOpen}
-        onClose={close}
-      />
+      <CollectionDetailModal id={collection.id} open={isOpen} onClose={close} />
     </>
   )
 }

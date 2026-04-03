@@ -271,9 +271,10 @@ export const useDeleteStorageLocation = () => {
   })
 }
 
-// Mutation: Move batch to storage location
+// Mutation: Move a sub-batch to a storage location
 type MoveBatchToStorageParams = {
   batchId: string
+  subBatchId: string
   currentBatchStorageId?: string
   locationId: string
   notes?: string
@@ -284,6 +285,7 @@ export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
     mutationFn: async ({
       batchId,
+      subBatchId,
       currentBatchStorageId,
       locationId,
       notes,
@@ -302,11 +304,12 @@ export const useMoveBatchToStorage = () => {
         if (updateError) throw new Error(updateError.message)
       }
 
-      // Create new storage record
+      // Create new storage record linked to sub-batch
       const { data, error } = await supabase
         .from("batch_storage")
         .insert({
           batch_id: batchId,
+          sub_batch_id: subBatchId,
           location_id: locationId,
           stored_at: storedAt || timestamp,
           notes,
@@ -329,6 +332,10 @@ export const useMoveBatchToStorage = () => {
 
       queryClient.invalidateQueries({
         queryKey: ["batches", "detail", variables.batchId],
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ["subBatches", variables.batchId],
       })
     },
   })
@@ -371,6 +378,10 @@ export const useRemoveBatchFromStorage = () => {
 
       queryClient.invalidateQueries({
         queryKey: ["batches", "detail", batch_id],
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: ["subBatches", batch_id],
       })
     },
   })

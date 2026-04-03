@@ -10,12 +10,10 @@ import { useMutation } from "@tanstack/react-query"
 import { getMutationKey } from "./useEntityCreate"
 
 const updateCollection = async (updatedItem: UpdateCollection) => {
-  const query = supabase
+  const { data, error } = await supabase
     .from("collection")
-    .upsert(updatedItem)
+    .update(updatedItem)
     .eq("id", updatedItem.id)
-
-  const { data, error } = await query
     .select("*")
     .single()
     .overrideTypes<Collection>()

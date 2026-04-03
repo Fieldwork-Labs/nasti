@@ -7,33 +7,132 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      batch_cleaning: {
+        Row: {
+          cleaning_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          input_batch_id: string | null
+          is_cleaned: boolean
+          material_notes: string | null
+          material_subtype: string | null
+          material_type: string
+          organisation_id: string
+        }
+        Insert: {
+          cleaning_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_batch_id?: string | null
+          is_cleaned?: boolean
+          material_notes?: string | null
+          material_subtype?: string | null
+          material_type: string
+          organisation_id: string
+        }
+        Update: {
+          cleaning_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_batch_id?: string | null
+          is_cleaned?: boolean
+          material_notes?: string | null
+          material_subtype?: string | null
+          material_type?: string
+          organisation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_cleaning_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_cleaning_output: {
+        Row: {
+          cleaning_id: string
+          id: string
+          material_type: string
+          output_batch_id: string
+          quality: string
+          weight_grams: number
+        }
+        Insert: {
+          cleaning_id: string
+          id?: string
+          material_type: string
+          output_batch_id: string
+          quality: string
+          weight_grams: number
+        }
+        Update: {
+          cleaning_id?: string
+          id?: string
+          material_type?: string
+          output_batch_id?: string
+          quality?: string
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_cleaning_output_cleaning_id_fkey"
+            columns: ["cleaning_id"]
+            isOneToOne: false
+            referencedRelation: "batch_cleaning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_output_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_output_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_output_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_custody: {
         Row: {
           batch_id: string
@@ -164,92 +263,6 @@ export type Database = {
           },
         ]
       }
-      batch_processing: {
-        Row: {
-          created_at: string | null
-          created_by: string | null
-          id: string
-          input_batch_id: string | null
-          notes: string | null
-          organisation_id: string
-          output_batch_id: string
-          process: Json
-          quality_assessment: Database["public"]["Enums"]["batch_quality"]
-        }
-        Insert: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          input_batch_id?: string | null
-          notes?: string | null
-          organisation_id: string
-          output_batch_id: string
-          process: Json
-          quality_assessment: Database["public"]["Enums"]["batch_quality"]
-        }
-        Update: {
-          created_at?: string | null
-          created_by?: string | null
-          id?: string
-          input_batch_id?: string | null
-          notes?: string | null
-          organisation_id?: string
-          output_batch_id?: string
-          process?: Json
-          quality_assessment?: Database["public"]["Enums"]["batch_quality"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "batch_processing_input_batch_id_fkey"
-            columns: ["input_batch_id"]
-            isOneToOne: false
-            referencedRelation: "active_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_processing_input_batch_id_fkey"
-            columns: ["input_batch_id"]
-            isOneToOne: false
-            referencedRelation: "batch_current_weight"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_processing_input_batch_id_fkey"
-            columns: ["input_batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_processing_organisation_id_fkey"
-            columns: ["organisation_id"]
-            isOneToOne: false
-            referencedRelation: "organisation"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_processing_output_batch_id_fkey"
-            columns: ["output_batch_id"]
-            isOneToOne: false
-            referencedRelation: "active_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_processing_output_batch_id_fkey"
-            columns: ["output_batch_id"]
-            isOneToOne: false
-            referencedRelation: "batch_current_weight"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_processing_output_batch_id_fkey"
-            columns: ["output_batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       batch_splits: {
         Row: {
           child_batch_id: string
@@ -323,6 +336,7 @@ export type Database = {
           moved_out_at: string | null
           notes: string | null
           stored_at: string | null
+          sub_batch_id: string | null
         }
         Insert: {
           batch_id: string
@@ -332,6 +346,7 @@ export type Database = {
           moved_out_at?: string | null
           notes?: string | null
           stored_at?: string | null
+          sub_batch_id?: string | null
         }
         Update: {
           batch_id?: string
@@ -341,6 +356,7 @@ export type Database = {
           moved_out_at?: string | null
           notes?: string | null
           stored_at?: string | null
+          sub_batch_id?: string | null
         }
         Relationships: [
           {
@@ -369,6 +385,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -563,7 +586,7 @@ export type Database = {
         Row: {
           amount_description: string | null
           code: string | null
-          collected_by: string | null
+          collected_by: string
           collected_on: string
           created_at: string
           created_by: string | null
@@ -581,7 +604,7 @@ export type Database = {
         Insert: {
           amount_description?: string | null
           code?: string | null
-          collected_by?: string | null
+          collected_by: string
           collected_on?: string
           created_at?: string
           created_by?: string | null
@@ -599,7 +622,7 @@ export type Database = {
         Update: {
           amount_description?: string | null
           code?: string | null
-          collected_by?: string | null
+          collected_by?: string
           collected_on?: string
           created_at?: string
           created_by?: string | null
@@ -1171,6 +1194,52 @@ export type Database = {
           },
         ]
       }
+      sub_batches: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          weight_grams: number
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          weight_grams: number
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tests: {
         Row: {
           batch_id: string
@@ -1235,47 +1304,84 @@ export type Database = {
       }
       treatments: {
         Row: {
-          batch_id: string
-          description: string | null
+          created_at: string | null
+          created_by: string | null
           id: string
-          performed_at: string | null
-          performed_by: string | null
-          type: string
+          input_batch_id: string | null
+          notes: string | null
+          organisation_id: string
+          output_batch_id: string
+          quality_assessment: Database["public"]["Enums"]["batch_quality"]
+          treat: Json
         }
         Insert: {
-          batch_id: string
-          description?: string | null
+          created_at?: string | null
+          created_by?: string | null
           id?: string
-          performed_at?: string | null
-          performed_by?: string | null
-          type: string
+          input_batch_id?: string | null
+          notes?: string | null
+          organisation_id: string
+          output_batch_id: string
+          quality_assessment: Database["public"]["Enums"]["batch_quality"]
+          treat: Json
         }
         Update: {
-          batch_id?: string
-          description?: string | null
+          created_at?: string | null
+          created_by?: string | null
           id?: string
-          performed_at?: string | null
-          performed_by?: string | null
-          type?: string
+          input_batch_id?: string | null
+          notes?: string | null
+          organisation_id?: string
+          output_batch_id?: string
+          quality_assessment?: Database["public"]["Enums"]["batch_quality"]
+          treat?: Json
         }
         Relationships: [
           {
-            foreignKeyName: "treatments_batch_id_fkey"
-            columns: ["batch_id"]
+            foreignKeyName: "treatments_input_batch_id_fkey"
+            columns: ["input_batch_id"]
             isOneToOne: false
             referencedRelation: "active_batches"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "treatments_batch_id_fkey"
-            columns: ["batch_id"]
+            foreignKeyName: "treatments_input_batch_id_fkey"
+            columns: ["input_batch_id"]
             isOneToOne: false
             referencedRelation: "batch_current_weight"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "treatments_batch_id_fkey"
-            columns: ["batch_id"]
+            foreignKeyName: "treatments_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_output_batch_id_fkey"
+            columns: ["output_batch_id"]
             isOneToOne: false
             referencedRelation: "batches"
             referencedColumns: ["id"]
@@ -1403,7 +1509,8 @@ export type Database = {
           created_at: string | null
           current_weight: number | null
           id: string | null
-          is_processed: boolean | null
+          is_cleaned: boolean | null
+          is_treated: boolean | null
           latest_quality_statistics: Json | null
           notes: string | null
           organisation_id: string | null
@@ -1795,19 +1902,28 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      fn_clean_batch: {
+        Args: {
+          p_cleaning_notes?: string
+          p_input_batch_id: string
+          p_is_cleaned?: boolean
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type: string
+          p_outputs?: Json
+        }
+        Returns: string
+      }
       fn_merge_batches: {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
       }
-      fn_process_batch: {
-        Args: {
-          p_input_batch_id: string
-          p_notes?: string
-          p_origin_batch_weight?: number
-          p_output_weight: number
-          p_process: Json
-          p_quality_assessment: Database["public"]["Enums"]["batch_quality"]
-        }
+      fn_merge_sub_batches: {
+        Args: { p_notes?: string; p_sub_batch_ids: string[] }
+        Returns: string
+      }
+      fn_mix_batches: {
+        Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
       }
       fn_split_batch: {
@@ -1815,6 +1931,21 @@ export type Database = {
           p_notes?: string
           p_parent_batch_id: string
           p_weight_grams?: number
+        }
+        Returns: string
+      }
+      fn_split_sub_batch: {
+        Args: { p_new_weight: number; p_notes?: string; p_sub_batch_id: string }
+        Returns: string
+      }
+      fn_treat_batch: {
+        Args: {
+          p_input_batch_id: string
+          p_notes?: string
+          p_origin_batch_weight?: number
+          p_output_weight: number
+          p_quality_assessment: Database["public"]["Enums"]["batch_quality"]
+          p_treat: Json
         }
         Returns: string
       }
@@ -2807,11 +2938,11 @@ export type Database = {
               error: true
             } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
           }
-      validate_process_array: { Args: { processes: Json }; Returns: boolean }
+      validate_treatment_array: { Args: { treats: Json }; Returns: boolean }
     }
     Enums: {
-      batch_process_type: "clean" | "sort" | "coat" | "treat" | "other"
-      batch_quality: "ORG" | "HQ" | "MQ" | "LQ"
+      batch_quality: "ORG" | "HQ" | "LQ"
+      batch_treatment_type: "sort" | "coat" | "treat" | "other"
       org_user_types: "Member" | "Admin"
       organisation_type: "General" | "Testing"
     }
@@ -2964,15 +3095,13 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
-      batch_process_type: ["clean", "sort", "coat", "treat", "other"],
-      batch_quality: ["ORG", "HQ", "MQ", "LQ"],
+      batch_quality: ["ORG", "HQ", "LQ"],
+      batch_treatment_type: ["sort", "coat", "treat", "other"],
       org_user_types: ["Member", "Admin"],
       organisation_type: ["General", "Testing"],
     },
   },
 } as const
+

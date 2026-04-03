@@ -35,12 +35,11 @@ const testTypeOptions: { value: QualityTestType; label: string }[] = [
   { value: "x-ray", label: "X-Ray" },
   { value: "cut test", label: "Cut Test" },
   { value: "tz", label: "TZ" },
-  { value: "slow purity", label: "Slow Purity" },
-  { value: "quick purity", label: "Quick Purity" },
+  { value: "germination", label: "Germination" },
 ]
 
-// Validation schema for a single repeat
-const repeatSchema = z.object({
+// Validation schema for a single replicate
+const replicateSchema = z.object({
   weight_grams: z.coerce.number().min(0.001, "Weight must be greater than 0"),
   viable_seed_count: z.coerce
     .number()
@@ -54,18 +53,19 @@ const repeatSchema = z.object({
 
 // Main form schema
 const qualityTestSchema = z.object({
-  test_type: z.enum(["x-ray", "cut test", "tz", "slow purity", "quick purity"]),
+  test_type: z.enum(["x-ray", "cut test", "tz", "germination"]),
   psu_grams: z.coerce.number().min(0.001, "PSU must be greater than 0"),
   inert_seed_weight_grams: z.coerce.number().default(0),
   other_species_seeds_grams: z.coerce.number().optional().default(0),
   relative_humidity_percent: z.coerce
     .number()
     .min(0, "RH must be at least 0%")
-    .max(100, "RH cannot exceed 100%"),
+    .max(100, "RH cannot exceed 100%")
+    .optional(),
   repeats: z
-    .array(repeatSchema)
-    .min(1, "At least one repeat is required")
-    .max(5, "Maximum 5 repeats allowed"),
+    .array(replicateSchema)
+    .min(1, "At least one replicate is required")
+    .max(5, "Maximum 5 replicates allowed"),
   notes: z.string().optional(),
 })
 
@@ -89,7 +89,7 @@ const SeedCounts = ({
   return fields.map((field, index) => (
     <div key={field.id} className="rounded-lg border p-2">
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-sm font-medium">Repeat {index + 1}</span>
+        <span className="text-sm font-medium">Replicate {index + 1}</span>
         {fields.length > 1 && (
           <Button
             type="button"
@@ -264,7 +264,7 @@ export const QualityTestForm = ({
     }
   }
 
-  const addRepeat = () => {
+  const addReplicate = () => {
     if (fieldArray.fields.length < 5) {
       fieldArray.append({
         weight_grams: 0,
@@ -336,7 +336,7 @@ export const QualityTestForm = ({
           {/* Relative Humidity */}
           <div className="space-y-2">
             <Label htmlFor="relative_humidity_percent">
-              Relative Humidity (%) *
+              Relative Humidity (%)
             </Label>
             <div className="flex items-center gap-2">
               <Input
@@ -439,17 +439,17 @@ export const QualityTestForm = ({
         {/* Repeats Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label>Seed Counts (1-5 repeats) *</Label>
+            <Label>Seed Counts (1-5 replicates) *</Label>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={addRepeat}
+              onClick={addReplicate}
               disabled={fieldArray.fields.length >= 5}
               className="cursor-pointer"
             >
               <Plus className="mr-1 h-4 w-4" />
-              Add Repeat
+              Add Replicate
             </Button>
           </div>
 
@@ -458,7 +458,7 @@ export const QualityTestForm = ({
           {form.formState.errors.repeats && (
             <p className="text-sm text-red-600">
               {Array.isArray(form.formState.errors.repeats)
-                ? "Please fix errors in seed counts"
+                ? "Please fix errors in replicates"
                 : form.formState.errors.repeats.message}
             </p>
           )}

@@ -70,29 +70,54 @@ export type ActiveBatch = Omit<
   organisation_id: string
   latest_quality_statistics: QualityTestCalculations | null
 }
-export type BatchProcessing = Omit<Table<"batch_processing">, "process"> & {
-  process: string[]
+
+// Treatment (batch treatment/processing events)
+export type Treatment = Omit<Table<"treatments">, "treat"> & {
+  treat: string[]
 }
+// Aliases for backward compat
+export type BatchTreating = Treatment
+export type BatchProcessing = Treatment
+
 export type BatchCustody = Table<"batch_custody">
 export type BatchSplit = Table<"batch_splits">
 export type BatchMerge = Table<"batch_merges">
 export type BatchStorage = Table<"batch_storage">
 export type StorageLocation = Table<"storage_locations">
-export type Treatment = Table<"treatments">
 
-export type BatchProcessType = Enums["batch_process_type"]
+// Sub-batches
+export type SubBatch = Table<"sub_batches">
+
+// Cleaning
+export type BatchCleaning = Table<"batch_cleaning">
+export type BatchCleaningOutput = Table<"batch_cleaning_output">
+
+export type BatchTreatType = Enums["batch_treatment_type"]
+// Keep old name as alias
+export type BatchProcessType = BatchTreatType
 export type BatchQuality = Enums["batch_quality"]
+
+// Material types for cleaning
+export type MaterialType = "seed" | "covering_structure"
+export const MATERIAL_SUBTYPES = [
+  "pod",
+  "floret",
+  "capsule",
+  "achene",
+  "drupe",
+  "berry",
+  "nut",
+  "samara",
+  "caryopsis",
+  "other",
+] as const
+export type MaterialSubtype = (typeof MATERIAL_SUBTYPES)[number]
 
 // Test Types
 export type Test = Table<"tests">
 
 // Quality Test Types
-export type QualityTestType =
-  | "x-ray"
-  | "cut test"
-  | "tz"
-  | "slow purity"
-  | "quick purity"
+export type QualityTestType = "x-ray" | "cut test" | "tz" | "germination"
 
 export interface QualityTestRepeat {
   weight_grams: number
@@ -105,7 +130,7 @@ export interface QualityTestResult {
   psu_grams: number
   inert_seed_weight_grams?: number
   other_species_seeds_grams?: number
-  relative_humidity_percent: number
+  relative_humidity_percent?: number
   repeats: QualityTestRepeat[]
   notes?: string
 }

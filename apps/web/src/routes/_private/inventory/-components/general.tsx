@@ -14,10 +14,12 @@ import {
   AssignBatchesForTestingModal,
   BatchEditModal,
   BatchMergeModal,
+  BatchMixModal,
   BatchSplitModal,
   BatchStorageModal,
 } from "@/components/inventory/modals"
 import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
+import { BatchCleaningModal } from "@/components/inventory/modals/BatchCleaningModal"
 import { useAssignmentMode } from "@/hooks/useAssignmentMode"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchDelete } from "@/hooks/useBatches"
@@ -51,6 +53,12 @@ export function InventoryPageGeneral() {
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [processingBatch, setPocessingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
+  const [cleaningBatch, setCleaningBatch] =
+    useState<BatchWithCurrentLocationAndSpecies | null>(null)
+  const [subBatchStorageMove, setSubBatchStorageMove] = useState<{
+    batch: BatchWithCurrentLocationAndSpecies
+    subBatchId: string
+  } | null>(null)
 
   // Merge mode state
   const [mergeState, setMergeState] = useState<{
@@ -59,6 +67,12 @@ export function InventoryPageGeneral() {
     selectedBatchIds: string[]
   } | null>(null)
   const [showMergeModal, setShowMergeModal] = useState(false)
+
+  // Mix state
+  const [mixSelectedBatches, setMixSelectedBatches] = useState<
+    BatchWithCurrentLocationAndSpecies[]
+  >([])
+  const [showMixModal, setShowMixModal] = useState(false)
 
   // Check org type and linked testing organisations
   const { data: organisationLinks } = useOrganisationLinks()
@@ -151,6 +165,11 @@ export function InventoryPageGeneral() {
     if (mergeState && mergeState.selectedBatchIds.length >= 2) {
       setShowMergeModal(true)
     }
+  }
+
+  const handleMix = (batch: BatchWithCurrentLocationAndSpecies) => {
+    setMixSelectedBatches([batch])
+    setShowMixModal(true)
   }
 
   const handleStorageMove = (batch: BatchWithCurrentLocationAndSpecies) => {
@@ -324,8 +343,13 @@ export function InventoryPageGeneral() {
                           onDelete={handleDelete}
                           onSplit={handleSplit}
                           onStorageMove={handleStorageMove}
+                          onClean={setCleaningBatch}
                           onProcess={setPocessingBatch}
                           onMerge={handleMerge}
+                          onMix={handleMix}
+                          onSubBatchStorageMove={(batch, subBatchId) =>
+                            setSubBatchStorageMove({ batch, subBatchId })
+                          }
                           onAssignForTesting={
                             hasTestingOrgLinks
                               ? handleAssignForTesting
@@ -377,6 +401,15 @@ export function InventoryPageGeneral() {
           />
         )}
 
+        {subBatchStorageMove && (
+          <BatchStorageModal
+            isOpen={Boolean(subBatchStorageMove)}
+            onClose={() => setSubBatchStorageMove(null)}
+            batch={subBatchStorageMove.batch}
+            subBatchId={subBatchStorageMove.subBatchId}
+          />
+        )}
+
         {splittingBatch && (
           <BatchSplitModal
             isOpen={Boolean(splittingBatch)}
@@ -395,6 +428,15 @@ export function InventoryPageGeneral() {
           />
         )}
 
+        {cleaningBatch && (
+          <BatchCleaningModal
+            isOpen={Boolean(cleaningBatch)}
+            onClose={() => setCleaningBatch(null)}
+            batch={cleaningBatch}
+            onSuccess={invalidateBatchesCacheByFilter}
+          />
+        )}
+
         {mergeState && selectedBatchesForMerge.length > 0 && (
           <BatchMergeModal
             isOpen={showMergeModal}
@@ -403,6 +445,18 @@ export function InventoryPageGeneral() {
               setMergeState(null) // Reset merge state after modal closes
             }}
             selectedBatches={selectedBatchesForMerge}
+            onSuccess={invalidateBatchesCacheByFilter}
+          />
+        )}
+
+        {showMixModal && mixSelectedBatches.length > 0 && (
+          <BatchMixModal
+            isOpen={showMixModal}
+            onClose={() => {
+              setShowMixModal(false)
+              setMixSelectedBatches([])
+            }}
+            selectedBatches={mixSelectedBatches}
             onSuccess={invalidateBatchesCacheByFilter}
           />
         )}

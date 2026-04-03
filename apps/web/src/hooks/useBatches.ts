@@ -55,16 +55,18 @@ export type BatchFilter = {
   order: string
 }
 
-type IsProcessedBatch = ActiveBatch & {
-  is_processed: boolean
+type BatchWithStatus = ActiveBatch & {
+  is_treated: boolean
+  is_cleaned: boolean
 }
 
-export type UnprocessedBatch = IsProcessedBatch & {
+export type UnprocessedBatch = BatchWithStatus & {
   weight_grams: null
-  is_processed: false
+  is_treated: false
+  is_cleaned: false
 }
 
-export type BatchWithCurrentLocationAndSpecies = IsProcessedBatch & {
+export type BatchWithCurrentLocationAndSpecies = BatchWithStatus & {
   current_location?: {
     batch_id: string
     location_id: string
@@ -103,9 +105,9 @@ export const useBatchesByFilter = (batchFilter: BatchFilter) => {
         )`)
 
       if (batchFilter.status === "unprocessed") {
-        q = q.is("is_processed", false)
+        q = q.is("is_treated", false).is("is_cleaned", false)
       } else if (batchFilter.status === "processed") {
-        q = q.is("is_processed", true)
+        q = q.or("is_treated.is.true,is_cleaned.is.true")
       }
       if (batchFilter.collectionId) {
         q = q.eq("collection_id", batchFilter.collectionId)
@@ -456,7 +458,8 @@ export const useBatchLineage = (batchId: string) => {
 // A batch cannot be deleted if it has any relationships in:
 // - batch_splits (as parent or child)
 // - batch_merges (as merged or source)
-// - batch_processing (as input or output)
+// - treatments (as input or output)
+// - batch_cleaning (as input)
 export const useCanDeleteBatch = (batchId: string) => {
   return useQuery({
     queryKey: ["batches", "canDelete", batchId],

@@ -6,30 +6,30 @@ import {
 } from "@nasti/ui/dialog"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 
-import { BatchTreatmentForm } from "@/components/batches/BatchTreatmentForm"
+import { BatchCleaningForm } from "@/components/batches/BatchCleaningForm"
 
-type BatchTreatmentModalProps = {
+type BatchCleaningModalProps = {
   isOpen: boolean
   onClose: () => void
   batch: BatchWithCurrentLocationAndSpecies
   onSuccess?: () => void
 }
 
-export const BatchProcessingModal = ({
+export const BatchCleaningModal = ({
   isOpen,
   onClose,
   batch,
   onSuccess,
-}: BatchTreatmentModalProps) => {
+}: BatchCleaningModalProps) => {
   if (!isOpen) return null
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Treat Batch</DialogTitle>
+          <DialogTitle>Clean Batch</DialogTitle>
         </DialogHeader>
-        <BatchTreatmentForm
+        <BatchCleaningForm
           batch={batch}
           onSuccess={() => {
             onClose()

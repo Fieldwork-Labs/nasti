@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@nasti/ui/tooltip"
-import { Boxes, BrushCleaning, FlaskConical, Undo2 } from "lucide-react"
+import { Boxes, Sparkles, FlaskConical, Undo2 } from "lucide-react"
 import { useState } from "react"
 
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
@@ -63,7 +63,7 @@ const Actions = ({
       onClick={() => onProcess?.(batch)}
       title="Process"
     >
-      <BrushCleaning className="h-4 w-4" />
+      <Sparkles className="h-4 w-4" />
     </Button>
 
     <Button

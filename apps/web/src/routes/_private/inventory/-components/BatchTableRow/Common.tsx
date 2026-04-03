@@ -10,14 +10,18 @@ import {
   AlertDialogTrigger,
 } from "@nasti/ui/alert-dialog"
 import { Button } from "@nasti/ui/button"
-import { useOpenClose } from "@nasti/ui/hooks"
+import { useOpenClose, useToast } from "@nasti/ui/hooks"
 import {
-  BrushCleaning,
+  Boxes,
+  Sparkles,
   Calendar,
+  Check,
   ChevronDown,
   ChevronRight,
   FileWarningIcon,
   FlaskConical,
+  Loader2,
+  Merge,
   Package,
   Pencil,
   Trash2,
@@ -26,6 +30,8 @@ import { useState, type ReactNode } from "react"
 
 import { useActiveBatchAssignment } from "@/hooks/useBatchAssignments"
 import { useBatchTests } from "@/hooks/useBatchTests"
+import { useSubBatches, useMergeSubBatches } from "@/hooks/useSubBatches"
+import type { SubBatchWithStorage } from "@/hooks/useSubBatches"
 import type { QualityTest } from "@nasti/common/types"
 import { Badge } from "@nasti/ui/badge"
 import {
@@ -43,7 +49,6 @@ import {
   useCanDeleteBatch,
 } from "@/hooks/useBatches"
 import { useCurrentBatchStorage } from "@/hooks/useBatchStorage"
-import { CollectionDetailModal } from "@/components/collections/CollectionDetailModal"
 import { CollectionListItem } from "@/components/collections/CollectionListItem"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import useUserStore from "@/store/userStore"
@@ -75,9 +80,7 @@ export const NeedsProcessingIcon = withTooltip(
   <FileWarningIcon className="h-4 w-4 text-orange-600" />,
 )
 
-export const StatusProcessedIcon = withTooltip(
-  <BrushCleaning className="h-4 w-4" />,
-)
+export const StatusProcessedIcon = withTooltip(<Sparkles className="h-4 w-4" />)
 
 export const StatusTestedIcon = withTooltip(
   <FlaskConical className="h-4 w-4" />,
@@ -252,9 +255,8 @@ export const BatchStatusField = ({
 }) => {
   return (
     <span className="flex gap-1 text-sm">
-      {batch.is_processed && (
-        <StatusProcessedIcon>Processed</StatusProcessedIcon>
-      )}
+      {batch.is_treated && <StatusProcessedIcon>Treated</StatusProcessedIcon>}
+      {batch.is_cleaned && <StatusProcessedIcon>Cleaned</StatusProcessedIcon>}
       {batch.latest_quality_statistics && (
         <StatusTestedIcon>Tested</StatusTestedIcon>
       )}
@@ -395,6 +397,156 @@ interface BatchExpandedDetailsProps {
   batch: BatchType
   detailLoading: boolean
   currentStorage: CurrentBatchStorage
+  onSubBatchStorageMove?: (subBatchId: string) => void
+}
+
+/**
+ * Displays sub-batches for a batch with merge capability and per-sub-batch storage moves
+ */
+const SubBatchesTable = ({
+  batchId,
+  onStorageMove,
+}: {
+  batchId: string
+  onStorageMove?: (subBatchId: string) => void
+}) => {
+  const { toast } = useToast()
+  const { data: subBatches, isLoading } = useSubBatches(batchId)
+  const mergeMutation = useMergeSubBatches()
+  const [selectedForMerge, setSelectedForMerge] = useState<string[]>([])
+  const isMerging = selectedForMerge.length > 0
+
+  const toggleMergeSelect = (id: string) => {
+    setSelectedForMerge((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
+    )
+  }
+
+  const handleMerge = async () => {
+    if (selectedForMerge.length < 2) return
+    try {
+      await mergeMutation.mutateAsync({ subBatchIds: selectedForMerge })
+      toast({ description: "Sub-batches merged successfully" })
+      setSelectedForMerge([])
+    } catch (error) {
+      toast({
+        description: "Failed to merge sub-batches",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="animate-pulse space-y-2 rounded-sm border border-gray-400 p-2">
+        <div className="h-4 w-1/4 rounded bg-gray-200" />
+      </div>
+    )
+  }
+
+  if (!subBatches || subBatches.length <= 1) return null
+
+  return (
+    <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">
+          Sub-batches ({subBatches.length})
+        </span>
+        <div className="flex gap-1">
+          {isMerging && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 cursor-pointer text-xs"
+                disabled={
+                  selectedForMerge.length < 2 || mergeMutation.isPending
+                }
+                onClick={handleMerge}
+              >
+                {mergeMutation.isPending ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Check className="mr-1 h-3 w-3" />
+                )}
+                Merge ({selectedForMerge.length})
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 cursor-pointer text-xs"
+                onClick={() => setSelectedForMerge([])}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
+          {!isMerging && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 cursor-pointer text-xs"
+              onClick={() => setSelectedForMerge([subBatches[0].id])}
+            >
+              <Merge className="mr-1 h-3 w-3" />
+              Merge
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="space-y-1">
+        {subBatches.map((sb: SubBatchWithStorage) => (
+          <div
+            key={sb.id}
+            className={cn(
+              "flex items-center justify-between rounded px-2 py-1 text-xs",
+              isMerging && "hover:bg-muted/50 cursor-pointer",
+              selectedForMerge.includes(sb.id) &&
+                "bg-primary/10 border-primary border",
+            )}
+            onClick={() => {
+              if (isMerging) toggleMergeSelect(sb.id)
+            }}
+          >
+            <div className="flex items-center gap-3">
+              {isMerging && (
+                <input
+                  type="checkbox"
+                  checked={selectedForMerge.includes(sb.id)}
+                  onChange={() => toggleMergeSelect(sb.id)}
+                  className="h-3 w-3"
+                />
+              )}
+              <span className="font-mono font-medium">{sb.weight_grams}g</span>
+              {sb.current_storage?.location && (
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  {sb.current_storage.location.name}
+                </span>
+              )}
+              {sb.notes && (
+                <span className="text-muted-foreground">{sb.notes}</span>
+              )}
+            </div>
+            {!isMerging && onStorageMove && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 cursor-pointer p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onStorageMove(sb.id)
+                }}
+                title="Move to storage"
+              >
+                <Boxes className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -404,6 +556,7 @@ export const BatchExpandedDetails = ({
   batch,
   detailLoading,
   currentStorage,
+  onSubBatchStorageMove,
 }: BatchExpandedDetailsProps) => {
   return (
     <div className="space-y-4">
@@ -417,6 +570,10 @@ export const BatchExpandedDetails = ({
       ) : (
         <BatchDetailsContent batch={batch} currentStorage={currentStorage} />
       )}
+      <SubBatchesTable
+        batchId={batch.id}
+        onStorageMove={onSubBatchStorageMove}
+      />
       {batch.latest_quality_statistics && (
         <LatestQualityStatistics statistics={batch.latest_quality_statistics} />
       )}
@@ -426,23 +583,13 @@ export const BatchExpandedDetails = ({
 }
 
 const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {
-  const { open, isOpen, close } = useOpenClose()
   const { organisation } = useUserStore()
   const isTesting = organisation?.type === "Testing"
-  console.log({ isTesting })
+
   if (!batch.collection_id) return null
   // don't show the collection modal for testing orgs
   if (isTesting) return <CollectionListItem id={batch.collection_id} />
-  return (
-    <>
-      <CollectionListItem id={batch.collection_id} onClick={open} />
-      <CollectionDetailModal
-        id={batch.collection.id}
-        open={isOpen}
-        onClose={close}
-      />
-    </>
-  )
+  return <CollectionListItem id={batch.collection_id} />
 }
 
 const BatchDetailsSkeleton = () => (
@@ -592,7 +739,11 @@ export const BatchCodeCell = ({
           <ChevronRight className="h-4 w-4" />
         )}
       </Button>
-      <span className="font-mono text-sm">{batch.code}</span>
+      <span className="font-mono text-sm">
+        {!batch.is_treated && !batch.is_cleaned && batch.collection?.code
+          ? batch.collection.code
+          : batch.code}
+      </span>
       {!hasWeight && (
         <NeedsProcessingIcon>Requires processing</NeedsProcessingIcon>
       )}
@@ -656,6 +807,7 @@ interface BatchTableRowContainerProps {
   actionButtons: ReactNode
   currentStorage: CurrentBatchStorage
   detailLoading: boolean
+  onSubBatchStorageMove?: (subBatchId: string) => void
 }
 
 /**
@@ -671,6 +823,7 @@ export const BatchTableRowContainer = ({
   actionButtons,
   currentStorage,
   detailLoading,
+  onSubBatchStorageMove,
 }: BatchTableRowContainerProps) => (
   <>
     <tr
@@ -729,6 +882,7 @@ export const BatchTableRowContainer = ({
             batch={batch}
             detailLoading={detailLoading}
             currentStorage={currentStorage}
+            onSubBatchStorageMove={onSubBatchStorageMove}
           />
         </td>
       </tr>
