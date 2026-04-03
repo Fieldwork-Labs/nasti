@@ -59,15 +59,52 @@ CREATE TABLE batch_merges (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- TABLE: treatments
+-- Create enums for treatments
+CREATE TYPE batch_treatment_type AS ENUM ('sort', 'coat', 'treat', 'other');
+CREATE TYPE batch_quality AS ENUM ('ORG', 'HQ', 'LQ');
+
+-- Create validation function for treat array
+CREATE OR REPLACE FUNCTION validate_treatment_array(treats JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  valid_treats TEXT[] := ARRAY['sort', 'coat', 'treat', 'other'];
+  treat_value TEXT;
+BEGIN
+  IF jsonb_typeof(treats) != 'array' THEN
+    RETURN FALSE;
+  END IF;
+
+  IF jsonb_array_length(treats) = 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  FOR treat_value IN SELECT jsonb_array_elements_text(treats)
+  LOOP
+    IF NOT (treat_value = ANY(valid_treats)) THEN
+      RETURN FALSE;
+    END IF;
+  END LOOP;
+
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- TABLE: treatments 
 CREATE TABLE treatments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  description TEXT,
-  performed_at TIMESTAMPTZ DEFAULT now(),
-  performed_by UUID REFERENCES auth.users(id)
+  input_batch_id UUID REFERENCES batches(id) ON DELETE RESTRICT,
+  output_batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE RESTRICT,
+  treat JSONB NOT NULL CHECK (validate_treatment_array(treat)),
+  quality_assessment batch_quality NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id),
+  organisation_id UUID NOT NULL REFERENCES organisation(id)
 );
+
+-- Create indexes
+CREATE INDEX idx_treatments_input_batch ON treatments(input_batch_id);
+CREATE INDEX idx_treatments_output_batch ON treatments(output_batch_id);
 
 -- TABLE: tests
 CREATE TABLE tests (
@@ -111,6 +148,7 @@ ORDER BY batch_id, stored_at DESC;
 
 
 -- VIEW: batch_lineage_to_collections
+-- NOTE: This view is recreated in a later migration to include treating and cleaning
 CREATE OR REPLACE VIEW batch_lineage_to_collections AS
 WITH RECURSIVE lineage (batch_id, collection_id) AS (
   -- base case: direct batches with their own collection_id
@@ -127,9 +165,9 @@ WITH RECURSIVE lineage (batch_id, collection_id) AS (
     -- splits
     SELECT parent_batch_id AS source_id, child_batch_id AS batch_id
     FROM batch_splits
-    
+
     UNION ALL
-    
+
     -- merges
     SELECT source_batch_id AS source_id, merged_batch_id AS batch_id
     FROM batch_merges
@@ -360,7 +398,7 @@ CREATE POLICY custodian_can_access_treatments ON treatments
 USING (EXISTS (
 SELECT 1 FROM batches b
 JOIN current_batch_custody cbc ON b.id = cbc.batch_id
-WHERE b.id = treatments.batch_id AND is_org_member(auth.uid(), cbc.organisation_id)
+WHERE b.id = treatments.input_batch_id AND is_org_member(auth.uid(), cbc.organisation_id)
 ));
 
 

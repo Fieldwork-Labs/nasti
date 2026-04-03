@@ -157,6 +157,7 @@ const useCollectionForm = ({
         ...rest,
         id: collection?.id,
         created_by: user.id,
+        collected_by: user.id,
         location,
         organisation_id: organisation.id,
         trip_id,

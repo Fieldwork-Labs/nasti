@@ -1,10 +1,10 @@
--- Function to process batches
--- Processing creates a new output batch and records the processing event
+-- Function to treat batches (renamed from fn_process_batch)
+-- Treatment creates a new output batch and records the treatment event
 -- If the input batch has NULL weight (initial/origin batch), p_origin_batch_weight sets the weight
-CREATE OR REPLACE FUNCTION fn_process_batch(
+CREATE OR REPLACE FUNCTION fn_treat_batch(
   p_input_batch_id UUID,
   p_output_weight INTEGER,
-  p_process JSONB,
+  p_treat JSONB,
   p_quality_assessment batch_quality,
   p_origin_batch_weight INTEGER DEFAULT NULL,
   p_notes TEXT DEFAULT NULL
@@ -32,7 +32,7 @@ BEGIN
   -- If input batch has NULL weight, this is an "origin batch"
   IF v_input_weight IS NULL THEN
     IF p_origin_batch_weight IS NULL THEN
-      RAISE EXCEPTION 'origin_batch_weight must be provided when processing a batch with NULL weight';
+      RAISE EXCEPTION 'origin_batch_weight must be provided when treating a batch with NULL weight';
     END IF;
 
     UPDATE batches
@@ -52,7 +52,6 @@ BEGIN
   END IF;
 
   -- Generate batch code: collection_code-quality-increment
-  -- Get next increment for this collection code and quality
   SELECT COALESCE(MAX(
     CASE
       WHEN code ~ ('^' || v_collection_code || '-' || p_quality_assessment::text || '-[0-9]+$')
@@ -83,14 +82,13 @@ BEGIN
   RETURNING id INTO v_output_batch_id;
 
   INSERT INTO batch_custody (batch_id, organisation_id, notes)
-  VALUES (v_output_batch_id, v_organisation_id, 'Batch created via processing');
+  VALUES (v_output_batch_id, v_organisation_id, 'Batch created via treating');
 
-
-  -- Record processing event
-  INSERT INTO batch_processing (
+  -- Record treating event
+  INSERT INTO treatments (
     input_batch_id,
     output_batch_id,
-    process,
+    treat,
     quality_assessment,
     notes,
     created_by,
@@ -98,7 +96,7 @@ BEGIN
   ) VALUES (
     p_input_batch_id,
     v_output_batch_id,
-    p_process,
+    p_treat,
     p_quality_assessment,
     p_notes,
     auth.uid(),
@@ -106,8 +104,6 @@ BEGIN
   );
 
   -- Create weight adjustment to mark input batch as fully consumed
-  -- The discarded portion is (v_input_weight - p_output_weight)
-  -- We adjust by negative input weight to set current weight to 0
   INSERT INTO batch_weight_adjustments (
     batch_id,
     weight_grams,
@@ -116,12 +112,11 @@ BEGIN
   ) VALUES (
     p_input_batch_id,
     -v_input_weight,
-    'Batch processed (' || p_process::text || '). Output weight: ' || p_output_weight || 'g. Discarded: ' || (v_input_weight - p_output_weight) || 'g.',
+    'Batch treated (' || p_treat::text || '). Output weight: ' || p_output_weight || 'g. Discarded: ' || (v_input_weight - p_output_weight) || 'g.',
     auth.uid()
   );
 
   -- If input batch has an active testing assignment, create a new assignment for output batch
-  -- This maintains assignment continuity when testing orgs process batches
   INSERT INTO batch_testing_assignment (
     batch_id,
     assigned_to_org_id,
@@ -144,3 +139,5 @@ BEGIN
   RETURN v_output_batch_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION fn_treat_batch(UUID, INTEGER, JSONB, batch_quality, INTEGER, TEXT) TO authenticated;

@@ -1,5 +1,5 @@
 import { useBatchHistory, useBatchSplit } from "@/hooks/useBatches"
-import { useBatchProcessingEvent } from "@/hooks/useBatchProcessing"
+import { useTreatmentEvent } from "@/hooks/useBatchTreating"
 import { useCollection } from "@/hooks/useCollection"
 import { Badge } from "@nasti/ui/badge"
 import { CalendarIcon, Notebook } from "lucide-react"
@@ -7,7 +7,7 @@ import { CalendarIcon, Notebook } from "lucide-react"
 type BaseHistoryEvent = {
   batch_id: string
   parent_batch_id: string | null
-  creation_event: "initial" | "split" | "merge" | "processing"
+  creation_event: "initial" | "split" | "merge" | "treating" | "cleaning"
   created_at: string
   event_details: Record<string, unknown>
 }
@@ -33,16 +33,29 @@ type MergeEvent = BaseHistoryEvent & {
   event_details: MergeData
 }
 
-type ProcessingData = {
-  batch_processing_id: string
-  process: string[]
+type TreatmentData = {
+  treatment_id: string
+  treat: string[]
   quality_assessment: string
   output_weight: number
 }
 
-type ProcessingEvent = BaseHistoryEvent & {
-  creation_event: "processing"
-  event_details: ProcessingData
+type TreatmentEvent = BaseHistoryEvent & {
+  creation_event: "treating"
+  event_details: TreatmentData
+}
+
+type CleaningData = {
+  batch_cleaning_id: string
+  cleaning_output_id: string
+  quality: string
+  material_type: string
+  output_weight: number
+}
+
+type CleaningEvent = BaseHistoryEvent & {
+  creation_event: "cleaning"
+  event_details: CleaningData
 }
 
 type InitialData = {
@@ -54,54 +67,65 @@ type InitialEvent = BaseHistoryEvent & {
   event_details: InitialData
 }
 
-type HistoryEvent = InitialEvent | SplitEvent | MergeEvent | ProcessingEvent
+type HistoryEvent =
+  | InitialEvent
+  | SplitEvent
+  | MergeEvent
+  | TreatmentEvent
+  | CleaningEvent
 
-const historyTypeGuards = {
-  initial: (event: HistoryEvent): event is InitialEvent =>
-    event.creation_event === "initial",
-  split: (event: HistoryEvent): event is SplitEvent =>
-    event.creation_event === "split",
-  merge: (event: HistoryEvent): event is MergeEvent =>
-    event.creation_event === "merge",
-  processing: (event: HistoryEvent): event is ProcessingEvent =>
-    event.creation_event === "processing",
-}
-
-const ProcessingEvent = ({ event }: { event: ProcessingEvent }) => {
-  const { data: processingHistory, isLoading } = useBatchProcessingEvent(
-    event.event_details.batch_processing_id,
+const TreatmentEventComponent = ({ event }: { event: TreatmentEvent }) => {
+  const { data: treatmentHistory, isLoading } = useTreatmentEvent(
+    event.event_details.treatment_id,
   )
   if (isLoading) return <div>Loading...</div>
-  if (!processingHistory) return null
+  if (!treatmentHistory) return null
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center space-x-2">
         <CalendarIcon className="h-4 w-4" />
         <div className="text-sm">
-          {processingHistory.created_at &&
-            new Date(processingHistory.created_at).toLocaleDateString()}
+          {treatmentHistory.created_at &&
+            new Date(treatmentHistory.created_at).toLocaleDateString()}
         </div>
-        <Badge variant={"outline"}>Processing</Badge>
-        <div className="text-sm">{processingHistory.process.join(", ")}</div>
-        {processingHistory.notes && processingHistory.notes.length > 0 && (
+        <Badge variant={"outline"}>Treatment</Badge>
+        <div className="text-sm">{treatmentHistory.treat.join(", ")}</div>
+        {treatmentHistory.notes && treatmentHistory.notes.length > 0 && (
           <div className="bg-secondary-background/70 flex items-center gap-2 rounded px-2 py-1 text-sm">
             <Notebook className="h-4 w-4" />
-            {processingHistory.notes}
+            {treatmentHistory.notes}
           </div>
         )}
       </div>
       <div className="text-sm">
         Parent:{" "}
         <span className="font-mono font-semibold">
-          {processingHistory.input_batch?.code}
+          {treatmentHistory.input_batch?.code}
         </span>
       </div>
     </div>
   )
 }
 
-const SplitEvent = ({ event }: { event: SplitEvent }) => {
+const CleaningEventComponent = ({ event }: { event: CleaningEvent }) => {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center space-x-2">
+        <CalendarIcon className="h-4 w-4" />
+        <div className="text-sm">
+          {event.created_at && new Date(event.created_at).toLocaleDateString()}
+        </div>
+        <Badge variant={"outline"}>Cleaning</Badge>
+        <div className="text-sm">
+          {event.event_details.quality} - {event.event_details.material_type}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SplitEventComponent = ({ event }: { event: SplitEvent }) => {
   const { data: splitHistory, isLoading } = useBatchSplit(
     event.event_details.batch_split_id,
   )
@@ -128,7 +152,7 @@ const SplitEvent = ({ event }: { event: SplitEvent }) => {
   )
 }
 
-const MergeEvent = ({ event }: { event: MergeEvent }) => {
+const MergeEventComponent = ({ event }: { event: MergeEvent }) => {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center space-x-2">
@@ -136,7 +160,7 @@ const MergeEvent = ({ event }: { event: MergeEvent }) => {
         <div className="text-sm">
           {event.created_at && new Date(event.created_at).toLocaleDateString()}
         </div>
-        <Badge variant={"outline"}>Split</Badge>
+        <Badge variant={"outline"}>Merge</Badge>
       </div>
       <div className="text-sm">
         Parents:{" "}
@@ -148,7 +172,7 @@ const MergeEvent = ({ event }: { event: MergeEvent }) => {
   )
 }
 
-const InitialEvent = ({ event }: { event: InitialEvent }) => {
+const InitialEventComponent = ({ event }: { event: InitialEvent }) => {
   const { data: collection, isLoading } = useCollection(
     event.event_details.collection_id,
   )
@@ -168,26 +192,16 @@ const InitialEvent = ({ event }: { event: InitialEvent }) => {
 
 const EventComponentSwitch = ({ event }: { event: HistoryEvent }) => {
   switch (event.creation_event) {
-    case "processing": {
-      const isProcessing = historyTypeGuards.processing(event)
-      if (!isProcessing) throw new Error("Incorrect event type: Processing")
-      return <ProcessingEvent event={event} />
-    }
-    case "split": {
-      const isSplit = historyTypeGuards.split(event)
-      if (!isSplit) throw new Error("Incorrect event type: Split")
-      return <SplitEvent event={event} />
-    }
-    case "merge": {
-      const isMerge = historyTypeGuards.merge(event)
-      if (!isMerge) throw new Error("Incorrect event type: Merge")
-      return <MergeEvent event={event} />
-    }
-    case "initial": {
-      const isInitial = historyTypeGuards.initial(event)
-      if (!isInitial) throw new Error("Incorrect event type: Initial")
-      return <InitialEvent event={event} />
-    }
+    case "treating":
+      return <TreatmentEventComponent event={event} />
+    case "cleaning":
+      return <CleaningEventComponent event={event} />
+    case "split":
+      return <SplitEventComponent event={event} />
+    case "merge":
+      return <MergeEventComponent event={event} />
+    case "initial":
+      return <InitialEventComponent event={event} />
     default:
       return <div>Unknown event type</div>
   }

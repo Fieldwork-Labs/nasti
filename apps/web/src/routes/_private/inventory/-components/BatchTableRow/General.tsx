@@ -8,7 +8,7 @@ import {
 import { cn } from "@nasti/ui/utils"
 import {
   Boxes,
-  BrushCleaning,
+  Sparkles,
   Combine,
   Edit,
   FlaskConical,
@@ -58,8 +58,14 @@ interface BatchTableRowProps extends BaseBatchTableRowProps {
   batch: BatchWithCurrentLocationAndSpecies
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onSubBatchStorageMove?: (
+    batch: BatchWithCurrentLocationAndSpecies,
+    subBatchId: string,
+  ) => void
   mergeMode?: MergeMode
   assignmentMode?: AssignmentMode
 }
@@ -175,7 +181,9 @@ interface NormalModeActionsProps {
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
@@ -190,7 +198,9 @@ const NormalModeActions = ({
   onEdit,
   onSplit,
   onProcess,
+  onClean,
   onMerge,
+  onMix,
   onStorageMove,
   onAssignForTesting,
   onDelete,
@@ -207,7 +217,7 @@ const NormalModeActions = ({
       <Edit className="h-4 w-4" />
     </Button>
 
-    {batch.is_processed && (
+    {(batch.is_treated || batch.is_cleaned) && (
       <Button
         variant="ghost"
         size="sm"
@@ -223,13 +233,23 @@ const NormalModeActions = ({
       variant="ghost"
       size="sm"
       disabled={mergeDisabled}
-      onClick={() => onProcess?.(batch)}
-      title="Process"
+      onClick={() => onClean?.(batch)}
+      title="Clean"
     >
-      <BrushCleaning className="h-4 w-4" />
+      <Sparkles className="h-4 w-4" />
     </Button>
 
-    {batch.is_processed ? (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={mergeDisabled}
+      onClick={() => onProcess?.(batch)}
+      title="Treat"
+    >
+      <FlaskConical className="h-4 w-4" />
+    </Button>
+
+    {(batch.is_treated || batch.is_cleaned) && (
       <Button
         variant="ghost"
         size="sm"
@@ -239,17 +259,17 @@ const NormalModeActions = ({
       >
         <Merge className="h-4 w-4" />
       </Button>
-    ) : (
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={mergeDisabled}
-        onClick={() => onMerge?.(batch)}
-        title="Mix"
-      >
-        <Combine className="h-4 w-4" />
-      </Button>
     )}
+
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={mergeDisabled}
+      onClick={() => onMix?.(batch)}
+      title="Mix"
+    >
+      <Combine className="h-4 w-4" />
+    </Button>
 
     <Button
       variant="ghost"
@@ -317,9 +337,12 @@ export const BatchTableRow = ({
   onDelete,
   onProcess,
   onSplit,
+  onClean,
   onMerge,
+  onMix,
   onStorageMove,
   onAssignForTesting,
+  onSubBatchStorageMove,
   className,
   mergeMode,
   assignmentMode,
@@ -374,8 +397,10 @@ export const BatchTableRow = ({
         hasActiveAssignment={hasActiveAssignment}
         onEdit={onEdit}
         onSplit={onSplit}
+        onClean={onClean}
         onProcess={onProcess}
         onMerge={onMerge}
+        onMix={onMix}
         onStorageMove={onStorageMove}
         onAssignForTesting={onAssignForTesting}
         onDelete={onDelete}
@@ -401,6 +426,11 @@ export const BatchTableRow = ({
         actionButtons={renderActionButtons()}
         currentStorage={currentStorage}
         detailLoading={detailLoading}
+        onSubBatchStorageMove={
+          onSubBatchStorageMove
+            ? (subBatchId) => onSubBatchStorageMove(batch, subBatchId)
+            : undefined
+        }
       />
 
       <QualityTestModal
