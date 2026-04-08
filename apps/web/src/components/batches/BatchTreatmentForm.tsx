@@ -121,8 +121,9 @@ export const BatchTreatmentForm = ({
           {batch.collection && (
             <p>
               Amount:{" "}
-              {((batch.collection as Record<string, unknown>)
-                .amount_description as string) || "Not specified"}
+              {("amount_description" in batch.collection
+                ? String(batch.collection.amount_description)
+                : null) || "Not specified"}
             </p>
           )}
           {batch.weights && (

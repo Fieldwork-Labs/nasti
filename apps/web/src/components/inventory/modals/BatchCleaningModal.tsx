@@ -25,7 +25,7 @@ export const BatchCleaningModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="h-screen max-w-2xl overflow-y-scroll">
         <DialogHeader>
           <DialogTitle>Clean Batch</DialogTitle>
         </DialogHeader>

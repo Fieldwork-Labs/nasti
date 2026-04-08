@@ -335,17 +335,34 @@ export const useUpdateQualityTest = () => {
       return data as unknown as QualityTest
     },
     onSuccess: async (updatedTest) => {
-      // wait one second to ensure the trigger function re-calculates the statistics
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      const { data, error } = await supabase
-        .from("tests")
-        .select("*")
-        .eq("id", updatedTest.id)
-        .limit(1)
-        .maybeSingle()
-        .overrideTypes<QualityTest>()
+      // Poll for the trigger-computed statistics instead of using a fixed delay.
+      // The DB trigger recalculates statistics after update, so we retry until
+      // the statistics field is populated or we exhaust retries.
+      const maxRetries = 5
+      const retryDelay = 500
+      let data: QualityTest | null = null
 
-      if (error) throw new Error(error.message)
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay))
+        }
+
+        const { data: fetched, error } = await supabase
+          .from("tests")
+          .select("*")
+          .eq("id", updatedTest.id)
+          .limit(1)
+          .maybeSingle()
+          .overrideTypes<QualityTest>()
+
+        if (error) throw new Error(error.message)
+        if (fetched?.statistics) {
+          data = fetched
+          break
+        }
+        data = fetched
+      }
+
       if (!data) throw new Error("Test not found")
 
       // Update in quality tests cache

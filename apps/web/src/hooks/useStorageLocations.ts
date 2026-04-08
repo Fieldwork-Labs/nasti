@@ -147,11 +147,13 @@ export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
     mutationFn: async ({ batchId, locationId, notes }) => {
       // First, mark current storage as moved out
-      await supabase
+      const { error: moveOutError } = await supabase
         .from("batch_storage")
         .update({ moved_out_at: new Date().toISOString() })
         .eq("batch_id", batchId)
         .is("moved_out_at", null)
+
+      if (moveOutError) throw new Error(moveOutError.message)
 
       // Then create new storage record
       const { data, error } = await supabase

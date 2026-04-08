@@ -100,7 +100,7 @@ export const useCompleteAssignment = () => {
       )
 
       if (error) {
-        throw new Error(error || "Failed to complete assignment")
+        throw new Error(error.message || "Failed to complete assignment")
       }
 
       return data
@@ -143,7 +143,7 @@ export const useReturnBatchFromTesting = () => {
       )
 
       if (error) {
-        throw new Error(error || "Failed to return batch")
+        throw new Error(error.message || "Failed to return batch")
       }
 
       return data

@@ -27,7 +27,7 @@ export const useAssignBatchesForTesting = () => {
       )
 
       if (error) {
-        throw new Error(error || "Failed to assign batches for testing")
+        throw new Error(error.message || "Failed to assign batches for testing")
       }
 
       return data

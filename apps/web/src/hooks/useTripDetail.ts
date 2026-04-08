@@ -13,7 +13,6 @@ export type TripWithDetails = Trip & {
 export const getTripDetail = async (
   tripId?: string,
 ): Promise<TripWithDetails> => {
-  console.log("getting trip detial")
   if (!tripId) throw new Error("No trip ID provided")
   const { data: trip, error } = await supabase
     .rpc("get_trip", { p_trip_id: tripId })

@@ -80,9 +80,12 @@ const SeedCounts = ({
   const { fields, remove } = fieldArray
 
   const getDeadSeedCount = (index: number) =>
-    parseInt(watch(`repeats.${index}.dead_seed_count`) as unknown as string)
+    parseInt(watch(`repeats.${index}.dead_seed_count`) as unknown as string) ||
+    0
   const getViableSeedCount = (index: number) =>
-    parseInt(watch(`repeats.${index}.viable_seed_count`) as unknown as string)
+    parseInt(
+      watch(`repeats.${index}.viable_seed_count`) as unknown as string,
+    ) || 0
   const getTotalSeedCount = (index: number) =>
     getDeadSeedCount(index) + getViableSeedCount(index)
 

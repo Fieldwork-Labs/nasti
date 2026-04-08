@@ -3,9 +3,7 @@ CREATE OR REPLACE FUNCTION fn_create_origin_batch_for_collection()
 RETURNS TRIGGER AS $$
 DECLARE
   v_collection_code text;
-  v_increment integer;
   v_new_batch_id uuid;
-  v_batch_code text;
 BEGIN
 
 -- Get collection code
@@ -17,23 +15,9 @@ BEGIN
     RAISE EXCEPTION 'Collection not found or has no code';
   END IF;
 
-  -- Generate batch code: collection_code-quality-increment
-  -- Get next increment for this collection code and quality
-  SELECT COALESCE(MAX(
-    CASE
-      WHEN code ~ ('^' || v_collection_code || '-' || 'ORG' || '-[0-9]+$')
-      THEN CAST(SUBSTRING(code FROM '[0-9]+$') AS INTEGER)
-      ELSE 0
-    END
-  ), 0) + 1
-  INTO v_increment
-  FROM batches
-  WHERE collection_id = NEW.id;
-
-  v_batch_code := v_collection_code || '-' || 'ORG' || '-' || v_increment::text;
-
+  -- Origin batch code is the same as the collection code
   INSERT INTO batches (code, collection_id, organisation_id)
-  VALUES (v_batch_code, NEW.id, NEW.organisation_id)
+  VALUES (v_collection_code, NEW.id, NEW.organisation_id)
   RETURNING id INTO v_new_batch_id;
 
   INSERT INTO batch_custody (batch_id, organisation_id, notes)
