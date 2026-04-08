@@ -75,16 +75,23 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get user's organisation
+    // Get user's organisation and verify admin role
     const { data: orgMembership } = await supabaseClient
       .from("org_user")
-      .select("organisation_id")
+      .select("organisation_id, role")
       .eq("user_id", user.id)
       .single()
 
     if (!orgMembership) {
       return returnErrorResponse(
         "User is not a member of any organisation",
+        403,
+      )
+    }
+
+    if (orgMembership.role !== "Admin") {
+      return returnErrorResponse(
+        "Only admins can return batches from testing",
         403,
       )
     }

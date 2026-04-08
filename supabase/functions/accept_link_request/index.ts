@@ -91,10 +91,10 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Verify user is member of testing org
+    // Verify user is an admin of the testing org
     const { data: orgMembership } = await supabaseClient
       .from("org_user")
-      .select("organisation_id")
+      .select("organisation_id, role")
       .eq("user_id", user.id)
       .eq("organisation_id", linkRequest.testing_org_id)
       .single()
@@ -103,6 +103,18 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "User is not a member of the testing organisation",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      )
+    }
+
+    if (orgMembership.role !== "Admin") {
+      return new Response(
+        JSON.stringify({
+          error: "Only admins can accept link requests",
         }),
         {
           status: 403,

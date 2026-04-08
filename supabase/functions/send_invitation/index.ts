@@ -124,10 +124,8 @@ Deno.serve(async (req) => {
     // check if the person is already a user
     const { data: users, error } = await supabase.rpc("get_organisation_users")
 
-    console.log("something....")
     if (error) {
-      console.log("error")
-      console.log({ error })
+      console.error("Failed to get organisation users:", error.message)
       return new Response("Failed to get users", {
         status: 500,
         headers: corsHeaders,

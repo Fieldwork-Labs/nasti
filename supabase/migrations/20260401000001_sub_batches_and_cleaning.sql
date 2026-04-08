@@ -58,17 +58,37 @@ CREATE INDEX idx_batch_storage_sub_batch_id ON batch_storage(sub_batch_id);
 -- Must DROP first since column list is changing
 DROP VIEW IF EXISTS current_batch_storage CASCADE;
 CREATE VIEW current_batch_storage AS
-SELECT DISTINCT ON (sub_batch_id)
-  id,
-  batch_id,
-  sub_batch_id,
-  location_id,
-  stored_at,
-  notes
-FROM batch_storage
-WHERE moved_out_at IS NULL
-  AND sub_batch_id IS NOT NULL
-ORDER BY sub_batch_id, stored_at DESC;
+-- Sub-batch level storage (new system)
+SELECT * FROM (
+  SELECT DISTINCT ON (sub_batch_id)
+    id,
+    batch_id,
+    sub_batch_id,
+    location_id,
+    stored_at,
+    notes
+  FROM batch_storage
+  WHERE moved_out_at IS NULL
+    AND sub_batch_id IS NOT NULL
+  ORDER BY sub_batch_id, stored_at DESC
+) sub_batch_storage
+
+UNION ALL
+
+-- Batch-level storage (legacy batches without sub-batches)
+SELECT * FROM (
+  SELECT DISTINCT ON (batch_id)
+    id,
+    batch_id,
+    sub_batch_id,
+    location_id,
+    stored_at,
+    notes
+  FROM batch_storage
+  WHERE moved_out_at IS NULL
+    AND sub_batch_id IS NULL
+  ORDER BY batch_id, stored_at DESC
+) batch_level_storage;
 
 -- ============================================================================
 -- BATCH CLEANING
@@ -173,7 +193,7 @@ BEGIN
   SELECT b.collection_id, b.organisation_id, bcw.current_weight
   INTO v_collection_id, v_organisation_id, v_input_weight
   FROM batches b
-  JOIN batch_current_weight bcw ON bcw.id = b.id
+  LEFT JOIN batch_current_weight bcw ON bcw.id = b.id
   WHERE b.id = p_input_batch_id;
 
   IF v_collection_id IS NULL THEN
@@ -185,8 +205,8 @@ BEGIN
     RAISE EXCEPTION 'Permission denied: not current custodian of batch';
   END IF;
 
-  -- Validate input batch is active
-  IF v_input_weight IS NULL OR v_input_weight <= 0 THEN
+  -- Validate input batch is active (skip for new batches with no weight yet)
+  IF v_input_weight IS NOT NULL AND v_input_weight <= 0 THEN
     RAISE EXCEPTION 'Input batch is not active or has no weight remaining';
   END IF;
 
@@ -273,15 +293,17 @@ BEGIN
     VALUES (v_output_batch_id, v_out_weight, 'Initial sub-batch from cleaning');
   END LOOP;
 
-  -- Consume input batch (weight adjustment to zero)
-  INSERT INTO batch_weight_adjustments (
-    batch_id, weight_grams, reason, created_by
-  ) VALUES (
-    p_input_batch_id,
-    -v_input_weight,
-    'Batch cleaned. Input fully consumed.',
-    auth.uid()
-  );
+  -- Consume input batch (weight adjustment to zero), only if it has weight
+  IF v_input_weight IS NOT NULL AND v_input_weight > 0 THEN
+    INSERT INTO batch_weight_adjustments (
+      batch_id, weight_grams, reason, created_by
+    ) VALUES (
+      p_input_batch_id,
+      -v_input_weight,
+      'Batch cleaned. Input fully consumed.',
+      auth.uid()
+    );
+  END IF;
 
   RETURN v_cleaning_id;
 END;
@@ -516,27 +538,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION fn_merge_sub_batches(UUID[], TEXT) TO authenticated;
-
--- ============================================================================
--- TRIGGER: Create initial sub-batch when a batch is created
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION fn_create_initial_sub_batch()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Only create sub-batch if the batch has a weight
-  IF NEW.weight_grams IS NOT NULL AND NEW.weight_grams > 0 THEN
-    INSERT INTO sub_batches (batch_id, weight_grams, notes)
-    VALUES (NEW.id, NEW.weight_grams, 'Initial sub-batch');
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER trg_create_initial_sub_batch
-  AFTER INSERT ON batches
-  FOR EACH ROW
-  EXECUTE FUNCTION fn_create_initial_sub_batch();
 
 -- ============================================================================
 -- RECREATE batch_lineage view to include treating and cleaning

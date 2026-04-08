@@ -41,7 +41,7 @@ export const useCleanBatch = () => {
       })
 
       if (error) throw new Error(error.message)
-      return data as string
+      return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

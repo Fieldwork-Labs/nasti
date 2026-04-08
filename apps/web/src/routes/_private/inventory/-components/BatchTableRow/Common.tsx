@@ -739,11 +739,7 @@ export const BatchCodeCell = ({
           <ChevronRight className="h-4 w-4" />
         )}
       </Button>
-      <span className="font-mono text-sm">
-        {!batch.is_treated && !batch.is_cleaned && batch.collection?.code
-          ? batch.collection.code
-          : batch.code}
-      </span>
+      <span className="font-mono text-sm">{batch.code}</span>
       {!hasWeight && (
         <NeedsProcessingIcon>Requires processing</NeedsProcessingIcon>
       )}

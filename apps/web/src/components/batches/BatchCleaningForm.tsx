@@ -22,6 +22,7 @@ import { cn } from "@nasti/ui/utils"
 import { useCleanBatch } from "@/hooks/useCleanBatch"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { MATERIAL_SUBTYPES } from "@nasti/common/types"
+import { TaxonName } from "@nasti/common"
 
 // Schema for a single cleaning output
 const cleaningOutputSchema = z.object({
@@ -180,27 +181,30 @@ export const BatchCleaningForm = ({
       className={cn("space-y-6", className)}
     >
       {/* ===== Section 1: Initial Material (display only) ===== */}
-      <div className="rounded-lg border border-blue-800 bg-blue-950 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-orange-400">
-          Initial material
-        </h3>
+      <div className="rounded-lg border p-4">
+        <h3 className="mb-3 text-sm font-semibold">Initial material</h3>
         <div className="text-muted-foreground space-y-1 text-sm">
           {batch.collection && (
             <p>
-              <span className="font-medium text-white">Collection:</span>{" "}
+              <span className="font-medium">Collection:</span>{" "}
               {batch.collection.code || "No code"}
             </p>
           )}
           {batch.species && (
             <p>
-              <span className="font-medium text-white">Species:</span>{" "}
-              {batch.species.name || batch.collection?.field_name || "Unknown"}
+              <span className="font-medium">Species:</span>{" "}
+              {batch.species.name ? (
+                <TaxonName name={batch.species.name} />
+              ) : (
+                batch.collection?.field_name || "Unknown"
+              )}
             </p>
           )}
           <p>
-            <span className="font-medium text-white">Collection size:</span>{" "}
-            {((batch.collection as Record<string, unknown>)
-              ?.amount_description as string) || "Not specified"}
+            <span className="font-medium">Collection size:</span>{" "}
+            {(batch.collection && "amount_description" in batch.collection
+              ? String(batch.collection.amount_description)
+              : null) || "Not specified"}
           </p>
         </div>
       </div>
@@ -258,7 +262,10 @@ export const BatchCleaningForm = ({
                     role="combobox"
                     className="w-full justify-between"
                   >
-                    {field.value || "Select type..."}
+                    {field.value
+                      ? field.value.charAt(0).toUpperCase() +
+                        field.value.slice(1)
+                      : "Select type..."}
                     <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -309,10 +316,8 @@ export const BatchCleaningForm = ({
       </div>
 
       {/* ===== Section 3: Cleaning Process ===== */}
-      <div className="rounded-lg border border-green-800 bg-green-950 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-orange-400">
-          Cleaning process
-        </h3>
+      <div className="rounded-lg border p-4">
+        <h3 className="mb-3 text-sm font-semibold">Cleaning process</h3>
         <div className="space-y-3">
           <label className="flex items-center gap-2">
             <Checkbox
@@ -348,12 +353,15 @@ export const BatchCleaningForm = ({
       </div>
 
       {/* ===== Section 4: Final Material (outputs) ===== */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-orange-400">
-          Final material
-        </h3>
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Final material</h3>
+        <div className="flex justify-between text-sm">
+          <span>Quality</span>
+          <span>Material type</span>
+          <span>Weight</span>
+        </div>
 
-        {(["org", "hq", "lq"] as const).map((key) => {
+        {(["org", "lq", "hq"] as const).map((key) => {
           const qualityLabel = key.toUpperCase()
           const isEnabled = form.watch(`outputs.${key}.enabled`)
           const isDisabled = !isCleaned && key !== "org"
@@ -363,12 +371,10 @@ export const BatchCleaningForm = ({
               key={key}
               className={cn(
                 "rounded-lg border p-3",
-                isDisabled
-                  ? "border-gray-700 bg-gray-900 opacity-50"
-                  : "border-blue-800 bg-blue-950",
+                isDisabled ? "border-gray-700 bg-gray-500 opacity-50" : "",
               )}
             >
-              <div className="flex items-start gap-4">
+              <div className="flex justify-between">
                 {/* Quality label + enable checkbox */}
                 <div className="flex min-w-[60px] items-center gap-2">
                   <Checkbox

@@ -292,7 +292,7 @@ export function InventoryPageGeneral() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleSort("created_at")}
-                            className="font-semibold"
+                            className="text-foreground font-semibold"
                           >
                             Batch Code
                             {getSortIcon("created_at")}
@@ -303,19 +303,19 @@ export function InventoryPageGeneral() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleSort("species_id")}
-                            className="font-semibold"
+                            className="text-foreground font-semibold"
                           >
                             Species
                             {getSortIcon("species_id")}
                           </Button>
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold">
+                        <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Status
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold">
+                        <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Storage
                         </th>
-                        <th className="px-4 py-3 text-right font-semibold">
+                        <th className="text-foreground px-4 py-3 text-right font-semibold">
                           Weight (g)
                         </th>
                         <th className="px-4 py-3 text-left">
@@ -323,13 +323,13 @@ export function InventoryPageGeneral() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleSort("created_at")}
-                            className="font-semibold"
+                            className="text-foreground font-semibold"
                           >
                             Created
                             {getSortIcon("created_at")}
                           </Button>
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold">
+                        <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Actions
                         </th>
                       </tr>
