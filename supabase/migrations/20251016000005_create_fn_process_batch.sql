@@ -17,6 +17,7 @@ DECLARE
   v_increment INTEGER;
   v_organisation_id UUID;
   v_input_weight INTEGER;
+  v_sub_batch RECORD;
 BEGIN
 
   -- Get collection_id, organisation_id, and current weight from input batch
@@ -40,6 +41,7 @@ BEGIN
     WHERE id = p_input_batch_id;
 
     v_input_weight := p_origin_batch_weight;
+
   END IF;
 
   -- Get collection code
@@ -103,18 +105,33 @@ BEGIN
     v_organisation_id
   );
 
-  -- Create weight adjustment to mark input batch as fully consumed
-  INSERT INTO batch_weight_adjustments (
-    batch_id,
-    weight_grams,
-    reason,
-    created_by
-  ) VALUES (
-    p_input_batch_id,
-    -v_input_weight,
-    'Batch treated (' || p_treat::text || '). Output weight: ' || p_output_weight || 'g. Discarded: ' || (v_input_weight - p_output_weight) || 'g.',
-    auth.uid()
-  );
+  -- Create initial sub-batch for the output batch
+  INSERT INTO sub_batches (batch_id, weight_grams, notes)
+  VALUES (v_output_batch_id, p_output_weight, 'Initial sub-batch from treating');
+
+  -- Consume all sub-batches of the input batch
+  FOR v_sub_batch IN
+    SELECT sb.id, sb.weight_grams + COALESCE(
+      (SELECT SUM(wa.weight_grams) FROM batch_weight_adjustments wa WHERE wa.sub_batch_id = sb.id),
+      0
+    ) AS effective_weight
+    FROM sub_batches sb
+    WHERE sb.batch_id = p_input_batch_id
+  LOOP
+    IF v_sub_batch.effective_weight > 0 THEN
+      INSERT INTO batch_weight_adjustments (
+        sub_batch_id,
+        weight_grams,
+        reason,
+        created_by
+      ) VALUES (
+        v_sub_batch.id,
+        -v_sub_batch.effective_weight,
+        'Batch treated (' || p_treat::text || '). Output weight: ' || p_output_weight || 'g.',
+        auth.uid()
+      );
+    END IF;
+  END LOOP;
 
   -- If input batch has an active testing assignment, create a new assignment for output batch
   INSERT INTO batch_testing_assignment (

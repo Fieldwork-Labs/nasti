@@ -16,6 +16,7 @@ export type Database = {
           created_by: string | null
           id: string
           input_batch_id: string | null
+          input_sub_batch_id: string | null
           is_cleaned: boolean
           material_notes: string | null
           material_subtype: string | null
@@ -28,6 +29,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           input_batch_id?: string | null
+          input_sub_batch_id?: string | null
           is_cleaned?: boolean
           material_notes?: string | null
           material_subtype?: string | null
@@ -40,6 +42,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           input_batch_id?: string | null
+          input_sub_batch_id?: string | null
           is_cleaned?: boolean
           material_notes?: string | null
           material_subtype?: string | null
@@ -66,6 +69,13 @@ export type Database = {
             columns: ["input_batch_id"]
             isOneToOne: false
             referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
+            columns: ["input_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
           {
@@ -329,57 +339,33 @@ export type Database = {
       }
       batch_storage: {
         Row: {
-          batch_id: string
           created_at: string
           id: string
           location_id: string
           moved_out_at: string | null
           notes: string | null
           stored_at: string | null
-          sub_batch_id: string | null
+          sub_batch_id: string
         }
         Insert: {
-          batch_id: string
           created_at?: string
           id?: string
           location_id: string
           moved_out_at?: string | null
           notes?: string | null
           stored_at?: string | null
-          sub_batch_id?: string | null
+          sub_batch_id: string
         }
         Update: {
-          batch_id?: string
           created_at?: string
           id?: string
           location_id?: string
           moved_out_at?: string | null
           notes?: string | null
           stored_at?: string | null
-          sub_batch_id?: string | null
+          sub_batch_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "batch_storage_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "active_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_storage_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batch_current_weight"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_storage_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "batch_storage_location_id_fkey"
             columns: ["location_id"]
@@ -483,49 +469,35 @@ export type Database = {
       }
       batch_weight_adjustments: {
         Row: {
-          batch_id: string
           created_at: string | null
           created_by: string | null
           id: string
           reason: string
+          sub_batch_id: string
           weight_grams: number
         }
         Insert: {
-          batch_id: string
           created_at?: string | null
           created_by?: string | null
           id?: string
           reason: string
+          sub_batch_id: string
           weight_grams: number
         }
         Update: {
-          batch_id?: string
           created_at?: string | null
           created_by?: string | null
           id?: string
           reason?: string
+          sub_batch_id?: string
           weight_grams?: number
         }
         Relationships: [
           {
-            foreignKeyName: "batch_weight_adjustments_batch_id_fkey"
-            columns: ["batch_id"]
+            foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
             isOneToOne: false
-            referencedRelation: "active_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_weight_adjustments_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batch_current_weight"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_weight_adjustments_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "batches"
+            referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -1507,6 +1479,7 @@ export type Database = {
           code: string | null
           collection_id: string | null
           created_at: string | null
+          current_location_id: string | null
           current_weight: number | null
           id: string | null
           is_cleaned: boolean | null
@@ -1515,9 +1488,17 @@ export type Database = {
           notes: string | null
           organisation_id: string | null
           original_weight: number | null
+          species_id: string | null
           weight_grams: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["current_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "batches_collection_id_fkey"
             columns: ["collection_id"]
@@ -1537,6 +1518,13 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_species_id_fkey"
+            columns: ["species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
             referencedColumns: ["id"]
           },
         ]
@@ -1616,37 +1604,46 @@ export type Database = {
       current_batch_storage: {
         Row: {
           batch_id: string | null
+          id: string | null
           location_id: string | null
           notes: string | null
           stored_at: string | null
+          sub_batch_id: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "batch_storage_batch_id_fkey"
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "active_batches"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "batch_storage_batch_id_fkey"
+            foreignKeyName: "sub_batches_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "batch_current_weight"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "batch_storage_batch_id_fkey"
+            foreignKeyName: "sub_batches_batch_id_fkey"
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "batch_storage_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "storage_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -1911,6 +1908,27 @@ export type Database = {
           p_material_subtype?: string
           p_material_type: string
           p_outputs?: Json
+        }
+        Returns: string
+      }
+      fn_clean_sub_batch: {
+        Args: {
+          p_cleaning_notes?: string
+          p_is_cleaned?: boolean
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type: string
+          p_outputs?: Json
+          p_sub_batch_id: string
+        }
+        Returns: string
+      }
+      fn_create_quality_test: {
+        Args: {
+          p_batch_id: string
+          p_performed_by_organisation_id: string
+          p_result: Json
+          p_sub_batch_id: string
         }
         Returns: string
       }

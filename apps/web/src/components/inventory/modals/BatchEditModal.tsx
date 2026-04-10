@@ -26,7 +26,7 @@ export const BatchEditModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Batch</DialogTitle>
+          <DialogTitle>Edit Batch Notes</DialogTitle>
         </DialogHeader>
         <BatchForm
           batch={batch}

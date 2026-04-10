@@ -80,16 +80,16 @@ export const BatchMixModal = ({
       })
 
       toast({
-        description: `Successfully mixed ${selectedBatches.length} batches`,
+        description: `Successfully Combined ${selectedBatches.length} batches`,
       })
 
       onSuccess?.()
       onClose()
     } catch (error) {
-      console.error("Mix failed:", error)
+      console.error("Batch combine failed:", error)
       toast({
         description:
-          error instanceof Error ? error.message : "Failed to mix batches",
+          error instanceof Error ? error.message : "Failed to combine batches",
         variant: "destructive",
       })
     } finally {
@@ -103,7 +103,7 @@ export const BatchMixModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Combine className="text-primary h-5 w-5" />
-            Mix Batches
+            Combine Batches
           </DialogTitle>
         </DialogHeader>
 
@@ -112,10 +112,10 @@ export const BatchMixModal = ({
           {!hasMatchingSpecies && (
             <div className="border-destructive bg-destructive/10 rounded-lg border p-4">
               <p className="text-destructive text-sm font-semibold">
-                Cannot mix batches with different species
+                Cannot combine batches with different species
               </p>
               <p className="text-destructive/80 text-xs">
-                All batches must have the same species to be mixed.
+                All batches must have the same species to be combined.
               </p>
             </div>
           )}
@@ -199,7 +199,7 @@ export const BatchMixModal = ({
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Mix Batches
+              Combine Batches
             </Button>
           </div>
         </form>

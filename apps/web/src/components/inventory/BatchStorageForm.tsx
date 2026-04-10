@@ -1,15 +1,10 @@
-import { type Batch } from "@nasti/common/types"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useCallback, useMemo, useState } from "react"
+import { type Batch } from "@nasti/common/types"
+import { useCallback, useMemo } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { Button } from "@nasti/ui/button"
-import { FormField } from "@nasti/ui/formField"
-import { Label } from "@nasti/ui/label"
-import { Textarea } from "@nasti/ui/textarea"
-import { useToast } from "@nasti/ui/hooks"
-import { cn } from "@nasti/ui/utils"
 import {
   Command,
   CommandEmpty,
@@ -18,25 +13,20 @@ import {
   CommandItem,
   CommandList,
 } from "@nasti/ui/command"
+import { FormField } from "@nasti/ui/formField"
+import { useToast } from "@nasti/ui/hooks"
+import { Label } from "@nasti/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
-import {
-  ArrowRight,
-  Check,
-  ChevronsUpDown,
-  Loader2,
-  MapPin,
-  Package,
-} from "lucide-react"
+import { Textarea } from "@nasti/ui/textarea"
+import { cn } from "@nasti/ui/utils"
+import { ArrowRight, Check, ChevronsUpDown, MapPin } from "lucide-react"
 
 import {
-  useStorageLocations,
   useMoveBatchToStorage,
   useRemoveBatchFromStorage,
+  useStorageLocations,
 } from "../../hooks/useBatchStorage"
-import {
-  useSubBatches,
-  type SubBatchWithStorage,
-} from "../../hooks/useSubBatches"
+import { useSubBatches } from "../../hooks/useSubBatches"
 
 type BatchStorageFormData = {
   locationId: string | null
@@ -56,7 +46,7 @@ const schema = z.object({
 type BatchStorageFormProps = {
   batch: Batch
   /** Pre-select a specific sub-batch for storage move */
-  subBatchId?: string
+  subBatchId: string
   onSuccess?: () => void
   onCancel?: () => void
   className?: string
@@ -64,7 +54,7 @@ type BatchStorageFormProps = {
 
 export const BatchStorageForm = ({
   batch,
-  subBatchId: initialSubBatchId,
+  subBatchId: selectedSubBatchId,
   onSuccess,
   onCancel,
   className,
@@ -79,24 +69,12 @@ export const BatchStorageForm = ({
   const moveBatchToStorage = useMoveBatchToStorage()
   const removeBatchFromStorage = useRemoveBatchFromStorage()
 
-  // Sub-batch selection — auto-select if only one, or use pre-selected
-  const [selectedSubBatchId, setSelectedSubBatchId] = useState<string | null>(
-    initialSubBatchId ?? null,
-  )
-
   const selectedSubBatch = useMemo(
     () => subBatches?.find((sb) => sb.id === selectedSubBatchId) ?? null,
     [subBatches, selectedSubBatchId],
   )
 
-  // Auto-select if only one sub-batch and none pre-selected
-  const effectiveSubBatch = useMemo(() => {
-    if (selectedSubBatch) return selectedSubBatch
-    if (subBatches?.length === 1) return subBatches[0]
-    return null
-  }, [selectedSubBatch, subBatches])
-
-  const currentStorage = effectiveSubBatch?.current_storage ?? null
+  const currentStorage = selectedSubBatch?.current_storage ?? null
 
   const availableStorageLocations = useMemo(
     () =>
@@ -140,7 +118,7 @@ export const BatchStorageForm = ({
 
   const onSubmit = useCallback(
     async (data: BatchStorageFormData) => {
-      if (!effectiveSubBatch) return
+      if (!selectedSubBatch) return
 
       const { locationId } = data
       try {
@@ -148,7 +126,7 @@ export const BatchStorageForm = ({
           // Move to storage location
           await moveBatchToStorage.mutateAsync({
             batchId: batch.id,
-            subBatchId: effectiveSubBatch.id,
+            subBatchId: selectedSubBatch.id,
             currentBatchStorageId: currentStorage?.id,
             locationId,
             notes: data.notes || undefined,
@@ -163,6 +141,7 @@ export const BatchStorageForm = ({
           // Remove from storage
           await removeBatchFromStorage.mutateAsync({
             batchStorageId: currentStorage.id,
+            batchId: batch.id,
             notes: data.notes || undefined,
           })
 
@@ -184,7 +163,7 @@ export const BatchStorageForm = ({
       onSuccess,
       moveBatchToStorage,
       batch.id,
-      effectiveSubBatch,
+      selectedSubBatch,
       currentStorage,
       toast,
       removeBatchFromStorage,
@@ -198,9 +177,6 @@ export const BatchStorageForm = ({
     moveBatchToStorage.isPending ||
     removeBatchFromStorage.isPending
 
-  const hasMultipleSubBatches = Boolean(subBatches && subBatches.length > 1)
-  const needsSubBatchSelection = hasMultipleSubBatches && !effectiveSubBatch
-
   const selectedLocation =
     !isRemoving &&
     storageLocations?.find((loc) => loc.id === selectedLocationId)
@@ -211,55 +187,12 @@ export const BatchStorageForm = ({
       className={cn("flex flex-col gap-4", className)}
     >
       <div className="space-y-4">
-        {/* Sub-batch selection when batch has multiple sub-batches */}
-        {hasMultipleSubBatches && (
-          <div className="flex flex-col gap-2">
-            <Label>Sub-batch</Label>
-            {subBatchesLoading ? (
-              <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading sub-batches...
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {subBatches?.map((sb: SubBatchWithStorage) => (
-                  <button
-                    key={sb.id}
-                    type="button"
-                    onClick={() => setSelectedSubBatchId(sb.id)}
-                    className={cn(
-                      "w-full rounded-lg border p-2 text-left text-sm transition-colors",
-                      effectiveSubBatch?.id === sb.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50",
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium">
-                          {sb.weight_grams}g
-                        </span>
-                        {sb.notes && (
-                          <span className="text-muted-foreground text-xs">
-                            {sb.notes}
-                          </span>
-                        )}
-                      </div>
-                      {sb.current_storage?.location && (
-                        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                          <Package className="h-3 w-3" />
-                          {sb.current_storage.location.name}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         <div className="flex flex-col gap-2">
+          <div className="text-muted-foreground text-sm">
+            Sub batch {selectedSubBatch?.weight_grams}g -{" "}
+            {currentStorage?.location.name ?? "Not stored"}
+          </div>
+
           <Label>Storage Location</Label>
           <Controller
             name="locationId"
@@ -434,7 +367,7 @@ export const BatchStorageForm = ({
         <Button
           type="submit"
           className="flex-1 cursor-pointer"
-          disabled={!isValid || isLoading || needsSubBatchSelection}
+          disabled={!isValid || isLoading}
         >
           {isLoading
             ? "Updating..."

@@ -7,7 +7,7 @@ import {
 } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Loader2, ChevronDown, Check, Plus, Trash2 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
@@ -23,11 +23,19 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nasti/ui/select"
 
 import {
   useCreateQualityTest,
   useUpdateQualityTest,
 } from "@/hooks/useBatchTests"
+import { useSubBatches } from "@/hooks/useSubBatches"
 import type { QualityTestType, QualityTest } from "@nasti/common/types"
 
 // Test type options
@@ -206,6 +214,20 @@ export const QualityTestForm = ({
     useUpdateQualityTest()
   const [testTypeOpen, setTestTypeOpen] = useState(false)
 
+  const { data: subBatches, isLoading: subBatchesLoading } =
+    useSubBatches(batchId)
+
+  const [selectedSubBatchId, setSelectedSubBatchId] = useState<string | null>(
+    null,
+  )
+
+  // Auto-select if only one sub-batch
+  const effectiveSubBatchId = useMemo(() => {
+    if (selectedSubBatchId) return selectedSubBatchId
+    if (subBatches?.length === 1) return subBatches[0].id
+    return null
+  }, [selectedSubBatchId, subBatches])
+
   const isPending = isCreating || isUpdating
   const isEditing = Boolean(existingTest)
 
@@ -236,6 +258,14 @@ export const QualityTestForm = ({
   })
 
   const onSubmit = async (data: QualityTestFormData) => {
+    if (!isEditing && !effectiveSubBatchId) {
+      toast({
+        description: "Please select a sub-batch",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       if (isEditing && existingTest) {
         await updateTest({
@@ -249,6 +279,7 @@ export const QualityTestForm = ({
       } else {
         await createTest({
           batchId,
+          subBatchId: effectiveSubBatchId!,
           result: data,
         })
 
@@ -283,6 +314,45 @@ export const QualityTestForm = ({
         onSubmit={form.handleSubmit(onSubmit)}
         className={cn("space-y-4", className)}
       >
+        {/* Sub-batch selection (only for new tests, when multiple sub-batches exist) */}
+        {!isEditing && (
+          <div className="space-y-2">
+            <Label>Sub-batch (seed source) *</Label>
+            {subBatchesLoading ? (
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading sub-batches...
+              </div>
+            ) : subBatches && subBatches.length > 1 ? (
+              <Select
+                value={effectiveSubBatchId ?? undefined}
+                onValueChange={setSelectedSubBatchId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sub-batch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subBatches.map((sb, index) => (
+                    <SelectItem key={sb.id} value={sb.id}>
+                      Sub-batch {index + 1} ({sb.weight_grams}g)
+                      {sb.notes ? ` — ${sb.notes}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : subBatches?.length === 1 ? (
+              <p className="text-muted-foreground text-sm">
+                {subBatches[0].weight_grams}g
+                {subBatches[0].notes ? ` — ${subBatches[0].notes}` : ""}
+              </p>
+            ) : (
+              <p className="text-sm text-red-600">
+                No sub-batches found for this batch
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           {/* Test Type */}
           <div className="space-y-2">
@@ -497,7 +567,7 @@ export const QualityTestForm = ({
           )}
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || (!isEditing && !effectiveSubBatchId)}
             className="min-w-[120px] cursor-pointer"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

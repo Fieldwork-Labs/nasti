@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@nasti/ui/tooltip"
-import { Boxes, Sparkles, FlaskConical, Undo2 } from "lucide-react"
+import { FlaskConical, Microscope, Undo2 } from "lucide-react"
 import { useState } from "react"
 
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
@@ -42,7 +42,6 @@ interface ActionsProps extends TestingOrgActionsProps {
   batch: BatchWithCurrentLocationAndSpecies
   canDelete: boolean
   onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
   onOpenQualityTest: () => void
 }
@@ -51,7 +50,6 @@ const Actions = ({
   batch,
   canDelete,
   onProcess,
-  onStorageMove,
   onDelete,
   onOpenQualityTest,
   onReturn,
@@ -63,16 +61,7 @@ const Actions = ({
       onClick={() => onProcess?.(batch)}
       title="Process"
     >
-      <Sparkles className="h-4 w-4" />
-    </Button>
-
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onStorageMove?.(batch)}
-      title="Move to storage"
-    >
-      <Boxes className="h-4 w-4" />
+      <FlaskConical className="h-4 w-4" />
     </Button>
 
     <Button
@@ -81,7 +70,7 @@ const Actions = ({
       onClick={onOpenQualityTest}
       title="Quality Test"
     >
-      <FlaskConical className="h-4 w-4" />
+      <Microscope className="h-4 w-4" />
     </Button>
 
     <Button
@@ -160,7 +149,6 @@ export const BatchTableRow = ({
   batch,
   onDelete,
   onProcess,
-  onStorageMove,
   className,
 }: BatchTableRowTestingProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -171,8 +159,9 @@ export const BatchTableRow = ({
   const { isOpen: isReturnModalOpen, setIsOpen: setIsReturnModalOpen } =
     useOpenClose()
 
-  const { currentStorage, canDelete, activeAssignment, detailLoading } =
-    useBatchRowData(batch.id)
+  const { canDelete, activeAssignment, detailLoading } = useBatchRowData(
+    batch.id,
+  )
 
   // Determine which action buttons to show
   const renderActionButtons = () => {
@@ -182,7 +171,6 @@ export const BatchTableRow = ({
         assignment={activeAssignment}
         canDelete={canDelete}
         onProcess={onProcess}
-        onStorageMove={onStorageMove}
         onDelete={onDelete}
         onOpenQualityTest={() => setIsQualityTestModalOpen(true)}
         onReturn={() => setIsReturnModalOpen(true)}
@@ -212,7 +200,6 @@ export const BatchTableRow = ({
         className={className}
         statusBadge={getStatusBadge()}
         actionButtons={renderActionButtons()}
-        currentStorage={currentStorage}
         detailLoading={detailLoading}
       />
 
