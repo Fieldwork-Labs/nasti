@@ -50,45 +50,160 @@ CREATE POLICY sub_batches_delete_policy ON sub_batches
     )
   );
 
--- Update batch_storage to reference sub-batches
-ALTER TABLE batch_storage ADD COLUMN sub_batch_id UUID REFERENCES sub_batches(id) ON DELETE SET NULL;
+-- ============================================================================
+-- BATCH_WEIGHT_ADJUSTMENTS: Add FK now that sub_batches exists,
+-- and replace placeholder RLS policies with proper ones.
+-- ============================================================================
+
+ALTER TABLE batch_weight_adjustments
+  ADD CONSTRAINT batch_weight_adjustments_sub_batch_id_fkey
+  FOREIGN KEY (sub_batch_id) REFERENCES sub_batches(id) ON DELETE CASCADE;
+
+-- Replace placeholder RLS policies
+DROP POLICY IF EXISTS custodian_can_view_adjustments ON batch_weight_adjustments;
+DROP POLICY IF EXISTS custodian_can_insert_adjustments ON batch_weight_adjustments;
+
+CREATE POLICY custodian_can_view_adjustments ON batch_weight_adjustments
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM sub_batches sb
+      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
+      WHERE sb.id = batch_weight_adjustments.sub_batch_id
+        AND is_org_member(auth.uid(), cbc.organisation_id)
+    )
+  );
+
+CREATE POLICY custodian_can_insert_adjustments ON batch_weight_adjustments
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM sub_batches sb
+      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
+      WHERE sb.id = batch_weight_adjustments.sub_batch_id
+        AND is_org_member(auth.uid(), cbc.organisation_id)
+    )
+  );
+
+-- ============================================================================
+-- RECREATE batch_current_weight view
+-- Batch weight is now derived from the sum of sub-batch effective weights.
+-- Sub-batch effective weight = sub_batch.weight_grams + SUM(adjustments)
+-- ============================================================================
+
+-- Must drop dependent views first
+DROP VIEW IF EXISTS active_batches;
+
+DROP VIEW IF EXISTS batch_current_weight;
+CREATE VIEW batch_current_weight AS
+SELECT
+  b.id,
+  b.weight_grams AS original_weight,
+  CASE
+    WHEN EXISTS (
+      SELECT 1 FROM batch_merges bm
+      WHERE bm.source_batch_id = b.id
+    ) THEN 0::numeric
+    ELSE COALESCE(
+      (SELECT SUM(
+        sb.weight_grams + COALESCE(
+          (SELECT SUM(wa.weight_grams)
+           FROM batch_weight_adjustments wa
+           WHERE wa.sub_batch_id = sb.id),
+          0
+        )
+      )
+      FROM sub_batches sb
+      WHERE sb.batch_id = b.id),
+      NULL
+    )
+  END AS current_weight
+FROM batches b;
+
+
+-- Update batch_weight_info to match
+CREATE OR REPLACE FUNCTION batch_weight_info(batch_row batches)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT jsonb_build_object(
+    'original_weight', bcw.original_weight,
+    'current_weight', bcw.current_weight
+  )
+  FROM batch_current_weight bcw
+  WHERE bcw.id = batch_row.id;
+$$;
+
+-- ============================================================================
+-- Update batch_storage to reference sub-batches instead of batches
+-- ============================================================================
+
+-- Drop old RLS policies that reference batch_id
+DROP POLICY IF EXISTS custodian_can_view_batch_storage ON batch_storage;
+DROP POLICY IF EXISTS custodian_can_insert_batch_storage ON batch_storage;
+DROP POLICY IF EXISTS custodian_can_update_batch_storage ON batch_storage;
+
+-- Drop dependent view before altering columns
+DROP VIEW IF EXISTS current_batch_storage CASCADE;
+
+-- Replace batch_id with sub_batch_id
+ALTER TABLE batch_storage ADD COLUMN sub_batch_id UUID NOT NULL REFERENCES sub_batches(id) ON DELETE CASCADE;
+ALTER TABLE batch_storage DROP COLUMN batch_id;
 CREATE INDEX idx_batch_storage_sub_batch_id ON batch_storage(sub_batch_id);
 
--- Recreate current_batch_storage view to track per sub-batch
--- Must DROP first since column list is changing
-DROP VIEW IF EXISTS current_batch_storage CASCADE;
+-- New RLS policies based on sub_batch_id (custody checked through sub_batches → batches)
+CREATE POLICY custodian_can_view_batch_storage ON batch_storage
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM sub_batches sb
+      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
+      WHERE sb.id = batch_storage.sub_batch_id
+        AND is_org_member(auth.uid(), cbc.organisation_id)
+    )
+  );
+
+CREATE POLICY custodian_can_insert_batch_storage ON batch_storage
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM sub_batches sb
+      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
+      WHERE sb.id = batch_storage.sub_batch_id
+        AND is_org_member(auth.uid(), cbc.organisation_id)
+    )
+  );
+
+CREATE POLICY custodian_can_update_batch_storage ON batch_storage
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM sub_batches sb
+      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
+      WHERE sb.id = batch_storage.sub_batch_id
+        AND is_org_member(auth.uid(), cbc.organisation_id)
+    )
+  );
+
+-- Recreate current_batch_storage view — derives batch_id from sub_batches
 CREATE VIEW current_batch_storage AS
--- Sub-batch level storage (new system)
-SELECT * FROM (
-  SELECT DISTINCT ON (sub_batch_id)
-    id,
-    batch_id,
-    sub_batch_id,
-    location_id,
-    stored_at,
-    notes
-  FROM batch_storage
-  WHERE moved_out_at IS NULL
-    AND sub_batch_id IS NOT NULL
-  ORDER BY sub_batch_id, stored_at DESC
-) sub_batch_storage
-
-UNION ALL
-
--- Batch-level storage (legacy batches without sub-batches)
-SELECT * FROM (
-  SELECT DISTINCT ON (batch_id)
-    id,
-    batch_id,
-    sub_batch_id,
-    location_id,
-    stored_at,
-    notes
-  FROM batch_storage
-  WHERE moved_out_at IS NULL
-    AND sub_batch_id IS NULL
-  ORDER BY batch_id, stored_at DESC
-) batch_level_storage;
+SELECT DISTINCT ON (bs.sub_batch_id)
+  bs.id,
+  sb.batch_id,
+  bs.sub_batch_id,
+  bs.location_id,
+  bs.stored_at,
+  bs.notes
+FROM batch_storage bs
+JOIN sub_batches sb ON sb.id = bs.sub_batch_id
+WHERE bs.moved_out_at IS NULL
+ORDER BY bs.sub_batch_id, bs.stored_at DESC;
 
 -- ============================================================================
 -- BATCH CLEANING
@@ -97,6 +212,7 @@ SELECT * FROM (
 CREATE TABLE batch_cleaning (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   input_batch_id UUID REFERENCES batches(id) ON DELETE RESTRICT,
+  input_sub_batch_id UUID REFERENCES sub_batches(id) ON DELETE RESTRICT,
   material_type TEXT NOT NULL CHECK (material_type IN ('seed', 'covering_structure')),
   material_subtype TEXT, -- pod, floret, capsule, etc.
   material_notes TEXT,
@@ -108,6 +224,7 @@ CREATE TABLE batch_cleaning (
 );
 
 CREATE INDEX idx_batch_cleaning_input_batch ON batch_cleaning(input_batch_id);
+CREATE INDEX idx_batch_cleaning_input_sub_batch ON batch_cleaning(input_sub_batch_id);
 
 CREATE TABLE batch_cleaning_output (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -161,8 +278,9 @@ CREATE POLICY batch_cleaning_output_insert_policy ON batch_cleaning_output
 
 -- ============================================================================
 -- FUNCTION: fn_clean_batch
--- Cleaning produces up to 3 outputs (ORG, HQ, LQ), consumes the input batch.
--- Testing results are NOT inherited by output batches.
+-- Clean an origin batch (one with no sub-batches and no known weight).
+-- Creates output batches with initial sub-batches.
+-- The origin batch remains with no sub-batches = 0 weight = inactive.
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION fn_clean_batch(
@@ -180,7 +298,7 @@ DECLARE
   v_collection_id UUID;
   v_collection_code TEXT;
   v_organisation_id UUID;
-  v_input_weight INTEGER;
+  v_sub_batch_count INTEGER;
   v_output JSONB;
   v_quality TEXT;
   v_out_material_type TEXT;
@@ -190,10 +308,9 @@ DECLARE
   v_org_count INTEGER;
 BEGIN
   -- Get input batch details
-  SELECT b.collection_id, b.organisation_id, bcw.current_weight
-  INTO v_collection_id, v_organisation_id, v_input_weight
+  SELECT b.collection_id, b.organisation_id
+  INTO v_collection_id, v_organisation_id
   FROM batches b
-  LEFT JOIN batch_current_weight bcw ON bcw.id = b.id
   WHERE b.id = p_input_batch_id;
 
   IF v_collection_id IS NULL THEN
@@ -205,9 +322,12 @@ BEGIN
     RAISE EXCEPTION 'Permission denied: not current custodian of batch';
   END IF;
 
-  -- Validate input batch is active (skip for new batches with no weight yet)
-  IF v_input_weight IS NOT NULL AND v_input_weight <= 0 THEN
-    RAISE EXCEPTION 'Input batch is not active or has no weight remaining';
+  -- Validate batch has no sub-batches (must be an origin batch)
+  SELECT COUNT(*) INTO v_sub_batch_count
+  FROM sub_batches WHERE batch_id = p_input_batch_id;
+
+  IF v_sub_batch_count > 0 THEN
+    RAISE EXCEPTION 'Cannot clean a batch that already has sub-batches. Use fn_clean_sub_batch instead.';
   END IF;
 
   -- Validate outputs
@@ -293,23 +413,238 @@ BEGIN
     VALUES (v_output_batch_id, v_out_weight, 'Initial sub-batch from cleaning');
   END LOOP;
 
-  -- Consume input batch (weight adjustment to zero), only if it has weight
-  IF v_input_weight IS NOT NULL AND v_input_weight > 0 THEN
-    INSERT INTO batch_weight_adjustments (
-      batch_id, weight_grams, reason, created_by
-    ) VALUES (
-      p_input_batch_id,
-      -v_input_weight,
-      'Batch cleaned. Input fully consumed.',
-      auth.uid()
-    );
-  END IF;
-
   RETURN v_cleaning_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION fn_clean_batch(UUID, TEXT, TEXT, TEXT, BOOLEAN, TEXT, JSONB) TO authenticated;
+
+-- ============================================================================
+-- FUNCTION: fn_clean_sub_batch
+-- Clean a specific sub-batch. Consumes the sub-batch via weight adjustment
+-- and creates output batches (promoted to batch level) with initial sub-batches.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION fn_clean_sub_batch(
+  p_sub_batch_id UUID,
+  p_material_type TEXT,
+  p_material_subtype TEXT DEFAULT NULL,
+  p_material_notes TEXT DEFAULT NULL,
+  p_is_cleaned BOOLEAN DEFAULT false,
+  p_cleaning_notes TEXT DEFAULT NULL,
+  p_outputs JSONB DEFAULT '[]'::jsonb -- array of {quality, material_type, weight_grams}
+) RETURNS UUID AS $$
+DECLARE
+  v_cleaning_id UUID;
+  v_output_batch_id UUID;
+  v_batch_id UUID;
+  v_collection_id UUID;
+  v_collection_code TEXT;
+  v_organisation_id UUID;
+  v_sub_batch_weight INTEGER;
+  v_effective_weight INTEGER;
+  v_output JSONB;
+  v_quality TEXT;
+  v_out_material_type TEXT;
+  v_out_weight INTEGER;
+  v_increment INTEGER;
+  v_batch_code TEXT;
+  v_org_count INTEGER;
+BEGIN
+  -- Get sub-batch and parent batch details
+  SELECT sb.batch_id, sb.weight_grams, b.collection_id, b.organisation_id
+  INTO v_batch_id, v_sub_batch_weight, v_collection_id, v_organisation_id
+  FROM sub_batches sb
+  JOIN batches b ON b.id = sb.batch_id
+  WHERE sb.id = p_sub_batch_id;
+
+  IF v_batch_id IS NULL THEN
+    RAISE EXCEPTION 'Sub-batch not found';
+  END IF;
+
+  -- Validate caller is current custodian
+  IF NOT is_current_custodian(auth.uid(), v_batch_id) THEN
+    RAISE EXCEPTION 'Permission denied: not current custodian of batch';
+  END IF;
+
+  -- Calculate effective weight of sub-batch
+  v_effective_weight := v_sub_batch_weight + COALESCE(
+    (SELECT SUM(wa.weight_grams) FROM batch_weight_adjustments wa WHERE wa.sub_batch_id = p_sub_batch_id),
+    0
+  );
+
+  IF v_effective_weight <= 0 THEN
+    RAISE EXCEPTION 'Sub-batch has no weight remaining';
+  END IF;
+
+  -- Validate outputs
+  IF jsonb_array_length(p_outputs) = 0 THEN
+    RAISE EXCEPTION 'At least one output is required';
+  END IF;
+
+  -- If not cleaned, only ORG output is allowed
+  IF NOT p_is_cleaned THEN
+    SELECT COUNT(*)
+    INTO v_org_count
+    FROM jsonb_array_elements(p_outputs) AS o
+    WHERE o->>'quality' != 'ORG';
+
+    IF v_org_count > 0 THEN
+      RAISE EXCEPTION 'When not cleaned, only ORG quality output is allowed';
+    END IF;
+  END IF;
+
+  IF v_collection_id IS NULL THEN
+    RAISE EXCEPTION 'Parent batch has no collection';
+  END IF;
+
+  -- Get collection code
+  SELECT code INTO v_collection_code
+  FROM "collection"
+  WHERE id = v_collection_id;
+
+  IF v_collection_code IS NULL THEN
+    RAISE EXCEPTION 'Collection not found or has no code';
+  END IF;
+
+  -- Create cleaning record (linked to both batch and sub-batch)
+  INSERT INTO batch_cleaning (
+    input_batch_id, input_sub_batch_id, material_type, material_subtype,
+    material_notes, is_cleaned, cleaning_notes,
+    created_by, organisation_id
+  ) VALUES (
+    v_batch_id, p_sub_batch_id, p_material_type, p_material_subtype,
+    p_material_notes, p_is_cleaned, p_cleaning_notes,
+    auth.uid(), v_organisation_id
+  )
+  RETURNING id INTO v_cleaning_id;
+
+  -- Create output batches (promoted to batch level)
+  FOR v_output IN SELECT * FROM jsonb_array_elements(p_outputs)
+  LOOP
+    v_quality := v_output->>'quality';
+    v_out_material_type := v_output->>'material_type';
+    v_out_weight := (v_output->>'weight_grams')::INTEGER;
+
+    -- Generate batch code: collection_code-quality-increment
+    SELECT COALESCE(MAX(
+      CASE
+        WHEN code ~ ('^' || v_collection_code || '-' || v_quality || '-[0-9]+$')
+        THEN CAST(SUBSTRING(code FROM '[0-9]+$') AS INTEGER)
+        ELSE 0
+      END
+    ), 0) + 1
+    INTO v_increment
+    FROM batches
+    WHERE collection_id = v_collection_id;
+
+    v_batch_code := v_collection_code || '-' || v_quality || '-' || v_increment::text;
+
+    -- Create output batch
+    INSERT INTO batches (
+      collection_id, code, weight_grams, organisation_id
+    ) VALUES (
+      v_collection_id, v_batch_code, v_out_weight, v_organisation_id
+    )
+    RETURNING id INTO v_output_batch_id;
+
+    -- Create custody record
+    INSERT INTO batch_custody (batch_id, organisation_id, notes)
+    VALUES (v_output_batch_id, v_organisation_id, 'Batch created via sub-batch cleaning');
+
+    -- Create cleaning output record
+    INSERT INTO batch_cleaning_output (
+      cleaning_id, output_batch_id, quality, material_type, weight_grams
+    ) VALUES (
+      v_cleaning_id, v_output_batch_id, v_quality, v_out_material_type, v_out_weight
+    );
+
+    -- Create initial sub-batch for the output batch
+    INSERT INTO sub_batches (batch_id, weight_grams, notes)
+    VALUES (v_output_batch_id, v_out_weight, 'Initial sub-batch from cleaning');
+  END LOOP;
+
+  -- Consume the input sub-batch via weight adjustment
+  INSERT INTO batch_weight_adjustments (
+    sub_batch_id, weight_grams, reason, created_by
+  ) VALUES (
+    p_sub_batch_id,
+    -v_effective_weight,
+    'Sub-batch cleaned. Fully consumed.',
+    auth.uid()
+  );
+
+  RETURN v_cleaning_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION fn_clean_sub_batch(UUID, TEXT, TEXT, TEXT, BOOLEAN, TEXT, JSONB) TO authenticated;
+
+-- ============================================================================
+-- FUNCTION: fn_create_quality_test
+-- Inserts a quality test and creates a weight adjustment on the sub-batch
+-- to account for seeds consumed during destructive testing.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION fn_create_quality_test(
+  p_batch_id UUID,
+  p_sub_batch_id UUID,
+  p_result JSONB,
+  p_performed_by_organisation_id UUID
+) RETURNS UUID AS $$
+DECLARE
+  v_test_id UUID;
+  v_total_weight NUMERIC := 0;
+  v_repeat JSONB;
+  v_sub_batch_batch_id UUID;
+BEGIN
+  -- Validate sub-batch belongs to the batch
+  SELECT batch_id INTO v_sub_batch_batch_id
+  FROM sub_batches WHERE id = p_sub_batch_id;
+
+  IF v_sub_batch_batch_id IS NULL THEN
+    RAISE EXCEPTION 'Sub-batch not found';
+  END IF;
+
+  IF v_sub_batch_batch_id != p_batch_id THEN
+    RAISE EXCEPTION 'Sub-batch does not belong to the specified batch';
+  END IF;
+
+  -- Calculate total weight consumed from repeats
+  FOR v_repeat IN SELECT * FROM jsonb_array_elements(p_result->'repeats')
+  LOOP
+    v_total_weight := v_total_weight + COALESCE((v_repeat->>'weight_grams')::NUMERIC, 0);
+  END LOOP;
+
+  -- Insert the quality test
+  INSERT INTO tests (
+    batch_id, type, result,
+    tested_at, tested_by,
+    performed_by_organisation_id
+  ) VALUES (
+    p_batch_id, 'quality', p_result,
+    now(), auth.uid(),
+    p_performed_by_organisation_id
+  )
+  RETURNING id INTO v_test_id;
+
+  -- Create weight adjustment for seeds consumed in testing
+  IF v_total_weight > 0 THEN
+    INSERT INTO batch_weight_adjustments (
+      sub_batch_id, weight_grams, reason, created_by
+    ) VALUES (
+      p_sub_batch_id,
+      -CEIL(v_total_weight)::INTEGER,
+      'Seeds consumed in quality test (test_id: ' || v_test_id || ')',
+      auth.uid()
+    );
+  END IF;
+
+  RETURN v_test_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION fn_create_quality_test(UUID, UUID, JSONB, UUID) TO authenticated;
 
 -- ============================================================================
 -- FUNCTION: fn_mix_batches
@@ -633,77 +968,78 @@ ALTER VIEW batch_lineage SET (security_invoker = true);
 -- RECREATE active_batches view with cleaning support
 -- ============================================================================
 
-DROP VIEW IF EXISTS active_batches;
-
 CREATE VIEW active_batches AS
-SELECT DISTINCT
-  b.*,
-  bcw.original_weight,
-  bcw.current_weight,
-  cbs.location_id as current_location_id,
-  c.species_id,
-  (
-    WITH RECURSIVE ancestors AS (
-      SELECT batch_id, parent_batch_id, event_details, creation_event
-      FROM batch_lineage WHERE batch_id = b.id
-      UNION
-      SELECT bl.batch_id, bl.parent_batch_id, bl.event_details, bl.creation_event
-      FROM batch_lineage bl
-      INNER JOIN ancestors a ON (
-        bl.batch_id = a.parent_batch_id
-        OR (a.creation_event = 'merge'
-            AND bl.batch_id IN (
-              SELECT jsonb_array_elements_text(a.event_details->'source_batch_ids')::uuid
-            ))
-      )
-    )
-    SELECT EXISTS (
-      SELECT 1 FROM ancestors anc
-      INNER JOIN treatments bt ON (
-        bt.input_batch_id = anc.batch_id OR bt.output_batch_id = anc.batch_id
-      )
-    )
-  ) AS is_treated,
-  (
-    EXISTS (SELECT 1 FROM batch_cleaning_output bco WHERE bco.output_batch_id = b.id)
-    OR EXISTS (
+WITH computed AS (
+  SELECT DISTINCT
+    b.*,
+    bcw.original_weight,
+    bcw.current_weight,
+    cbs.location_id as current_location_id,
+    c.species_id,
+    (
       WITH RECURSIVE ancestors AS (
-        SELECT batch_id, parent_batch_id, creation_event
+        SELECT batch_id, parent_batch_id, event_details, creation_event
         FROM batch_lineage WHERE batch_id = b.id
         UNION
-        SELECT bl.batch_id, bl.parent_batch_id, bl.creation_event
+        SELECT bl.batch_id, bl.parent_batch_id, bl.event_details, bl.creation_event
         FROM batch_lineage bl
-        INNER JOIN ancestors a ON bl.batch_id = a.parent_batch_id
+        INNER JOIN ancestors a ON (
+          bl.batch_id = a.parent_batch_id
+          OR (a.creation_event = 'merge'
+              AND bl.batch_id IN (
+                SELECT jsonb_array_elements_text(a.event_details->'source_batch_ids')::uuid
+              ))
+        )
       )
-      SELECT 1 FROM ancestors anc
-      INNER JOIN batch_cleaning bc ON bc.input_batch_id = anc.batch_id
-    )
-  ) AS is_cleaned,
-  COALESCE(
-    (SELECT t.statistics FROM tests t
-     WHERE t.batch_id = b.id AND t.type = 'quality' AND t.statistics IS NOT NULL
-     ORDER BY t.tested_at DESC LIMIT 1),
-    (SELECT t.statistics FROM tests t
-     WHERE t.batch_id = (
-       SELECT parent_batch_id FROM batch_lineage
-       WHERE batch_id = b.id AND creation_event = 'split'
-     ) AND t.type = 'quality' AND t.statistics IS NOT NULL
-     ORDER BY t.tested_at DESC LIMIT 1),
-    get_merged_batch_inherited_statistics(b.id)
-  ) AS latest_quality_statistics
-FROM
-  batches b
-  JOIN batch_current_weight bcw ON bcw.id = b.id
-  LEFT JOIN collection c ON c.id = b.collection_id
-  LEFT JOIN LATERAL (
-    SELECT location_id
-    FROM current_batch_storage
-    WHERE batch_id = b.id
-    ORDER BY stored_at DESC
-    LIMIT 1
-  ) cbs ON true
-WHERE
-  bcw.current_weight > 0 OR bcw.current_weight IS NULL;
+      SELECT EXISTS (
+        SELECT 1 FROM ancestors WHERE creation_event = 'treating'
+      )
+    ) AS is_treated,
+    (
+      EXISTS (SELECT 1 FROM batch_cleaning_output bco WHERE bco.output_batch_id = b.id)
+      OR EXISTS (
+        WITH RECURSIVE ancestors AS (
+          SELECT batch_id, parent_batch_id, creation_event
+          FROM batch_lineage WHERE batch_id = b.id
+          UNION
+          SELECT bl.batch_id, bl.parent_batch_id, bl.creation_event
+          FROM batch_lineage bl
+          INNER JOIN ancestors a ON bl.batch_id = a.parent_batch_id
+        )
+        SELECT 1 FROM ancestors anc
+        INNER JOIN batch_cleaning bc ON bc.input_batch_id = anc.batch_id
+      )
+    ) AS is_cleaned,
+    COALESCE(
+      (SELECT t.statistics FROM tests t
+       WHERE t.batch_id = b.id AND t.type = 'quality' AND t.statistics IS NOT NULL
+       ORDER BY t.tested_at DESC LIMIT 1),
+      (SELECT t.statistics FROM tests t
+       WHERE t.batch_id = (
+         SELECT parent_batch_id FROM batch_lineage
+         WHERE batch_id = b.id AND creation_event = 'split'
+       ) AND t.type = 'quality' AND t.statistics IS NOT NULL
+       ORDER BY t.tested_at DESC LIMIT 1),
+      get_merged_batch_inherited_statistics(b.id)
+    ) AS latest_quality_statistics
+  FROM
+    batches b
+    JOIN batch_current_weight bcw ON bcw.id = b.id
+    LEFT JOIN collection c ON c.id = b.collection_id
+    LEFT JOIN LATERAL (
+      SELECT location_id
+      FROM current_batch_storage
+      WHERE batch_id = b.id
+      ORDER BY stored_at DESC
+      LIMIT 1
+    ) cbs ON true
+  WHERE
+    bcw.current_weight > 0 OR bcw.current_weight IS NULL
+)
+SELECT * FROM computed
+WHERE NOT EXISTS (
+  SELECT 1 FROM batch_cleaning bc WHERE bc.input_batch_id = computed.id
+);
 
 -- ============================================================================
 -- UPDATE batch_lineage_to_collections to include treating and cleaning
@@ -750,14 +1086,3 @@ WITH RECURSIVE lineage (batch_id, collection_id) AS (
 )
 SELECT DISTINCT batch_id, collection_id
 FROM lineage;
-
--- ============================================================================
--- BACKFILL: Link existing batch_storage records to their sub-batches
--- For each batch_storage record without a sub_batch_id, find the single
--- sub-batch for that batch (created by the trigger above) and link it.
--- ============================================================================
-UPDATE batch_storage bs
-SET sub_batch_id = sb.id
-FROM sub_batches sb
-WHERE bs.batch_id = sb.batch_id
-  AND bs.sub_batch_id IS NULL;

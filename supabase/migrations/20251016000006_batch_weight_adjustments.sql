@@ -1,71 +1,47 @@
 -- Batch weight adjustments for corrections and audit trail
+-- NOTE: sub_batch_id FK constraint is added in the sub_batches_and_cleaning migration
+-- once the sub_batches table exists.
 SET search_path TO public;
 
 -- TABLE: batch_weight_adjustments
 CREATE TABLE batch_weight_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
+  sub_batch_id UUID NOT NULL,
   weight_grams INTEGER NOT NULL,
   reason TEXT NOT NULL CHECK (length(trim(reason)) > 0),
   created_at TIMESTAMPTZ DEFAULT now(),
   created_by UUID REFERENCES auth.users(id)
 );
 
--- INDEX: for efficient lookups by batch
-CREATE INDEX idx_batch_weight_adjustments_batch_id ON batch_weight_adjustments(batch_id);
+-- INDEX: for efficient lookups by sub-batch
+CREATE INDEX idx_batch_weight_adjustments_sub_batch_id ON batch_weight_adjustments(sub_batch_id);
 
 -- RLS POLICY
 ALTER TABLE batch_weight_adjustments ENABLE ROW LEVEL SECURITY;
 
--- Policy: current custodian organisation members can view adjustments
+-- NOTE: Placeholder policies. Proper policies referencing sub_batches are created
+-- in the sub_batches_and_cleaning migration once that table exists.
 CREATE POLICY custodian_can_view_adjustments ON batch_weight_adjustments
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM current_batch_custody cbc
-      WHERE cbc.batch_id = batch_weight_adjustments.batch_id
-        AND is_org_member(auth.uid(), cbc.organisation_id)
-    )
-  );
+  USING (created_by = auth.uid());
 
--- Policy: current custodian organisation members can insert adjustments
 CREATE POLICY custodian_can_insert_adjustments ON batch_weight_adjustments
   FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM current_batch_custody cbc
-      WHERE cbc.batch_id = batch_weight_adjustments.batch_id
-        AND is_org_member(auth.uid(), cbc.organisation_id)
-    )
-  );
+  WITH CHECK (created_by = auth.uid());
 
--- VIEW: batch_current_weight
--- Calculates the current weight of each batch from immutable events
+-- VIEW: batch_current_weight (placeholder)
+-- This is recreated in the sub_batches_and_cleaning migration to derive weight
+-- from sub-batches. This placeholder uses batch.weight_grams directly.
 CREATE VIEW batch_current_weight AS
 SELECT
   b.id,
   b.weight_grams as original_weight,
   CASE
-    -- If batch was merged into another, it's fully consumed
     WHEN EXISTS (
       SELECT 1 FROM batch_merges bm
       WHERE bm.source_batch_id = b.id
     ) THEN 0
-    -- Otherwise: original weight - splits + adjustments
-    ELSE b.weight_grams
-      - COALESCE(
-          (SELECT SUM(child.weight_grams)
-           FROM batch_splits bs
-           JOIN batches child ON child.id = bs.child_batch_id
-           WHERE bs.parent_batch_id = b.id),
-          0)
-      + COALESCE(
-          (SELECT SUM(wa.weight_grams)
-           FROM batch_weight_adjustments wa
-           WHERE wa.batch_id = b.id),
-          0)
+    ELSE COALESCE(b.weight_grams, 0)
   END as current_weight
 FROM batches b;
 

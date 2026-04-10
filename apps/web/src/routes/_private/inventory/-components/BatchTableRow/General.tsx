@@ -7,17 +7,16 @@ import {
 } from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
 import {
-  Boxes,
-  Sparkles,
   Combine,
   Edit,
   FlaskConical,
-  Merge,
   Minus,
   Plus,
   SendIcon,
   Split,
   X,
+  BrushCleaning,
+  Microscope,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -36,14 +35,14 @@ import {
 // Types
 // =============================================================================
 
-interface MergeMode {
+interface CombineMode {
   isActive: boolean
   isInitiating: boolean
   isSelected: boolean
-  canMerge: boolean
-  onAddToMerge: () => void
-  onRemoveFromMerge: () => void
-  onCancelMerge: () => void
+  canCombine: boolean
+  onAddToCombine: () => void
+  onRemoveFromCombine: () => void
+  onCancelCombine: () => void
 }
 
 interface AssignmentMode {
@@ -66,7 +65,7 @@ interface BatchTableRowProps extends BaseBatchTableRowProps {
     batch: BatchWithCurrentLocationAndSpecies,
     subBatchId: string,
   ) => void
-  mergeMode?: MergeMode
+  combineMode?: CombineMode
   assignmentMode?: AssignmentMode
 }
 
@@ -130,29 +129,29 @@ const AssignmentModeActions = ({
 }
 
 interface MergeModeActionsProps {
-  mergeMode: MergeMode
+  combineMode: CombineMode
 }
 
-const MergeModeActions = ({ mergeMode }: MergeModeActionsProps) => {
-  if (mergeMode.isInitiating) {
+const MergeModeActions = ({ combineMode }: MergeModeActionsProps) => {
+  if (combineMode.isInitiating) {
     return (
       <Button
         variant="outline"
         size="lg"
-        onClick={mergeMode.onCancelMerge}
+        onClick={combineMode.onCancelCombine}
         className="text-destructive border-destructive/50 hover:bg-destructive/50"
       >
         <X className="mr-1 h-4 w-4" />
-        <span className="text-xs">Cancel Merge</span>
+        <span className="text-xs">Cancel Combine</span>
       </Button>
     )
   }
 
-  if (mergeMode.isSelected) {
+  if (combineMode.isSelected) {
     return (
       <Button
         variant="outline"
-        onClick={mergeMode.onRemoveFromMerge}
+        onClick={combineMode.onRemoveFromCombine}
         className="text-accent-foreground border-accent bg-accent/20"
       >
         <Minus className="mr-1 h-4 w-4" />
@@ -164,11 +163,11 @@ const MergeModeActions = ({ mergeMode }: MergeModeActionsProps) => {
   return (
     <Button
       variant="outline"
-      onClick={mergeMode.onAddToMerge}
+      onClick={combineMode.onAddToCombine}
       className="text-primary border-primary/20 hover:bg-primary/10"
     >
       <Plus className="mr-1 h-4 w-4" />
-      <span className="text-xs">Add to Merge</span>
+      <span className="text-xs">Add to Combine</span>
     </Button>
   )
 }
@@ -184,10 +183,9 @@ interface NormalModeActionsProps {
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
-  onOpenQualityTest: () => void
+  onOpenQualityTest?: () => void
 }
 
 const NormalModeActions = ({
@@ -199,98 +197,83 @@ const NormalModeActions = ({
   onSplit,
   onProcess,
   onClean,
-  onMerge,
   onMix,
-  onStorageMove,
   onAssignForTesting,
   onDelete,
   onOpenQualityTest,
 }: NormalModeActionsProps) => (
   <>
-    <Button
-      variant="ghost"
-      disabled={mergeDisabled}
-      size="sm"
-      onClick={() => onEdit?.(batch)}
-      title="Edit"
-    >
-      <Edit className="h-4 w-4" />
-    </Button>
+    {onEdit && (
+      <Button
+        variant="ghost"
+        disabled={mergeDisabled}
+        size="sm"
+        onClick={() => onEdit(batch)}
+        title="Notes"
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+    )}
 
-    {(batch.is_treated || batch.is_cleaned) && (
+    {(batch.is_treated || batch.is_cleaned) && onSplit && (
       <Button
         variant="ghost"
         size="sm"
         disabled={mergeDisabled}
-        onClick={() => onSplit?.(batch)}
+        onClick={() => onSplit(batch)}
         title="Split"
       >
         <Split className="h-4 w-4" />
       </Button>
     )}
 
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={mergeDisabled}
-      onClick={() => onClean?.(batch)}
-      title="Clean"
-    >
-      <Sparkles className="h-4 w-4" />
-    </Button>
-
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={mergeDisabled}
-      onClick={() => onProcess?.(batch)}
-      title="Treat"
-    >
-      <FlaskConical className="h-4 w-4" />
-    </Button>
-
-    {(batch.is_treated || batch.is_cleaned) && (
+    {onClean && (
       <Button
         variant="ghost"
         size="sm"
         disabled={mergeDisabled}
-        onClick={() => onMerge?.(batch)}
-        title="Merge"
+        onClick={() => onClean(batch)}
+        title="Clean"
       >
-        <Merge className="h-4 w-4" />
+        <BrushCleaning className="h-4 w-4" />
       </Button>
     )}
 
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={mergeDisabled}
-      onClick={() => onMix?.(batch)}
-      title="Mix"
-    >
-      <Combine className="h-4 w-4" />
-    </Button>
+    {onProcess && (
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={mergeDisabled}
+        onClick={() => onProcess(batch)}
+        title="Treat"
+      >
+        <FlaskConical className="h-4 w-4" />
+      </Button>
+    )}
 
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={mergeDisabled}
-      onClick={() => onStorageMove?.(batch)}
-      title="Move to storage"
-    >
-      <Boxes className="h-4 w-4" />
-    </Button>
+    {onMix && (
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={mergeDisabled}
+        onClick={() => onMix(batch)}
+        title="Combine"
+      >
+        <Combine className="h-4 w-4" />
+      </Button>
+    )}
 
-    <Button
-      variant="ghost"
-      size="sm"
-      disabled={mergeDisabled}
-      onClick={onOpenQualityTest}
-      title="Quality Test"
-    >
-      <FlaskConical className="h-4 w-4" />
-    </Button>
-
+    {onOpenQualityTest && (
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={mergeDisabled}
+        onClick={onOpenQualityTest}
+        title="Quality Test"
+      >
+        <Microscope className="h-4 w-4" />
+      </Button>
+    )}
     {onAssignForTesting && (
       <TooltipProvider>
         <Tooltip>
@@ -340,37 +323,37 @@ export const BatchTableRow = ({
   onClean,
   onMerge,
   onMix,
-  onStorageMove,
   onAssignForTesting,
   onSubBatchStorageMove,
   className,
-  mergeMode,
+  combineMode,
   assignmentMode,
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isQualityTestModalOpen, setIsQualityTestModalOpen] = useState(false)
 
-  const { currentStorage, canDelete, activeAssignment, detailLoading } =
-    useBatchRowData(batch.id)
+  const { canDelete, activeAssignment, detailLoading } = useBatchRowData(
+    batch.id,
+  )
 
   // Collapse row when entering merge or assignment mode
   useEffect(() => {
-    if (mergeMode?.isActive || assignmentMode?.isActive) {
+    if (combineMode?.isActive || assignmentMode?.isActive) {
       setIsExpanded(false)
     }
-  }, [mergeMode?.isActive, assignmentMode?.isActive])
+  }, [combineMode?.isActive, assignmentMode?.isActive])
 
-  const mergeDisabled = Boolean(mergeMode && !mergeMode.canMerge)
+  const mergeDisabled = Boolean(combineMode && !combineMode.canCombine)
   const hasActiveAssignment = Boolean(activeAssignment)
 
   // Determine row styling based on mode
   const rowClassName = cn(
-    mergeMode?.isSelected &&
-      mergeMode?.canMerge &&
+    combineMode?.isSelected &&
+      combineMode?.canCombine &&
       "bg-accent/20 border-accent/40",
     mergeDisabled &&
       "bg-muted-foreground/20 text-primary-foreground/40 border-transparent",
-    mergeMode?.isInitiating && "bg-accent/40 border-accent/60",
+    combineMode?.isInitiating && "bg-accent/40 border-accent/60",
     assignmentMode?.isSelected && "border-green-300 bg-green-50",
   )
 
@@ -385,10 +368,25 @@ export const BatchTableRow = ({
       )
     }
 
-    if (mergeMode?.canMerge && mergeMode?.isActive) {
-      return <MergeModeActions mergeMode={mergeMode} />
+    if (combineMode?.canCombine && combineMode?.isActive) {
+      return <MergeModeActions combineMode={combineMode} />
     }
 
+    const isOriginBatch = batch.weight_grams === null
+    if (isOriginBatch) {
+      return (
+        <NormalModeActions
+          batch={batch}
+          mergeDisabled={mergeDisabled}
+          canDelete={canDelete}
+          hasActiveAssignment={hasActiveAssignment}
+          onEdit={onEdit}
+          onClean={onClean}
+          onMix={onMix}
+          onDelete={onDelete}
+        />
+      )
+    }
     return (
       <NormalModeActions
         batch={batch}
@@ -400,8 +398,6 @@ export const BatchTableRow = ({
         onClean={onClean}
         onProcess={onProcess}
         onMerge={onMerge}
-        onMix={onMix}
-        onStorageMove={onStorageMove}
         onAssignForTesting={onAssignForTesting}
         onDelete={onDelete}
         onOpenQualityTest={() => setIsQualityTestModalOpen(true)}
@@ -424,7 +420,6 @@ export const BatchTableRow = ({
         rowClassName={rowClassName}
         statusBadge={statusBadge}
         actionButtons={renderActionButtons()}
-        currentStorage={currentStorage}
         detailLoading={detailLoading}
         onSubBatchStorageMove={
           onSubBatchStorageMove

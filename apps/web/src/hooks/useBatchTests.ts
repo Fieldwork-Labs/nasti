@@ -238,33 +238,41 @@ export const useQualityTest = (testId: string) => {
 // Mutation: Create quality test
 type CreateQualityTestParams = {
   batchId: string
+  subBatchId: string
   result: QualityTestResult
 }
 
 export const useCreateQualityTest = () => {
-  const { user, organisation } = useUserStore()
+  const { organisation } = useUserStore()
 
   return useMutation<QualityTest, Error, CreateQualityTestParams>({
-    mutationFn: async ({ batchId, result }) => {
+    mutationFn: async ({ batchId, subBatchId, result }) => {
       if (!organisation?.id) {
         throw new Error("Organisation ID is required")
       }
 
-      const { data, error } = await supabase
+      // TODO: regenerate types with `supabase gen types` after migration
+      const { data, error } = await (supabase.rpc as CallableFunction)(
+        "fn_create_quality_test",
+        {
+          p_batch_id: batchId,
+          p_sub_batch_id: subBatchId,
+          p_result: result as unknown as Json,
+          p_performed_by_organisation_id: organisation.id,
+        },
+      )
+
+      if (error) throw new Error((error as { message: string }).message)
+
+      // Fetch the created test (RPC returns the test ID)
+      const { data: test, error: fetchError } = await supabase
         .from("tests")
-        .insert({
-          batch_id: batchId,
-          performed_by_organisation_id: organisation.id,
-          type: "quality",
-          result: result as unknown as Json,
-          tested_at: new Date().toISOString(),
-          tested_by: user?.id,
-        })
-        .select()
+        .select("*")
+        .eq("id", data as string)
         .single()
 
-      if (error) throw new Error(error.message)
-      return data as unknown as QualityTest
+      if (fetchError) throw new Error(fetchError.message)
+      return test as unknown as QualityTest
     },
     onSuccess: (newTest) => {
       // Invalidate quality tests cache
@@ -280,6 +288,11 @@ export const useCreateQualityTest = () => {
       // Invalidate batch detail cache
       queryClient.invalidateQueries({
         queryKey: ["batches", "detail", newTest.batch_id],
+      })
+
+      // Invalidate sub-batches cache (weight changed due to adjustment)
+      queryClient.invalidateQueries({
+        queryKey: ["subBatches", newTest.batch_id],
       })
 
       // find the batch in the filter queries

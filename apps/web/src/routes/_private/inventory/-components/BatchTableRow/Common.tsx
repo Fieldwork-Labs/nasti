@@ -13,7 +13,7 @@ import { Button } from "@nasti/ui/button"
 import { useOpenClose, useToast } from "@nasti/ui/hooks"
 import {
   Boxes,
-  Sparkles,
+  BrushCleaning,
   Calendar,
   Check,
   ChevronDown,
@@ -22,16 +22,27 @@ import {
   FlaskConical,
   Loader2,
   Merge,
+  MicroscopeIcon,
   Package,
   Pencil,
   Trash2,
 } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
+import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import { useActiveBatchAssignment } from "@/hooks/useBatchAssignments"
+import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import {
+  useBatchDetail,
+  useBatchHistory,
+  useCanDeleteBatch,
+} from "@/hooks/useBatches"
 import { useBatchTests } from "@/hooks/useBatchTests"
-import { useSubBatches, useMergeSubBatches } from "@/hooks/useSubBatches"
 import type { SubBatchWithStorage } from "@/hooks/useSubBatches"
+import { useMergeSubBatches, useSubBatches } from "@/hooks/useSubBatches"
+import useUserStore from "@/store/userStore"
+import { TaxonName } from "@nasti/common"
 import type { QualityTest } from "@nasti/common/types"
 import { Badge } from "@nasti/ui/badge"
 import {
@@ -42,17 +53,6 @@ import {
   withTooltip,
 } from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
-import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import {
-  useBatchDetail,
-  useBatchHistory,
-  useCanDeleteBatch,
-} from "@/hooks/useBatches"
-import { useCurrentBatchStorage } from "@/hooks/useBatchStorage"
-import { CollectionListItem } from "@/components/collections/CollectionListItem"
-import { QualityTestModal } from "@/components/tests/QualityTestModal"
-import useUserStore from "@/store/userStore"
-import { TaxonName } from "@nasti/common"
 
 // =============================================================================
 // Types
@@ -64,7 +64,6 @@ export interface BaseBatchTableRowProps {
   batch: BatchType
   onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
-  onStorageMove?: (batch: BatchWithCurrentLocationAndSpecies) => void
   className?: string
 }
 
@@ -80,10 +79,15 @@ export const NeedsProcessingIcon = withTooltip(
   <FileWarningIcon className="h-4 w-4 text-orange-600" />,
 )
 
-export const StatusProcessedIcon = withTooltip(<Sparkles className="h-4 w-4" />)
+export const StatusCleanedIcon = withTooltip(
+  <BrushCleaning className="h-4 w-4" />,
+)
+export const StatusTreatedIcon = withTooltip(
+  <FlaskConical className="h-4 w-4" />,
+)
 
 export const StatusTestedIcon = withTooltip(
-  <FlaskConical className="h-4 w-4" />,
+  <MicroscopeIcon className="h-4 w-4" />,
 )
 
 /**
@@ -255,8 +259,8 @@ export const BatchStatusField = ({
 }) => {
   return (
     <span className="flex gap-1 text-sm">
-      {batch.is_treated && <StatusProcessedIcon>Treated</StatusProcessedIcon>}
-      {batch.is_cleaned && <StatusProcessedIcon>Cleaned</StatusProcessedIcon>}
+      {batch.is_treated && <StatusTreatedIcon>Treated</StatusTreatedIcon>}
+      {batch.is_cleaned && <StatusCleanedIcon>Cleaned</StatusCleanedIcon>}
       {batch.latest_quality_statistics && (
         <StatusTestedIcon>Tested</StatusTestedIcon>
       )}
@@ -374,14 +378,12 @@ export const BatchDeleteButton = ({
 export const useBatchRowData = (batchId: string) => {
   const { data: batchDetail, isLoading: detailLoading } =
     useBatchDetail(batchId)
-  const { data: currentStorage } = useCurrentBatchStorage(batchId)
   const { data: canDeleteData } = useCanDeleteBatch(batchId)
   const { data: activeAssignment } = useActiveBatchAssignment(batchId)
 
   return {
     batchDetail,
     detailLoading,
-    currentStorage,
     canDelete: canDeleteData?.canDelete ?? true,
     activeAssignment,
   }
@@ -391,12 +393,9 @@ export const useBatchRowData = (batchId: string) => {
 // Expanded Details Components
 // =============================================================================
 
-type CurrentBatchStorage = ReturnType<typeof useCurrentBatchStorage>["data"]
-
 interface BatchExpandedDetailsProps {
   batch: BatchType
   detailLoading: boolean
-  currentStorage: CurrentBatchStorage
   onSubBatchStorageMove?: (subBatchId: string) => void
 }
 
@@ -555,7 +554,6 @@ const SubBatchesTable = ({
 export const BatchExpandedDetails = ({
   batch,
   detailLoading,
-  currentStorage,
   onSubBatchStorageMove,
 }: BatchExpandedDetailsProps) => {
   return (
@@ -568,7 +566,7 @@ export const BatchExpandedDetails = ({
       {detailLoading ? (
         <BatchDetailsSkeleton />
       ) : (
-        <BatchDetailsContent batch={batch} currentStorage={currentStorage} />
+        <BatchDetailsContent batch={batch} />
       )}
       <SubBatchesTable
         batchId={batch.id}
@@ -600,13 +598,7 @@ const BatchDetailsSkeleton = () => (
   </div>
 )
 
-const BatchDetailsContent = ({
-  batch,
-  currentStorage,
-}: {
-  batch: BatchType
-  currentStorage: CurrentBatchStorage
-}) => {
+const BatchDetailsContent = ({ batch }: { batch: BatchType }) => {
   const hasBatchWeight = batch.weights?.current_weight || batch.weight_grams
   return (
     <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
@@ -639,20 +631,6 @@ const BatchDetailsContent = ({
           </div>
         </div>
       )}
-
-      {currentStorage && (
-        <div>
-          <span className="font-medium">Storage Location:</span>
-          <div className="mt-1 text-xs">
-            {currentStorage.location?.name}
-            {currentStorage.stored_at && (
-              <div className="text-muted-foreground">
-                Stored: {new Date(currentStorage.stored_at).toLocaleString()}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -660,24 +638,6 @@ const BatchDetailsContent = ({
 // =============================================================================
 // Main Row Cell Components
 // =============================================================================
-
-/**
- * Storage location cell
- */
-export const StorageLocationCell = ({
-  currentStorage,
-}: {
-  currentStorage: CurrentBatchStorage
-}) => {
-  if (!currentStorage) return null
-
-  return (
-    <div className="flex items-center gap-2">
-      <Package className="h-4 w-4 text-orange-600" />
-      <span className="text-sm">{currentStorage.location?.name}</span>
-    </div>
-  )
-}
 
 /**
  * Weight cell with current and original weights
@@ -801,7 +761,6 @@ interface BatchTableRowContainerProps {
   rowClassName?: string
   statusBadge?: ReactNode
   actionButtons: ReactNode
-  currentStorage: CurrentBatchStorage
   detailLoading: boolean
   onSubBatchStorageMove?: (subBatchId: string) => void
 }
@@ -817,7 +776,6 @@ export const BatchTableRowContainer = ({
   rowClassName,
   statusBadge,
   actionButtons,
-  currentStorage,
   detailLoading,
   onSubBatchStorageMove,
 }: BatchTableRowContainerProps) => (
@@ -847,10 +805,6 @@ export const BatchTableRowContainer = ({
         <BatchStatusField batch={batch} />
       </td>
 
-      <td className="px-4 py-3">
-        <StorageLocationCell currentStorage={currentStorage} />
-      </td>
-
       <td className="px-4 py-3 text-right">
         <WeightCell batch={batch} />
       </td>
@@ -877,7 +831,6 @@ export const BatchTableRowContainer = ({
           <BatchExpandedDetails
             batch={batch}
             detailLoading={detailLoading}
-            currentStorage={currentStorage}
             onSubBatchStorageMove={onSubBatchStorageMove}
           />
         </td>

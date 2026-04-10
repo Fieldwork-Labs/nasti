@@ -4,6 +4,8 @@ type Table<T extends keyof Database["public"]["Tables"]> =
   Database["public"]["Tables"][T]["Row"]
 type Function<T extends keyof Database["public"]["Functions"]> =
   Database["public"]["Functions"][T]
+type View<T extends keyof Database["public"]["Views"]> =
+  Database["public"]["Views"][T]
 
 export type Organisation = Table<"organisation">
 export type Invitation = Table<"invitation">
@@ -83,6 +85,10 @@ export type BatchCustody = Table<"batch_custody">
 export type BatchSplit = Table<"batch_splits">
 export type BatchMerge = Table<"batch_merges">
 export type BatchStorage = Table<"batch_storage">
+export type CurrentBatchStorage = Omit<
+  View<"current_batch_storage">,
+  "sub_batch_id"
+> & { sub_batch_id: string }
 export type StorageLocation = Table<"storage_locations">
 
 // Sub-batches

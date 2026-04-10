@@ -1,7 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@nasti/common/utils"
-import type { StorageLocation, BatchStorage, Batch } from "@nasti/common/types"
+import {
+  type StorageLocation,
+  type BatchStorage,
+  type Batch,
+  CurrentBatchStorage,
+} from "@nasti/common/types"
 import useUserStore from "@/store/userStore"
 
 // Extended types for storage with related data
@@ -45,60 +50,77 @@ export const useStorageLocationDetail = (locationId: string) => {
   return useQuery({
     queryKey: ["storageLocations", "detail", locationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch location and current batches stored here (via view)
+      const { data: location, error: locError } = await supabase
         .from("storage_locations")
-        .select(
-          `
-          *,
-          current_batches:current_batch_storage(
-            batch_id,
-            stored_at,
-            notes,
-            batch:batches!current_batch_storage_batch_id_fkey(
-              id,
-              notes,
-              created_at,
-              collection_id,
-              collection:collection!batches_collection_id_fkey(
-                id,
-                field_name,
-                description,
-                species_id,
-                species:species(name, indigenous_name),
-                trip:trip(id, name, start_date, end_date)
-              )
-            )
-          ),
-          storage_history:batch_storage(
-            *,
-            batch:batches!batch_storage_batch_id_fkey(
-              id,
-              notes,
-              created_at,
-              collection:collection!batches_collection_id_fkey(
-                field_name,
-                species:species(name)
-              )
-            )
-          )
-        `,
-        )
+        .select("*")
         .eq("id", locationId)
         .single()
 
-      if (error) throw new Error(error.message)
-      return data
+      if (locError) throw new Error(locError.message)
+
+      // Fetch current batches via the view
+      const { data: currentSubBatches, error: cbError } = await supabase
+        .from("current_batch_storage")
+        .select("*")
+        .eq("location_id", locationId)
+        .overrideTypes<CurrentBatchStorage[]>()
+
+      if (cbError) throw new Error(cbError.message)
+
+      // Fetch batch details for current batches
+      const subBatchIds = [
+        ...new Set((currentSubBatches ?? []).map((cb) => cb.sub_batch_id)),
+      ]
+      const { data: subBatches } = subBatchIds.length
+        ? await supabase
+            .from("sub_batches")
+            .select(
+              `
+              *,batch:batches(*)
+            `,
+            )
+            .in("id", subBatchIds)
+        : { data: [] }
+
+      const subBatchMap = new Map((subBatches ?? []).map((b) => [b.id, b]))
+
+      // Fetch storage history
+      const { data: storageHistory, error: shError } = await supabase
+        .from("batch_storage")
+        .select(
+          `
+          *,
+          location:storage_locations!batch_storage_location_id_fkey(
+            id, name, description
+          ),
+          sub_batch:sub_batches(batch_id)
+        `,
+        )
+        .eq("location_id", locationId)
+        .order("stored_at", { ascending: false })
+
+      if (shError) throw new Error(shError.message)
+
+      return {
+        ...location,
+        current_sub_batches: (currentSubBatches ?? []).map((cb) => ({
+          ...cb,
+          subBatch: subBatchMap.get(cb.sub_batch_id) ?? null,
+        })),
+        storage_history: storageHistory ?? [],
+      }
     },
   })
 }
 
-// Query: Get current storage location for a batch
+// Query: Get current storage location for a batch (via current_batch_storage view)
 export const useCurrentBatchStorage = (batchId: string) => {
   return useQuery({
-    queryKey: ["batches", "currentStorage", batchId],
+    queryKey: ["subBatches", "currentStorage", batchId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("batch_storage")
+        .from("current_batch_storage")
         .select(
           `
           *,
@@ -106,8 +128,6 @@ export const useCurrentBatchStorage = (batchId: string) => {
           `,
         )
         .eq("batch_id", batchId)
-        .is("moved_out_at", null)
-        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle()
 
@@ -121,11 +141,22 @@ export const useCurrentBatchStorage = (batchId: string) => {
   })
 }
 
-// Query: Get complete storage history for a batch
+// Query: Get complete storage history for a batch (via sub_batches)
 export const useCompleteBatchStorageHistory = (batchId: string) => {
   return useQuery({
-    queryKey: ["batches", "storageHistory", batchId],
+    queryKey: ["subBatches", "storageHistory", batchId],
     queryFn: async () => {
+      // Get all sub-batch IDs for this batch
+      const { data: subBatches, error: sbError } = await supabase
+        .from("sub_batches")
+        .select("id")
+        .eq("batch_id", batchId)
+
+      if (sbError) throw new Error(sbError.message)
+      if (!subBatches?.length) return []
+
+      const subBatchIds = subBatches.map((sb) => sb.id)
+
       const { data, error } = await supabase
         .from("batch_storage")
         .select(
@@ -138,7 +169,7 @@ export const useCompleteBatchStorageHistory = (batchId: string) => {
           )
         `,
         )
-        .eq("batch_id", batchId)
+        .in("sub_batch_id", subBatchIds)
         .order("stored_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -284,7 +315,6 @@ type MoveBatchToStorageParams = {
 export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
     mutationFn: async ({
-      batchId,
       subBatchId,
       currentBatchStorageId,
       locationId,
@@ -308,7 +338,6 @@ export const useMoveBatchToStorage = () => {
       const { data, error } = await supabase
         .from("batch_storage")
         .insert({
-          batch_id: batchId,
           sub_batch_id: subBatchId,
           location_id: locationId,
           stored_at: storedAt || timestamp,
@@ -323,11 +352,11 @@ export const useMoveBatchToStorage = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["batches", "currentStorage", variables.batchId],
+        queryKey: ["subBatches", "currentStorage", variables.batchId],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "storageHistory", variables.batchId],
+        queryKey: ["subBatches", "storageHistory", variables.batchId],
       })
 
       queryClient.invalidateQueries({
@@ -344,6 +373,7 @@ export const useMoveBatchToStorage = () => {
 // Mutation: Remove batch from storage (mark as moved out)
 type RemoveBatchFromStorageParams = {
   batchStorageId: string
+  batchId: string // used for cache invalidation
   notes?: string
 }
 
@@ -365,64 +395,63 @@ export const useRemoveBatchFromStorage = () => {
       if (error) throw new Error(error.message)
       return data
     },
-    onSuccess: ({ batch_id }) => {
-      // Invalidate storage caches
-
+    onSuccess: (_, { batchId }) => {
       queryClient.invalidateQueries({
-        queryKey: ["batches", "currentStorage", batch_id],
+        queryKey: ["subBatches", "currentStorage", batchId],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "storageHistory", batch_id],
+        queryKey: ["subBatches", "storageHistory", batchId],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", batch_id],
+        queryKey: ["batches", "detail", batchId],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["subBatches", batch_id],
+        queryKey: ["subBatches", batchId],
       })
     },
   })
 }
 
-// Mutation: Create storage record notes
+// Mutation: Create storage record
 type CreateStorageRecordParams = {
   locationId: string
-  batchId: string
+  subBatchId: string
+  batchId: string // used for cache invalidation only
   notes?: string
 }
 
 export const useCreateStorageRecord = () => {
   return useMutation<BatchStorage, Error, CreateStorageRecordParams>({
-    mutationFn: async ({ locationId, batchId, notes }) => {
+    mutationFn: async ({ locationId, subBatchId, notes }) => {
       const { data, error } = await supabase
         .from("batch_storage")
-        .insert({ notes, location_id: locationId, batch_id: batchId })
+        .insert({
+          notes,
+          location_id: locationId,
+          sub_batch_id: subBatchId,
+        })
         .select()
         .single()
 
       if (error) throw new Error(error.message)
       return data as BatchStorage
     },
-    onSuccess: (created) => {
+    onSuccess: (_, variables) => {
       // Invalidate related caches
       queryClient.invalidateQueries({
         queryKey: ["storageLocations"],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "storageHistory", created.batch_id],
+        queryKey: ["subBatches", "storageHistory", variables.batchId],
       })
 
-      queryClient.setQueryData<BatchStorage>(
-        ["batches", "currentStorage", created.batch_id],
-        (oldData) => {
-          if (!oldData) return created
-          return { ...oldData, ...created }
-        },
-      )
+      queryClient.invalidateQueries({
+        queryKey: ["subBatches", "currentStorage", variables.batchId],
+      })
     },
   })
 }
@@ -453,11 +482,11 @@ export const useUpdateStorageRecord = () => {
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "storageHistory", updatedStorage.batch_id],
+        queryKey: ["subBatches", "storageHistory", updatedStorage.sub_batch_id],
       })
 
       queryClient.invalidateQueries({
-        queryKey: ["batches", "currentStorage", updatedStorage.batch_id],
+        queryKey: ["subBatches", "currentStorage", updatedStorage.sub_batch_id],
       })
     },
   })

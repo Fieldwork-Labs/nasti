@@ -12,7 +12,7 @@ type BatchStorageModalProps = {
   onClose: () => void
   batch: BatchWithCurrentLocationAndSpecies
   /** Pre-select a specific sub-batch for storage move */
-  subBatchId?: string
+  subBatchId: string
 }
 
 export const BatchStorageModal = ({

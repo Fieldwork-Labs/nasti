@@ -9,7 +9,6 @@ import { z } from "zod"
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "./BatchTableRow/General"
 import { CompleteAssignmentButton } from "@/components/inventory/CompleteAssignmentButton"
-import { CompleteMergeButton } from "@/components/inventory/CompleteMergeButton"
 import {
   AssignBatchesForTestingModal,
   BatchEditModal,
@@ -27,6 +26,7 @@ import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
 
 import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
+import { CompleteCombineButton } from "@/components/inventory/CompleteCombineButton"
 
 // Define search schema for URL parameters
 export const inventorySearchSchemaGeneral = z.object({
@@ -47,8 +47,6 @@ export function InventoryPageGeneral() {
   // Local state for modals
   const [editingBatch, setEditingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
-  const [storageMoveBatch, setStorageMoveBatch] =
-    useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [splittingBatch, setSplittingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [processingBatch, setPocessingBatch] =
@@ -68,11 +66,13 @@ export function InventoryPageGeneral() {
   } | null>(null)
   const [showMergeModal, setShowMergeModal] = useState(false)
 
-  // Mix state
-  const [mixSelectedBatches, setMixSelectedBatches] = useState<
-    BatchWithCurrentLocationAndSpecies[]
-  >([])
-  const [showMixModal, setShowMixModal] = useState(false)
+  // Combine mode state
+  const [combineState, setCombineState] = useState<{
+    isActive: boolean
+    initiatingBatch: BatchWithCurrentLocationAndSpecies
+    selectedBatchIds: string[]
+  } | null>(null)
+  const [showCombineModal, setShowCombineModal] = useState(false)
 
   // Check org type and linked testing organisations
   const { data: organisationLinks } = useOrganisationLinks()
@@ -89,6 +89,12 @@ export function InventoryPageGeneral() {
     sortField,
     sortDirection,
   } = useBatchFiltersContext()
+
+  const selectedBatchesForCombine = combineState
+    ? batches.filter((batch) =>
+        combineState.selectedBatchIds.includes(batch.id),
+      )
+    : []
 
   // Assignment mode hook (only for General orgs)
   const {
@@ -133,8 +139,16 @@ export function InventoryPageGeneral() {
     })
   }
 
-  const handleAddToMerge = (batchId: string) => {
-    setMergeState((prev) =>
+  const handleCombine = (batch: BatchWithCurrentLocationAndSpecies) => {
+    setCombineState({
+      isActive: true,
+      initiatingBatch: batch,
+      selectedBatchIds: [batch.id],
+    })
+  }
+
+  const handleAddToCombine = (batchId: string) => {
+    setCombineState((prev) =>
       prev
         ? {
             ...prev,
@@ -144,8 +158,8 @@ export function InventoryPageGeneral() {
     )
   }
 
-  const handleRemoveFromMerge = (batchId: string) => {
-    setMergeState((prev) =>
+  const handleRemoveFromCombine = (batchId: string) => {
+    setCombineState((prev) =>
       prev
         ? {
             ...prev,
@@ -157,23 +171,14 @@ export function InventoryPageGeneral() {
     )
   }
 
-  const handleCancelMerge = () => {
-    setMergeState(null)
+  const handleCancelCombine = () => {
+    setCombineState(null)
   }
 
-  const handleCompleteMerge = () => {
-    if (mergeState && mergeState.selectedBatchIds.length >= 2) {
-      setShowMergeModal(true)
+  const handleCompleteCombine = () => {
+    if (combineState && combineState.selectedBatchIds.length >= 2) {
+      setShowCombineModal(true)
     }
-  }
-
-  const handleMix = (batch: BatchWithCurrentLocationAndSpecies) => {
-    setMixSelectedBatches([batch])
-    setShowMixModal(true)
-  }
-
-  const handleStorageMove = (batch: BatchWithCurrentLocationAndSpecies) => {
-    setStorageMoveBatch(batch)
   }
 
   const getSortIcon = (field: SortField) => {
@@ -201,18 +206,23 @@ export function InventoryPageGeneral() {
 
   const offset = ((windowSize?.width ?? 0) - (initialWidth.current ?? 0)) / 2
 
-  const getMergeModeForBatch = (batch: BatchWithCurrentLocationAndSpecies) => {
-    if (!mergeState) return undefined
+  const getCombineModeForBatch = (
+    batch: BatchWithCurrentLocationAndSpecies,
+  ) => {
+    if (!combineState) return undefined
+    const batchCodePrefix = batch.code?.split("-")[0]
+    const initiatingBatchCodePrefix =
+      combineState.initiatingBatch.code?.split("-")[0]
+    const isSameCodePrefix = batchCodePrefix === initiatingBatchCodePrefix
+
     return {
-      isActive: mergeState.isActive,
-      isInitiating: batch.id === mergeState.initiatingBatch.id,
-      isSelected: mergeState.selectedBatchIds.includes(batch.id),
-      canMerge:
-        batch.collection_id === mergeState.initiatingBatch.collection_id &&
-        batch.code === mergeState.initiatingBatch.code,
-      onAddToMerge: () => handleAddToMerge(batch.id),
-      onRemoveFromMerge: () => handleRemoveFromMerge(batch.id),
-      onCancelMerge: handleCancelMerge,
+      isActive: combineState.isActive,
+      isInitiating: batch.id === combineState.initiatingBatch.id,
+      isSelected: combineState.selectedBatchIds.includes(batch.id),
+      canCombine: isSameCodePrefix,
+      onAddToCombine: () => handleAddToCombine(batch.id),
+      onRemoveFromCombine: () => handleRemoveFromCombine(batch.id),
+      onCancelCombine: handleCancelCombine,
     }
   }
 
@@ -312,9 +322,6 @@ export function InventoryPageGeneral() {
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Status
                         </th>
-                        <th className="text-foreground px-4 py-3 text-left font-semibold">
-                          Storage
-                        </th>
                         <th className="text-foreground px-4 py-3 text-right font-semibold">
                           Weight (g)
                         </th>
@@ -342,11 +349,10 @@ export function InventoryPageGeneral() {
                           onEdit={handleEdit}
                           onDelete={handleDelete}
                           onSplit={handleSplit}
-                          onStorageMove={handleStorageMove}
                           onClean={setCleaningBatch}
                           onProcess={setPocessingBatch}
                           onMerge={handleMerge}
-                          onMix={handleMix}
+                          onMix={handleCombine}
                           onSubBatchStorageMove={(batch, subBatchId) =>
                             setSubBatchStorageMove({ batch, subBatchId })
                           }
@@ -355,7 +361,7 @@ export function InventoryPageGeneral() {
                               ? handleAssignForTesting
                               : undefined
                           }
-                          mergeMode={getMergeModeForBatch(batch)}
+                          combineMode={getCombineModeForBatch(batch)}
                           assignmentMode={getAssignmentModeForBatch(batch)}
                         />
                       ))}
@@ -367,11 +373,11 @@ export function InventoryPageGeneral() {
           )}
         </MotionCard>
 
-        {/* Complete Merge Button */}
-        {mergeState && mergeState.selectedBatchIds.length > 0 && (
-          <CompleteMergeButton
-            selectedCount={mergeState.selectedBatchIds.length}
-            onCompleteMerge={handleCompleteMerge}
+        {/* Complete Combine Button */}
+        {combineState && combineState.selectedBatchIds.length > 0 && (
+          <CompleteCombineButton
+            selectedCount={combineState.selectedBatchIds.length}
+            onCompleteCombine={handleCompleteCombine}
           />
         )}
 
@@ -390,14 +396,6 @@ export function InventoryPageGeneral() {
             onClose={() => setEditingBatch(null)}
             batch={editingBatch}
             onSuccess={invalidateBatchesCacheByFilter}
-          />
-        )}
-
-        {storageMoveBatch && (
-          <BatchStorageModal
-            isOpen={Boolean(storageMoveBatch)}
-            onClose={() => setStorageMoveBatch(null)}
-            batch={storageMoveBatch}
           />
         )}
 
@@ -449,14 +447,14 @@ export function InventoryPageGeneral() {
           />
         )}
 
-        {showMixModal && mixSelectedBatches.length > 0 && (
+        {showCombineModal && selectedBatchesForCombine.length > 0 && (
           <BatchMixModal
-            isOpen={showMixModal}
+            isOpen={showCombineModal}
             onClose={() => {
-              setShowMixModal(false)
-              setMixSelectedBatches([])
+              setShowCombineModal(false)
+              setCombineState(null)
             }}
-            selectedBatches={mixSelectedBatches}
+            selectedBatches={selectedBatchesForCombine}
             onSuccess={invalidateBatchesCacheByFilter}
           />
         )}
