@@ -22,6 +22,7 @@ type SplitFormData = z.infer<typeof splitSchema>
 
 type BatchSplitFormProps = {
   parentBatch: BatchWithCurrentLocationAndSpecies
+  initialSubBatchId?: string
   onSuccess?: () => void
   onCancel?: () => void
   className?: string
@@ -29,6 +30,7 @@ type BatchSplitFormProps = {
 
 export const BatchSplitForm = ({
   parentBatch,
+  initialSubBatchId,
   onSuccess,
   onCancel,
   className,
@@ -39,7 +41,9 @@ export const BatchSplitForm = ({
   )
   const splitMutation = useSplitSubBatch()
   const [selectedSubBatch, setSelectedSubBatch] =
-    useState<SubBatchWithStorage | null>(null)
+    useState<SubBatchWithStorage | null>(
+      subBatches?.find((sb) => sb.id === initialSubBatchId) ?? null,
+    )
 
   const form = useForm<SplitFormData>({
     resolver: zodResolver(splitSchema),

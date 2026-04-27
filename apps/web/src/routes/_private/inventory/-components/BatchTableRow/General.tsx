@@ -13,7 +13,6 @@ import {
   Minus,
   Plus,
   SendIcon,
-  Split,
   X,
   BrushCleaning,
   Microscope,
@@ -56,9 +55,11 @@ interface AssignmentMode {
 interface BatchTableRowProps extends BaseBatchTableRowProps {
   batch: BatchWithCurrentLocationAndSpecies
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onSplit?: (
+    batch: BatchWithCurrentLocationAndSpecies,
+    subBatchId?: string,
+  ) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSubBatchStorageMove?: (
@@ -194,7 +195,6 @@ const NormalModeActions = ({
   canDelete,
   hasActiveAssignment,
   onEdit,
-  onSplit,
   onProcess,
   onClean,
   onMix,
@@ -212,18 +212,6 @@ const NormalModeActions = ({
         title="Notes"
       >
         <Edit className="h-4 w-4" />
-      </Button>
-    )}
-
-    {(batch.is_treated || batch.is_cleaned) && onSplit && (
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={mergeDisabled}
-        onClick={() => onSplit(batch)}
-        title="Split"
-      >
-        <Split className="h-4 w-4" />
       </Button>
     )}
 
@@ -274,6 +262,7 @@ const NormalModeActions = ({
         <Microscope className="h-4 w-4" />
       </Button>
     )}
+
     {onAssignForTesting && (
       <TooltipProvider>
         <Tooltip>
@@ -318,10 +307,8 @@ export const BatchTableRow = ({
   batch,
   onEdit,
   onDelete,
-  onProcess,
   onSplit,
   onClean,
-  onMerge,
   onMix,
   onAssignForTesting,
   onSubBatchStorageMove,
@@ -330,7 +317,9 @@ export const BatchTableRow = ({
   assignmentMode,
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [isQualityTestModalOpen, setIsQualityTestModalOpen] = useState(false)
+  const [qualityTestModalSubBatchId, setQualityTestModalSubBatchId] = useState<
+    string | false
+  >(false)
 
   const { canDelete, activeAssignment, detailLoading } = useBatchRowData(
     batch.id,
@@ -394,13 +383,8 @@ export const BatchTableRow = ({
         canDelete={canDelete}
         hasActiveAssignment={hasActiveAssignment}
         onEdit={onEdit}
-        onSplit={onSplit}
-        onClean={onClean}
-        onProcess={onProcess}
-        onMerge={onMerge}
         onAssignForTesting={onAssignForTesting}
         onDelete={onDelete}
-        onOpenQualityTest={() => setIsQualityTestModalOpen(true)}
       />
     )
   }
@@ -409,6 +393,14 @@ export const BatchTableRow = ({
   const statusBadge = activeAssignment ? (
     <GeneralOrgAssignmentBadge assignment={activeAssignment} />
   ) : null
+
+  const handleSubBatchSplit = (subBatchId: string) => {
+    onSplit?.(batch, subBatchId)
+  }
+
+  const handleSubBatchQualityTest = (subBatchId: string) => {
+    setQualityTestModalSubBatchId(subBatchId)
+  }
 
   return (
     <>
@@ -421,6 +413,8 @@ export const BatchTableRow = ({
         statusBadge={statusBadge}
         actionButtons={renderActionButtons()}
         detailLoading={detailLoading}
+        onSubBatchQualityTest={handleSubBatchQualityTest}
+        onSubBatchSplit={handleSubBatchSplit}
         onSubBatchStorageMove={
           onSubBatchStorageMove
             ? (subBatchId) => onSubBatchStorageMove(batch, subBatchId)
@@ -428,11 +422,14 @@ export const BatchTableRow = ({
         }
       />
 
-      <QualityTestModal
-        isOpen={isQualityTestModalOpen}
-        onClose={() => setIsQualityTestModalOpen(false)}
-        batchId={batch.id}
-      />
+      {qualityTestModalSubBatchId && (
+        <QualityTestModal
+          isOpen={Boolean(qualityTestModalSubBatchId)}
+          onClose={() => setQualityTestModalSubBatchId(false)}
+          batchId={batch.id}
+          subBatchId={qualityTestModalSubBatchId}
+        />
+      )}
     </>
   )
 }

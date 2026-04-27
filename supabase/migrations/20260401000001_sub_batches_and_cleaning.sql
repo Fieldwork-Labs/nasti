@@ -618,11 +618,11 @@ BEGIN
 
   -- Insert the quality test
   INSERT INTO tests (
-    batch_id, type, result,
+    batch_id, sub_batch_id, type, result,
     tested_at, tested_by,
     performed_by_organisation_id
   ) VALUES (
-    p_batch_id, 'quality', p_result,
+    p_batch_id, p_sub_batch_id, 'quality', p_result,
     now(), auth.uid(),
     p_performed_by_organisation_id
   )
@@ -1086,3 +1086,7 @@ WITH RECURSIVE lineage (batch_id, collection_id) AS (
 )
 SELECT DISTINCT batch_id, collection_id
 FROM lineage;
+
+--TRUNCATE to clear any existing data
+TRUNCATE TABLE public.tests;
+ALTER TABLE public.tests ADD COLUMN sub_batch_id UUID NOT NULL REFERENCES sub_batches(id) ON DELETE CASCADE;

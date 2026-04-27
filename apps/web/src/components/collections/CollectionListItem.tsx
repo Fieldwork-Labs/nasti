@@ -87,7 +87,7 @@ export const CollectionListItem = ({
             {speciesName && (
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger>
                     <TaxonName
                       name={speciesName}
                       className="max-w-56 truncate font-semibold"

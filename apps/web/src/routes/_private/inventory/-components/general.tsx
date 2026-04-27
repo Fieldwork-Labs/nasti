@@ -47,8 +47,9 @@ export function InventoryPageGeneral() {
   // Local state for modals
   const [editingBatch, setEditingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
-  const [splittingBatch, setSplittingBatch] =
-    useState<BatchWithCurrentLocationAndSpecies | null>(null)
+  const [splittingBatch, setSplittingBatch] = useState<
+    [BatchWithCurrentLocationAndSpecies, string | undefined] | null
+  >(null)
   const [processingBatch, setPocessingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [cleaningBatch, setCleaningBatch] =
@@ -127,16 +128,11 @@ export function InventoryPageGeneral() {
       })
   }
 
-  const handleSplit = (batch: BatchWithCurrentLocationAndSpecies) => {
-    setSplittingBatch(batch)
-  }
-
-  const handleMerge = (batch: BatchWithCurrentLocationAndSpecies) => {
-    setMergeState({
-      isActive: true,
-      initiatingBatch: batch,
-      selectedBatchIds: [batch.id],
-    })
+  const handleSplit = (
+    batch: BatchWithCurrentLocationAndSpecies,
+    subBatchId?: string,
+  ) => {
+    setSplittingBatch([batch, subBatchId])
   }
 
   const handleCombine = (batch: BatchWithCurrentLocationAndSpecies) => {
@@ -351,7 +347,6 @@ export function InventoryPageGeneral() {
                           onSplit={handleSplit}
                           onClean={setCleaningBatch}
                           onProcess={setPocessingBatch}
-                          onMerge={handleMerge}
                           onMix={handleCombine}
                           onSubBatchStorageMove={(batch, subBatchId) =>
                             setSubBatchStorageMove({ batch, subBatchId })
@@ -410,9 +405,10 @@ export function InventoryPageGeneral() {
 
         {splittingBatch && (
           <BatchSplitModal
-            isOpen={Boolean(splittingBatch)}
+            isOpen={Boolean(splittingBatch[0])}
             onClose={() => setSplittingBatch(null)}
-            batch={splittingBatch}
+            batch={splittingBatch[0]}
+            subBatchId={splittingBatch[1]}
             onSuccess={invalidateBatchesCacheByFilter}
           />
         )}

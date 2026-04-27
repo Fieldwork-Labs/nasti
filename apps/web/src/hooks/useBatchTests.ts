@@ -116,6 +116,7 @@ export const useBatchTests = (batchId?: string) => {
 // Mutation: Add test to batch
 type AddTestParams = {
   batchId: string
+  subBatchId: string
   type: "quality" | "germination"
   result?: Json
   testedAt?: string
@@ -125,7 +126,7 @@ export const useAddTest = () => {
   const { user, organisation } = useUserStore()
 
   return useMutation<Test, Error, AddTestParams>({
-    mutationFn: async ({ batchId, type, result, testedAt }) => {
+    mutationFn: async ({ batchId, subBatchId, type, result, testedAt }) => {
       if (!organisation?.id) {
         throw new Error("Organisation ID is required")
       }
@@ -134,6 +135,7 @@ export const useAddTest = () => {
         .from("tests")
         .insert({
           batch_id: batchId,
+          sub_batch_id: subBatchId,
           type,
           result: result,
           tested_at: testedAt || new Date().toISOString(),
