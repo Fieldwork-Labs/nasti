@@ -22,9 +22,11 @@ import {
   FlaskConical,
   Loader2,
   Merge,
+  Microscope,
   MicroscopeIcon,
   Package,
   Pencil,
+  Split,
   Trash2,
 } from "lucide-react"
 import { useState, type ReactNode } from "react"
@@ -189,6 +191,7 @@ export const BatchTestHistory = ({
           isOpen={isEditModalOpen}
           onClose={handleCloseEditModal}
           batchId={batch.id}
+          subBatchId={editingTest.sub_batch_id}
           existingTest={editingTest}
         />
       )}
@@ -397,6 +400,8 @@ interface BatchExpandedDetailsProps {
   batch: BatchType
   detailLoading: boolean
   onSubBatchStorageMove?: (subBatchId: string) => void
+  onSubBatchSplit?: (subBatchId: string) => void
+  onSubBatchQualityTest?: (subBatchId: string) => void
 }
 
 /**
@@ -405,9 +410,13 @@ interface BatchExpandedDetailsProps {
 const SubBatchesTable = ({
   batchId,
   onStorageMove,
+  onSubBatchSplit,
+  onSubBatchQualityTest,
 }: {
   batchId: string
   onStorageMove?: (subBatchId: string) => void
+  onSubBatchSplit?: (subBatchId: string) => void
+  onSubBatchQualityTest?: (subBatchId: string) => void
 }) => {
   const { toast } = useToast()
   const { data: subBatches, isLoading } = useSubBatches(batchId)
@@ -443,7 +452,7 @@ const SubBatchesTable = ({
     )
   }
 
-  if (!subBatches || subBatches.length <= 1) return null
+  if (!subBatches || subBatches.length < 1) return null
 
   return (
     <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
@@ -480,7 +489,7 @@ const SubBatchesTable = ({
               </Button>
             </>
           )}
-          {!isMerging && (
+          {!isMerging && subBatches.length > 1 && (
             <Button
               variant="ghost"
               size="sm"
@@ -527,19 +536,51 @@ const SubBatchesTable = ({
                 <span className="text-muted-foreground">{sb.notes}</span>
               )}
             </div>
-            {!isMerging && onStorageMove && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 w-5 cursor-pointer p-0"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onStorageMove(sb.id)
-                }}
-                title="Move to storage"
-              >
-                <Boxes className="h-3 w-3" />
-              </Button>
+            {!isMerging && (
+              <div>
+                {onSubBatchQualityTest && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 cursor-pointer p-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSubBatchQualityTest?.(sb.id)
+                    }}
+                    title="Quality Test"
+                  >
+                    <Microscope className="h-3 w-3" />
+                  </Button>
+                )}
+                {onSubBatchSplit && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 cursor-pointer p-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSubBatchSplit?.(sb.id)
+                    }}
+                    title="Split"
+                  >
+                    <Split className="h-3 w-3" />
+                  </Button>
+                )}
+                {onStorageMove && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 cursor-pointer p-0"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onStorageMove(sb.id)
+                    }}
+                    title="Move to storage"
+                  >
+                    <Boxes className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -555,6 +596,8 @@ export const BatchExpandedDetails = ({
   batch,
   detailLoading,
   onSubBatchStorageMove,
+  onSubBatchSplit,
+  onSubBatchQualityTest,
 }: BatchExpandedDetailsProps) => {
   return (
     <div className="space-y-4">
@@ -571,6 +614,8 @@ export const BatchExpandedDetails = ({
       <SubBatchesTable
         batchId={batch.id}
         onStorageMove={onSubBatchStorageMove}
+        onSubBatchSplit={onSubBatchSplit}
+        onSubBatchQualityTest={onSubBatchQualityTest}
       />
       {batch.latest_quality_statistics && (
         <LatestQualityStatistics statistics={batch.latest_quality_statistics} />
@@ -762,6 +807,8 @@ interface BatchTableRowContainerProps {
   statusBadge?: ReactNode
   actionButtons: ReactNode
   detailLoading: boolean
+  onSubBatchQualityTest?: (subBatchId: string) => void
+  onSubBatchSplit?: (subBatchId: string) => void
   onSubBatchStorageMove?: (subBatchId: string) => void
 }
 
@@ -777,6 +824,8 @@ export const BatchTableRowContainer = ({
   statusBadge,
   actionButtons,
   detailLoading,
+  onSubBatchSplit,
+  onSubBatchQualityTest,
   onSubBatchStorageMove,
 }: BatchTableRowContainerProps) => (
   <>
@@ -832,6 +881,8 @@ export const BatchTableRowContainer = ({
             batch={batch}
             detailLoading={detailLoading}
             onSubBatchStorageMove={onSubBatchStorageMove}
+            onSubBatchSplit={onSubBatchSplit}
+            onSubBatchQualityTest={onSubBatchQualityTest}
           />
         </td>
       </tr>

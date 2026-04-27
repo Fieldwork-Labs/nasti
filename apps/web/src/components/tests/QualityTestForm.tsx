@@ -194,6 +194,7 @@ const SeedCounts = ({
 
 type QualityTestFormProps = {
   batchId: string
+  subBatchId?: string
   existingTest?: QualityTest
   onSuccess?: () => void
   onCancel?: () => void
@@ -202,6 +203,7 @@ type QualityTestFormProps = {
 
 export const QualityTestForm = ({
   batchId,
+  subBatchId,
   existingTest,
   onSuccess,
   onCancel,
@@ -218,7 +220,7 @@ export const QualityTestForm = ({
     useSubBatches(batchId)
 
   const [selectedSubBatchId, setSelectedSubBatchId] = useState<string | null>(
-    null,
+    subBatchId ?? null,
   )
 
   // Auto-select if only one sub-batch

@@ -1219,6 +1219,7 @@ export type Database = {
           performed_by_organisation_id: string | null
           result: Json | null
           statistics: Json | null
+          sub_batch_id: string
           tested_at: string | null
           tested_by: string | null
           type: string
@@ -1229,6 +1230,7 @@ export type Database = {
           performed_by_organisation_id?: string | null
           result?: Json | null
           statistics?: Json | null
+          sub_batch_id: string
           tested_at?: string | null
           tested_by?: string | null
           type: string
@@ -1239,6 +1241,7 @@ export type Database = {
           performed_by_organisation_id?: string | null
           result?: Json | null
           statistics?: Json | null
+          sub_batch_id?: string
           tested_at?: string | null
           tested_by?: string | null
           type?: string
@@ -1270,6 +1273,13 @@ export type Database = {
             columns: ["performed_by_organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
         ]

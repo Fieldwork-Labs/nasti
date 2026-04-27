@@ -12,12 +12,14 @@ type BatchSplitModalProps = {
   onClose: () => void
   onSuccess?: () => void
   batch: BatchWithCurrentLocationAndSpecies
+  subBatchId?: string
 }
 
 export const BatchSplitModal = ({
   isOpen,
   onClose,
   batch,
+  subBatchId,
   onSuccess,
 }: BatchSplitModalProps) => {
   if (!isOpen) return null
@@ -30,6 +32,7 @@ export const BatchSplitModal = ({
         </DialogHeader>
         <BatchSplitForm
           parentBatch={batch}
+          initialSubBatchId={subBatchId}
           onSuccess={() => {
             onClose()
             onSuccess?.()

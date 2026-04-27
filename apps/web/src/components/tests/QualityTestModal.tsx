@@ -12,6 +12,7 @@ type QualityTestModalProps = {
   isOpen: boolean
   onClose: () => void
   batchId: string
+  subBatchId: string
   existingTest?: QualityTest
 }
 
@@ -19,6 +20,7 @@ export const QualityTestModal = ({
   isOpen,
   onClose,
   batchId,
+  subBatchId,
   existingTest,
 }: QualityTestModalProps) => {
   const { invalidateBatchesCacheByFilter } = useBatchFiltersContext()
@@ -34,6 +36,7 @@ export const QualityTestModal = ({
         </DialogHeader>
         <QualityTestForm
           batchId={batchId}
+          subBatchId={subBatchId}
           existingTest={existingTest}
           onSuccess={() => {
             invalidateBatchesCacheByFilter()
