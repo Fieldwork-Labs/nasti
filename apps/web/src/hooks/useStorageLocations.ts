@@ -136,58 +136,6 @@ export const useUpdateStorageLocation = () => {
   })
 }
 
-// Mutation: Move batch to storage location
-type MoveBatchToStorageParams = {
-  batchId: string
-  locationId: string
-  notes?: string
-}
-
-export const useMoveBatchToStorage = () => {
-  return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
-    mutationFn: async ({ batchId, locationId, notes }) => {
-      // First, mark current storage as moved out
-      const { error: moveOutError } = await supabase
-        .from("batch_storage")
-        .update({ moved_out_at: new Date().toISOString() })
-        .eq("batch_id", batchId)
-        .is("moved_out_at", null)
-
-      if (moveOutError) throw new Error(moveOutError.message)
-
-      // Then create new storage record
-      const { data, error } = await supabase
-        .from("batch_storage")
-        .insert({
-          batch_id: batchId,
-          location_id: locationId,
-          notes,
-        })
-        .select()
-        .single()
-
-      if (error) throw new Error(error.message)
-      return data as BatchStorage
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate batch detail cache
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", variables.batchId],
-      })
-
-      // Invalidate storage location caches
-      queryClient.invalidateQueries({
-        queryKey: ["storageLocations", "detail", variables.locationId],
-      })
-
-      // Also invalidate the current storage location (if different)
-      queryClient.invalidateQueries({
-        queryKey: ["storageLocations"],
-      })
-    },
-  })
-}
-
 // Query: Get batch storage history
 export const useBatchStorageHistory = (batchId: string) => {
   return useQuery({

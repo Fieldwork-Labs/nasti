@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@nasti/common/utils"
 import type { ActiveSubBatch, StorageLocation } from "@nasti/common/types"
+import { useMemo } from "react"
 
 export type SubBatchWithStorage = ActiveSubBatch & {
   current_storage?: {
@@ -15,7 +16,7 @@ export type SubBatchWithStorage = ActiveSubBatch & {
 
 // Query: Get sub-batches for a batch
 export const useSubBatches = (batchId: string) => {
-  return useQuery({
+  const { data, ...rest } = useQuery({
     queryKey: ["subBatches", batchId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -26,33 +27,41 @@ export const useSubBatches = (batchId: string) => {
         .overrideTypes<ActiveSubBatch[]>()
 
       if (error) throw new Error(error.message)
-
-      // For each sub-batch, get current storage
-      const subBatchesWithStorage: SubBatchWithStorage[] = await Promise.all(
-        (data ?? []).map(async (sb) => {
-          const { data: storageData } = await supabase
-            .from("batch_storage")
-            .select(
-              "id, location_id, stored_at, notes, location:storage_locations(*)",
-            )
-            .eq("sub_batch_id", sb.id)
-            .is("moved_out_at", null)
-            .order("stored_at", { ascending: false })
-            .limit(1)
-            .single()
-
-          return {
-            ...sb,
-            current_storage:
-              storageData as SubBatchWithStorage["current_storage"],
-          }
-        }),
-      )
-
-      return subBatchesWithStorage
+      return data
     },
     enabled: Boolean(batchId),
   })
+
+  const ids = data?.map((sb) => sb.id)
+  const storageQuery = useQuery({
+    enabled: Boolean(ids && ids?.length && ids.length > 0),
+    queryKey: ["subBatches", "storage", ids],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("batch_storage")
+        .select(
+          "id, location_id, stored_at, notes, sub_batch_id, location:storage_locations(*)",
+        )
+        .in("sub_batch_id", ids ?? [])
+        .is("moved_out_at", null)
+        .order("stored_at", { ascending: false })
+
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+
+  const result = useMemo(() => {
+    const storageData = new Map(
+      storageQuery.data?.map((st) => [st.sub_batch_id, st]),
+    )
+    return data?.map((sb) => ({
+      ...sb,
+      current_storage: storageData.get(sb.id),
+    }))
+  }, [storageQuery.data, data])
+
+  return { ...rest, ...storageQuery, data: result }
 }
 
 // Mutation: Split a sub-batch into one or more new sub-batches
