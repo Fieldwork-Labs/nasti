@@ -16,6 +16,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  Edit,
   FileWarningIcon,
   FlaskConical,
   MicroscopeIcon,
@@ -47,6 +48,7 @@ import {
 } from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
 import { SubBatchesTable } from "./SubBatches"
+import { useSubBatches } from "@/hooks/useSubBatches"
 
 // =============================================================================
 // Types
@@ -58,6 +60,10 @@ export interface BaseBatchTableRowProps {
   batch: BatchType
   onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
+  onSubBatchStorageMove?: (
+    batch: BatchWithCurrentLocationAndSpecies,
+    subBatchId: string,
+  ) => void
   className?: string
 }
 
@@ -264,6 +270,18 @@ export const BatchStatusField = ({
 }
 
 /**
+ * Displays the count of sub-batches for a batch
+ */
+export const BatchSubBatchCountField = ({
+  batch,
+}: {
+  batch: BatchWithCurrentLocationAndSpecies
+}) => {
+  const { data: subBatches } = useSubBatches(batch.id)
+  return <span className="font-mono text-sm">{subBatches?.length ?? 0}</span>
+}
+
+/**
  * Displays the latest quality statistics for a batch
  */
 export const LatestQualityStatistics = ({
@@ -391,6 +409,7 @@ export const useBatchRowData = (batchId: string) => {
 interface BatchExpandedDetailsProps {
   batch: BatchType
   detailLoading: boolean
+  onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSubBatchStorageMove?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
@@ -402,21 +421,22 @@ interface BatchExpandedDetailsProps {
 export const BatchExpandedDetails = ({
   batch,
   detailLoading,
+  onEdit,
   onSubBatchStorageMove,
   onSubBatchSplit,
   onSubBatchQualityTest,
 }: BatchExpandedDetailsProps) => {
   return (
     <div className="space-y-4">
-      <h4 className="text-sm font-semibold">Batch Details</h4>
-      <div className="flex w-full gap-2">
+      <h4 className="text-lg">Batch Details</h4>
+      <div className="flex flex-col gap-2">
+        <span className="font-semibold">Collection</span>
         <BatchCollectionDetails batch={batch} />
-        {/* <BatchHistory batchId={batch.id} /> */}
       </div>
       {detailLoading ? (
         <BatchDetailsSkeleton />
       ) : (
-        <BatchDetailsContent batch={batch} />
+        <BatchDetailsContent batch={batch} onEdit={onEdit} />
       )}
       <SubBatchesTable
         batchId={batch.id}
@@ -438,8 +458,12 @@ const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {
 
   if (!batch.collection_id) return null
   // don't show the collection modal for testing orgs
-  if (isTesting) return <CollectionListItem id={batch.collection_id} />
-  return <CollectionListItem id={batch.collection_id} />
+  if (isTesting) return
+  return (
+    <span className="lg:max-w-1/2">
+      <CollectionListItem id={batch.collection_id} />
+    </span>
+  )
 }
 
 const BatchDetailsSkeleton = () => (
@@ -450,13 +474,19 @@ const BatchDetailsSkeleton = () => (
   </div>
 )
 
-const BatchDetailsContent = ({ batch }: { batch: BatchType }) => {
+const BatchDetailsContent = ({
+  batch,
+  onEdit,
+}: {
+  batch: BatchType
+  onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
+}) => {
   const hasBatchWeight = batch.weights?.current_weight || batch.weight_grams
   return (
     <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
       {hasBatchWeight && (
         <div>
-          <span className="font-medium">Weight:</span>
+          <span className="font-medium">Total Weight:</span>
           <div className="mt-1 text-xs">
             {batch.weights?.current_weight ? (
               <>
@@ -475,14 +505,22 @@ const BatchDetailsContent = ({ batch }: { batch: BatchType }) => {
         </div>
       )}
 
-      {batch.notes && (
-        <div className="md:col-span-2 lg:col-span-3">
+      <div className="md:col-span-2 lg:col-span-3">
+        <div className="flex items-center gap-1">
           <span className="font-medium">Notes:</span>
-          <div className="text-muted-foreground mt-1 text-xs">
-            {batch.notes}
-          </div>
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(batch)}
+              title="Notes"
+            >
+              <Edit className="h-6 w-6" />
+            </Button>
+          )}
         </div>
-      )}
+        <div className="text-muted-foreground mt-1 text-xs">{batch.notes}</div>
+      </div>
     </div>
   )
 }
@@ -614,6 +652,7 @@ interface BatchTableRowContainerProps {
   statusBadge?: ReactNode
   actionButtons: ReactNode
   detailLoading: boolean
+  onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
   onSubBatchStorageMove?: (subBatchId: string) => void
@@ -631,6 +670,7 @@ export const BatchTableRowContainer = ({
   statusBadge,
   actionButtons,
   detailLoading,
+  onEdit,
   onSubBatchSplit,
   onSubBatchQualityTest,
   onSubBatchStorageMove,
@@ -661,6 +701,10 @@ export const BatchTableRowContainer = ({
         <BatchStatusField batch={batch} />
       </td>
 
+      <td className="px-4 py-3">
+        <BatchSubBatchCountField batch={batch} />
+      </td>
+
       <td className="px-4 py-3 text-right">
         <WeightCell batch={batch} />
       </td>
@@ -687,6 +731,7 @@ export const BatchTableRowContainer = ({
           <BatchExpandedDetails
             batch={batch}
             detailLoading={detailLoading}
+            onEdit={onEdit}
             onSubBatchStorageMove={onSubBatchStorageMove}
             onSubBatchSplit={onSubBatchSplit}
             onSubBatchQualityTest={onSubBatchQualityTest}

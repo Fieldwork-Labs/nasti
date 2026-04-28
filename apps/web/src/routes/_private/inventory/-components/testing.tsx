@@ -29,8 +29,11 @@ export function InventoryPageTesting() {
   const { toast } = useToast()
 
   // Local state for modals
-  const [storageMoveBatch, setStorageMoveBatch] =
-    useState<BatchWithCurrentLocationAndSpecies | null>(null)
+  const [subBatchStorageMove, setSubBatchStorageMove] = useState<{
+    batch: BatchWithCurrentLocationAndSpecies
+    subBatchId: string
+  } | null>(null)
+
   const [processingBatch, setPocessingBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
 
@@ -51,10 +54,6 @@ export function InventoryPageTesting() {
       toast({
         description: "Batch successfully deleted",
       })
-  }
-
-  const handleStorageMove = (batch: BatchWithCurrentLocationAndSpecies) => {
-    setStorageMoveBatch(batch)
   }
 
   const getSortIcon = (field: SortField) => {
@@ -144,8 +143,11 @@ export function InventoryPageTesting() {
                             {getSortIcon("species_id")}
                           </Button>
                         </th>
-                        <th className="px-4 py-3 text-left font-semibold">
-                          Storage
+                        <th className="text-foreground px-4 py-3 text-left font-semibold">
+                          Status
+                        </th>
+                        <th className="text-foreground px-4 py-3 text-left font-semibold">
+                          Sub Batches
                         </th>
                         <th className="px-4 py-3 text-right font-semibold">
                           Weight (g)
@@ -172,7 +174,9 @@ export function InventoryPageTesting() {
                           key={batch.id}
                           batch={batch}
                           onDelete={handleDelete}
-                          onStorageMove={handleStorageMove}
+                          onSubBatchStorageMove={(batch, subBatchId) =>
+                            setSubBatchStorageMove({ batch, subBatchId })
+                          }
                           onProcess={setPocessingBatch}
                         />
                       ))}
@@ -186,11 +190,12 @@ export function InventoryPageTesting() {
 
         {/* Modals */}
 
-        {storageMoveBatch && (
+        {subBatchStorageMove && (
           <BatchStorageModal
-            isOpen={Boolean(storageMoveBatch)}
-            onClose={() => setStorageMoveBatch(null)}
-            batch={storageMoveBatch}
+            isOpen={Boolean(subBatchStorageMove)}
+            onClose={() => setSubBatchStorageMove(null)}
+            batch={subBatchStorageMove.batch}
+            subBatchId={subBatchStorageMove.subBatchId}
           />
         )}
 
