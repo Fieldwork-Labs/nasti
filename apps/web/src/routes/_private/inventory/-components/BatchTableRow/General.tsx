@@ -8,7 +8,6 @@ import {
 import { cn } from "@nasti/ui/utils"
 import {
   Combine,
-  Edit,
   FlaskConical,
   Minus,
   Plus,
@@ -62,10 +61,7 @@ interface BatchTableRowProps extends BaseBatchTableRowProps {
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onSubBatchStorageMove?: (
-    batch: BatchWithCurrentLocationAndSpecies,
-    subBatchId: string,
-  ) => void
+
   combineMode?: CombineMode
   assignmentMode?: AssignmentMode
 }
@@ -178,7 +174,6 @@ interface NormalModeActionsProps {
   mergeDisabled: boolean
   canDelete: boolean
   hasActiveAssignment: boolean
-  onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
@@ -194,7 +189,6 @@ const NormalModeActions = ({
   mergeDisabled,
   canDelete,
   hasActiveAssignment,
-  onEdit,
   onProcess,
   onClean,
   onMix,
@@ -203,18 +197,6 @@ const NormalModeActions = ({
   onOpenQualityTest,
 }: NormalModeActionsProps) => (
   <>
-    {onEdit && (
-      <Button
-        variant="ghost"
-        disabled={mergeDisabled}
-        size="sm"
-        onClick={() => onEdit(batch)}
-        title="Notes"
-      >
-        <Edit className="h-4 w-4" />
-      </Button>
-    )}
-
     {onClean && (
       <Button
         variant="ghost"
@@ -369,7 +351,6 @@ export const BatchTableRow = ({
           mergeDisabled={mergeDisabled}
           canDelete={canDelete}
           hasActiveAssignment={hasActiveAssignment}
-          onEdit={onEdit}
           onClean={onClean}
           onMix={onMix}
           onDelete={onDelete}
@@ -382,7 +363,6 @@ export const BatchTableRow = ({
         mergeDisabled={mergeDisabled}
         canDelete={canDelete}
         hasActiveAssignment={hasActiveAssignment}
-        onEdit={onEdit}
         onAssignForTesting={onAssignForTesting}
         onDelete={onDelete}
       />
@@ -412,6 +392,7 @@ export const BatchTableRow = ({
         rowClassName={rowClassName}
         statusBadge={statusBadge}
         actionButtons={renderActionButtons()}
+        onEdit={onEdit}
         detailLoading={detailLoading}
         onSubBatchQualityTest={handleSubBatchQualityTest}
         onSubBatchSplit={handleSubBatchSplit}

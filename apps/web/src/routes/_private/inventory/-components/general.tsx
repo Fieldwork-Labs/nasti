@@ -318,6 +318,9 @@ export function InventoryPageGeneral() {
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Status
                         </th>
+                        <th className="text-foreground px-4 py-3 text-left font-semibold">
+                          Sub Batches
+                        </th>
                         <th className="text-foreground px-4 py-3 text-right font-semibold">
                           Weight (g)
                         </th>
