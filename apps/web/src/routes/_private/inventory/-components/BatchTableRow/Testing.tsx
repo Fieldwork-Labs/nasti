@@ -43,7 +43,7 @@ interface ActionsProps extends TestingOrgActionsProps {
   canDelete: boolean
   onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
-  onOpenQualityTest: () => void
+  onOpenQualityTest?: () => void
 }
 
 const Actions = ({
@@ -152,10 +152,15 @@ export const BatchTableRow = ({
   className,
 }: BatchTableRowTestingProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
-  const {
-    isOpen: isQualityTestModalOpen,
-    setIsOpen: setIsQualityTestModalOpen,
-  } = useOpenClose()
+
+  const [qualityTestModalSubBatchId, setQualityTestModalSubBatchId] = useState<
+    string | false
+  >(false)
+
+  const handleSubBatchQualityTest = (subBatchId: string) => {
+    setQualityTestModalSubBatchId(subBatchId)
+  }
+
   const { isOpen: isReturnModalOpen, setIsOpen: setIsReturnModalOpen } =
     useOpenClose()
 
@@ -172,7 +177,6 @@ export const BatchTableRow = ({
         canDelete={canDelete}
         onProcess={onProcess}
         onDelete={onDelete}
-        onOpenQualityTest={() => setIsQualityTestModalOpen(true)}
         onReturn={() => setIsReturnModalOpen(true)}
       />
     )
@@ -198,16 +202,20 @@ export const BatchTableRow = ({
         isExpanded={isExpanded}
         onToggleExpand={() => setIsExpanded(!isExpanded)}
         className={className}
+        onSubBatchQualityTest={handleSubBatchQualityTest}
         statusBadge={getStatusBadge()}
         actionButtons={renderActionButtons()}
         detailLoading={detailLoading}
       />
 
-      <QualityTestModal
-        isOpen={isQualityTestModalOpen}
-        onClose={() => setIsQualityTestModalOpen(false)}
-        batchId={batch.id}
-      />
+      {qualityTestModalSubBatchId && (
+        <QualityTestModal
+          isOpen={Boolean(qualityTestModalSubBatchId)}
+          onClose={() => setQualityTestModalSubBatchId(false)}
+          batchId={batch.id}
+          subBatchId={qualityTestModalSubBatchId}
+        />
+      )}
       <ReturnBatchModal
         isOpen={isReturnModalOpen}
         onClose={() => setIsReturnModalOpen(false)}
