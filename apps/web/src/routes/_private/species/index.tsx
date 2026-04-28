@@ -53,7 +53,7 @@ const TruncateTooltip = ({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{tooltipTrigger}</TooltipTrigger>
+        <TooltipTrigger>{tooltipTrigger}</TooltipTrigger>
         <TooltipContent>{tooltipContent}</TooltipContent>
       </Tooltip>
     </TooltipProvider>

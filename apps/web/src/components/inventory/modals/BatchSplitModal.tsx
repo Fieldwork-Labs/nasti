@@ -1,9 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@nasti/ui/dialog"
+import { Dialog, DialogContent } from "@nasti/ui/dialog"
 import { BatchSplitForm } from "@/components/batches"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 
@@ -27,9 +22,6 @@ export const BatchSplitModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Split Batch</DialogTitle>
-        </DialogHeader>
         <BatchSplitForm
           parentBatch={batch}
           initialSubBatchId={subBatchId}
