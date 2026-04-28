@@ -1,15 +1,32 @@
-import { useForm, useFieldArray, type Resolver } from "react-hook-form"
+import { Fragment } from "react"
+import {
+  Controller,
+  useForm,
+  useFieldArray,
+  type Resolver,
+} from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Loader2, Package, Plus, Trash2 } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nasti/ui/select"
 import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
+import { supabase } from "@nasti/common/supabase"
 
 import { useSubBatches, useSplitSubBatch } from "@/hooks/useSubBatches"
+import { useStorageLocations } from "@/hooks/useStorageLocations"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+
+const NO_LOCATION = "__none__"
 
 const outputSchema = z.object({
   weight_grams: z.preprocess(
@@ -20,6 +37,7 @@ const outputSchema = z.object({
       .min(1, "Weight must be at least 1 gram"),
   ),
   notes: z.string().optional(),
+  location_id: z.string().optional(),
 })
 
 const splitSchema = z.object({
@@ -46,13 +64,14 @@ export const BatchSplitForm = ({
 }: BatchSplitFormProps) => {
   const { toast } = useToast()
   const { data: subBatches } = useSubBatches(parentBatch.id)
+  const { data: storageLocations } = useStorageLocations()
   const splitMutation = useSplitSubBatch()
   const selectedSubBatch = subBatches?.find((sb) => sb.id === initialSubBatchId)
 
   const form = useForm<SplitFormInput, unknown, SplitFormOutput>({
     resolver: zodResolver(splitSchema) as Resolver<SplitFormInput>,
     defaultValues: {
-      outputs: [{ weight_grams: "", notes: "" }],
+      outputs: [{ weight_grams: "", notes: "", location_id: "" }],
     },
   })
 
@@ -76,13 +95,41 @@ export const BatchSplitForm = ({
     if (!selectedSubBatch || !isValidSplit) return
 
     try {
-      await splitMutation.mutateAsync({
+      const newSubBatchIds = await splitMutation.mutateAsync({
         subBatchId: selectedSubBatch.id,
         outputs: data.outputs.map((o) => ({
           weight_grams: o.weight_grams,
           notes: o.notes || undefined,
         })),
       })
+
+      // Assign storage locations for outputs that selected one. Sub-batch
+      // order matches output order from fn_split_sub_batch.
+      const storageRows = data.outputs
+        .map((o, i) => ({
+          sub_batch_id: newSubBatchIds[i],
+          location_id: o.location_id,
+        }))
+        .filter(
+          (r): r is { sub_batch_id: string; location_id: string } =>
+            Boolean(r.sub_batch_id) && Boolean(r.location_id),
+        )
+
+      if (storageRows.length > 0) {
+        const { error: storageError } = await supabase
+          .from("batch_storage")
+          .insert(storageRows)
+        if (storageError) {
+          console.error("Storage assignment failed:", storageError)
+          toast({
+            description:
+              "Sub-batches created, but assigning storage location(s) failed",
+            variant: "destructive",
+          })
+          onSuccess?.()
+          return
+        }
+      }
 
       toast({
         description:
@@ -138,16 +185,17 @@ export const BatchSplitForm = ({
       {selectedSubBatch && (
         <>
           <div className="space-y-3">
-            <div className="grid grid-cols-[1fr_2fr_auto] items-start gap-3 space-y-1">
+            <div className="grid grid-cols-[1fr_1.5fr_1.5fr_auto] items-start gap-3 space-y-1">
               <Label>Weight *</Label>
               <Label>Notes</Label>
+              <Label>Storage location</Label>
               <Label className="invisible">Remove</Label>
 
-              {fields.map((_, index) => {
+              {fields.map((field, index) => {
                 const weightError =
                   form.formState.errors.outputs?.[index]?.weight_grams
                 return (
-                  <>
+                  <Fragment key={field.id}>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <Input
@@ -172,6 +220,33 @@ export const BatchSplitForm = ({
                       {...form.register(`outputs.${index}.notes`)}
                     />
 
+                    <Controller
+                      control={form.control}
+                      name={`outputs.${index}.location_id`}
+                      render={({ field: locField }) => (
+                        <Select
+                          value={locField.value || NO_LOCATION}
+                          onValueChange={(v) =>
+                            locField.onChange(v === NO_LOCATION ? "" : v)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="No location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_LOCATION}>
+                              No location
+                            </SelectItem>
+                            {storageLocations?.map((loc) => (
+                              <SelectItem key={loc.id} value={loc.id}>
+                                {loc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -183,7 +258,7 @@ export const BatchSplitForm = ({
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </>
+                  </Fragment>
                 )
               })}
             </div>
@@ -191,7 +266,9 @@ export const BatchSplitForm = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => append({ weight_grams: "", notes: "" })}
+              onClick={() =>
+                append({ weight_grams: "", notes: "", location_id: "" })
+              }
               className="cursor-pointer"
             >
               <Plus className="mr-2 h-4 w-4" />
