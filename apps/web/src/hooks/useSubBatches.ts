@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@nasti/common/utils"
-import type { SubBatch, StorageLocation } from "@nasti/common/types"
+import type { ActiveSubBatch, StorageLocation } from "@nasti/common/types"
 
-export type SubBatchWithStorage = SubBatch & {
+export type SubBatchWithStorage = ActiveSubBatch & {
   current_storage?: {
     id: string
     location_id: string
@@ -19,10 +19,11 @@ export const useSubBatches = (batchId: string) => {
     queryKey: ["subBatches", batchId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("sub_batches")
+        .from("active_sub_batches")
         .select("*")
         .eq("batch_id", batchId)
         .order("created_at", { ascending: true })
+        .overrideTypes<ActiveSubBatch[]>()
 
       if (error) throw new Error(error.message)
 
@@ -54,24 +55,27 @@ export const useSubBatches = (batchId: string) => {
   })
 }
 
-// Mutation: Split a sub-batch
-type SplitSubBatchParams = {
-  subBatchId: string
-  newWeight: number
+// Mutation: Split a sub-batch into one or more new sub-batches
+type SplitSubBatchOutput = {
+  weight_grams: number
   notes?: string
 }
 
+type SplitSubBatchParams = {
+  subBatchId: string
+  outputs: SplitSubBatchOutput[]
+}
+
 export const useSplitSubBatch = () => {
-  return useMutation<string, Error, SplitSubBatchParams>({
-    mutationFn: async ({ subBatchId, newWeight, notes }) => {
+  return useMutation<string[], Error, SplitSubBatchParams>({
+    mutationFn: async ({ subBatchId, outputs }) => {
       const { data, error } = await supabase.rpc("fn_split_sub_batch", {
         p_sub_batch_id: subBatchId,
-        p_new_weight: newWeight,
-        p_notes: notes,
+        p_outputs: outputs,
       })
 
       if (error) throw new Error(error.message)
-      return data as string
+      return data as string[]
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subBatches"] })

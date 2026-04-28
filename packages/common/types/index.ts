@@ -93,6 +93,9 @@ export type StorageLocation = Table<"storage_locations">
 
 // Sub-batches
 export type SubBatch = Table<"sub_batches">
+export type ActiveSubBatch = Omit<View<"active_sub_batches">["Row"], "id"> & {
+  id: string
+}
 
 // Cleaning
 export type BatchCleaning = Table<"batch_cleaning">

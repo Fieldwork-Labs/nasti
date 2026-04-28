@@ -75,6 +75,20 @@ export type Database = {
             foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
             columns: ["input_sub_batch_id"]
             isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
+            columns: ["input_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
+            columns: ["input_sub_batch_id"]
+            isOneToOne: false
             referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
@@ -377,6 +391,20 @@ export type Database = {
             foreignKeyName: "batch_storage_sub_batch_id_fkey"
             columns: ["sub_batch_id"]
             isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
             referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
@@ -493,6 +521,20 @@ export type Database = {
           weight_grams?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
             columns: ["sub_batch_id"]
@@ -1279,6 +1321,20 @@ export type Database = {
             foreignKeyName: "tests_sub_batch_id_fkey"
             columns: ["sub_batch_id"]
             isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
             referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
@@ -1539,6 +1595,48 @@ export type Database = {
           },
         ]
       }
+      active_sub_batches: {
+        Row: {
+          batch_id: string | null
+          created_at: string | null
+          current_location_id: string | null
+          current_weight: number | null
+          id: string | null
+          notes: string | null
+          original_weight: number | null
+          weight_grams: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["current_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_current_weight: {
         Row: {
           current_weight: number | null
@@ -1626,6 +1724,20 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
             referencedColumns: ["id"]
           },
           {
@@ -1725,6 +1837,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sub_batch_current_weight: {
+        Row: {
+          current_weight: number | null
+          id: string | null
+          original_weight: number | null
+        }
+        Insert: {
+          current_weight?: never
+          id?: string | null
+          original_weight?: number | null
+        }
+        Update: {
+          current_weight?: never
+          id?: string | null
+          original_weight?: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -1963,8 +2093,8 @@ export type Database = {
         Returns: string
       }
       fn_split_sub_batch: {
-        Args: { p_new_weight: number; p_notes?: string; p_sub_batch_id: string }
-        Returns: string
+        Args: { p_outputs: Json; p_sub_batch_id: string }
+        Returns: string[]
       }
       fn_treat_batch: {
         Args: {
@@ -2939,6 +3069,12 @@ export type Database = {
       st_wrapx: {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
+      }
+      sub_batch_weight_info: {
+        Args: {
+          sub_batch_row: Database["public"]["Tables"]["sub_batches"]["Row"]
+        }
+        Returns: Json
       }
       text_to_bytea: { Args: { data: string }; Returns: string }
       unlockrows: { Args: { "": string }; Returns: number }

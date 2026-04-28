@@ -336,7 +336,7 @@ export const QualityTestForm = ({
                 <SelectContent>
                   {subBatches.map((sb, index) => (
                     <SelectItem key={sb.id} value={sb.id}>
-                      Sub-batch {index + 1} ({sb.weight_grams}g)
+                      Sub-batch {index + 1} ({sb.current_weight}g)
                       {sb.notes ? ` — ${sb.notes}` : ""}
                     </SelectItem>
                   ))}

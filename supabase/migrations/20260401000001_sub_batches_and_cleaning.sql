@@ -137,6 +137,35 @@ AS $$
   WHERE bcw.id = batch_row.id;
 $$;
 
+-- Now same for sub batches
+CREATE VIEW sub_batch_current_weight AS
+SELECT
+  sb.id,
+  sb.weight_grams AS original_weight,
+  sb.weight_grams + COALESCE(
+    (SELECT SUM(wa.weight_grams)
+       FROM batch_weight_adjustments wa
+       WHERE wa.sub_batch_id = sb.id),
+    0
+  ) AS current_weight
+FROM sub_batches sb;
+
+
+-- Update sub_batch_weight_info to match
+CREATE OR REPLACE FUNCTION sub_batch_weight_info(sub_batch_row sub_batches)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT jsonb_build_object(
+    'original_weight', sbcw.original_weight,
+    'current_weight', sbcw.current_weight
+  )
+  FROM sub_batch_current_weight sbcw
+  WHERE sbcw.id = sub_batch_row.id;
+$$;
+
+
 -- ============================================================================
 -- Update batch_storage to reference sub-batches instead of batches
 -- ============================================================================
@@ -756,20 +785,24 @@ GRANT EXECUTE ON FUNCTION fn_mix_batches(UUID[], TEXT) TO authenticated;
 
 CREATE OR REPLACE FUNCTION fn_split_sub_batch(
   p_sub_batch_id UUID,
-  p_new_weight INTEGER,
-  p_notes TEXT DEFAULT NULL
-) RETURNS UUID AS $$
+  p_outputs JSONB -- array of { weight_grams: int, notes?: text }
+) RETURNS UUID[] AS $$
 DECLARE
   v_batch_id UUID;
   v_current_weight INTEGER;
-  v_remaining_weight INTEGER;
-  v_new_sub_batch_id UUID;
+  v_total_split_weight INTEGER;
+  v_output JSONB;
+  v_out_weight INTEGER;
+  v_out_notes TEXT;
+  v_new_id UUID;
+  v_new_ids UUID[] := ARRAY[]::UUID[];
 BEGIN
-  -- Get sub-batch details
-  SELECT batch_id, weight_grams
+  -- Get sub-batch details, including current (adjusted) weight
+  SELECT sb.batch_id, sbcw.current_weight
   INTO v_batch_id, v_current_weight
-  FROM sub_batches
-  WHERE id = p_sub_batch_id;
+  FROM sub_batches sb
+  JOIN sub_batch_current_weight sbcw ON sbcw.id = sb.id
+  WHERE sb.id = p_sub_batch_id;
 
   IF v_batch_id IS NULL THEN
     RAISE EXCEPTION 'Sub-batch not found';
@@ -780,33 +813,56 @@ BEGIN
     RAISE EXCEPTION 'Permission denied: not current custodian of batch';
   END IF;
 
-  -- Validate weight
-  IF p_new_weight <= 0 THEN
-    RAISE EXCEPTION 'New sub-batch weight must be greater than 0';
+  IF p_outputs IS NULL OR jsonb_array_length(p_outputs) = 0 THEN
+    RAISE EXCEPTION 'At least one output is required';
   END IF;
 
-  v_remaining_weight := v_current_weight - p_new_weight;
+  -- Validate each output and sum total
+  SELECT COALESCE(SUM((o->>'weight_grams')::INTEGER), 0)
+  INTO v_total_split_weight
+  FROM jsonb_array_elements(p_outputs) AS o;
 
-  IF v_remaining_weight <= 0 THEN
-    RAISE EXCEPTION 'Split weight (% g) must be less than current weight (% g)',
-      p_new_weight, v_current_weight;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(p_outputs) AS o
+    WHERE (o->>'weight_grams')::INTEGER IS NULL
+       OR (o->>'weight_grams')::INTEGER <= 0
+  ) THEN
+    RAISE EXCEPTION 'Each output weight must be greater than 0';
   END IF;
 
-  -- Update original sub-batch weight
-  UPDATE sub_batches
-  SET weight_grams = v_remaining_weight
-  WHERE id = p_sub_batch_id;
+  IF v_total_split_weight >= v_current_weight THEN
+    RAISE EXCEPTION 'Total split weight (% g) must be less than current weight (% g)',
+      v_total_split_weight, v_current_weight;
+  END IF;
 
-  -- Create new sub-batch
-  INSERT INTO sub_batches (batch_id, weight_grams, notes)
-  VALUES (v_batch_id, p_new_weight, p_notes)
-  RETURNING id INTO v_new_sub_batch_id;
+  -- Record the split as a negative adjustment on the source so adjustment
+  -- history is preserved and current_weight stays consistent.
+  INSERT INTO batch_weight_adjustments (
+    sub_batch_id, weight_grams, reason, created_by
+  ) VALUES (
+    p_sub_batch_id, -v_total_split_weight,
+    'Split into ' || jsonb_array_length(p_outputs) || ' new sub-batch(es)',
+    auth.uid()
+  );
 
-  RETURN v_new_sub_batch_id;
+  -- Create each new sub-batch
+  FOR v_output IN SELECT * FROM jsonb_array_elements(p_outputs)
+  LOOP
+    v_out_weight := (v_output->>'weight_grams')::INTEGER;
+    v_out_notes := v_output->>'notes';
+
+    INSERT INTO sub_batches (batch_id, weight_grams, notes)
+    VALUES (v_batch_id, v_out_weight, v_out_notes)
+    RETURNING id INTO v_new_id;
+
+    v_new_ids := array_append(v_new_ids, v_new_id);
+  END LOOP;
+
+  RETURN v_new_ids;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION fn_split_sub_batch(UUID, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION fn_split_sub_batch(UUID, JSONB) TO authenticated;
 
 -- ============================================================================
 -- FUNCTION: fn_merge_sub_batches
@@ -820,7 +876,7 @@ CREATE OR REPLACE FUNCTION fn_merge_sub_batches(
 DECLARE
   v_batch_id UUID;
   v_batch_count INTEGER;
-  v_total_weight INTEGER;
+  v_others_weight INTEGER;
   v_target_sub_batch_id UUID;
 BEGIN
   IF array_length(p_sub_batch_ids, 1) IS NULL OR array_length(p_sub_batch_ids, 1) < 2 THEN
@@ -848,22 +904,36 @@ BEGIN
     RAISE EXCEPTION 'Permission denied: not current custodian of batch';
   END IF;
 
-  -- Get total weight
-  SELECT SUM(weight_grams)
-  INTO v_total_weight
-  FROM sub_batches
-  WHERE id = ANY (p_sub_batch_ids);
-
   -- Use first sub-batch as the target (keep it, delete the rest)
   v_target_sub_batch_id := p_sub_batch_ids[1];
 
-  -- Update target sub-batch with combined weight
-  UPDATE sub_batches
-  SET weight_grams = v_total_weight,
-      notes = COALESCE(p_notes, notes)
-  WHERE id = v_target_sub_batch_id;
+  -- Sum current (adjusted) weight of the non-target sub-batches.
+  -- We pull these into the target via a positive adjustment, leaving the
+  -- target's weight_grams and existing adjustments intact.
+  SELECT COALESCE(SUM(sbcw.current_weight), 0)::INTEGER
+  INTO v_others_weight
+  FROM sub_batch_current_weight sbcw
+  WHERE sbcw.id = ANY (p_sub_batch_ids)
+    AND sbcw.id != v_target_sub_batch_id;
 
-  -- Delete the other sub-batches
+  IF v_others_weight > 0 THEN
+    INSERT INTO batch_weight_adjustments (
+      sub_batch_id, weight_grams, reason, created_by
+    ) VALUES (
+      v_target_sub_batch_id,
+      v_others_weight,
+      'Merged in sibling sub-batches',
+      auth.uid()
+    );
+  END IF;
+
+  IF p_notes IS NOT NULL THEN
+    UPDATE sub_batches
+    SET notes = p_notes
+    WHERE id = v_target_sub_batch_id;
+  END IF;
+
+  -- Delete the other sub-batches (cascades their adjustments)
   DELETE FROM sub_batches
   WHERE id = ANY (p_sub_batch_ids)
     AND id != v_target_sub_batch_id;
@@ -1040,6 +1110,37 @@ SELECT * FROM computed
 WHERE NOT EXISTS (
   SELECT 1 FROM batch_cleaning bc WHERE bc.input_batch_id = computed.id
 );
+
+-- ============================================================================
+-- active_sub_batches view
+-- A sub-batch is active when:
+--   * its current_weight is > 0 (or NULL — unknown weight)
+--   * its parent batch has not been merged/mixed into another batch
+--   * it has not been consumed as a cleaning input
+-- ============================================================================
+
+CREATE VIEW active_sub_batches AS
+SELECT
+  sb.*,
+  sbcw.original_weight,
+  sbcw.current_weight,
+  cbs.location_id AS current_location_id
+FROM sub_batches sb
+JOIN sub_batch_current_weight sbcw ON sbcw.id = sb.id
+LEFT JOIN LATERAL (
+  SELECT location_id
+  FROM current_batch_storage
+  WHERE sub_batch_id = sb.id
+  ORDER BY stored_at DESC
+  LIMIT 1
+) cbs ON true
+WHERE (sbcw.current_weight > 0 OR sbcw.current_weight IS NULL)
+  AND NOT EXISTS (
+    SELECT 1 FROM batch_merges bm WHERE bm.source_batch_id = sb.batch_id
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM batch_cleaning bc WHERE bc.input_sub_batch_id = sb.id
+  );
 
 -- ============================================================================
 -- UPDATE batch_lineage_to_collections to include treating and cleaning
