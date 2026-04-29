@@ -37,9 +37,12 @@ const CollectionDetail = () => {
 
   const [fullScreenPhoto, setFullScreenPhoto] = useState<string | null>(null)
 
-  const displayDistance = useDisplayDistance(collection.locationCoord ?? {})
+  const displayDistance = useDisplayDistance(collection?.locationCoord ?? {})
 
-  const canEdit = collection.created_by === user?.id || org?.role === ROLE.ADMIN
+  const canEdit =
+    collection?.created_by === user?.id || org?.role === ROLE.ADMIN
+
+  if (!collection) return null
 
   return (
     <div className="flex flex-col gap-3 px-2">
@@ -167,7 +170,7 @@ const CollectionDetail = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="photos" className="grid grid-cols-2 gap-2">
-          {collection.photos.map((photo) => {
+          {collection.photos?.map((photo) => {
             return (
               <Photo
                 id={photo.id}

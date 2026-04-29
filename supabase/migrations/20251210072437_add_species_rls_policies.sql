@@ -39,3 +39,11 @@ TO authenticated
 USING (organisation_id = (SELECT org_user.organisation_id
                            FROM public.org_user
                            WHERE org_user.user_id = auth.uid()));
+
+
+
+-- Drop the existing global unique constraint
+alter table public.species drop constraint species_name_key;
+
+-- Add a composite unique constraint scoped to the organisation
+alter table public.species add constraint species_org_name_key unique (organisation_id, name);
