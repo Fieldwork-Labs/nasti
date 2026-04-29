@@ -5,6 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { AuthMiddleware } from "../_shared/jwt/default.ts"
 
 /* To invoke locally:
 
@@ -26,153 +27,160 @@ const corsHeaders = {
 }
 
 // Define the request handler
-Deno.serve(async (req) => {
-  try {
-    if (req.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders,
-      })
-    }
+Deno.serve((r) =>
+  AuthMiddleware(r, async (req) => {
+    console.log("Got into thething")
+    try {
+      if (req.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: corsHeaders,
+        })
+      }
 
-    if (req.method !== "POST") {
-      return new Response("Method Not Allowed", {
-        status: 405,
-        headers: corsHeaders,
-      })
-    }
-    // Parse the JSON body
-    const { email, name, role } = await req.json()
+      if (req.method !== "POST") {
+        return new Response("Method Not Allowed", {
+          status: 405,
+          headers: corsHeaders,
+        })
+      }
+      // Parse the JSON body
+      const { email, name, role } = await req.json()
 
-    if (!email || !name) {
-      return new Response("Missing email or name", {
-        status: 400,
-        headers: corsHeaders,
-      })
-    }
+      if (!email || !name) {
+        return new Response("Missing email or name", {
+          status: 400,
+          headers: corsHeaders,
+        })
+      }
 
-    if (role && role !== "Admin" && role !== "Member") {
-      return new Response("Invalid role. Must be 'Admin' or 'Member'", {
-        status: 400,
-        headers: corsHeaders,
-      })
-    }
+      if (role && role !== "Admin" && role !== "Member") {
+        return new Response("Invalid role. Must be 'Admin' or 'Member'", {
+          status: 400,
+          headers: corsHeaders,
+        })
+      }
 
-    // Initialize Supabase client with service role key
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    )
+      // Initialize Supabase client with service role key
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      )
 
-    // Check if the requester is an admin of the organisation
-    const authHeader = req.headers.get("Authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response("Unauthorized", { status: 401, headers: corsHeaders })
-    }
+      // Check if the requester is an admin of the organisation
+      const authHeader = req.headers.get("Authorization")
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return new Response("Unauthorized", {
+          status: 401,
+          headers: corsHeaders,
+        })
+      }
 
-    const token = authHeader.split("Bearer ")[1]
+      const token = authHeader.split("Bearer ")[1]
 
-    // Verify the JWT token
-    const { data: userData, error: userError } =
-      await supabase.auth.getUser(token)
+      // Verify the JWT token
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser(token)
 
-    if (userError || !userData.user) {
-      return new Response("Invalid or expired token", {
-        status: 401,
-        headers: corsHeaders,
-      })
-    }
+      if (userError || !userData.user) {
+        return new Response("Invalid or expired token", {
+          status: 401,
+          headers: corsHeaders,
+        })
+      }
 
-    const userId = userData.user.id
+      const userId = userData.user.id
 
-    // Check if the user is an admin in the organisation
-    const { data: orgUser, error: orgUserError } = await supabase
-      .from("org_user")
-      .select("*, organisation(name)")
-      .eq("user_id", userId)
-      .single()
+      // Check if the user is an admin in the organisation
+      const { data: orgUser, error: orgUserError } = await supabase
+        .from("org_user")
+        .select("*, organisation(name)")
+        .eq("user_id", userId)
+        .single()
 
-    if (orgUserError || !orgUser || orgUser.role !== "Admin") {
-      return new Response("Forbidden: Requires admin role", {
-        status: 403,
-        headers: corsHeaders,
-      })
-    }
+      if (orgUserError || !orgUser || orgUser.role !== "Admin") {
+        return new Response("Forbidden: Requires admin role", {
+          status: 403,
+          headers: corsHeaders,
+        })
+      }
 
-    // Generate a unique invitation token
-    const invitationToken = crypto.randomUUID()
+      // Generate a unique invitation token
+      const invitationToken = crypto.randomUUID()
 
-    // Set invitation expiration (e.g., 7 days from now)
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // 7 days
+      // Set invitation expiration (e.g., 7 days from now)
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + 7) // 7 days
 
-    // Check if the email address has already been invited
-    const { data: existingInvitation } = await supabase
-      .from("invitation")
-      .select()
-      .eq("email", email)
-      .gt("expires_at", new Date().toISOString())
-      .limit(1)
+      // Check if the email address has already been invited
+      const { data: existingInvitation } = await supabase
+        .from("invitation")
+        .select()
+        .eq("email", email)
+        .gt("expires_at", new Date().toISOString())
+        .limit(1)
 
-    if (existingInvitation && existingInvitation.length > 0) {
-      return new Response("Email address already invited", {
-        status: 400,
-        headers: corsHeaders,
-      })
-    }
+      if (existingInvitation && existingInvitation.length > 0) {
+        return new Response("Email address already invited", {
+          status: 400,
+          headers: corsHeaders,
+        })
+      }
 
-    // check if the person is already a user
-    const { data: users, error } = await supabase.rpc("get_organisation_users")
+      // check if the person is already a user
+      const { data: users, error } = await supabase.rpc(
+        "get_organisation_users",
+      )
 
-    if (error) {
-      console.error("Failed to get organisation users:", error.message)
-      return new Response("Failed to get users", {
-        status: 500,
-        headers: corsHeaders,
-      })
-    }
+      if (error) {
+        console.error("Failed to get organisation users:", error.message)
+        return new Response("Failed to get users", {
+          status: 500,
+          headers: corsHeaders,
+        })
+      }
 
-    if (users.find((user: { email: string }) => user.email === email)) {
-      return new Response("Email address already a user", {
-        status: 400,
-        headers: corsHeaders,
-      })
-    }
+      if (users.find((user: { email: string }) => user.email === email)) {
+        return new Response("Email address already a user", {
+          status: 400,
+          headers: corsHeaders,
+        })
+      }
 
-    const invitationId = crypto.randomUUID()
-    const invitation = {
-      id: invitationId,
-      email,
-      name,
-      organisation_id: orgUser.organisation_id,
-      invited_by: userId,
-      token: invitationToken,
-      created_at: new Date().toISOString(),
-      expires_at: expiresAt.toISOString(),
-      accepted_at: null,
-      organisation_name: orgUser.organisation.name,
-      role: role || "Member",
-    }
-    // Insert the invitation into the database
-    const { error: insertError } = await supabase
-      .from("invitation")
-      .insert(invitation)
+      const invitationId = crypto.randomUUID()
+      const invitation = {
+        id: invitationId,
+        email,
+        name,
+        organisation_id: orgUser.organisation_id,
+        invited_by: userId,
+        token: invitationToken,
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+        accepted_at: null,
+        organisation_name: orgUser.organisation.name,
+        role: role || "Member",
+      }
+      // Insert the invitation into the database
+      const { error: insertError } = await supabase
+        .from("invitation")
+        .insert(invitation)
 
-    if (insertError) {
-      console.error("Database insert error:", insertError)
-      return new Response("Failed to create invitation", {
-        status: 500,
-        headers: corsHeaders,
-      })
-    }
+      if (insertError) {
+        console.error("Database insert error:", insertError)
+        return new Response("Failed to create invitation", {
+          status: 500,
+          headers: corsHeaders,
+        })
+      }
 
-    // Send the invitation email via Mailgun
-    const mailgunDomain = Deno.env.get("MAILGUN_DOMAIN")
-    const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY")
+      // Send the invitation email via Mailgun
+      const mailgunDomain = Deno.env.get("MAILGUN_DOMAIN")
+      const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY")
 
-    const invitationLink = `${Deno.env.get("FRONTEND_URL")}/invitations/accept?token=${invitationToken}`
+      const invitationLink = `${Deno.env.get("FRONTEND_URL")}/invitations/accept?token=${invitationToken}`
 
-    const emailBody = `
+      const emailBody = `
       <html>
         <body>
           <p>Hi ${name},</p>
@@ -184,43 +192,44 @@ Deno.serve(async (req) => {
       </html>
     `
 
-    const mailgunResponse = await fetch(
-      `https://api.eu.mailgun.net/v3/${mailgunDomain}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+      const mailgunResponse = await fetch(
+        `https://api.eu.mailgun.net/v3/${mailgunDomain}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            from: `NASTI <no-reply@${mailgunDomain}>`,
+            to: email,
+            subject: "You're Invited to Join NASTI",
+            html: emailBody,
+          }),
         },
-        body: new URLSearchParams({
-          from: `NASTI <no-reply@${mailgunDomain}>`,
-          to: email,
-          subject: "You're Invited to Join NASTI",
-          html: emailBody,
-        }),
-      },
-    )
+      )
 
-    if (!mailgunResponse.ok) {
-      // delete the invitation if the email fails to send
-      await supabase.from("invitation").delete().eq("id", invitationId)
+      if (!mailgunResponse.ok) {
+        // delete the invitation if the email fails to send
+        await supabase.from("invitation").delete().eq("id", invitationId)
 
-      console.error("Mailgun error:", await mailgunResponse.text())
-      return new Response("Failed to send invitation email", {
+        console.error("Mailgun error:", await mailgunResponse.text())
+        return new Response("Failed to send invitation email", {
+          status: 500,
+          headers: corsHeaders,
+        })
+      }
+
+      return new Response("Invitation sent successfully", {
+        status: 200,
+        headers: corsHeaders,
+      })
+    } catch (error) {
+      console.error("Unexpected error:", error)
+      return new Response("Internal Server Error", {
         status: 500,
         headers: corsHeaders,
       })
     }
-
-    return new Response("Invitation sent successfully", {
-      status: 200,
-      headers: corsHeaders,
-    })
-  } catch (error) {
-    console.error("Unexpected error:", error)
-    return new Response("Internal Server Error", {
-      status: 500,
-      headers: corsHeaders,
-    })
-  }
-})
+  }),
+)

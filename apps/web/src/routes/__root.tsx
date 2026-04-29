@@ -130,7 +130,7 @@ const RootComponent = () => {
                   {session ? (
                     <span className="text-3xl">{organisation?.name}</span>
                   ) : (
-                    <span className="text-4xl">Seed Log</span>
+                    <span className="text-4xl">Seed Scout</span>
                   )}
                 </Link>
                 {session && (

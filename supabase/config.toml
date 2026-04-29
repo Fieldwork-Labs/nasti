@@ -206,8 +206,32 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 s3_secret_key = "env(S3_SECRET_KEY)"
 
 
-[functions.ala_image_proxy]
+[functions.accept_invitation]
 verify_jwt = false
 
-[functions.accept_invitation]
+[functions.accept_link_request]
+verify_jwt = false
+
+[functions.assign_batches_for_testing]
+verify_jwt = false
+
+[functions.copy_collection_photo_to_species]
+verify_jwt = false
+
+[functions.create_link_request]
+verify_jwt = false
+
+[functions.delete_trip_data]
+verify_jwt = false
+
+[functions.disable_user]
+verify_jwt = false
+
+[functions.resend_invitation]
+verify_jwt = false
+
+[functions.return_batch_from_testing]
+verify_jwt = false
+
+[functions.send_invitation]
 verify_jwt = false
