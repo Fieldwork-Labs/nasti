@@ -22,7 +22,9 @@ export const useCollection = ({
   )
   const { data: speciesList } = useSpeciesList()
   const species =
-    speciesList?.find((s) => s.id === collection?.species_id) ?? {}
+    speciesList?.find((s) => s.id === collection?.species_id) ?? undefined
+  if (!collection) return undefined
 
-  return { ...collection, species } as FullCollection
+  const result: FullCollection = { ...collection, species }
+  return result
 }

@@ -100,13 +100,6 @@ export default defineConfig({
         navigateFallback: "index.html",
         runtimeCaching: [
           {
-<<<<<<< Updated upstream
-            // match   /functions/v1/ala_image_proxy?url=…
-            urlPattern: ({ url }) =>
-              url.pathname.startsWith("/functions/v1/ala_image_proxy"),
-
-            handler: "CacheFirst", // serve from cache when offline
-=======
             // Cache ALA API responses (species search, detail, occurrences, etc.)
             urlPattern: ({ url }) =>
               url.hostname === "api.ala.org.au" ||
@@ -131,7 +124,6 @@ export default defineConfig({
               url.hostname.endsWith("nasti.pages.dev") &&
               url.pathname.startsWith("/api/ala_image_proxy"),
             handler: "CacheFirst",
->>>>>>> Stashed changes
             method: "GET",
             options: {
               cacheName: "ala-remote-images",
