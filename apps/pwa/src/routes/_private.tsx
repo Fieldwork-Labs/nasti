@@ -10,6 +10,8 @@ import {
   redirect,
 } from "@tanstack/react-router"
 import { Suspense, useEffect } from "react"
+import * as Sentry from "@sentry/react"
+import { ErrorFallback } from "@/components/common/ErrorComponent"
 
 function AuthLayout() {
   const { isLoggedIn } = useAuth()
@@ -62,4 +64,8 @@ export const Route = createFileRoute("/_private")({
       <AuthLayout />
     </Suspense>
   ),
+  errorComponent: (error) => {
+    Sentry.captureException(error)
+    return <ErrorFallback error={error} resetError={() => location.reload()} />
+  },
 })

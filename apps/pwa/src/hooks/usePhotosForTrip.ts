@@ -79,7 +79,7 @@ export const usePhotosForTrip = ({
   entityType: EntityType
   tripId?: string
 }) => {
-  const photosQuery = useQuery({
+  return useQuery({
     queryKey: getPhotosByTripQueryKey(entityType, tripId),
     enabled: Boolean(tripId),
     refetchOnMount: true,
@@ -126,8 +126,6 @@ export const usePhotosForTrip = ({
       const result = photos?.data ?? []
       return result
     },
-    refetchInterval: 1000 * 60 * 60, // every 1 hour
+    refetchInterval: 1000 * 60 * 5, // every 5 min
   })
-
-  return photosQuery
 }
