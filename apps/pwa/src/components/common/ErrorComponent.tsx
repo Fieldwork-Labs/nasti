@@ -1,3 +1,4 @@
+import { queryClient } from "@/lib/queryClient"
 import { Button } from "@nasti/ui/button"
 import { useState } from "react"
 
@@ -24,6 +25,23 @@ async function checkForUpdateAndReload() {
   location.reload()
 }
 
+async function resetCachedDataAndReload() {
+  try {
+    // clear all querycaches related to the trip
+    queryClient.removeQueries({ queryKey: ["trip", "details"] })
+    queryClient.removeQueries({ queryKey: ["collections", "byTrip"] })
+    queryClient.removeQueries({ queryKey: ["photos", "collection", "byTrip"] })
+    queryClient.removeQueries({ queryKey: ["scoutingNotes", "byTrip"] })
+    queryClient.removeQueries({
+      queryKey: ["photos", "scoutingNote", "byTrip"],
+    })
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  } catch {
+    // ignore — reload anyway
+  }
+  location.replace("/trips")
+}
+
 type Props = {
   error: unknown
   resetError: () => void
@@ -34,11 +52,20 @@ export function ErrorFallback({ error, resetError, eventId }: Props) {
   const [busy, setBusy] = useState<null | "update" | "reset">(null)
 
   const message =
-    error instanceof Error ? error.message : "Something went wrong."
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "Something went wrong."
 
   const handleUpdate = async () => {
     setBusy("update")
     await checkForUpdateAndReload()
+  }
+
+  const handleReset = async () => {
+    setBusy("reset")
+    await resetCachedDataAndReload()
   }
 
   return (
@@ -58,19 +85,28 @@ export function ErrorFallback({ error, resetError, eventId }: Props) {
           {eventId && <p className="mt-1 opacity-70">Event ID: {eventId}</p>}
         </details>
 
-        <div className="flex flex-col gap-2">
-          <Button variant="outline" onClick={resetError}>
-            Try again
-          </Button>
-
+        <div className="space-y-10">
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={resetError}>
+              Try again
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={busy !== null}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+            >
+              {busy === "update"
+                ? "Checking for update…"
+                : "Check for update & reload"}
+            </Button>
+          </div>
           <Button
-            onClick={handleUpdate}
+            onClick={handleReset}
             disabled={busy !== null}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50"
+            variant="destructive"
+            className="w-full"
           >
-            {busy === "update"
-              ? "Checking for update…"
-              : "Check for update & reload"}
+            {busy === "reset" ? "Resetting…" : "Reset cached data & reload"}
           </Button>
         </div>
       </div>
