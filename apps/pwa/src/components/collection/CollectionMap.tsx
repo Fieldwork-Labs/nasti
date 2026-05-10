@@ -11,7 +11,7 @@ export const CollectionMap = ({
 }) => {
   const collection = useCollection({ tripId, collectionId })
 
-  if (!collection.locationCoord) return null
+  if (!collection?.locationCoord) return null
 
   return (
     <LocationMap

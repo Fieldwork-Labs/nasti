@@ -91,11 +91,7 @@ function CollectionForm() {
 
   const { user, org } = useAuth()
 
-  const {
-    photos: initialPhotos,
-    species,
-    ...initialValues
-  } = useCollection({ collectionId, tripId })
+  const collection = useCollection({ collectionId, tripId })
 
   const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
@@ -119,10 +115,9 @@ function CollectionForm() {
   }
 
   // Unique ID: use provided or generate new
-  const collectionIdRef = useRef<string>(
-    initialValues?.id || crypto.randomUUID(),
-  )
+  const collectionIdRef = useRef<string>(collection?.id || crypto.randomUUID())
 
+  const initialPhotos = collection?.photos ?? []
   // Photo state
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges>({
     add: [],
@@ -131,14 +126,14 @@ function CollectionForm() {
 
   // Field name entry toggle
   const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(initialValues?.field_name && !initialValues?.species_id),
+    Boolean(collection?.field_name && !collection?.species_id),
   )
 
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
-    ...initialValues,
-    latitude: initialValues.locationCoord?.latitude,
-    longitude: initialValues.locationCoord?.longitude,
+    ...collection,
+    latitude: collection?.locationCoord?.latitude ?? undefined,
+    longitude: collection?.locationCoord?.longitude ?? undefined,
   })
 
   // Form setup
@@ -241,8 +236,10 @@ function CollectionForm() {
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
+  if (!collection) return null
+  
   // You shouldn't be here
-  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN)
+  if (collection.created_by !== user?.id && org?.role !== ROLE.ADMIN)
     return navigate({
       to: "/trips/$id/collections/$collectionId",
       params: { id: tripId, collectionId },
