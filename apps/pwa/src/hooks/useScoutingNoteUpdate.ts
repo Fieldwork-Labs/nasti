@@ -59,7 +59,7 @@ export const useScoutingNoteUpdate = ({ tripId }: { tripId: string }) => {
         )
       }
     },
-    onSettled(data, error, variables) {
+    onSettled(_, error, variables) {
       if (error) {
         // remove the scouting note from optmistic cache
         queryClient.setQueryData<ScoutingNoteWithCoord[]>(
