@@ -80,7 +80,6 @@ export const useScoutingNoteUpdate = ({ tripId }: { tripId: string }) => {
           )
         }
       }
-      if (!data) throw new Error("No data returned from scoutingNote insert")
     },
   })
 }

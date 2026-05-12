@@ -132,8 +132,8 @@ function CollectionForm() {
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...collection,
-    latitude: collection?.locationCoord?.latitude ?? undefined,
-    longitude: collection?.locationCoord?.longitude ?? undefined,
+    latitude: collection?.locationCoord?.latitude ?? null,
+    longitude: collection?.locationCoord?.longitude ?? null,
   })
 
   // Form setup

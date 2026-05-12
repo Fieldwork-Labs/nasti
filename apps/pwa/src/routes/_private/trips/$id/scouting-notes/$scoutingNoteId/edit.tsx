@@ -129,8 +129,8 @@ function ScoutingNoteForm() {
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...initialValues,
-    latitude: initialValues.locationCoord?.latitude,
-    longitude: initialValues.locationCoord?.longitude,
+    latitude: initialValues.locationCoord?.latitude ?? null,
+    longitude: initialValues.locationCoord?.longitude ?? null,
   })
 
   // Form setup

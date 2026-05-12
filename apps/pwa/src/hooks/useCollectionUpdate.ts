@@ -79,7 +79,6 @@ export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {
           )
         }
       }
-      if (!data) throw new Error("No data returned from collection insert")
     },
   })
 }
