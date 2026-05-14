@@ -25,13 +25,19 @@ import { queryClient } from "@/lib/queryClient"
 
 export * from "./types"
 
-export const usePhotosMap = ({ tripId }: { tripId: string }) => {
+export const usePhotosMap = ({
+  tripId,
+  enabled = true,
+}: {
+  tripId: string
+  enabled?: boolean
+}) => {
   const {
     data: collectionPhotosData,
     refetch: collectionPhotosRefetch,
     error: collectionPhotosError,
     isFetching: collectionPhotosIsFetching,
-  } = usePhotosForTrip({ tripId, entityType: "collection" })
+  } = usePhotosForTrip({ tripId, entityType: "collection", enabled })
 
   const collectionPhotosMap = useMemo(
     () =>
@@ -46,7 +52,7 @@ export const usePhotosMap = ({ tripId }: { tripId: string }) => {
     refetch: scoutingNotePhotosRefetch,
     error: scoutingNotePhotosError,
     isFetching: scoutingNotePhotosIsFetching,
-  } = usePhotosForTrip({ tripId, entityType: "scoutingNote" })
+  } = usePhotosForTrip({ tripId, entityType: "scoutingNote", enabled })
 
   const scoutingNotePhotosMap = useMemo(
     () =>

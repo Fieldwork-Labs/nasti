@@ -63,7 +63,7 @@ export const useTripDetails = ({ tripId }: { tripId: string }) => {
         getTrip(tripId),
         getTripMembers(tripId),
       ])
-      console.log({ trip })
+
       if (!trip.data) return null
 
       const result = {

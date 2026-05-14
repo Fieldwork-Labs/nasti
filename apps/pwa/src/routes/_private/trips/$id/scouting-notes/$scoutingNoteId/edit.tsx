@@ -3,7 +3,7 @@ import { PhotoChanges, PhotosForm } from "@/components/common/PhotosForm"
 import { useAuth } from "@/hooks/useAuth"
 import { useNetwork } from "@/hooks/useNetwork"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
-import { useScoutingNote } from "@/hooks/useScoutingNote"
+import { FullScoutingNote, useScoutingNote } from "@/hooks/useScoutingNote"
 import { useScoutingNoteUpdate } from "@/hooks/useScoutingNoteUpdate"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -16,7 +16,7 @@ import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { cn } from "@nasti/ui/utils"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { InfoIcon, X } from "lucide-react"
+import { ChevronLeft, InfoIcon, X } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
@@ -80,14 +80,54 @@ function ScoutingNoteForm() {
   const { scoutingNoteId, id: tripId } = useParams({
     from: "/_private/trips/$id/scouting-notes/$scoutingNoteId/edit",
   })
+  const scoutingNote = useScoutingNote({ scoutingNoteId, tripId })
 
+  const navigate = useNavigate({
+    from: "/trips/$id/scouting-notes/$scoutingNoteId/edit",
+  })
+
+  const handleBackClick = () => {
+    navigate({
+      to: "/trips/$id/scouting-notes/$scoutingNoteId",
+      params: { id: tripId, scoutingNoteId },
+    })
+  }
+
+  if (!scoutingNote)
+    return (
+      <div className="flex h-full w-full flex-col items-start">
+        <h2 className="p-2 text-2xl">No scouting note available</h2>
+        <Button
+          className="flex w-full justify-start text-lg"
+          variant="ghost"
+          onClick={handleBackClick}
+        >
+          <ChevronLeft className="h-5 w-5" /> Back
+        </Button>
+      </div>
+    )
+
+  return (
+    <ScoutingNoteFormReady
+      scoutingNote={scoutingNote}
+      scoutingNoteId={scoutingNoteId}
+      tripId={tripId}
+    />
+  )
+}
+
+function ScoutingNoteFormReady({
+  scoutingNote,
+  scoutingNoteId,
+  tripId,
+}: {
+  scoutingNote: FullScoutingNote
+  scoutingNoteId: string
+  tripId: string
+}) {
   const { user, org } = useAuth()
 
-  const {
-    photos: initialPhotos,
-    species,
-    ...initialValues
-  } = useScoutingNote({ scoutingNoteId, tripId })
+  const { photos: initialPhotos, species, ...initialValues } = scoutingNote
 
   const { mutateAsync: updateScoutingNote } = useScoutingNoteUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
@@ -111,9 +151,7 @@ function ScoutingNoteForm() {
   }
 
   // Unique ID: use provided or generate new
-  const scoutingNoteIdRef = useRef<string>(
-    initialValues?.id || crypto.randomUUID(),
-  )
+  const scoutingNoteIdRef = useRef<string>(initialValues.id)
 
   // Photo state
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges>({
@@ -123,7 +161,7 @@ function ScoutingNoteForm() {
 
   // Field name entry toggle
   const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(initialValues?.field_name && !initialValues?.species_id),
+    Boolean(initialValues.field_name && !initialValues.species_id),
   )
 
   const defaultValues = schema.parse({
@@ -234,11 +272,13 @@ function ScoutingNoteForm() {
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   // You shouldn't be here
-  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN)
-    return navigate({
+  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN) {
+    navigate({
       to: "/trips/$id/scouting-notes/$scoutingNoteId",
       params: { id: tripId, scoutingNoteId },
     })
+    return null
+  }
 
   return (
     <div className="flex h-full flex-col">

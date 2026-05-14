@@ -11,7 +11,7 @@ export const ScoutingNotesMap = ({
 }) => {
   const scoutingNote = useScoutingNote({ tripId, scoutingNoteId })
 
-  if (!scoutingNote.locationCoord) return null
+  if (!scoutingNote?.locationCoord) return null
 
   return (
     <LocationMap

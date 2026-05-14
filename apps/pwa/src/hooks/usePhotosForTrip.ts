@@ -72,16 +72,41 @@ export const getPhotosByTripQueryKey = (
   tripId?: string,
 ) => (tripId ? ["photos", entityType, "byTrip", tripId] : [])
 
+const collectionPhotosTypeGuard = (
+  photos: TripCollectionPhotos | TripScoutingNotePhotos | undefined,
+): photos is TripCollectionPhotos => {
+  return (
+    photos !== undefined &&
+    photos.every(
+      (photo) => "collection_id" in photo && photo.collection_id !== undefined,
+    )
+  )
+}
+
+const scoutingNotePhotosTypeGuard = (
+  photos: TripCollectionPhotos | TripScoutingNotePhotos | undefined,
+): photos is TripScoutingNotePhotos => {
+  return (
+    photos !== undefined &&
+    photos.every(
+      (photo) =>
+        "scouting_note_id" in photo && photo.scouting_note_id !== undefined,
+    )
+  )
+}
+
 export const usePhotosForTrip = ({
   tripId,
   entityType,
+  enabled = true,
 }: {
   entityType: EntityType
   tripId?: string
+  enabled?: boolean
 }) => {
   return useQuery({
     queryKey: getPhotosByTripQueryKey(entityType, tripId),
-    enabled: Boolean(tripId),
+    enabled: Boolean(tripId) && enabled,
     refetchOnMount: true,
     refetchOnReconnect: true,
     queryFn: async () => {
@@ -124,7 +149,17 @@ export const usePhotosForTrip = ({
         if (error) console.log("Error when getting signed photos", { error })
       }
       const result = photos?.data ?? []
-      return result
+      const collectionPhotosResult = collectionPhotosTypeGuard(result)
+        ? result
+        : undefined
+      const scoutingNotePhotosResult = scoutingNotePhotosTypeGuard(result)
+        ? result
+        : undefined
+      return entityType === "collection"
+        ? collectionPhotosResult
+        : entityType === "scoutingNote"
+          ? scoutingNotePhotosResult
+          : result
     },
     refetchInterval: 1000 * 60 * 5, // every 5 min
   })

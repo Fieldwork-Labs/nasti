@@ -1,6 +1,6 @@
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { useAuth } from "@/hooks/useAuth"
-import { useCollection } from "@/hooks/useCollection"
+import { FullCollection, useCollection } from "@/hooks/useCollection"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
@@ -15,7 +15,7 @@ import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { cn } from "@nasti/ui/utils"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
-import { InfoIcon, X } from "lucide-react"
+import { ChevronLeft, InfoIcon, X } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
@@ -88,10 +88,52 @@ function CollectionForm() {
   const { collectionId, id: tripId } = useParams({
     from: "/_private/trips/$id/collections/$collectionId/edit",
   })
-
-  const { user, org } = useAuth()
-
   const collection = useCollection({ collectionId, tripId })
+
+  const navigate = useNavigate({
+    from: "/trips/$id/collections/$collectionId/edit",
+  })
+
+  const handleBackClick = () => {
+    navigate({
+      to: "/trips/$id/collections/$collectionId",
+      params: { id: tripId, collectionId },
+    })
+  }
+
+  if (!collection)
+    return (
+      <div className="flex h-full w-full flex-col items-start">
+        <h2 className="p-2 text-2xl">No collection available</h2>
+        <Button
+          className="flex w-full justify-start text-lg"
+          variant="ghost"
+          onClick={handleBackClick}
+        >
+          <ChevronLeft className="h-5 w-5" /> Back
+        </Button>
+      </div>
+    )
+
+  return (
+    <CollectionFormReady
+      collection={collection}
+      collectionId={collectionId}
+      tripId={tripId}
+    />
+  )
+}
+
+function CollectionFormReady({
+  collection,
+  collectionId,
+  tripId,
+}: {
+  collection: FullCollection
+  collectionId: string
+  tripId: string
+}) {
+  const { user, org } = useAuth()
 
   const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
@@ -115,9 +157,9 @@ function CollectionForm() {
   }
 
   // Unique ID: use provided or generate new
-  const collectionIdRef = useRef<string>(collection?.id || crypto.randomUUID())
+  const collectionIdRef = useRef<string>(collection.id)
 
-  const initialPhotos = collection?.photos ?? []
+  const initialPhotos = collection.photos ?? []
   // Photo state
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges>({
     add: [],
@@ -126,14 +168,14 @@ function CollectionForm() {
 
   // Field name entry toggle
   const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(collection?.field_name && !collection?.species_id),
+    Boolean(collection.field_name && !collection.species_id),
   )
 
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...collection,
-    latitude: collection?.locationCoord?.latitude ?? null,
-    longitude: collection?.locationCoord?.longitude ?? null,
+    latitude: collection.locationCoord?.latitude ?? null,
+    longitude: collection.locationCoord?.longitude ?? null,
   })
 
   // Form setup
@@ -236,14 +278,14 @@ function CollectionForm() {
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
-  if (!collection) return null
-  
   // You shouldn't be here
-  if (collection.created_by !== user?.id && org?.role !== ROLE.ADMIN)
-    return navigate({
+  if (collection.created_by !== user?.id && org?.role !== ROLE.ADMIN) {
+    navigate({
       to: "/trips/$id/collections/$collectionId",
       params: { id: tripId, collectionId },
     })
+    return null
+  }
 
   return (
     <div className="flex h-full flex-col">

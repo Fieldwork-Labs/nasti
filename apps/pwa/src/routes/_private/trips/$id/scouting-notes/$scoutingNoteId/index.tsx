@@ -37,10 +37,24 @@ const ScoutingNotesDetail = () => {
 
   const [fullScreenPhoto, setFullScreenPhoto] = useState<string | null>(null)
 
-  const displayDistance = useDisplayDistance(scoutingNote.locationCoord ?? {})
+  const displayDistance = useDisplayDistance(scoutingNote?.locationCoord ?? {})
 
   const canEdit =
-    scoutingNote.created_by === user?.id || org?.role === ROLE.ADMIN
+    scoutingNote?.created_by === user?.id || org?.role === ROLE.ADMIN
+
+  if (!scoutingNote)
+    return (
+      <div className="flex h-full w-full flex-col items-start">
+        <h2 className="p-2 text-2xl">No scouting note available</h2>
+        <Button
+          className="flex w-full justify-start text-lg"
+          variant="ghost"
+          onClick={handleBackClick}
+        >
+          <ChevronLeft className="h-5 w-5" /> Back
+        </Button>
+      </div>
+    )
 
   return (
     <div className="flex flex-col gap-3 px-2">
