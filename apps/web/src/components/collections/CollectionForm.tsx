@@ -16,6 +16,7 @@ import { usePeople } from "@/hooks/usePeople"
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { withTooltip } from "@nasti/ui/tooltip"
 import {
   CollectionFormProps,
@@ -253,6 +254,26 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           valueAsNumber: true, // Transform string to number
         })}
         error={errors.plants_sampled_estimate}
+      />
+
+      <Controller
+        control={control}
+        name="phenology_start"
+        render={({ field: startField }) => (
+          <Controller
+            control={control}
+            name="phenology_end"
+            render={({ field: endField }) => (
+              <PhenologyRangeInput
+                value={[startField.value, endField.value]}
+                onValueChange={([start, end]) => {
+                  startField.onChange(start)
+                  endField.onChange(end)
+                }}
+              />
+            )}
+          />
+        )}
       />
       {errors.root && (
         <div className="flex h-4 justify-end text-xs text-orange-800">

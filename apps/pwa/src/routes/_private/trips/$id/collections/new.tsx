@@ -19,6 +19,7 @@ import { Button } from "@nasti/ui/button"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { InfoIcon, X } from "lucide-react"
 import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
@@ -44,6 +45,8 @@ type CollectionFormData = {
   description: string
   amount_description: string
   plants_sampled_estimate: number | null
+  phenology_start: number | null
+  phenology_end: number | null
 }
 
 const stringToNumber = z.preprocess(
@@ -76,6 +79,8 @@ const schema = z
       .optional()
       .transform((val) => val ?? ""),
     plants_sampled_estimate: stringToNumber,
+    phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
     (data) => {
@@ -99,6 +104,8 @@ const defaultValues = {
   description: "",
   amount_description: "",
   plants_sampled_estimate: null,
+  phenology_start: null,
+  phenology_end: null,
 }
 
 function AddCollection() {
@@ -396,6 +403,25 @@ function AddCollection() {
               </div>
             )}
           </div>
+          <Controller
+            control={control}
+            name="phenology_start"
+            render={({ field: startField }) => (
+              <Controller
+                control={control}
+                name="phenology_end"
+                render={({ field: endField }) => (
+                  <PhenologyRangeInput
+                    value={[startField.value, endField.value]}
+                    onValueChange={([start, end]) => {
+                      startField.onChange(start)
+                      endField.onChange(end)
+                    }}
+                  />
+                )}
+              />
+            )}
+          />
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>

@@ -18,8 +18,9 @@ import { Button } from "@nasti/ui/button"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { InfoIcon, X } from "lucide-react"
-import { NewCollection } from "@nasti/common/types"
+import { NewScoutingNote } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
@@ -92,7 +93,7 @@ function AddCollection() {
       if (!location) throw new Error("No location available")
       const { latitude, longitude } = location
       const locationPoint = `POINT(${longitude} ${latitude})`
-      const newCollection: NewCollection = {
+      const newCollection: NewScoutingNote = {
         ...data,
         species_uncertain:
           data.species_uncertain || data.field_name.trim().length > 0,
@@ -274,6 +275,25 @@ function AddCollection() {
               onBlur={() => setDescriptionFocus(false)}
             />
           </div>
+          <Controller
+            control={control}
+            name="phenology_start"
+            render={({ field: startField }) => (
+              <Controller
+                control={control}
+                name="phenology_end"
+                render={({ field: endField }) => (
+                  <PhenologyRangeInput
+                    value={[startField.value, endField.value]}
+                    onValueChange={([start, end]) => {
+                      startField.onChange(start)
+                      endField.onChange(end)
+                    }}
+                  />
+                )}
+              />
+            )}
+          />
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>

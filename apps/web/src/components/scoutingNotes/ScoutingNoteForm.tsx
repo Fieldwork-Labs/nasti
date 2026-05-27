@@ -4,6 +4,7 @@ import { Controller } from "react-hook-form"
 import { Checkbox } from "@nasti/ui/checkbox"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { withTooltip } from "@nasti/ui/tooltip"
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
 import {
@@ -185,6 +186,26 @@ export const ScoutingNoteForm = ({ form, tripId }: ScoutingNoteFormProps) => {
           autoComplete="off"
           {...register("description")}
           error={errors.description}
+        />
+
+        <Controller
+          control={control}
+          name="phenology_start"
+          render={({ field: startField }) => (
+            <Controller
+              control={control}
+              name="phenology_end"
+              render={({ field: endField }) => (
+                <PhenologyRangeInput
+                  value={[startField.value, endField.value]}
+                  onValueChange={([start, end]) => {
+                    startField.onChange(start)
+                    endField.onChange(end)
+                  }}
+                />
+              )}
+            />
+          )}
         />
       </div>
       {errors.root && (

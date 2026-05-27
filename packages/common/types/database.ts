@@ -573,6 +573,8 @@ export type Database = {
           location: unknown
           organisation_id: string | null
           plants_sampled_estimate: number | null
+          phenology_end: number | null
+          phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
@@ -591,6 +593,8 @@ export type Database = {
           location?: unknown
           organisation_id?: string | null
           plants_sampled_estimate?: number | null
+          phenology_end?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -609,6 +613,8 @@ export type Database = {
           location?: unknown
           organisation_id?: string | null
           plants_sampled_estimate?: number | null
+          phenology_end?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -939,6 +945,8 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
+          phenology_end: number | null
+          phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
@@ -952,6 +960,8 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          phenology_end?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -965,6 +975,8 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          phenology_end?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -2976,4 +2988,3 @@ export const Constants = {
     },
   },
 } as const
-

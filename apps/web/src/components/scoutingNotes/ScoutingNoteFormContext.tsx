@@ -24,6 +24,8 @@ type ScoutingNoteFormData = {
   latitude: number
   longitude: number
   description: string
+  phenology_start: number | null
+  phenology_end: number | null
 }
 
 const schema = z
@@ -48,6 +50,8 @@ const schema = z
       .max(180),
 
     description: z.string(),
+    phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
     (data) => {
@@ -91,6 +95,8 @@ const useScoutingNoteForm = ({
               }),
           specimen_collected: Boolean(scoutingNote.specimen_collected),
           description: scoutingNote.description ?? "",
+          phenology_start: scoutingNote.phenology_start,
+          phenology_end: scoutingNote.phenology_end,
         }
       : {
           species_id: null,
@@ -100,6 +106,8 @@ const useScoutingNoteForm = ({
           longitude: undefined,
           specimen_collected: false,
           description: "",
+          phenology_start: null,
+          phenology_end: null,
         }
   }, [scoutingNote])
 

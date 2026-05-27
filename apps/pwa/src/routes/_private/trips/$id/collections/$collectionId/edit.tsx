@@ -11,6 +11,7 @@ import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { cn } from "@nasti/ui/utils"
@@ -55,6 +56,8 @@ const schema = z
     plants_sampled_estimate: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
+    phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
     (data) => Boolean(data.species_id) || data.field_name.trim().length > 0,
@@ -76,6 +79,8 @@ const DEFAULT_VALUES: FormValues = {
   description: "",
   amount_description: "",
   plants_sampled_estimate: null,
+  phenology_start: null,
+  phenology_end: null,
 }
 
 export const Route = createFileRoute(
@@ -410,6 +415,25 @@ function CollectionFormReady({
               </p>
             )}
           </div>
+          <Controller
+            control={control}
+            name="phenology_start"
+            render={({ field: startField }) => (
+              <Controller
+                control={control}
+                name="phenology_end"
+                render={({ field: endField }) => (
+                  <PhenologyRangeInput
+                    value={[startField.value, endField.value]}
+                    onValueChange={([start, end]) => {
+                      startField.onChange(start)
+                      endField.onChange(end)
+                    }}
+                  />
+                )}
+              />
+            )}
+          />
           <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}

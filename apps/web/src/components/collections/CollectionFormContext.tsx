@@ -29,6 +29,8 @@ type CollectionFormData = {
   amount_description: string
   plants_sampled_estimate: number | null
   collected_by: string | null
+  phenology_start: number | null
+  phenology_end: number | null
 }
 
 export const schema = z
@@ -60,6 +62,8 @@ export const schema = z
       .transform((val) => val ?? ""),
     plants_sampled_estimate: z.number().nullable(),
     collected_by: z.string().uuid().nullable(),
+    phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
     (data) => {
@@ -103,6 +107,8 @@ const useCollectionForm = ({
           description: collection.description ?? "",
           amount_description: collection.amount_description ?? "",
           plants_sampled_estimate: collection.plants_sampled_estimate,
+          phenology_start: collection.phenology_start,
+          phenology_end: collection.phenology_end,
           collected_on: collection.collected_on,
           collected_by: collection.collected_by,
         }
@@ -118,6 +124,8 @@ const useCollectionForm = ({
           description: "",
           amount_description: "",
           plants_sampled_estimate: null,
+          phenology_start: null,
+          phenology_end: null,
         }
   }, [collection, user?.id])
 
