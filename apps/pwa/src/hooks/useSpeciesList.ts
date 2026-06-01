@@ -15,6 +15,7 @@ const getSpeciesList = async () => {
 export const getSpeciesListQueryOptions = () => ({
   queryKey: ["species", "list"],
   queryFn: async () => await getSpeciesList(),
+  staleTime: 5 * 60 * 1000, // 5 minutes
 })
 
 export const useSpeciesList = () => {

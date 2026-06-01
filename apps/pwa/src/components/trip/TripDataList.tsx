@@ -54,7 +54,6 @@ import { Link, useParams } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
-import { useSpeciesList } from "@/hooks/useSpeciesList"
 
 // Base interface for entities that can be displayed in the list
 interface DisplayableEntity {
@@ -250,7 +249,7 @@ export const ScoutingNoteListItem = ({
   )
 }
 
-export const TripCollectionList = ({ id }: { id: string }) => {
+export const TripDataList = ({ id }: { id: string }) => {
   const [sortMode, setSortMode] = useState<
     "created_at-asc" | "created_at-desc" | "distance-asc" | "distance-desc"
   >("created_at-desc")
@@ -263,10 +262,9 @@ export const TripCollectionList = ({ id }: { id: string }) => {
   const { getDistanceKm } = useGeoLocation()
 
   const miniSearchRef = useRef<MiniSearch<DataWithSpecies> | null>(null)
-  const { data: speciesList } = useSpeciesList()
   const speciesMap = useMemo(() => {
     return (
-      speciesList?.reduce(
+      data.species?.reduce(
         (acc, species) => {
           acc[species.id] = species
           return acc
@@ -274,7 +272,7 @@ export const TripCollectionList = ({ id }: { id: string }) => {
         {} as Record<string, Species>,
       ) ?? {}
     )
-  }, [speciesList])
+  }, [data.species])
 
   const peopleMap = useMemo(() => {
     const people = data.people ?? []
@@ -309,14 +307,16 @@ export const TripCollectionList = ({ id }: { id: string }) => {
           species: coll.species_id ? speciesMap[coll.species_id] : undefined,
         }
       }),
-      ...scoutingNotes.map((coll) => {
+      ...scoutingNotes.map((sn) => {
         return {
-          ...coll,
+          ...sn,
           dataType: "scoutingNote" as const,
-          species: coll.species_id ? speciesMap[coll.species_id] : undefined,
+          species: sn.species_id ? speciesMap[sn.species_id] : undefined,
         }
       }),
     ]
+
+    console.log({ result })
 
     previousDataRef.current = result
     return result

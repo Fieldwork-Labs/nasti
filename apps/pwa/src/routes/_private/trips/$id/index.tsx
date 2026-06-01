@@ -19,7 +19,7 @@ import {
   ShoppingBag,
 } from "lucide-react"
 
-import { TripCollectionList } from "@/components/trip/TripCollectionsList"
+import { TripDataList } from "@/components/trip/TripDataList"
 import { TripCollectionsMap } from "@/components/trip/TripCollectionsMap"
 import {
   SpeciesDrawer,
@@ -139,7 +139,7 @@ const TripDetail = () => {
           )}
         </TabsList>
         <TabsContent value="list">
-          <TripCollectionList id={id} />
+          <TripDataList id={id} />
         </TabsContent>
         <TabsContent value="map">
           <TripCollectionsMap id={id} />
