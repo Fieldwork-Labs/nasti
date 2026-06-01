@@ -44,7 +44,6 @@ const mockCollection = {
   trip_id: "trip123",
   description: "",
   amount_description: "0",
-  plants_sampled_estimate: 0,
 }
 
 describe("useCollectionCreate · mutateAsync", () => {

@@ -561,7 +561,8 @@ export type Database = {
       }
       collection: {
         Row: {
-          amount_description: string | null
+          amount_quantity: number | null
+          amount_units: string | null
           code: string | null
           collected_by: string | null
           collected_on: string
@@ -572,14 +573,14 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
-          plants_sampled_estimate: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
           trip_id: string | null
         }
         Insert: {
-          amount_description?: string | null
+          amount_quantity?: number | null
+          amount_units?: string | null
           code?: string | null
           collected_by?: string | null
           collected_on?: string
@@ -590,14 +591,14 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
-          plants_sampled_estimate?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
           trip_id?: string | null
         }
         Update: {
-          amount_description?: string | null
+          amount_quantity?: number | null
+          amount_units?: string | null
           code?: string | null
           collected_by?: string | null
           collected_on?: string
@@ -608,7 +609,6 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
-          plants_sampled_estimate?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null

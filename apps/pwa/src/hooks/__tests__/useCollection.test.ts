@@ -64,7 +64,6 @@ const mockTripDetails = {
           trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
           description: "",
           amount_description: "0",
-          plants_sampled_estimate: 0,
           locationCoord: {
             latitude: -32.075632079426605,
             longitude: 115.80377683932046,

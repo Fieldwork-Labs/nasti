@@ -36,16 +36,7 @@ export const Route = createFileRoute("/_private/trips/$id/collections/new")({
   validateSearch: (search) => addCollectionSearchSchema.parse(search),
 })
 
-type CollectionFormData = {
-  species_id: string | null
-  species_uncertain: boolean
-  field_name: string
-  specimen_collected: boolean
-  description: string
-  amount_description: string
-  plants_sampled_estimate: number | null
-}
-
+// --- Schema & Types ---
 const stringToNumber = z.preprocess(
   (val) => {
     if (typeof val === "string" && val.trim() === "") return null
@@ -71,11 +62,8 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    amount_description: z
-      .string()
-      .optional()
-      .transform((val) => val ?? ""),
-    plants_sampled_estimate: stringToNumber,
+    amount_units: z.string().nullable(),
+    amount_quantity: stringToNumber,
   })
   .refine(
     (data) => {
@@ -91,14 +79,16 @@ const schema = z
     },
   )
 
+type CollectionFormData = z.infer<typeof schema>
+
 const defaultValues = {
   species_id: null,
   species_uncertain: false,
   field_name: "",
   specimen_collected: false,
   description: "",
-  amount_description: "",
-  plants_sampled_estimate: null,
+  amount_units: "",
+  amount_quantity: null,
 }
 
 function AddCollection() {
@@ -324,64 +314,53 @@ function AddCollection() {
             />
           </div>
           <div>
-            <Label
-              htmlFor="amount_description"
-              className="flex items-center gap-2"
-            >
-              <span>Amount Description</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoIcon className="h-4 w-4" />
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  Description of the amount collection (eg, "Three large
-                  buckets" or "10 bags")
-                </PopoverContent>
-              </Popover>
+            <Label className="flex items-center gap-2">
+              <span>Amount</span>
             </Label>
-            <Input
-              autoComplete="off"
-              {...register("amount_description")}
-              className={errors.amount_description ? "border-amber-600" : ""}
-              id="amount_description"
-              name="amount_description"
-            />
-            {errors.amount_description && (
-              <div className="mt-1 text-sm text-amber-600">
-                {errors.amount_description.message}
+            <div className="flex w-full gap-2">
+              <div className="w-full">
+                <Label htmlFor="amount_quantity" className="text-sm">
+                  Quantity
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_quantity")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_quantity ? "border-amber-600" : "",
+                  )}
+                  id="amount_quantity"
+                  name="amount_quantity"
+                />
+                {errors.amount_quantity && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_quantity.message}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div>
-            <Label
-              htmlFor="plants_sampled_estimate"
-              className="flex items-center gap-2"
-            >
-              <span>Number of plants sampled</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoIcon className="h-4 w-4" />
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  Estimate of the number of plants sampled in this collection
-                </PopoverContent>
-              </Popover>
-            </Label>
-            <Input
-              autoComplete="off"
-              {...register("plants_sampled_estimate")}
-              className={
-                errors.plants_sampled_estimate ? "border-amber-600" : ""
-              }
-              id="plants_sampled_estimate"
-              name="plants_sampled_estimate"
-            />
-            {errors.plants_sampled_estimate && (
-              <div className="mt-1 text-sm text-amber-600">
-                {errors.plants_sampled_estimate.message}
+              <div className="w-full">
+                <Label htmlFor="amount_units" className="text-sm">
+                  Units
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_units")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_units ? "border-amber-600" : "",
+                  )}
+                  id="amount_units"
+                  name="amount_units"
+                />
+                {errors.amount_units && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_units.message}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
+
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>

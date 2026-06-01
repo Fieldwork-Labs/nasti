@@ -47,12 +47,8 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    amount_description: z
-      .string()
-      .optional()
-      .nullish()
-      .transform((val) => val || ""),
-    plants_sampled_estimate: stringToNumber,
+    amount_units: z.string().nullable(),
+    amount_quantity: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
   })
@@ -74,8 +70,8 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
-  amount_description: "",
-  plants_sampled_estimate: null,
+  amount_units: "",
+  amount_quantity: null,
 }
 
 export const Route = createFileRoute(
@@ -398,24 +394,53 @@ function CollectionFormReady({
           </div>
 
           <div>
-            <Label>Amount Desription</Label>
-            <Input {...register("amount_description")} />
-            {errors.amount_description && (
-              <p className="text-amber-600">
-                {errors.amount_description.message}
-              </p>
-            )}
+            <Label className="flex items-center gap-2">
+              <span>Amount</span>
+            </Label>
+            <div className="flex w-full gap-2">
+              <div className="w-full">
+                <Label htmlFor="amount_quantity" className="text-sm">
+                  Quantity
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_quantity")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_quantity ? "border-amber-600" : "",
+                  )}
+                  id="amount_quantity"
+                  name="amount_quantity"
+                />
+                {errors.amount_quantity && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_quantity.message}
+                  </div>
+                )}
+              </div>
+              <div className="w-full">
+                <Label htmlFor="amount_units" className="text-sm">
+                  Units
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_units")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_units ? "border-amber-600" : "",
+                  )}
+                  id="amount_units"
+                  name="amount_units"
+                />
+                {errors.amount_units && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_units.message}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div>
-            <Label># Plants Sampled</Label>
-            <Input {...register("plants_sampled_estimate")} />
-            {errors.plants_sampled_estimate && (
-              <p className="text-amber-600">
-                {errors.plants_sampled_estimate.message}
-              </p>
-            )}
-          </div>
           <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}

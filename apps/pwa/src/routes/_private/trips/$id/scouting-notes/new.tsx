@@ -7,7 +7,7 @@ import {
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useGeoLocation } from "@/contexts/location"
 

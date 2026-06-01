@@ -233,27 +233,23 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         {...register("description")}
         error={errors.description}
       />
+      <div className="flex w-full gap-2">
+        <FormField
+          label="Amount Quantity"
+          step="any"
+          autoComplete="off"
+          {...register("amount_quantity")}
+          error={errors.amount_quantity}
+        />
+        <FormField
+          label="Amount Units"
+          step="any"
+          autoComplete="off"
+          {...register("amount_units")}
+          error={errors.amount_units}
+        />
+      </div>
 
-      <FormField
-        label="Amount Description"
-        type="input"
-        step="any"
-        autoComplete="off"
-        {...register("amount_description")}
-        error={errors.amount_description}
-      />
-
-      {/* Plants Sampled Estimate */}
-      <FormField
-        label="Plants Sampled Estimate"
-        type="number"
-        autoComplete="off"
-        step="1"
-        {...register("plants_sampled_estimate", {
-          valueAsNumber: true, // Transform string to number
-        })}
-        error={errors.plants_sampled_estimate}
-      />
       {errors.root && (
         <div className="flex h-4 justify-end text-xs text-orange-800">
           {errors.root.message}

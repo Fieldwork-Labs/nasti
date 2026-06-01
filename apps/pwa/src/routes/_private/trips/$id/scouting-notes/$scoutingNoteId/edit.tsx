@@ -263,16 +263,6 @@ function ScoutingNoteFormReady({
     [user, org, tripId, location, photoChanges, isDirty, isOnline],
   )
 
-  const handleSetFieldName = useCallback(() => {
-    setEnterFieldName(true)
-    setValue("species_uncertain", true)
-  }, [setValue])
-
-  const handleResetFieldName = useCallback(() => {
-    setEnterFieldName(false)
-    setValue("field_name", "", { shouldValidate: true })
-  }, [setValue])
-
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 

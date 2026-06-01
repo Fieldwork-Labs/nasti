@@ -17,20 +17,6 @@ import { parsePostGISPoint } from "@nasti/common/utils"
 import { useUpdateCollection } from "../../hooks/useUpdateCollection"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
 
-type CollectionFormData = {
-  species_id: string | null
-  species_uncertain: boolean
-  field_name: string
-  specimen_collected: boolean
-  collected_on: string
-  latitude: number
-  longitude: number
-  description: string
-  amount_description: string
-  plants_sampled_estimate: number | null
-  collected_by: string | null
-}
-
 export const schema = z
   .object({
     species_id: z.string().nullable(),
@@ -54,11 +40,8 @@ export const schema = z
       .max(180),
 
     description: z.string(),
-    amount_description: z
-      .string()
-      .optional()
-      .transform((val) => val ?? ""),
-    plants_sampled_estimate: z.number().nullable(),
+    amount_units: z.string().nullable(),
+    amount_quantity: z.number().nullable(),
     collected_by: z.string().uuid().nullable(),
   })
   .refine(
@@ -74,6 +57,8 @@ export const schema = z
       path: ["field_name"],
     },
   )
+
+type CollectionFormData = z.infer<typeof schema>
 
 const useCollectionForm = ({
   instance,
@@ -101,8 +86,8 @@ const useCollectionForm = ({
               }),
           specimen_collected: Boolean(collection.specimen_collected),
           description: collection.description ?? "",
-          amount_description: collection.amount_description ?? "",
-          plants_sampled_estimate: collection.plants_sampled_estimate,
+          amount_quantity: collection.amount_quantity,
+          amount_units: collection.amount_units ?? "",
           collected_on: collection.collected_on,
           collected_by: collection.collected_by,
         }
@@ -116,8 +101,8 @@ const useCollectionForm = ({
           collected_on: new Date().toLocaleDateString(),
           collected_by: user?.id,
           description: "",
-          amount_description: "",
-          plants_sampled_estimate: null,
+          amount_units: "",
+          amount_quantity: undefined,
         }
   }, [collection, user?.id])
 
