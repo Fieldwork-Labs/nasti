@@ -159,11 +159,6 @@ function ScoutingNoteFormReady({
     keep: initialPhotos,
   })
 
-  // Field name entry toggle
-  const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(initialValues.field_name && !initialValues.species_id),
-  )
-
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...initialValues,
@@ -185,6 +180,16 @@ function ScoutingNoteFormReady({
     mode: "all",
     reValidateMode: "onChange",
   })
+
+  // Field name entry toggle
+  const isFieldName =
+    watch("specimen_collected") || Boolean(initialValues.field_name)
+  const [enterFieldName, setEnterFieldName] = useState(isFieldName)
+
+  const handleSetIsSpecimenCollected = (val: boolean) => {
+    setValue("specimen_collected", val)
+    setEnterFieldName(val)
+  }
 
   // Handlers
   const onFormSubmit = useCallback(
@@ -288,28 +293,35 @@ function ScoutingNoteFormReady({
         onSubmit={hookSubmit(onFormSubmit)}
       >
         <div className="space-y-4 overflow-y-auto px-2">
-          {!enterFieldName ? (
-            <SpeciesSelectInput
-              tripId={tripId}
-              selectedSpeciesId={speciesId || undefined}
-              onSelectSpecies={(id) =>
-                setValue("species_id", id, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                })
-              }
-              onClickFieldName={handleSetFieldName}
-            />
-          ) : (
+          <SpeciesSelectInput
+            onSelectSpecies={(speciesId) =>
+              setValue("species_id", speciesId, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+            tripId={tripId}
+            selectedSpeciesId={speciesId ?? undefined}
+          />
+          {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
-              <div className="flex items-center space-x-2">
+              <Label>Specimen Name</Label>
+              <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
                   className="h-12 text-lg"
+                  autoComplete="off"
+                  tabIndex={1}
                   autoFocus
                 />
-                <Button onClick={handleResetFieldName} variant="outline">
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setValue("field_name", "", { shouldValidate: true })
+                  }}
+                  className="h-12"
+                  variant={"outline"}
+                >
                   <X />
                 </Button>
               </div>
@@ -317,13 +329,8 @@ function ScoutingNoteFormReady({
           )}
 
           <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="species_uncertain"
-              render={({ field }) => (
-                <Switch checked={field.value} onChange={field.onChange} />
-              )}
-            />
+            <Switch id="species_uncertain" {...register("species_uncertain")} />
+
             <Label>Species Uncertain?</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -336,7 +343,17 @@ function ScoutingNoteFormReady({
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch {...register("specimen_collected")} />
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field: { value } }) => (
+                <Switch
+                  id="specimen_collected"
+                  checked={value}
+                  onCheckedChange={handleSetIsSpecimenCollected}
+                />
+              )}
+            />
             <Label>Specimen Collected?</Label>
             <Popover>
               <PopoverTrigger asChild>

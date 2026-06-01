@@ -9,12 +9,10 @@ export const SpeciesSelectInput = ({
   selectedSpeciesId,
   tripId,
   onSelectSpecies,
-  onClickFieldName,
 }: {
   selectedSpeciesId?: string
   tripId: string
   onSelectSpecies: (speciesId: string | null) => void
-  onClickFieldName: () => void
 }) => {
   const { isOpen: isOpenSpeciesDrawer, setIsOpen: setIsOpenSpeciesDrawer } =
     useOpenClose()
@@ -25,25 +23,13 @@ export const SpeciesSelectInput = ({
   return (
     <>
       {!selectedSpeciesId && (
-        <div className="px-1">
-          <Button
-            onClick={() => setIsOpenSpeciesDrawer(true)}
-            variant={"outline"}
-            className="h-12 w-full text-lg"
-          >
-            Select known species
-          </Button>
-          <div className="text-muted-foreground w-full text-center text-sm font-semibold">
-            OR
-          </div>
-          <Button
-            onClick={() => onClickFieldName()}
-            variant={"outline"}
-            className="h-12 w-full text-lg"
-          >
-            Enter Specimen Name
-          </Button>
-        </div>
+        <Button
+          onClick={() => setIsOpenSpeciesDrawer(true)}
+          variant={"outline"}
+          className="h-12 w-full text-lg"
+        >
+          Select species
+        </Button>
       )}
       {selectedSpecies && (
         <SpeciesListItem

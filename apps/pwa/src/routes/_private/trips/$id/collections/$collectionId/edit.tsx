@@ -166,11 +166,6 @@ function CollectionFormReady({
     keep: initialPhotos,
   })
 
-  // Field name entry toggle
-  const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(collection.field_name && !collection.species_id),
-  )
-
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...collection,
@@ -192,6 +187,16 @@ function CollectionFormReady({
     mode: "all",
     reValidateMode: "onChange",
   })
+
+  // Field name entry toggle
+  const isFieldName =
+    watch("specimen_collected") || Boolean(defaultValues.field_name)
+  const [enterFieldName, setEnterFieldName] = useState(isFieldName)
+
+  const handleSetIsSpecimenCollected = (val: boolean) => {
+    setValue("specimen_collected", val)
+    setEnterFieldName(val)
+  }
 
   // Handlers
   const onFormSubmit = useCallback(
@@ -265,16 +270,6 @@ function CollectionFormReady({
     [user, org, tripId, location, photoChanges, isDirty, isOnline],
   )
 
-  const handleSetFieldName = useCallback(() => {
-    setEnterFieldName(true)
-    setValue("species_uncertain", true)
-  }, [setValue])
-
-  const handleResetFieldName = useCallback(() => {
-    setEnterFieldName(false)
-    setValue("field_name", "", { shouldValidate: true })
-  }, [setValue])
-
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
@@ -295,28 +290,35 @@ function CollectionFormReady({
         onSubmit={hookSubmit(onFormSubmit)}
       >
         <div className="space-y-4 overflow-y-auto px-2">
-          {!enterFieldName ? (
-            <SpeciesSelectInput
-              tripId={tripId}
-              selectedSpeciesId={speciesId || undefined}
-              onSelectSpecies={(id) =>
-                setValue("species_id", id, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                })
-              }
-              onClickFieldName={handleSetFieldName}
-            />
-          ) : (
+          <SpeciesSelectInput
+            onSelectSpecies={(speciesId) =>
+              setValue("species_id", speciesId, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+            tripId={tripId}
+            selectedSpeciesId={speciesId ?? undefined}
+          />
+          {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
-              <div className="flex items-center space-x-2">
+              <Label>Specimen Name</Label>
+              <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
                   className="h-12 text-lg"
+                  autoComplete="off"
+                  tabIndex={1}
                   autoFocus
                 />
-                <Button onClick={handleResetFieldName} variant="outline">
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setValue("field_name", "", { shouldValidate: true })
+                  }}
+                  className="h-12"
+                  variant={"outline"}
+                >
                   <X />
                 </Button>
               </div>
@@ -324,26 +326,30 @@ function CollectionFormReady({
           )}
 
           <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="species_uncertain"
-              render={({ field }) => (
-                <Switch checked={field.value} onChange={field.onChange} />
-              )}
-            />
+            <Switch {...register("species_uncertain")} />
             <Label>Species Uncertain?</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <InfoIcon className="h-5 w-5" />
               </PopoverTrigger>
               <PopoverContent>
-                Toggle if not 100% certain or after entering field name
+                Toggle if not 100% certain or to enter a specimen name
               </PopoverContent>
             </Popover>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch {...register("specimen_collected")} />
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field: { value } }) => (
+                <Switch
+                  id="specimen_collected"
+                  checked={value}
+                  onCheckedChange={handleSetIsSpecimenCollected}
+                />
+              )}
+            />
             <Label>Specimen Collected?</Label>
             <Popover>
               <PopoverTrigger asChild>
