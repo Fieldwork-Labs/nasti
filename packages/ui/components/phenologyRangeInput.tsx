@@ -1,7 +1,7 @@
+import * as SliderPrimitive from "@radix-ui/react-slider"
 import { X } from "lucide-react"
 
 import { Label } from "@nasti/ui/label"
-import { Slider } from "@nasti/ui/slider"
 import { cn } from "@nasti/ui/utils"
 
 type PhenologyValue = [number | null, number | null]
@@ -54,7 +54,7 @@ export function PhenologyRangeInput({
   const hasValue = value[0] !== null && value[1] !== null
   const sliderValue = hasValue
     ? [valueToPosition(value[0] as number), valueToPosition(value[1] as number)]
-    : [0, 100]
+    : [50, 50]
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -78,31 +78,42 @@ export function PhenologyRangeInput({
         </div>
       </div>
       <div className="border-border overflow-hidden rounded-md border">
-        <div className="divide-border text-muted-foreground grid grid-cols-5 divide-x text-[0.68rem] leading-tight">
-          {segmentLabels.map((segmentLabel, index) => (
+        <div className="divide-border text-muted-foreground relative grid grid-cols-5 divide-x text-[0.68rem] leading-tight">
+          {segmentLabels.map((segmentLabel, i) => (
             <div
               key={segmentLabel}
               className={cn(
-                "flex min-h-12 items-center justify-center px-1 text-center",
-                index % 2 === 0 ? "bg-muted/70" : "bg-background",
+                "bg-muted/70 flex min-h-12 items-center justify-center border-x border-dashed px-1 text-center",
+                i === 4 ? "border-primary border-l-2 border-solid" : "",
               )}
             >
               {segmentLabel}
             </div>
           ))}
-        </div>
-        <div className="px-1 py-4">
-          <Slider
+          <SliderPrimitive.Root
+            className="absolute inset-0 flex h-full w-full touch-none select-none items-center"
             min={0}
             max={100}
             step={1}
             minStepsBetweenThumbs={1}
             disabled={disabled}
             value={sliderValue}
-            onValueChange={([start, end]) =>
+            onValueChange={([start, end]) => {
+              console.log({ start, end })
               onValueChange([positionToValue(start), positionToValue(end)])
-            }
-          />
+            }}
+          >
+            <SliderPrimitive.Track className="relative h-full w-full grow rounded-none bg-transparent">
+              <SliderPrimitive.Range className="bg-primary/30 absolute h-full" />
+            </SliderPrimitive.Track>
+            {sliderValue?.map((_, index) => (
+              <SliderPrimitive.Thumb
+                key={index}
+                aria-label={index === 0 ? "Phenology start" : "Phenology end"}
+                className="bg-primary focus-visible:outline-hidden focus-visible:ring-ring block h-full w-1.5 rounded-none shadow-[0_0_0_1px_hsl(var(--background)),0_0_0_3px_hsl(var(--primary))] transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50"
+              />
+            ))}
+          </SliderPrimitive.Root>
         </div>
         <div className="text-muted-foreground relative h-5 px-2 pb-2 text-[0.68rem]">
           {stages.map((stage) => (
