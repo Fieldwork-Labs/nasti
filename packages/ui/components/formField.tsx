@@ -15,13 +15,14 @@ type FormFieldProps = {
 
 export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
   ({ error, label, ...fieldProps }: FormFieldProps, ref) => (
-    <div className="form-group flex flex-col gap-2">
+    <div className="form-group flex w-full flex-col gap-2">
       <div className="grid w-full items-center gap-1.5">
         <Label htmlFor={fieldProps.name}>{label}</Label>
         <Input
           {...fieldProps}
           ref={ref}
           className={cn(
+            "w-full",
             error &&
               "border-orange-800 focus:border-orange-500 focus:ring-orange-600",
           )}
