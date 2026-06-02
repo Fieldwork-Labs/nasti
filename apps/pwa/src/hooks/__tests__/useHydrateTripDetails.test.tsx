@@ -39,11 +39,12 @@ vi.mock(import("../useHydrateTripDetails/helpers"), async (importOriginal) => {
     useOrgMembers: vi.fn(() => {
       return mockOrgMembersRequest
     }),
-    useTripFullSpecies: vi.fn(() => {
-      return mockSpeciesRequest
-    }),
   }
 })
+
+vi.mock("../useSpeciesForTrip", () => ({
+  useSpeciesForTrip: vi.fn(() => ({ data: mockSpeciesResponse.data })),
+}))
 
 const mockCollectionPhotos = [
   {
@@ -403,6 +404,7 @@ describe("useHydrateTripDetails", () => {
       trip: getUseTripDetailsExpected(),
       species: mockSpeciesRequest.data.data,
       people: mockOrgMembersRequest.data.data,
+      speciesPhotosMap: {},
     }
 
     await waitFor(() => {

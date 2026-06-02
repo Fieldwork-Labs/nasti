@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { useCollection } from "../useCollection"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 const collectionId = "a9b6d7f6-bf43-455b-a306-6050191e3637"
 const tripId = "cd9aa864-3bae-43d9-af5a-2e635a5bd640"
@@ -133,18 +134,46 @@ const mockTripDetails = {
   isRefetching: false,
 }
 
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false, // important — prevents retries obscuring test failures
+      },
+    },
+  })
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+}
+
 vi.mock("../useHydrateTripDetails", () => ({
   useHydrateTripDetails: vi.fn(() => mockTripDetails),
 }))
 
-describe("useAuth hook", () => {
+vi.mock("../useSpeciesList", () => ({
+  useSpeciesList: vi.fn(() => ({ data: mockTripDetails.data.species })),
+  getSpeciesListQueryOptions: vi.fn(() => ({
+    queryKey: ["species", "list"],
+    queryFn: async () => mockTripDetails.data.species,
+  })),
+}))
+
+vi.mock("../usePhotosForTrip", () => ({
+  usePhotosForTrip: vi.fn(() => ({ data: [] })),
+}))
+
+describe("useCollection hook", () => {
   beforeEach(() => {
     // Clear any previous spies/mocks on supabase
     vi.restoreAllMocks()
   })
 
   it("returns a collection with species when one exists", async () => {
-    const { result } = renderHook(() => useCollection({ collectionId, tripId }))
+    const { result } = renderHook(
+      () => useCollection({ collectionId, tripId }),
+      { wrapper: createWrapper() },
+    )
     const expectedCollection = mockTripDetails.data.trip?.collections.find(
       (c) => c.id === collectionId,
     )

@@ -106,6 +106,9 @@ importers:
       '@uidotdev/usehooks':
         specifier: ^2.4.1
         version: 2.4.1(react-dom@18.3.1)(react@18.3.1)
+      fake-indexeddb:
+        specifier: ^6.2.5
+        version: 6.2.5
       idb:
         specifier: ^8.0.2
         version: 8.0.2
@@ -9046,6 +9049,11 @@ packages:
     dependencies:
       assign-symbols: 1.0.0
       is-extendable: 1.0.1
+    dev: false
+
+  /fake-indexeddb@6.2.5:
+    resolution: {integrity: sha512-CGnyrvbhPlWYMngksqrSSUT1BAVP49dZocrHuK0SvtR0D5TMs5wP0o3j7jexDJW01KSadjBp1M/71o/KR3nD1w==}
+    engines: {node: '>=18'}
     dev: false
 
   /fast-deep-equal@3.1.3:

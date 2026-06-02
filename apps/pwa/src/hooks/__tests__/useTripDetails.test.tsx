@@ -115,7 +115,6 @@ const getUseTripDetailsExpected = () => {
     ...mockTrip.data,
     collections: collectionsWithCoord,
     scoutingNotes: [],
-    species: mockTripSpecies.data,
     members: mockTripMembers.data,
   }
 }
