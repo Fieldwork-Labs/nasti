@@ -42,22 +42,6 @@ export function getScoutingNotePhotoMap(
   }, {})
 }
 
-export function parsePendingLocation<T extends { location: string | null }>(
-  obj: T,
-): T & { locationCoord?: { latitude: number; longitude: number } } {
-  if (!obj.location) return obj
-  // obj.location is a string with the format `POINT(lng lat)`
-  const innerString = obj.location.substring(6, obj.location.length - 1)
-  const [lng, lat] = innerString.split(" ")
-  return {
-    ...obj,
-    locationCoord: {
-      latitude: parseFloat(lat),
-      longitude: parseFloat(lng),
-    },
-  }
-}
-
 export function attachPhotos<T extends { id: string }>(
   coll: T,
   photosMap: Record<

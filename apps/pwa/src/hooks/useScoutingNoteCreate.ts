@@ -1,8 +1,4 @@
-import {
-  ScoutingNote,
-  ScoutingNoteWithCoord,
-  NewScoutingNote,
-} from "@nasti/common/types"
+import { ScoutingNote, NewScoutingNote } from "@nasti/common/types"
 import { EntityConfig, useEntityCreate } from "./useEntityCreate"
 
 const scoutingNoteConfig = {
@@ -11,7 +7,4 @@ const scoutingNoteConfig = {
 } satisfies EntityConfig
 
 export const useScoutingNoteCreate = ({ tripId }: { tripId: string }) =>
-  useEntityCreate<ScoutingNote, NewScoutingNote, ScoutingNoteWithCoord>(
-    tripId,
-    scoutingNoteConfig,
-  )
+  useEntityCreate<ScoutingNote, NewScoutingNote>(tripId, scoutingNoteConfig)

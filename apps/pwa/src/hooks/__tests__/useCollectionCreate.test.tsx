@@ -1,34 +1,16 @@
-import {
-  describe,
-  it,
-  expect,
-  vi,
-  beforeEach,
-  afterEach,
-  type Mock,
-} from "vitest"
-import { renderHook, act, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { renderHook, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useCollectionCreate } from "../useCollectionCreate"
 import type { Collection } from "@nasti/common/types"
 import { getMutationKey } from "../useEntityCreate"
-import { parsePostGISPoint } from "@nasti/common/utils"
 
-vi.mock("@nasti/common/supabase", () => {
-  // Create a mock that matches how createCollection(...) is called:
-  const overrideTypesFn = vi.fn(() =>
-    Promise.resolve({ data: mockCollection, error: null }),
-  )
-  const singleFn = vi.fn(() => ({ overrideTypes: overrideTypesFn }))
-  const selectFn = vi.fn(() => ({ single: singleFn }))
-  const insertFn = vi.fn(() => ({ select: selectFn }))
-  const fromFn = vi.fn(() => ({ insert: insertFn }))
+const { psInsertMock } = vi.hoisted(() => ({
+  psInsertMock: vi.fn(),
+}))
 
-  return {
-    supabase: {
-      from: fromFn,
-    },
-  }
+vi.mock("@/lib/powersync/crud", () => {
+  return { psInsert: psInsertMock }
 })
 
 const mockCollection = {
@@ -49,12 +31,11 @@ const mockCollection = {
 describe("useCollectionCreate · mutateAsync", () => {
   let queryClient: QueryClient
 
-  beforeEach(async () => {
-    // Create a fresh QueryClient for each test, disabling retries so that errors bubble immediately
-    const { queryClient: importedQueryClient } = await import(
-      "@/lib/queryClient"
-    )
-    queryClient = importedQueryClient
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    psInsertMock.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -62,19 +43,8 @@ describe("useCollectionCreate · mutateAsync", () => {
     vi.clearAllMocks()
   })
 
-  it("mutateAsync should insert a new Collection and return it (and call supabase.from/insert)", async () => {
-    // 1. Seed "trip details" so onMutate doesn’t throw:
+  it("mutateAsync should insert a new Collection locally and return it", async () => {
     const tripId = mockCollection.trip_id
-    queryClient.setQueryData(["collections", "byTrip", tripId], [])
-
-    // 2. Immediately grab and spy on `supabase.from` before invoking mutateAsync:
-    const { supabase } = await import("@nasti/common/supabase")
-    // At this point, supabase.from is the mock we defined above.
-    const spyFrom = vi.spyOn(supabase, "from")
-    // Because the module mock above already set supabase.from to a vi.fn(),
-    // this spy will wrap that same mock function.
-
-    // 3. Render our hook under a QueryClientProvider:
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
@@ -82,59 +52,40 @@ describe("useCollectionCreate · mutateAsync", () => {
       wrapper,
     })
 
-    // 4. Act: call mutateAsync:
     let returned: Collection | undefined
     await act(async () => {
       returned = await result.current.mutateAsync(mockCollection)
     })
 
-    // 5. Assert: returned value must equal our mockCollection
     expect(returned).toEqual(mockCollection)
-
-    // 6. Now that mutateAsync has run, supabase.from should have been called with "collection":
-    expect(spyFrom).toHaveBeenCalledWith("collection")
-
-    // 7. Next, ensure that the `insert(...)` method was called with our payload:
-    //    Because our module mock defined: supabase.from() → { insert: insertFn },
-    //    we can reach insertFn via `supabase.from().insert`.
-    const insertMock = supabase.from("collection").insert as Mock
-    expect(insertMock).toHaveBeenCalledWith(mockCollection)
-
-    // 8. Finally, ensure that the querydata cache now contains the new collection
-    const data = queryClient.getQueryData(["collections", "byTrip", tripId])
-    const expectedCollection = {
-      ...returned,
-      locationCoord: parsePostGISPoint(returned!.location!),
-    }
-    expect(data).toStrictEqual([expectedCollection])
+    expect(psInsertMock).toHaveBeenCalledWith("collection", mockCollection)
   })
 
-  it("mutateAsync should throw an error if the tripId doesn't exist", async () => {
+  it("mutateAsync should surface PowerSync insert errors", async () => {
+    const error = new Error("insert failed")
+    psInsertMock.mockRejectedValueOnce(error)
+
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
 
-    // 3. Render the hook
     const { result } = renderHook(
-      () => useCollectionCreate({ tripId: "nonsense" }),
+      () => useCollectionCreate({ tripId: mockCollection.trip_id }),
       {
         wrapper,
       },
     )
 
-    // 4. Act: Call mutateAsync(...) with our mockCollection
-    let error: Error | undefined
+    let thrown: Error | undefined
     await act(async () => {
       try {
         await result.current.mutateAsync(mockCollection)
       } catch (err) {
-        error = err as Error
+        thrown = err as Error
       }
     })
 
-    waitFor(() => {
-      expect(error?.message).toEqual("Unknown trip")
-    })
+    expect(thrown).toBe(error)
   })
 })
 

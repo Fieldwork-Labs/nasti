@@ -42,13 +42,11 @@ import {
 } from "react"
 
 import { useGeoLocation } from "@/contexts/location"
-import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
 import {
   TripCollectionPhotos,
   TripScoutingNotePhotos,
 } from "@/hooks/usePhotosForTrip"
-import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
 import { Input } from "@nasti/ui/input"
 import { Link, useParams } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
@@ -208,18 +206,12 @@ export const CollectionListItem = ({
   species?: Species | null
   person?: Person | null
 }) => {
-  const { getIsMutating, getIsPending } = useCollectionCreate({
-    tripId: collection.trip_id ?? "",
-  })
-  const isPending = getIsPending({ id: collection.id })
   return (
     <EntityListItem
       entity={collection}
       species={species}
       person={person}
       config={collectionConfig}
-      isPending={Boolean(isPending)}
-      isMutating={getIsMutating({ id: collection.id, includeChildren: true })}
     />
   )
 }
@@ -233,18 +225,12 @@ export const ScoutingNoteListItem = ({
   species?: Species | null
   person?: Person | null
 }) => {
-  const { getIsMutating, getIsPending } = useScoutingNoteCreate({
-    tripId: scoutingNote.trip_id ?? "",
-  })
-  const isPending = getIsPending({ id: scoutingNote.id })
   return (
     <EntityListItem
       entity={scoutingNote}
       species={species}
       person={person}
       config={scoutingNoteConfig}
-      isPending={Boolean(isPending)}
-      isMutating={getIsMutating({ id: scoutingNote.id, includeChildren: true })}
     />
   )
 }

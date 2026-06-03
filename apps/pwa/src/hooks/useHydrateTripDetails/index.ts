@@ -1,21 +1,14 @@
-import {
-  Collection,
-  CollectionPhoto,
-  ScoutingNotePhoto,
-} from "@nasti/common/types"
+import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 
-import { getMutationKey } from "@/hooks/useEntityCreate"
 import { usePhotosForTrip } from "@/hooks/usePhotosForTrip"
 import { useNetwork } from "@/hooks/useNetwork"
 import { useTripDetails } from "@/hooks/useTripDetails"
-import { useMutationState } from "@tanstack/react-query"
 import { useCallback, useMemo, useState } from "react"
 import {
   useOrgMembers,
   getCollectionPhotoMap,
   getScoutingNotePhotoMap,
   getSpeciesPhotoMap,
-  parsePendingLocation,
 } from "./helpers"
 import { TripDetails } from "./types"
 import { useSpeciesForTrip } from "../useSpeciesForTrip"
@@ -75,19 +68,6 @@ export const usePhotosMap = ({
   }
 }
 
-export const usePendingCollections = ({ tripId }: { tripId: string }) => {
-  return useMutationState<Collection>({
-    filters: {
-      mutationKey: getMutationKey("collection", tripId),
-      status: "pending",
-    },
-    select: (mutation) => mutation.state.variables as Collection,
-  }).map((coll) => ({
-    ...coll,
-    isPending: true,
-  }))
-}
-
 export const useSpeciesPhotosMap = ({ tripId }: { tripId: string }) => {
   const {
     data,
@@ -123,7 +103,6 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
   const { speciesPhotosMap, speciesPhotosRefetch, speciesPhotosIsFetching } =
     useSpeciesPhotosMap({ tripId: id })
 
-  const pendingCollections = usePendingCollections({ tripId: id })
   const tripSpeciesQuery = useSpeciesForTrip(id)
   // we don't use this data directly here, but we should ensure it's up to date
   queryClient.ensureQueryData(getSpeciesListQueryOptions())
@@ -134,22 +113,9 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     if (!tripDetailsQuery.data) return null
     const { collections, scoutingNotes, ...rest } = tripDetailsQuery.data
 
-    const pendingCollectionsWithCoord =
-      pendingCollections.map(parsePendingLocation)
-
-    // Add the pending collections to the collections array
-    // filter out the pending collections from the collections array to prevent duplicates
-    // pending collections have more recently updated data so should override
-    const newCollections = [
-      ...(collections?.filter(
-        ({ id }) => !pendingCollectionsWithCoord.find((c) => c.id === id),
-      ) ?? []),
-      ...pendingCollectionsWithCoord,
-    ]
-
     const result: TripDetails = {
       ...rest,
-      collections: newCollections.map((col) => ({
+      collections: collections?.map((col) => ({
         ...col,
         photos: collectionPhotosMap[col.id] ?? [],
       })),
@@ -160,7 +126,7 @@ export const useHydrateTripDetails = ({ id }: { id: string }) => {
     }
 
     return result
-  }, [tripDetailsQuery.data, collectionPhotosMap, pendingCollections])
+  }, [tripDetailsQuery.data, collectionPhotosMap, scoutingNotePhotosMap])
 
   const peopleQuery = useOrgMembers()
 
