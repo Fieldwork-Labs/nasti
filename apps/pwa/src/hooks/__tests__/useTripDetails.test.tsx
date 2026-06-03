@@ -3,6 +3,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, afterEach, vi } from "vitest"
 import { parseLocation } from "../useTripDetails/helpers"
+import { useTripDetails } from "../useTripDetails"
+
+const { powerSyncUseQueryMock } = vi.hoisted(() => ({
+  powerSyncUseQueryMock: vi.fn(),
+}))
+
+vi.mock("@powersync/tanstack-react-query", () => ({
+  useQuery: powerSyncUseQueryMock,
+}))
 
 const mockTrip = {
   error: null,
@@ -22,30 +31,6 @@ const mockTrip = {
   status: 200,
   statusText: "OK",
 }
-const mockTripSpecies = {
-  error: null,
-  data: [
-    {
-      id: "7880cc25-e407-4309-baf0-3bc4e44cee39",
-      trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
-      species_id: "1b31f525-3397-434f-82e6-73ad2e6b9ac3",
-    },
-    {
-      id: "807331e3-2955-4a02-8a68-0b022be6ea07",
-      trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
-      species_id: "3ef49a8c-c020-4418-b3ef-9efbc9a80d57",
-    },
-    {
-      id: "4f7bd4cf-10a3-4404-bc4b-aeb756e91b52",
-      trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
-      species_id: "a1f7381f-efed-4c9e-ac8a-84f29f1a61ea",
-    },
-  ],
-  count: null,
-  status: 200,
-  statusText: "OK",
-}
-
 const mockTripMembers = {
   error: null,
   data: [
@@ -123,43 +108,35 @@ describe("useTripDetailsQuery", () => {
   let queryClient: QueryClient
 
   beforeEach(async () => {
-    vi.resetModules()
+    powerSyncUseQueryMock.mockReset()
     // Create a fresh QueryClient for each test, disabling retries so that errors bubble immediately
     const { queryClient: importedQueryClient } = await import(
       "@/lib/queryClient"
     )
     queryClient = importedQueryClient
-
-    vi.mock(import("../useTripDetails/helpers"), async (getOriginal) => {
-      type Original = typeof import("../useTripDetails/helpers")
-      type Return<T extends keyof Original> = ReturnType<Original[T]>
-      const original = await getOriginal<Original>()
-
-      return {
-        ...original,
-        getTrip: vi.fn(() => {
-          console.log("calling mocked getTrip")
-          return Promise.resolve(mockTrip) as unknown as Return<"getTrip">
-        }),
-        getTripSpecies: vi.fn(
-          () =>
-            Promise.resolve(
-              mockTripSpecies,
-            ) as unknown as Return<"getTripSpecies">,
-        ),
-        getTripMembers: vi.fn(
-          () =>
-            Promise.resolve(
-              mockTripMembers,
-            ) as unknown as Return<"getTripMembers">,
-        ),
-        getTripCollections: vi.fn(
-          () =>
-            Promise.resolve(
-              mockTripCollections,
-            ) as unknown as Return<"getTripCollections">,
-        ),
+    powerSyncUseQueryMock.mockImplementation(({ queryKey }) => {
+      const key = queryKey.join(":")
+      const baseQuery = {
+        refetch: vi.fn(),
+        isPending: false,
+        isFetching: false,
+        isError: false,
       }
+
+      if (key.startsWith("collections:byTrip")) {
+        return { ...baseQuery, data: mockTripCollections.data }
+      }
+      if (key.startsWith("scoutingNotes:byTrip")) {
+        return { ...baseQuery, data: [] }
+      }
+      if (key.startsWith("tripMembers:byTrip")) {
+        return { ...baseQuery, data: mockTripMembers.data }
+      }
+      if (key.startsWith("trip:details")) {
+        return { ...baseQuery, data: [mockTrip.data] }
+      }
+
+      return { ...baseQuery, data: [] }
     })
   })
 
@@ -169,7 +146,6 @@ describe("useTripDetailsQuery", () => {
 
   it("returns a query result with the expected structure", async () => {
     const tripId = mockTrip.data.id
-    const { useTripDetails } = await import("../useTripDetails")
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

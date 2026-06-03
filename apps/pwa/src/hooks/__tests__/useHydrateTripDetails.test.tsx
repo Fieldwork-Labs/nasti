@@ -46,6 +46,15 @@ vi.mock("../useSpeciesForTrip", () => ({
   useSpeciesForTrip: vi.fn(() => ({ data: mockSpeciesResponse.data })),
 }))
 
+vi.mock("../useSpeciesPhotosForTrip", () => ({
+  useSpeciesPhotosForTrip: vi.fn(() => ({
+    data: [],
+    refetch: vi.fn(),
+    error: null,
+    isFetching: false,
+  })),
+}))
+
 const mockCollectionPhotos = [
   {
     id: "bbc7440d-011f-452b-8c98-a2984784ae43",
