@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{
             <OfflineStateIndicator />
             <Button
               onClick={open}
-              className="bg-secondary-background h-9 w-9 rounded-xl p-2"
+              className="bg-secondary-background text-foreground h-9 w-9 rounded-xl p-2"
               size={"icon"}
             >
               <LeafIcon />

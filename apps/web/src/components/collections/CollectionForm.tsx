@@ -201,7 +201,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           Select on Map
         </Button>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-2">
         <FormField
           label="Latitude"
           type="number"
@@ -240,6 +240,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           autoComplete="off"
           {...register("amount_quantity")}
           error={errors.amount_quantity}
+          className="w-full"
         />
         <FormField
           label="Amount Units"
@@ -247,6 +248,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           autoComplete="off"
           {...register("amount_units")}
           error={errors.amount_units}
+          className="w-full"
         />
       </div>
 

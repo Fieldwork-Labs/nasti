@@ -24,6 +24,7 @@ import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
+import { stringToNumber } from "@nasti/common/utils"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 
@@ -35,16 +36,6 @@ export const Route = createFileRoute("/_private/trips/$id/collections/new")({
   component: AddCollection,
   validateSearch: (search) => addCollectionSearchSchema.parse(search),
 })
-
-// --- Schema & Types ---
-const stringToNumber = z.preprocess(
-  (val) => {
-    if (typeof val === "string" && val.trim() === "") return null
-    const num = Number(val)
-    return isNaN(num) ? undefined : num
-  },
-  z.number({ message: "Please enter a valid number" }).nullable(),
-)
 
 const schema = z
   .object({

@@ -16,6 +16,7 @@ import useUserStore from "@/store/userStore"
 import { parsePostGISPoint } from "@nasti/common/utils"
 import { useUpdateCollection } from "../../hooks/useUpdateCollection"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
+import { stringToNumber } from "@nasti/common/utils"
 
 export const schema = z
   .object({
@@ -41,7 +42,7 @@ export const schema = z
 
     description: z.string(),
     amount_units: z.string().nullable(),
-    amount_quantity: z.number().nullable(),
+    amount_quantity: stringToNumber,
     collected_by: z.string().uuid().nullable(),
   })
   .refine(
