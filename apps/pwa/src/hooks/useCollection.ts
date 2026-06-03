@@ -2,12 +2,17 @@ import {
   CollectionWithCoordAndPhotos,
   useHydrateTripDetails,
 } from "./useHydrateTripDetails"
-import { Collection, Species } from "@nasti/common/types"
+import {
+  Collection,
+  CollectionWithCoord,
+  Species,
+} from "@nasti/common/types"
 import { useSpeciesList } from "./useSpeciesList"
-import { supabase } from "@nasti/common/supabase"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@powersync/tanstack-react-query"
 import { parseLocation } from "./useTripDetails/helpers"
 import { TripCollectionPhotos, usePhotosForTrip } from "./usePhotosForTrip"
+import type { PowerSyncCollectionRow } from "@/lib/powersync/schema"
+import { rowToCollection } from "@/lib/powersync/rows"
 
 export type FullCollection = CollectionWithCoordAndPhotos & {
   species?: Species
@@ -15,17 +20,14 @@ export type FullCollection = CollectionWithCoordAndPhotos & {
 
 export const getCollection = async (id?: string) => {
   if (!id) return null
-  const { data, error } = await supabase
-    .from("collection")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle()
-    .overrideTypes<Collection>()
+  const data = await import("@/lib/powersync/db").then(({ powerSyncDb }) =>
+    powerSyncDb.getOptional<PowerSyncCollectionRow>(
+      "SELECT * FROM collection WHERE id = ?",
+      [id],
+    ),
+  )
 
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("No data returned from collection upsert")
-
-  return data
+  return data ? rowToCollection(data) : null
 }
 
 const useCollectionQuery = (
@@ -33,17 +35,20 @@ const useCollectionQuery = (
   placeholder: Collection | null = null,
   enabled: boolean = true,
 ) => {
-  return useQuery({
+  const query = useQuery<PowerSyncCollectionRow>({
     queryKey: ["collections", "detail", id],
-    queryFn: () => getCollection(id),
+    query: "SELECT * FROM collection WHERE id = ?",
+    parameters: [id],
     enabled,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    select(data) {
-      return data ? parseLocation(data) : null
-    },
-    placeholderData: placeholder,
   })
+  const row = query.data?.[0]
+  const data: CollectionWithCoord | null = row
+    ? parseLocation(rowToCollection(row))
+    : placeholder
+      ? parseLocation(placeholder)
+      : null
+
+  return { ...query, data }
 }
 
 export const useCollection = ({
@@ -76,8 +81,8 @@ export const useCollection = ({
   const species =
     speciesList?.find((s) => s.id === collectionData?.species_id) ?? undefined
 
-  const result = collectionData
-    ? { ...collectionData, photos, species }
+  const result: FullCollection | undefined = collectionData
+    ? { ...collectionData, photos: photos ?? [], species }
     : undefined
   return result
 }

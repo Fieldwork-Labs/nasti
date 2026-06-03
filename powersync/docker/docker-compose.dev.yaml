@@ -1,0 +1,33 @@
+services:
+  powersync:
+    restart: unless-stopped
+    image: journeyapps/powersync-service:latest
+    command: ["start", "-r", "unified"]
+    env_file:
+      - .env.dev
+    volumes:
+      - ../service.dev.yaml:/config/service.yaml
+      - ../sync-config.yaml:/config/sync-config.yaml
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+      NODE_OPTIONS: --max-old-space-size=1000
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "fetch('http://localhost:${PS_PORT:-8081}/probes/liveness').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 1s
+      retries: 15
+    ports:
+      - "${PS_PORT:-8081}:${PS_PORT:-8081}"
+    networks:
+      - supabase_network
+
+networks:
+  supabase_network:
+    external: true
+    name: supabase_network_nasti
+
+name: powersync_nasti

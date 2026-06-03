@@ -1,30 +1,21 @@
 import {
-  Collection,
   ScoutingNote,
   ScoutingNoteWithCoord,
   UpdateScoutingNote,
 } from "@nasti/common/types"
 
 import { queryClient } from "@/lib/queryClient"
-import { supabase } from "@nasti/common/supabase"
 import { useMutation } from "@tanstack/react-query"
 import { getMutationKey } from "./useEntityCreate"
+import { psUpdate } from "@/lib/powersync/crud"
 
 const updateScoutingNote = async (updatedItem: UpdateScoutingNote) => {
-  const query = supabase
-    .from("scouting_notes")
-    .upsert(updatedItem)
-    .eq("id", updatedItem.id)
-
-  const { data, error } = await query
-    .select("*")
-    .single()
-    .overrideTypes<ScoutingNote>()
-
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("No data returned from collection upsert")
-
-  return data as Collection
+  await psUpdate(
+    "scouting_notes",
+    updatedItem.id,
+    updatedItem as unknown as Record<string, unknown>,
+  )
+  return updatedItem as unknown as ScoutingNote
 }
 
 export const useScoutingNoteUpdate = ({ tripId }: { tripId: string }) => {

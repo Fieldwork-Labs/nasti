@@ -2,12 +2,17 @@ import {
   ScoutingNoteWithCoordAndPhotos,
   useHydrateTripDetails,
 } from "./useHydrateTripDetails"
-import { ScoutingNote, Species } from "@nasti/common/types"
+import {
+  ScoutingNote,
+  ScoutingNoteWithCoord,
+  Species,
+} from "@nasti/common/types"
 import { useSpeciesList } from "./useSpeciesList"
-import { supabase } from "@nasti/common/supabase"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@powersync/tanstack-react-query"
 import { parseLocation } from "./useTripDetails/helpers"
 import { TripScoutingNotePhotos, usePhotosForTrip } from "./usePhotosForTrip"
+import type { PowerSyncScoutingNoteRow } from "@/lib/powersync/schema"
+import { rowToScoutingNote } from "@/lib/powersync/rows"
 
 export type FullScoutingNote = ScoutingNoteWithCoordAndPhotos & {
   species?: Species
@@ -15,17 +20,14 @@ export type FullScoutingNote = ScoutingNoteWithCoordAndPhotos & {
 
 export const getScoutingNote = async (id?: string) => {
   if (!id) return null
-  const { data, error } = await supabase
-    .from("scouting_notes")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle()
-    .overrideTypes<ScoutingNote>()
+  const data = await import("@/lib/powersync/db").then(({ powerSyncDb }) =>
+    powerSyncDb.getOptional<PowerSyncScoutingNoteRow>(
+      "SELECT * FROM scouting_notes WHERE id = ?",
+      [id],
+    ),
+  )
 
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("No data returned from scoutingNote upsert")
-
-  return data
+  return data ? rowToScoutingNote(data) : null
 }
 
 const useScoutingNoteQuery = (
@@ -33,18 +35,20 @@ const useScoutingNoteQuery = (
   placeholder: ScoutingNote | null = null,
   enabled: boolean = true,
 ) => {
-  return useQuery({
+  const query = useQuery<PowerSyncScoutingNoteRow>({
     queryKey: ["scoutingNotes", "detail", id],
-    queryFn: () => getScoutingNote(id),
+    query: "SELECT * FROM scouting_notes WHERE id = ?",
+    parameters: [id],
     enabled,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    select(data) {
-      return data ? parseLocation(data) : null
-    },
-    initialData: placeholder,
-    placeholderData: placeholder,
   })
+  const row = query.data?.[0]
+  const data: ScoutingNoteWithCoord | null = row
+    ? parseLocation(rowToScoutingNote(row))
+    : placeholder
+      ? parseLocation(placeholder)
+      : null
+
+  return { ...query, data }
 }
 
 export const useScoutingNote = ({
@@ -79,6 +83,8 @@ export const useScoutingNote = ({
   const species =
     speciesList?.find((s) => s.id === snData?.species_id) ?? undefined
 
-  const result = snData ? { ...snData, photos, species } : undefined
+  const result: FullScoutingNote | undefined = snData
+    ? { ...snData, photos: photos ?? [], species }
+    : undefined
   return result
 }

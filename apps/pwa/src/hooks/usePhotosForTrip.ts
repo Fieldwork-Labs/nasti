@@ -1,12 +1,17 @@
 import { supabase } from "@nasti/common/supabase"
 import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@powersync/tanstack-react-query"
 import {
   PendingCollectionPhoto,
   PendingScoutingNotePhoto,
 } from "./usePhotosMutate"
 import { getImage, putImage } from "@/lib/persistFiles"
+import { useEffect, useMemo } from "react"
+import type {
+  PowerSyncCollectionPhotoRow,
+  PowerSyncScoutingNotePhotoRow,
+} from "@/lib/powersync/schema"
 
 export type TripCollectionPhotos = Array<
   CollectionPhoto | PendingCollectionPhoto
@@ -32,40 +37,6 @@ const imageUrlToBase64 = async (url: string): Promise<string> => {
   })
 }
 
-const getTripCollectionPhotos = (tripId: string) =>
-  supabase
-    .from("collection_photo")
-    .select(
-      `
-          *,
-          collection!inner (
-            id,
-            trip_id
-          )
-        `,
-    )
-    .eq("collection.trip_id", tripId)
-    .order("collection_id", { ascending: false })
-    .order("uploaded_at", { ascending: false })
-    .overrideTypes<CollectionPhoto[]>()
-
-const getTripScoutingNotesPhotos = (tripId: string) =>
-  supabase
-    .from("scouting_notes_photos")
-    .select(
-      `
-          *,
-          scouting_notes!inner (
-            id,
-            trip_id
-          )
-        `,
-    )
-    .eq("scouting_notes.trip_id", tripId)
-    .order("scouting_notes_id", { ascending: false })
-    .order("uploaded_at", { ascending: false })
-    .overrideTypes<ScoutingNotePhoto[]>()
-
 type EntityType = "collection" | "scoutingNote"
 export const getPhotosByTripQueryKey = (
   entityType: EntityType,
@@ -90,7 +61,7 @@ const scoutingNotePhotosTypeGuard = (
     photos !== undefined &&
     photos.every(
       (photo) =>
-        "scouting_note_id" in photo && photo.scouting_note_id !== undefined,
+        "scouting_notes_id" in photo && photo.scouting_notes_id !== undefined,
     )
   )
 }
@@ -104,63 +75,79 @@ export const usePhotosForTrip = ({
   tripId?: string
   enabled?: boolean
 }) => {
-  return useQuery({
+  type PhotoRow = PowerSyncCollectionPhotoRow | PowerSyncScoutingNotePhotoRow
+  const query =
+    entityType === "collection"
+      ? `SELECT cp.* FROM collection_photo cp
+         INNER JOIN collection c ON c.id = cp.collection_id
+         WHERE c.trip_id = ?
+         ORDER BY cp.collection_id DESC, cp.uploaded_at DESC`
+      : `SELECT snp.* FROM scouting_notes_photos snp
+         INNER JOIN scouting_notes sn ON sn.id = snp.scouting_notes_id
+         WHERE sn.trip_id = ?
+         ORDER BY snp.scouting_notes_id DESC, snp.uploaded_at DESC`
+
+  const photosQuery = useQuery<PhotoRow>({
     queryKey: getPhotosByTripQueryKey(entityType, tripId),
+    query,
+    parameters: [tripId ?? ""],
     enabled: Boolean(tripId) && enabled,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    queryFn: async () => {
-      if (!tripId) return []
-      const photos =
-        entityType === "collection"
-          ? await getTripCollectionPhotos(tripId)
-          : await getTripScoutingNotesPhotos(tripId)
+  })
 
-      if (photos.error) throw new Error(photos.error.message)
+  const result = useMemo(() => {
+    if (entityType === "collection") {
+      const rows = (photosQuery.data ?? []) as TripCollectionPhotos
+      return collectionPhotosTypeGuard(rows) ? rows : undefined
+    }
 
-      // Get photos that we need to fetch
+    const rows = (photosQuery.data ?? []) as TripScoutingNotePhotos
+    return scoutingNotePhotosTypeGuard(rows) ? rows : undefined
+  }, [entityType, photosQuery.data])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function cacheMissingPhotos() {
+      const photos = result ?? []
       type MissingPhotos = { id: string; url: string }
       const missingPhotos = (
         await Promise.all(
-          photos?.data.map(({ id, url }) =>
-            getImage(id).then((file) => (Boolean(file) ? null : { id, url })),
+          photos.map(({ id, url }) =>
+            getImage(id).then((file) => (file ? null : { id, url })),
           ),
         )
       ).filter(Boolean) as MissingPhotos[]
 
-      // request to supabase storage for an empty array throws an error
-      if (missingPhotos && missingPhotos.length > 0) {
-        const { data, error } = await supabase.storage
-          .from("collection-photos")
-          .createSignedUrls(
-            missingPhotos.map(({ url }) => url),
-            60 * 10,
-          )
+      if (cancelled || missingPhotos.length === 0) return
 
-        await Promise.all(
-          data
-            ?.filter((d) => d.signedUrl)
-            .map(async ({ signedUrl }, i) => {
-              const base64 = await imageUrlToBase64(signedUrl)
-              await putImage(missingPhotos[i].id, base64)
-            }) ?? [],
+      const { data, error } = await supabase.storage
+        .from("collection-photos")
+        .createSignedUrls(
+          missingPhotos.map(({ url }) => url),
+          60 * 10,
         )
 
-        if (error) console.log("Error when getting signed photos", { error })
+      if (error) {
+        console.log("Error when getting signed photos", { error })
+        return
       }
-      const result = photos?.data ?? []
-      const collectionPhotosResult = collectionPhotosTypeGuard(result)
-        ? result
-        : undefined
-      const scoutingNotePhotosResult = scoutingNotePhotosTypeGuard(result)
-        ? result
-        : undefined
-      return entityType === "collection"
-        ? collectionPhotosResult
-        : entityType === "scoutingNote"
-          ? scoutingNotePhotosResult
-          : result
-    },
-    refetchInterval: 1000 * 60 * 5, // every 5 min
-  })
+
+      await Promise.all(
+        data
+          ?.filter((item) => item.signedUrl)
+          .map(async ({ signedUrl }, index) => {
+            const base64 = await imageUrlToBase64(signedUrl)
+            await putImage(missingPhotos[index].id, base64)
+          }) ?? [],
+      )
+    }
+
+    cacheMissingPhotos()
+
+    return () => {
+      cancelled = true
+    }
+  }, [result])
+
+  return { ...photosQuery, data: result }
 }

@@ -4,9 +4,9 @@ import {
   useMutationState,
 } from "@tanstack/react-query"
 import { useCallback } from "react"
-import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/queryClient"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { psInsert } from "@/lib/powersync/crud"
+import { parseLocation } from "./useTripDetails/helpers"
 
 // Entity configuration type
 export interface EntityConfig {
@@ -35,22 +35,16 @@ const createEntity = async <
   createdItem: TNewEntity,
   tableName: "collection" | "scouting_notes",
 ): Promise<TEntity> => {
-  const { data, error } = await supabase
-    .from(tableName)
-    .insert(createdItem)
-    .select("*")
-    .single()
-    .overrideTypes<TEntity>()
-
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error(`No data returned from ${tableName} insert`)
-
-  return data as TEntity
+  await psInsert(tableName, createdItem as unknown as Record<string, unknown>)
+  return createdItem as unknown as TEntity
 }
 
-// Helper to parse location from PostGIS POINT string
+// Helper to parse WKT POINT strings used for local PowerSync writes.
 const parseLocationCoord = (location: string) => {
-  const innerString = location.substring(7, location.length - 1)
+  const innerString = location.slice(
+    location.indexOf("(") + 1,
+    location.lastIndexOf(")"),
+  )
   const [lng, lat] = innerString.split(" ")
   return {
     latitude: parseFloat(lat),
@@ -114,9 +108,8 @@ export function useEntityCreate<
       }
 
       const newEntity = {
-        ...data,
-        locationCoord: data.location ? parsePostGISPoint(data.location) : null,
-      } as unknown as TEntityWithCoord
+        ...parseLocation(data),
+      } as TEntityWithCoord
 
       queryClient.setQueryData(queryKey, [
         ...entitiesData.filter((c) => c.id !== newEntity.id),

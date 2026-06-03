@@ -1,18 +1,19 @@
 import { type Collection } from "@nasti/common/types"
 
-import { supabase } from "@nasti/common/supabase"
+import { powerSyncDb } from "@/lib/powersync/db"
 import { queryClient } from "@/lib/queryClient"
 import { useMutation } from "@tanstack/react-query"
+import { psDelete } from "@/lib/powersync/crud"
+import type { PowerSyncCollectionRow } from "@/lib/powersync/schema"
+import { rowToCollection } from "@/lib/powersync/rows"
 
 const deleteCollection = async (id: string) => {
-  const { error, data } = await supabase
-    .from("collection")
-    .delete()
-    .eq("id", id)
-    .select("*")
-    .single()
-  if (error) throw new Error(error.message)
-  return data as Collection
+  const row = await powerSyncDb.getOptional<PowerSyncCollectionRow>(
+    "SELECT * FROM collection WHERE id = ?",
+    [id],
+  )
+  await psDelete("collection", id)
+  return rowToCollection(row ?? ({ id } as PowerSyncCollectionRow))
 }
 
 export const useCollectionDelete = () => {

@@ -4,26 +4,18 @@ import {
   type Collection,
 } from "@nasti/common/types"
 
-import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@/lib/queryClient"
 import { useMutation } from "@tanstack/react-query"
 import { getMutationKey } from "./useEntityCreate"
+import { psUpdate } from "@/lib/powersync/crud"
 
 const updateCollection = async (updatedItem: UpdateCollection) => {
-  const query = supabase
-    .from("collection")
-    .upsert(updatedItem)
-    .eq("id", updatedItem.id)
-
-  const { data, error } = await query
-    .select("*")
-    .single()
-    .overrideTypes<Collection>()
-
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("No data returned from collection upsert")
-
-  return data
+  await psUpdate(
+    "collection",
+    updatedItem.id,
+    updatedItem as unknown as Record<string, unknown>,
+  )
+  return updatedItem as Collection
 }
 
 export const useCollectionUpdate = ({ tripId }: { tripId: string }) => {

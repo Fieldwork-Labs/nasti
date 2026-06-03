@@ -242,6 +242,7 @@ const mockOrgMembersRequest: QueryObserverPlaceholderResult<
   isLoadingError: false,
   isPaused: false,
   isPlaceholderData: true,
+  isEnabled: true,
   isRefetchError: false,
   isStale: false,
 }
@@ -307,6 +308,7 @@ const mockSpeciesRequest: QueryObserverPlaceholderResult<
   isLoadingError: false,
   isPaused: false,
   isPlaceholderData: true,
+  isEnabled: true,
   isRefetchError: false,
   isStale: false,
   promise: Promise.resolve(mockSpeciesResponse),

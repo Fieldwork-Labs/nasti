@@ -32,7 +32,10 @@ export function parseWktLocation<T extends { location: string | null }>(
 ): T & { locationCoord?: { latitude: number; longitude: number } } {
   if (!obj.location) return obj
   // obj.location is a string with the format `POINT(lng lat)`
-  const innerString = obj.location.substring(6, obj.location.length - 1)
+  const innerString = obj.location.slice(
+    obj.location.indexOf("(") + 1,
+    obj.location.lastIndexOf(")"),
+  )
   const [lng, lat] = innerString.split(" ")
   return {
     ...obj,

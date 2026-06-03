@@ -58,12 +58,24 @@ importers:
       '@hookform/resolvers':
         specifier: ^4.1.3
         version: 4.1.3(react-hook-form@7.54.2)
+      '@journeyapps/wa-sqlite':
+        specifier: ^1.5.0
+        version: 1.7.0
       '@nasti/common':
         specifier: workspace:*
         version: link:../../packages/common
       '@nasti/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@powersync/react':
+        specifier: ^1.9.0
+        version: 1.10.0(@powersync/common@1.53.2)(react@18.3.1)
+      '@powersync/tanstack-react-query':
+        specifier: ^0.2.2
+        version: 0.2.8(@powersync/common@1.53.2)(react@18.3.1)
+      '@powersync/web':
+        specifier: ^1.37.2
+        version: 1.38.2(@journeyapps/wa-sqlite@1.7.0)(@powersync/common@1.53.2)
       '@radix-ui/react-checkbox':
         specifier: ^1.1.4
         version: 1.1.4(@types/react-dom@19.0.4)(@types/react@18.3.18)(react-dom@18.3.1)(react@18.3.1)
@@ -83,17 +95,17 @@ importers:
         specifier: ^4.0.12
         version: 4.0.12(vite@6.2.1)
       '@tanstack/query-async-storage-persister':
-        specifier: ^5.72.1
-        version: 5.72.1
+        specifier: ^5.100.14
+        version: 5.100.14
       '@tanstack/query-sync-storage-persister':
-        specifier: ^5.67.2
-        version: 5.67.2
+        specifier: ^5.100.14
+        version: 5.100.14
       '@tanstack/react-query':
-        specifier: ^5.67.2
-        version: 5.67.2(react@18.3.1)
+        specifier: ^5.100.14
+        version: 5.100.14(react@18.3.1)
       '@tanstack/react-query-persist-client':
-        specifier: ^5.67.2
-        version: 5.67.2(@tanstack/react-query@5.67.2)(react@18.3.1)
+        specifier: ^5.100.14
+        version: 5.100.14(@tanstack/react-query@5.100.14)(react@18.3.1)
       '@tanstack/react-router':
         specifier: ^1.64.0
         version: 1.112.17(react-dom@18.3.1)(react@18.3.1)
@@ -384,9 +396,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.45.4
         version: 2.49.1
-      '@tanstack/react-query':
-        specifier: ^5.67.2
-        version: 5.67.2(react@18.3.1)
       react-map-gl:
         specifier: ^7.1.7
         version: 7.1.9(mapbox-gl@3.10.0)(react-dom@18.3.1)(react@18.3.1)
@@ -396,10 +405,19 @@ importers:
       wkx:
         specifier: ^0.5.0
         version: 0.5.0
+      zod:
+        specifier: ^3.23.8
+        version: 3.24.2
     devDependencies:
       '@nasti/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
+      '@tanstack/react-query':
+        specifier: 5.100.14
+        version: 5.100.14(react@18.3.1)
+      '@tanstack/react-query-persist-client':
+        specifier: 5.100.14
+        version: 5.100.14(@tanstack/react-query@5.100.14)(react@18.3.1)
       '@types/geojson':
         specifier: ^7946.0.16
         version: 7946.0.16
@@ -2954,6 +2972,11 @@ packages:
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
+  /@journeyapps/wa-sqlite@1.7.0:
+    resolution: {integrity: sha512-xQZ670aKDo4FWxIFpLqY0AGDpURr09aYIO08UkLdWvFw8C018nCiqY0ILJudGRhRdXORhv7K2xD2OXZ2QxU39w==}
+    requiresBuild: true
+    dev: false
+
   /@jridgewell/gen-mapping@0.3.8:
     resolution: {integrity: sha512-imAbBGkb+ebQyxKgzv5Hu2nmROxoDOXHh80evxdoXNOrvAnVx7zimzc1Oo5h9RlfV4vPXaE2iM5pOFbvOCClWA==}
     engines: {node: '>=6.0.0'}
@@ -3079,6 +3102,48 @@ packages:
   /@poppinss/exception@1.2.2:
     resolution: {integrity: sha512-m7bpKCD4QMlFCjA/nKTs23fuvoVFoA83brRKmObCUNmi/9tVu8Ve3w4YQAnJu4q3Tjf5fr685HYIC/IA2zHRSg==}
     dev: true
+
+  /@powersync/common@1.53.2:
+    resolution: {integrity: sha512-y+GtaLL4imFIWOatErIAEozNZPcIkAcA24c2Mso124ZFStOEeP8LJTSMDxPhyK14mzSnBk2dSjrOAjNz7m2B8g==}
+    dependencies:
+      event-iterator: 2.0.0
+      js-logger: 1.6.1
+    dev: false
+
+  /@powersync/react@1.10.0(@powersync/common@1.53.2)(react@18.3.1):
+    resolution: {integrity: sha512-orM29qocbF8zYTBM27j9nPNztyplpbNVaw8djpqxl8N2wESqHTbHOKpatg+Fa5aofgjzmrkiGwevJvCbiWYYWQ==}
+    peerDependencies:
+      '@powersync/common': ^1.51.0
+      react: ^18.3.1
+    dependencies:
+      '@powersync/common': 1.53.2
+      react: 18.3.1
+    dev: false
+
+  /@powersync/tanstack-react-query@0.2.8(@powersync/common@1.53.2)(react@18.3.1):
+    resolution: {integrity: sha512-fpGxiRWR2LEQ7dOdCxt/UkG69SNJ+ZADIj7DjlLaiMBEgcBoI+o8B2iYBjuz3zvNNBTf903qoKg27wL9vGh7HA==}
+    peerDependencies:
+      '@powersync/common': ^1.53.2
+      react: ^18.3.1
+    dependencies:
+      '@powersync/common': 1.53.2
+      '@powersync/react': 1.10.0(@powersync/common@1.53.2)(react@18.3.1)
+      '@tanstack/react-query': 5.100.14(react@18.3.1)
+      react: 18.3.1
+    dev: false
+
+  /@powersync/web@1.38.2(@journeyapps/wa-sqlite@1.7.0)(@powersync/common@1.53.2):
+    resolution: {integrity: sha512-lAHpqTnywK/wy120HSS2O8IRSYYXDAVJV8opGGOcBQZwbCB1h8vHk4vJDyJ012iWq6onUJHnQOD95KHzGRR+pw==}
+    hasBin: true
+    peerDependencies:
+      '@journeyapps/wa-sqlite': ^1.5.0
+      '@powersync/common': ^1.53.2
+    dependencies:
+      '@journeyapps/wa-sqlite': 1.7.0
+      '@powersync/common': 1.53.2
+      comlink: 4.4.2
+      commander: 12.1.0
+    dev: false
 
   /@radix-ui/number@1.1.0:
     resolution: {integrity: sha512-V3gRzhVNU1ldS5XhAPTom1fOIo4ccrjjJgmE+LI2h/WaFpHmx0MQApT+KZHnx8abG6Avtfcz4WoEciMnpFT3HQ==}
@@ -5335,49 +5400,49 @@ packages:
     resolution: {integrity: sha512-+EPOvUtnA3PnIBF2oUhggdy7UrVimLZd1SpULhV1UiesNgKtmLjArO7ZdGPrRq7pRXhc8V0ZAWTI9vfplhZfeA==}
     engines: {node: '>=12'}
 
-  /@tanstack/query-async-storage-persister@5.72.1:
-    resolution: {integrity: sha512-5l6NuV1GMz0Y2qGJ9B1JYgpDmLb92fs4c56/cxgNACwwi+bWyzEySQZocyXxiEW4ZG8fSQ/la57nAAw+OSsp0w==}
+  /@tanstack/query-async-storage-persister@5.100.14:
+    resolution: {integrity: sha512-otwoi4OsYoECIZBqDZ/crzyJFDXvzwCMg+T/Z+mforv9/GTqkYShddaItNC7SkFRq9VMIO3R3T71rfZfmb0NOA==}
     dependencies:
-      '@tanstack/query-persist-client-core': 5.72.1
+      '@tanstack/query-core': 5.100.14
+      '@tanstack/query-persist-client-core': 5.100.14
     dev: false
+
+  /@tanstack/query-core@5.100.14:
+    resolution: {integrity: sha512-5X41dGpxgeaHISCRW2oYwcSycZeULZzAunaudXT9ov1KOTj9xwt0CH6hbwqP1/z74ZWF7rYFnDpyYH07XFcZew==}
 
   /@tanstack/query-core@5.67.2:
     resolution: {integrity: sha512-+iaFJ/pt8TaApCk6LuZ0WHS/ECVfTzrxDOEL9HH9Dayyb5OVuomLzDXeSaI2GlGT/8HN7bDGiRXDts3LV+u6ww==}
     dev: false
 
-  /@tanstack/query-core@5.72.1:
-    resolution: {integrity: sha512-nOu0EEkZuJ0BZnYgeaEfo44+psq1jBO7/zp3KudixD4dvgOVerrhAhDEKsWx2N7MxB59mjO4r0ddP/VqWGPK+Q==}
-    dev: false
-
-  /@tanstack/query-persist-client-core@5.67.2:
-    resolution: {integrity: sha512-Kaon0gIERkuhFV27lEcrlLataqRHT66rOX0d559tCZKDVGHnQ7n4CsRCvmiOLAwqWf7aS0o0owmPNjNJWq+ZLQ==}
+  /@tanstack/query-persist-client-core@5.100.14:
+    resolution: {integrity: sha512-mn60cqoQO/xB6aHxp/hxlSj5mcdcTO4tjj4SXSz5MKzkaMZnvcEGySz3+cGQOT8McREN56fL41L0eR//v5RwNw==}
     dependencies:
-      '@tanstack/query-core': 5.67.2
-    dev: false
+      '@tanstack/query-core': 5.100.14
 
-  /@tanstack/query-persist-client-core@5.72.1:
-    resolution: {integrity: sha512-sceggk1lnJVNlvAUFoWZgaC1SVPgxyhoShHGczlAZHZIn7uLkEJcICXUQlvTSeJn4nr8XdFxBSW8ie/6YPmr6A==}
+  /@tanstack/query-sync-storage-persister@5.100.14:
+    resolution: {integrity: sha512-sDsiVjLJqslUdqIANGvRyB4hYpAooYj5R1fe2EzKfrSY7XufSe+AFBvirLgX/nL2uS1JeP4XeyUuG3TM0bAN9w==}
     dependencies:
-      '@tanstack/query-core': 5.72.1
+      '@tanstack/query-core': 5.100.14
+      '@tanstack/query-persist-client-core': 5.100.14
     dev: false
 
-  /@tanstack/query-sync-storage-persister@5.67.2:
-    resolution: {integrity: sha512-0OJzNIP/0WIwuPtCVSZ+NVlSfs24ELMiVLprk86XWQYhBkS1nvHAsldov0VeFyTdFp/N+0Oe7CGnrlGvYpssQg==}
-    dependencies:
-      '@tanstack/query-core': 5.67.2
-      '@tanstack/query-persist-client-core': 5.67.2
-    dev: false
-
-  /@tanstack/react-query-persist-client@5.67.2(@tanstack/react-query@5.67.2)(react@18.3.1):
-    resolution: {integrity: sha512-aRs7XENnXMzDQPsq/GKnFpEqcwj1/mtN85wzKczLHoVyvLiOt4uMYrVibQGV/z+XfBl1uR1442uACkiecYPCzw==}
+  /@tanstack/react-query-persist-client@5.100.14(@tanstack/react-query@5.100.14)(react@18.3.1):
+    resolution: {integrity: sha512-lQSnbJva85o7jGcJiIDrA8s3VGGx9zaBCgAljm0H1QcScU2iaDYnPuRLg/xI0k0dC45pgg9RTvpgJx5iVHRsjA==}
     peerDependencies:
-      '@tanstack/react-query': ^5.67.2
+      '@tanstack/react-query': ^5.100.14
       react: ^18.3.1
     dependencies:
-      '@tanstack/query-persist-client-core': 5.67.2
-      '@tanstack/react-query': 5.67.2(react@18.3.1)
+      '@tanstack/query-persist-client-core': 5.100.14
+      '@tanstack/react-query': 5.100.14(react@18.3.1)
       react: 18.3.1
-    dev: false
+
+  /@tanstack/react-query@5.100.14(react@18.3.1):
+    resolution: {integrity: sha512-oOr6aRdSFEwWhzxEkD/9ZcItM3+LjBSkeVmadWKwUssAHTsqd/7bOjWrX4AbvEkoEhgAxzN0Xk6H/aYzXiYBAw==}
+    peerDependencies:
+      react: ^18.3.1
+    dependencies:
+      '@tanstack/query-core': 5.100.14
+      react: 18.3.1
 
   /@tanstack/react-query@5.67.2(react@18.3.1):
     resolution: {integrity: sha512-6Sa+BVNJWhAV4QHvIqM73norNeGRWGC3ftN0Ix87cmMvI215I1wyJ44KUTt/9a0V9YimfGcg25AITaYVel71Og==}
@@ -8117,6 +8182,15 @@ packages:
       lodash.uniqby: 4.5.0
     dev: false
 
+  /comlink@4.4.2:
+    resolution: {integrity: sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==}
+    dev: false
+
+  /commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
+    dev: false
+
   /commander@13.1.0:
     resolution: {integrity: sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==}
     engines: {node: '>=18'}
@@ -8959,6 +9033,10 @@ packages:
   /esutils@2.0.3:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
+
+  /event-iterator@2.0.0:
+    resolution: {integrity: sha512-KGft0ldl31BZVV//jj+IAIGCxkvvUkkON+ScH6zfoX+l+omX6001ggyRSpI0Io2Hlro0ThXotswCtfzS8UkIiQ==}
+    dev: false
 
   /eventemitter3@5.0.1:
     resolution: {integrity: sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==}
@@ -10418,6 +10496,10 @@ packages:
 
   /js-base64@3.7.7:
     resolution: {integrity: sha512-7rCnleh0z2CkXhH67J8K1Ytz0b2Y+yxTPL+/KOJoa20hfnVQ/3/T6W/KflYI4bRHRagNeXeU2bkNGI3v1oS/lw==}
+    dev: false
+
+  /js-logger@1.6.1:
+    resolution: {integrity: sha512-yTgMCPXVjhmg28CuUH8CKjU+cIKL/G+zTu4Fn4lQxs8mRFH/03QTNvEFngcxfg/gRDiQAOoyCKmMTOm9ayOzXA==}
     dev: false
 
   /js-tokens@4.0.0:
