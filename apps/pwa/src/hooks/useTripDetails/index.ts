@@ -1,26 +1,30 @@
 import { Trip } from "@nasti/common/types"
-import {
-  getTrip,
-  getTripCollections,
-  getTripMembers,
-  getTripScoutingNotes,
-  parseLocation,
-} from "./helpers"
+import { parseLocation } from "./helpers"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@powersync/tanstack-react-query"
 import { useMemo } from "react"
+import type {
+  PowerSyncCollectionRow,
+  PowerSyncScoutingNoteRow,
+  PowerSyncTripMemberRow,
+  PowerSyncTripRow,
+} from "@/lib/powersync/schema"
+import {
+  rowToCollection,
+  rowToScoutingNote,
+  rowToTrip,
+  rowToTripMember,
+} from "@/lib/powersync/rows"
 
 const useTripCollections = (tripId: string) => {
-  const query = useQuery({
+  const query = useQuery<PowerSyncCollectionRow>({
     queryKey: ["collections", "byTrip", tripId],
-    queryFn: async () => {
-      const collections = await getTripCollections(tripId)
-      if (collections.error) throw new Error(collections.error.message)
-      return collections.data
-    },
+    query:
+      "SELECT * FROM collection WHERE trip_id = ? ORDER BY created_at DESC",
+    parameters: [tripId],
   })
   const collectionsWithCoord = useMemo(
-    () => query.data?.map(parseLocation),
+    () => query.data?.map((row) => parseLocation(rowToCollection(row))),
     [query.data],
   )
 
@@ -28,21 +32,31 @@ const useTripCollections = (tripId: string) => {
 }
 
 const useTripScoutingNotes = (tripId: string) => {
-  const query = useQuery({
+  const query = useQuery<PowerSyncScoutingNoteRow>({
     queryKey: ["scoutingNotes", "byTrip", tripId],
-    queryFn: async () => {
-      const scoutingNotes = await getTripScoutingNotes(tripId)
-      if (scoutingNotes.error) throw new Error(scoutingNotes.error.message)
-      return scoutingNotes.data
-    },
+    query:
+      "SELECT * FROM scouting_notes WHERE trip_id = ? ORDER BY created_at DESC",
+    parameters: [tripId],
   })
 
   const scoutingNotesWithCoord = useMemo(
-    () => query.data?.map(parseLocation),
+    () => query.data?.map((row) => parseLocation(rowToScoutingNote(row))),
     [query.data],
   )
 
   return { ...query, data: scoutingNotesWithCoord }
+}
+
+const useTripMembers = (tripId: string) => {
+  const query = useQuery<PowerSyncTripMemberRow>({
+    queryKey: ["tripMembers", "byTrip", tripId],
+    query: "SELECT * FROM trip_member WHERE trip_id = ?",
+    parameters: [tripId],
+  })
+
+  const data = useMemo(() => query.data?.map(rowToTripMember), [query.data])
+
+  return { ...query, data }
 }
 
 /**
@@ -55,32 +69,28 @@ export const useTripDetails = ({ tripId }: { tripId: string }) => {
     [collectionsQuery.data],
   )
   const scoutingNotesQuery = useTripScoutingNotes(tripId)
+  const tripMembersQuery = useTripMembers(tripId)
 
-  const tripDetails = useQuery({
+  const tripDetails = useQuery<PowerSyncTripRow>({
     queryKey: ["trip", "details", tripId],
-    queryFn: async () => {
-      const [trip, tripMembers] = await Promise.all([
-        getTrip(tripId),
-        getTripMembers(tripId),
-      ])
-
-      if (!trip.data) return null
-
-      const result = {
-        ...(trip.data as Trip),
-        members: tripMembers.data,
-      }
-      return result
-    },
+    query: "SELECT * FROM trip WHERE id = ?",
+    parameters: [tripId],
   })
 
   const result = useMemo(() => {
-    if (!tripDetails.data) return null
+    const trip = tripDetails.data?.[0]
+    if (!trip) return null
     return {
-      ...tripDetails.data,
+      ...(rowToTrip(trip) as Trip),
+      members: tripMembersQuery.data ?? [],
       collections: collectionsWithCoord ?? [],
       scoutingNotes: scoutingNotesQuery.data ?? [],
     }
-  }, [tripDetails.data, collectionsWithCoord, scoutingNotesQuery.data])
+  }, [
+    tripDetails.data,
+    tripMembersQuery.data,
+    collectionsWithCoord,
+    scoutingNotesQuery.data,
+  ])
   return { ...tripDetails, data: result }
 }

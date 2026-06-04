@@ -44,11 +44,6 @@ export const useAuth = () => {
         queryClient.setQueryData(["auth", "user"], data.user)
         queryClient.setQueryData(["auth", "orgUser"], orgData)
         queryClient.setQueryData(["auth", "loggedIn"], true)
-        // Prefetch necessary data for offline use
-        queryClient.prefetchQuery({
-          queryKey: ["trips", "list"],
-          queryFn: fetchTrips,
-        })
       }
     },
   })
@@ -100,11 +95,4 @@ export const useAuth = () => {
     logout,
     isLoggedIn,
   }
-}
-
-const fetchTrips = async () => {
-  const { data, error } = await supabase.from("trip").select("*")
-
-  if (error) throw error
-  return data
 }

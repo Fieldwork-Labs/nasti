@@ -28,7 +28,7 @@ export const useScoutingNotePhotos = (scoutingNoteId?: string) => {
       const { data, error } = await supabase
         .from("scouting_notes_photos")
         .select("*")
-        .eq("scouting_note_id", scoutingNoteId)
+        .eq("scouting_notes_id", scoutingNoteId)
         .order("uploaded_at", { ascending: false })
 
       if (error) throw error

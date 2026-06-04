@@ -8,14 +8,19 @@ import {
   createFileRoute,
   useNavigate,
   redirect,
+  useLocation,
 } from "@tanstack/react-router"
 import { Suspense, useEffect } from "react"
 import * as Sentry from "@sentry/react"
 import { ErrorFallback } from "@/components/common/ErrorComponent"
+import { TripDataSyncStream } from "@/contexts/PowerSync"
 
 function AuthLayout() {
   const { isLoggedIn } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const tripId = location.pathname.match(/^\/trips\/([^/]+)/)?.[1]
+
   useEffect(() => {
     if (!isLoggedIn) {
       navigate({
@@ -26,6 +31,7 @@ function AuthLayout() {
 
   return (
     <GeoLocationProvider>
+      <TripDataSyncStream tripId={tripId} />
       <Outlet />
     </GeoLocationProvider>
   )

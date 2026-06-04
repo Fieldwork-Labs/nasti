@@ -1,34 +1,15 @@
-import {
-  describe,
-  it,
-  expect,
-  vi,
-  beforeEach,
-  afterEach,
-  type Mock,
-} from "vitest"
-import { renderHook, act, waitFor } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { renderHook, act } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useCollectionUpdate } from "../useCollectionUpdate"
 import type { Collection } from "@nasti/common/types"
-import { parsePostGISPoint } from "@nasti/common/utils"
 
-vi.mock("@nasti/common/supabase", () => {
-  // Create a mock that matches how supabase api is called in updateCollection(...):
-  const overrideTypesFn = vi.fn(() =>
-    Promise.resolve({ data: mockUpdatedCollection, error: null }),
-  )
-  const singleFn = vi.fn(() => ({ overrideTypes: overrideTypesFn }))
-  const selectFn = vi.fn(() => ({ single: singleFn }))
-  const eqFn = vi.fn(() => ({ select: selectFn }))
-  const updateFn = vi.fn(() => ({ eq: eqFn }))
-  const fromFn = vi.fn(() => ({ upsert: updateFn }))
+const { psUpdateMock } = vi.hoisted(() => ({
+  psUpdateMock: vi.fn(),
+}))
 
-  return {
-    supabase: {
-      from: fromFn,
-    },
-  }
+vi.mock("@/lib/powersync/crud", () => {
+  return { psUpdate: psUpdateMock }
 })
 
 const mockCollection = {
@@ -53,15 +34,14 @@ const mockUpdatedCollection = {
   field_name,
 }
 
-describe("useCollectionCreate · mutateAsync", () => {
+describe("useCollectionUpdate · mutateAsync", () => {
   let queryClient: QueryClient
 
-  beforeEach(async () => {
-    // Create a fresh QueryClient for each test, disabling retries so that errors bubble immediately
-    const { queryClient: importedQueryClient } = await import(
-      "@/lib/queryClient"
-    )
-    queryClient = importedQueryClient
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    psUpdateMock.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -69,27 +49,8 @@ describe("useCollectionCreate · mutateAsync", () => {
     vi.clearAllMocks()
   })
 
-  it("mutateAsync should update a Collection and return it (and call supabase.from/upsert)", async () => {
-    // 1. Seed query cache so onMutate doesn’t throw:
+  it("mutateAsync should update a Collection locally and return it", async () => {
     const tripId = mockCollection.trip_id
-    queryClient.setQueryData(
-      ["collections", "byTrip", tripId],
-      [
-        {
-          ...mockCollection,
-          locationCoord: parsePostGISPoint(mockCollection.location),
-        },
-      ],
-    )
-
-    // 2. Immediately grab and spy on `supabase.from` before invoking mutateAsync:
-    const { supabase } = await import("@nasti/common/supabase")
-    // At this point, supabase.from is the mock we defined above.
-    const spyFrom = vi.spyOn(supabase, "from")
-    // Because the module mock above already set supabase.from to a vi.fn(),
-    // this spy will wrap that same mock function.
-
-    // 3. Render our hook under a QueryClientProvider:
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
@@ -97,64 +58,43 @@ describe("useCollectionCreate · mutateAsync", () => {
       wrapper,
     })
 
-    // 4. Act: call mutateAsync:
     let returned: Collection | undefined
     await act(async () => {
       returned = await result.current.mutateAsync(mockUpdatedCollection)
     })
 
-    // 5. Assert: returned value must equal our mockCollection
     expect(returned).toEqual(mockUpdatedCollection)
-
-    // 6. Now that mutateAsync has run, supabase.from should have been called with "collection":
-    expect(spyFrom).toHaveBeenCalledWith("collection")
-
-    // 7. Next, ensure that the `upsert(...)` method was called with our payload:
-    //    Because our module mock defined: supabase.from() → { upsert: upsertFn },
-    //    we can reach upsertFn via `supabase.from().upsert`.
-    const upsertMock = supabase.from("collection").upsert as Mock
-    expect(upsertMock).toHaveBeenCalledWith(mockUpdatedCollection)
-
-    // 8. Finally, ensure that the querydata cache now contains the new collection
-    const collections = queryClient.getQueryData([
-      "collections",
-      "byTrip",
-      tripId,
-    ])
-    const expectedUpdatedCollections = [
-      {
-        ...returned,
-        locationCoord: parsePostGISPoint(returned!.location!),
-      },
-    ]
-    expect(collections).toStrictEqual(expectedUpdatedCollections)
+    expect(psUpdateMock).toHaveBeenCalledWith(
+      "collection",
+      mockUpdatedCollection.id,
+      mockUpdatedCollection,
+    )
   })
 
-  it("mutateAsync should throw an error if the tripId doesn't exist", async () => {
+  it("mutateAsync should surface PowerSync update errors", async () => {
+    const error = new Error("update failed")
+    psUpdateMock.mockRejectedValueOnce(error)
+
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
 
-    // 3. Render the hook
     const { result } = renderHook(
-      () => useCollectionUpdate({ tripId: "nonsense" }),
+      () => useCollectionUpdate({ tripId: mockCollection.trip_id }),
       {
         wrapper,
       },
     )
 
-    // 4. Act: Call mutateAsync(...) with our mockUpdatedCollection
-    let error: Error | undefined
+    let thrown: Error | undefined
     await act(async () => {
       try {
         await result.current.mutateAsync(mockUpdatedCollection)
       } catch (err) {
-        error = err as Error
+        thrown = err as Error
       }
     })
 
-    waitFor(() => {
-      expect(error?.message).toEqual("Unknown trip")
-    })
+    expect(thrown).toBe(error)
   })
 })

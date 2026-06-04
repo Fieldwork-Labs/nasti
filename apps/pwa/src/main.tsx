@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/theme"
 import { NastiPersistQueryClientProvider } from "./lib/queryClient"
 import { useAuth } from "./hooks/useAuth"
 import { SwStatusProvider } from "./contexts/swStatus"
+import { PowerSyncProvider } from "./contexts/PowerSync"
 import * as Sentry from "@sentry/react"
 
 // Create a new router instance
@@ -43,11 +44,21 @@ declare module "@tanstack/react-router" {
 }
 
 export const App = () => {
-  const { isLoggedIn, getSession } = useAuth()
+  const { isLoggedIn, getSession, org } = useAuth()
+  const organisationId = org?.organisation_id ?? undefined
+
   return (
     <ThemeProvider>
       <SwStatusProvider>
-        <RouterProvider router={router} context={{ isLoggedIn, getSession }} />
+        <PowerSyncProvider
+          isLoggedIn={isLoggedIn}
+          organisationId={organisationId}
+        >
+          <RouterProvider
+            router={router}
+            context={{ isLoggedIn, getSession }}
+          />
+        </PowerSyncProvider>
       </SwStatusProvider>
     </ThemeProvider>
   )

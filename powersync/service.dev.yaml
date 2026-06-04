@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://unpkg.com/@powersync/cli-schemas@latest/json-schema/service-config.json
+
+_type: self-hosted
+
+port: !env PS_PORT
+
+telemetry:
+  disable_telemetry_sharing: false
+
+replication:
+  connections:
+    - type: postgresql
+      uri: !env PS_DATA_SOURCE_URI
+      sslmode: disable
+
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_SOURCE_URI
+  database: postgres
+  sslmode: disable
+
+sync_config:
+  path: sync-config.yaml
+
+api:
+  tokens:
+    - dev-token-do-not-use-in-production
+
+client_auth:
+  supabase: true
+  supabase_jwt_secret: !env PS_SUPABASE_JWT_SECRET
+  audience:
+    - authenticated

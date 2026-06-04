@@ -1,0 +1,220 @@
+# yaml-language-server: $schema=https://unpkg.com/@powersync/service-sync-rules@latest/schema/sync_rules.json
+
+config:
+  edition: 3
+
+streams:
+  trip_list:
+    queries:
+      - |
+        SELECT
+          id,
+          created_at,
+          created_by,
+          end_date,
+          ST_AsText(location_coordinate) AS location_coordinate,
+          location_name,
+          metadata,
+          name,
+          organisation_id,
+          start_date
+        FROM trip
+        WHERE organisation_id = subscription.parameter('organisation_id')
+          AND organisation_id IN (
+            SELECT organisation_id FROM org_user
+            WHERE user_id = auth.user_id()
+              AND is_active = true
+          )
+
+  trip_data:
+    queries:
+      - |
+        SELECT
+          id,
+          created_at,
+          created_by,
+          end_date,
+          ST_AsText(location_coordinate) AS location_coordinate,
+          location_name,
+          metadata,
+          name,
+          organisation_id,
+          start_date
+        FROM trip
+        WHERE id = subscription.parameter('trip_id')
+          AND organisation_id IN (
+            SELECT organisation_id FROM org_user
+            WHERE user_id = auth.user_id()
+              AND is_active = true
+          )
+
+      - |
+        SELECT * FROM trip_member
+        WHERE trip_id = subscription.parameter('trip_id')
+          AND trip_id IN (
+            SELECT id FROM trip
+            WHERE id = subscription.parameter('trip_id')
+              AND organisation_id IN (
+                SELECT organisation_id FROM org_user
+                WHERE user_id = auth.user_id()
+                  AND is_active = true
+              )
+          )
+
+      - |
+        SELECT * FROM trip_species
+        WHERE trip_id = subscription.parameter('trip_id')
+          AND trip_id IN (
+            SELECT id FROM trip
+            WHERE id = subscription.parameter('trip_id')
+              AND organisation_id IN (
+                SELECT organisation_id FROM org_user
+                WHERE user_id = auth.user_id()
+                  AND is_active = true
+              )
+          )
+
+      - |
+        SELECT
+          id,
+          amount_quantity,
+          amount_units,
+          code,
+          collected_by,
+          collected_on,
+          created_at,
+          created_by,
+          description,
+          field_name,
+          ST_AsText(location) AS location,
+          organisation_id,
+          species_id,
+          species_uncertain,
+          specimen_collected,
+          trip_id
+        FROM collection
+        WHERE trip_id = subscription.parameter('trip_id')
+          AND trip_id IN (
+            SELECT id FROM trip
+            WHERE id = subscription.parameter('trip_id')
+              AND organisation_id IN (
+                SELECT organisation_id FROM org_user
+                WHERE user_id = auth.user_id()
+                  AND is_active = true
+              )
+          )
+
+      - |
+        SELECT * FROM collection_photo
+        WHERE collection_id IN (
+          SELECT id FROM collection
+          WHERE trip_id = subscription.parameter('trip_id')
+            AND trip_id IN (
+              SELECT id FROM trip
+              WHERE id = subscription.parameter('trip_id')
+                AND organisation_id IN (
+                  SELECT organisation_id FROM org_user
+                  WHERE user_id = auth.user_id()
+                    AND is_active = true
+                )
+            )
+        )
+
+      - |
+        SELECT
+          id,
+          created_at,
+          created_by,
+          description,
+          field_name,
+          ST_AsText(location) AS location,
+          organisation_id,
+          species_id,
+          species_uncertain,
+          specimen_collected,
+          trip_id
+        FROM scouting_notes
+        WHERE trip_id = subscription.parameter('trip_id')
+          AND trip_id IN (
+            SELECT id FROM trip
+            WHERE id = subscription.parameter('trip_id')
+              AND organisation_id IN (
+                SELECT organisation_id FROM org_user
+                WHERE user_id = auth.user_id()
+                  AND is_active = true
+              )
+          )
+
+      - |
+        SELECT * FROM scouting_notes_photos
+        WHERE scouting_notes_id IN (
+          SELECT id FROM scouting_notes
+          WHERE trip_id = subscription.parameter('trip_id')
+            AND trip_id IN (
+              SELECT id FROM trip
+              WHERE id = subscription.parameter('trip_id')
+                AND organisation_id IN (
+                  SELECT organisation_id FROM org_user
+                  WHERE user_id = auth.user_id()
+                    AND is_active = true
+                )
+            )
+        )
+
+      - |
+        SELECT * FROM species
+        WHERE organisation_id IN (
+          SELECT organisation_id FROM org_user
+          WHERE user_id = auth.user_id()
+            AND is_active = true
+        )
+
+      - |
+        SELECT * FROM species_photo
+        WHERE species_id IN (
+          SELECT species_id FROM trip_species
+          WHERE trip_id = subscription.parameter('trip_id')
+            AND trip_id IN (
+              SELECT id FROM trip
+              WHERE id = subscription.parameter('trip_id')
+                AND organisation_id IN (
+                  SELECT organisation_id FROM org_user
+                  WHERE user_id = auth.user_id()
+                    AND is_active = true
+                )
+            )
+        )
+
+      - |
+        SELECT * FROM species_photo
+        WHERE species_id IN (
+          SELECT species_id FROM collection
+          WHERE trip_id = subscription.parameter('trip_id')
+            AND species_id IS NOT NULL
+            AND trip_id IN (
+              SELECT id FROM trip
+              WHERE id = subscription.parameter('trip_id')
+                AND organisation_id IN (
+                  SELECT organisation_id FROM org_user
+                  WHERE user_id = auth.user_id()
+                    AND is_active = true
+                )
+            )
+        )
+
+      - |
+        SELECT * FROM species_photo
+        WHERE species_id IN (
+          SELECT species_id FROM scouting_notes
+          WHERE trip_id = subscription.parameter('trip_id')
+            AND species_id IS NOT NULL
+            AND trip_id IN (
+              SELECT id FROM trip
+              WHERE id = subscription.parameter('trip_id')
+                AND organisation_id IN (
+                  SELECT organisation_id FROM org_user
+                  WHERE user_id = auth.user_id()
+                    AND is_active = true
+                )
+            )
+        )

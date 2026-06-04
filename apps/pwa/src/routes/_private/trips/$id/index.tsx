@@ -1,4 +1,3 @@
-import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 import { Spinner } from "@nasti/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { cn } from "@nasti/ui/utils"
@@ -28,6 +27,9 @@ import {
 } from "@/components/trip/TripSpeciesDrawer"
 import { useOpenClose } from "@nasti/ui/hooks"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+import { useTripDetails } from "@/hooks/useTripDetails"
+import { useSpeciesForTrip } from "@/hooks/useSpeciesForTrip"
+import { useCallback, useState } from "react"
 
 const NewDataButton = () => {
   const { isOpen, setIsOpen } = useOpenClose()
@@ -76,8 +78,9 @@ const NewDataButton = () => {
 
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
-  const { data, isPending, isError, refetch, isRefetching } =
-    useHydrateTripDetails({ id })
+  const tripDetailsQuery = useTripDetails({ tripId: id })
+  const tripSpeciesQuery = useSpeciesForTrip(id)
+  const [isRefetching, setIsRefetching] = useState(false)
   const navigate = useNavigate()
 
   const { setIsOpen } = useSpeciesDrawer()
@@ -85,6 +88,17 @@ const TripDetail = () => {
   const handleBackClick = () => {
     navigate({ to: "/trips" })
   }
+
+  const refetch = useCallback(async () => {
+    setIsRefetching(true)
+    await Promise.all([tripDetailsQuery.refetch(), tripSpeciesQuery.refetch()])
+    setIsRefetching(false)
+  }, [tripDetailsQuery, tripSpeciesQuery])
+
+  const isPending = tripDetailsQuery.isPending || tripSpeciesQuery.isPending
+  const isError = tripDetailsQuery.isError || tripSpeciesQuery.isError
+  const trip = tripDetailsQuery.data
+  const species = tripSpeciesQuery.data
 
   if (isPending)
     return (
@@ -94,7 +108,7 @@ const TripDetail = () => {
       </div>
     )
 
-  if (isError && !data)
+  if (isError && !trip)
     return (
       <div className="px-auto mx-auto mt-36 flex flex-col items-center text-center">
         <span className="text-2xl text-orange-600/80">
@@ -108,7 +122,7 @@ const TripDetail = () => {
       <div className="flex items-center justify-between align-middle">
         <div className="flex items-center p-2 text-2xl">
           <ChevronLeft onClick={handleBackClick} width={36} height={36} />{" "}
-          {data.trip?.name}
+          {trip?.name}
         </div>
         <div className="p-2">
           <RefreshCwIcon
@@ -132,7 +146,7 @@ const TripDetail = () => {
           <TabsTrigger className="w-full" value="list">
             Data List
           </TabsTrigger>
-          {data.trip?.collections && data.trip.collections.length > 0 && (
+          {trip?.collections && trip.collections.length > 0 && (
             <TabsTrigger className="w-full" value="map">
               Map
             </TabsTrigger>
@@ -146,7 +160,7 @@ const TripDetail = () => {
         </TabsContent>
         <NewDataButton />
       </Tabs>
-      <SpeciesDrawer species={data.species} tripId={id} />
+      <SpeciesDrawer species={species} tripId={id} />
     </div>
   )
 }
