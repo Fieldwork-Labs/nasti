@@ -40,7 +40,7 @@ import {
   TripCollectionPhotos,
   TripScoutingNotePhotos,
 } from "@/hooks/usePhotosForTrip"
-import { useSpeciesForTrip } from "@/hooks/useSpeciesForTrip"
+import { useSpeciesList } from "@/hooks/useSpeciesList"
 import { Input } from "@nasti/ui/input"
 import { Link } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
@@ -244,7 +244,7 @@ export const TripDataList = ({ id }: { id: string }) => {
   >(null)
   const [searchValue, setSearchValue] = useState("")
   const { data: trip } = useTripDetails({ tripId: id })
-  const { data: species } = useSpeciesForTrip(id)
+  const { data: species } = useSpeciesList()
   const { data: peopleResponse } = useOrgMembers()
   const { collectionPhotosMap, scoutingNotePhotosMap } = useTripPhotoMaps({
     tripId: id,

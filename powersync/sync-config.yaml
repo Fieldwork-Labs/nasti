@@ -164,13 +164,9 @@ streams:
       - |
         SELECT * FROM species
         WHERE organisation_id IN (
-          SELECT organisation_id FROM trip
-          WHERE id = subscription.parameter('trip_id')
-            AND organisation_id IN (
-              SELECT organisation_id FROM org_user
-              WHERE user_id = auth.user_id()
-                AND is_active = true
-            )
+          SELECT organisation_id FROM org_user
+          WHERE user_id = auth.user_id()
+            AND is_active = true
         )
 
       - |
