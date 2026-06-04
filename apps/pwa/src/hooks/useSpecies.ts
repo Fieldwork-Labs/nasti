@@ -4,9 +4,9 @@ import { rowToSpecies } from "@/lib/powersync/rows"
 import type { PowerSyncSpeciesRow } from "@/lib/powersync/schema"
 import { useQuery } from "@powersync/tanstack-react-query"
 
-export const useSpecies = (speciesId?: string) => {
+export const useSpecies = (speciesId?: string | null) => {
   const query = useQuery<PowerSyncSpeciesRow>({
-    queryKey: ["species", "byIds", [speciesId]],
+    queryKey: ["species", "detail", speciesId],
     query: "SELECT * FROM species WHERE id = ?",
     parameters: [speciesId ?? ""],
     enabled: Boolean(speciesId),

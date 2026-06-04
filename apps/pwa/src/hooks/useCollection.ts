@@ -5,13 +5,13 @@ import { TripCollectionPhotos } from "./usePhotosForTrip"
 import type {
   PowerSyncCollectionPhotoRow,
   PowerSyncCollectionRow,
-  PowerSyncSpeciesRow,
 } from "@/lib/powersync/schema"
-import { rowToCollection, rowToSpecies } from "@/lib/powersync/rows"
+import { rowToCollection } from "@/lib/powersync/rows"
 import type { CollectionWithCoordAndPhotos } from "./useTripDetails/types"
+import { useSpecies } from "./useSpecies"
 
 export type FullCollection = CollectionWithCoordAndPhotos & {
-  species?: Species
+  species?: Species | null
 }
 
 export const getCollection = async (id?: string) => {
@@ -53,18 +53,6 @@ const useCollectionPhotosQuery = (collectionId: string) => {
   return { ...query, data: query.data as TripCollectionPhotos | undefined }
 }
 
-const useCollectionSpeciesQuery = (speciesId?: string | null) => {
-  const query = useQuery<PowerSyncSpeciesRow>({
-    queryKey: ["species", "detail", speciesId],
-    query: "SELECT * FROM species WHERE id = ?",
-    parameters: [speciesId ?? ""],
-    enabled: Boolean(speciesId),
-  })
-
-  const row = query.data?.[0]
-  return { ...query, data: row ? rowToSpecies(row) : undefined }
-}
-
 export const useCollection = ({
   collectionId,
 }: {
@@ -73,7 +61,7 @@ export const useCollection = ({
 }) => {
   const { data: collectionData } = useCollectionQuery(collectionId)
   const { data: photos } = useCollectionPhotosQuery(collectionId)
-  const { data: species } = useCollectionSpeciesQuery(collectionData?.species_id)
+  const { data: species } = useSpecies(collectionData?.species_id)
 
   const result: FullCollection | undefined = collectionData
     ? { ...collectionData, photos: photos ?? [], species }

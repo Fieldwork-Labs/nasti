@@ -19,7 +19,7 @@ import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { InfoIcon, X } from "lucide-react"
-import { NewCollection } from "@nasti/common/types"
+import { NewScoutingNote } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
@@ -99,7 +99,7 @@ function AddCollection() {
       if (!location) throw new Error("No location available")
       const { latitude, longitude } = location
       const locationPoint = `POINT(${longitude} ${latitude})`
-      const newCollection: NewCollection = {
+      const newScoutingNote: NewScoutingNote = {
         ...data,
         species_uncertain:
           data.species_uncertain || data.field_name.trim().length > 0,
@@ -110,7 +110,7 @@ function AddCollection() {
         organisation_id: org.organisation_id,
         trip_id: tripId,
       }
-      const collectionPromise = createScoutingNote(newCollection)
+      const collectionPromise = createScoutingNote(newScoutingNote)
       // The UI will get stuck here when offline so only await if online
       if (isOnline) await collectionPromise
       // We need the collection to be created before we can create the photos

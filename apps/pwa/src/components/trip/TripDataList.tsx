@@ -31,14 +31,7 @@ import {
   X,
 } from "lucide-react"
 import MiniSearch from "minisearch"
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { Suspense, useCallback, useMemo, useState } from "react"
 
 import { useGeoLocation } from "@/contexts/location"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
@@ -250,7 +243,6 @@ export const TripDataList = ({ id }: { id: string }) => {
     "collection" | "scoutingNote" | null
   >(null)
   const [searchValue, setSearchValue] = useState("")
-  const isSearching = useRef(false)
   const { data: trip } = useTripDetails({ tripId: id })
   const { data: species } = useSpeciesForTrip(id)
   const { data: peopleResponse } = useOrgMembers()
@@ -260,7 +252,6 @@ export const TripDataList = ({ id }: { id: string }) => {
   const { speciesPhotosMap } = useSpeciesPhotosMap({ tripId: id })
   const { getDistanceKm } = useGeoLocation()
 
-  const miniSearchRef = useRef<MiniSearch<DataWithSpecies> | null>(null)
   const speciesMap = useMemo(() => {
     return (
       species?.reduce(
@@ -284,21 +275,10 @@ export const TripDataList = ({ id }: { id: string }) => {
     )
   }, [peopleResponse?.data])
 
-  const previousDataRef = useRef<DataWithSpecies[]>([])
   const searchableData = useMemo(() => {
     const collections = trip?.collections ?? []
     const scoutingNotes = trip?.scoutingNotes ?? []
-    if (collections.length === 0 && scoutingNotes.length === 0) return []
-
-    // Use a stable reference check to avoid unnecessary recalculations
-    if (
-      previousDataRef.current?.length === collections.length &&
-      JSON.stringify(previousDataRef.current) === JSON.stringify(collections)
-    ) {
-      return previousDataRef.current
-    }
-
-    const result = [
+    return [
       ...collections.map((coll) => {
         return {
           ...coll,
@@ -316,9 +296,6 @@ export const TripDataList = ({ id }: { id: string }) => {
         }
       }),
     ]
-
-    previousDataRef.current = result
-    return result
   }, [
     trip?.collections,
     trip?.scoutingNotes,
@@ -327,11 +304,39 @@ export const TripDataList = ({ id }: { id: string }) => {
     scoutingNotePhotosMap,
   ])
 
-  const [searchResults, setSearchResults] =
-    useState<Array<DataWithSpecies>>(searchableData)
+  const miniSearch = useMemo(() => {
+    const search = new MiniSearch<DataWithSpecies>({
+      fields: ["field_name", "description", "species.name"],
+      searchOptions: {
+        fuzzy: 0.2,
+      },
+      extractField: (document, fieldName) => {
+        // Access nested fields
+        return (
+          fieldName
+            .split(".")
+            // sorry this is necessary due to poor type inference of minisearch library
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .reduce((doc: any, key: string) => doc && doc[key], document)
+        )
+      },
+    })
+    search.addAll(searchableData)
+    return search
+  }, [searchableData])
+
+  const searchResults = useMemo(() => {
+    if (searchValue.length === 0) return searchableData
+
+    const searchMatches = new Set(
+      miniSearch.search(searchValue, { prefix: true }).map((item) => item.id),
+    )
+
+    return searchableData.filter((item) => searchMatches.has(item.id))
+  }, [miniSearch, searchValue, searchableData])
 
   const sortedSearchResults = useMemo(() => {
-    let sorted = searchResults.sort((a, b) => {
+    let sorted = [...searchResults].sort((a, b) => {
       if (sortMode.startsWith("created_at")) {
         return (
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -353,90 +358,20 @@ export const TripDataList = ({ id }: { id: string }) => {
     return sorted.filter(
       (item) => typeFilter === null || item.dataType === typeFilter,
     )
-  }, [searchResults, sortMode, typeFilter])
-
-  // Initialize miniSearch
-  useEffect(() => {
-    if (!miniSearchRef.current) {
-      miniSearchRef.current = new MiniSearch<DataWithSpecies>({
-        fields: ["field_name", "description", "species.name"],
-        searchOptions: {
-          fuzzy: 0.2,
-        },
-        extractField: (document, fieldName) => {
-          // Access nested fields
-          return (
-            fieldName
-              .split(".")
-              // sorry this is necessary due to poor type inference of minisearch library
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .reduce((doc: any, key: string) => doc && doc[key], document)
-          )
-        },
-      })
-    }
-  }, [])
-
-  // Effect for updating the search index when collections change
-  useEffect(() => {
-    if (!miniSearchRef.current) return
-
-    miniSearchRef.current.removeAll()
-    miniSearchRef.current.addAll(searchableData)
-
-    // Don't update search results here - let the second effect handle that
-  }, [searchableData])
-
-  // Separate effect for updating search results when search value changes
-  useEffect(() => {
-    if (!miniSearchRef.current || !searchableData.length) return
-
-    if (searchValue.length > 0) {
-      const searchMatches = miniSearchRef.current
-        .search(searchValue, { prefix: true })
-        .map((item) => item.id)
-
-      setSearchResults(
-        searchableData.filter((coll) => searchMatches.includes(coll.id)),
-      )
-    } else {
-      setSearchResults(searchableData)
-    }
-  }, [searchValue]) // Only depend on searchValue, not searchableData
+  }, [getDistanceKm, searchResults, sortMode, typeFilter])
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newSearchValue = e.target.value
-      isSearching.current = true
-      setSearchValue(newSearchValue)
-
-      if (newSearchValue.length === 0) {
-        setSearchResults(searchableData)
-        return
-      }
-
-      if (!miniSearchRef.current) return
-
-      const searchMatches = miniSearchRef.current
-        .search(newSearchValue, { prefix: true })
-        .map((item) => item.id)
-
-      setSearchResults(
-        searchableData.filter((coll) => searchMatches.includes(coll.id)),
-      )
+      setSearchValue(e.target.value)
     },
-    [searchableData],
+    [],
   )
 
   const resetSearch = useCallback(() => {
     setSearchValue("")
-    setSearchResults(searchableData)
-    isSearching.current = false
-  }, [setSearchValue, setSearchResults])
+  }, [])
 
-  useEffect(() => {
-    if (isSearching.current && searchValue.length === 0) resetSearch()
-  }, [searchValue, resetSearch, searchableData])
+  const isSearching = searchValue.length > 0
 
   if (!trip) return <></>
   return (
@@ -445,12 +380,12 @@ export const TripDataList = ({ id }: { id: string }) => {
         <Input
           placeholder="Search collections"
           className={`transition-all duration-500 ease-in-out ${
-            isSearching.current ? "w-full flex-grow" : "w-full"
+            isSearching ? "w-full flex-grow" : "w-full"
           }`}
           value={searchValue}
           onChange={handleSearchChange}
         />
-        {isSearching.current && (
+        {isSearching && (
           <Button
             onClick={resetSearch}
             className="text-xs opacity-100 transition-opacity duration-500 ease-in-out"
@@ -506,7 +441,7 @@ export const TripDataList = ({ id }: { id: string }) => {
               {sortMode.split("-")[1] === "asc" && (
                 <SortAsc aria-label="Settings" size={14} />
               )}
-              {!isSearching.current ? (
+              {!isSearching ? (
                 <span className="opacity-100 transition-opacity duration-300 ease-in-out">
                   {sortMode.startsWith("created_at") ? "Created" : "Distance"}
                 </span>
