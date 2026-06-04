@@ -1,18 +1,11 @@
-import {
-  CollectionWithCoordAndPhotos,
-  useHydrateTripDetails,
-} from "./useHydrateTripDetails"
-import {
-  Collection,
-  CollectionWithCoord,
-  Species,
-} from "@nasti/common/types"
+import { CollectionWithCoord, Species } from "@nasti/common/types"
 import { useSpeciesList } from "./useSpeciesList"
 import { useQuery } from "@powersync/tanstack-react-query"
 import { parseLocation } from "./useTripDetails/helpers"
 import { TripCollectionPhotos, usePhotosForTrip } from "./usePhotosForTrip"
 import type { PowerSyncCollectionRow } from "@/lib/powersync/schema"
 import { rowToCollection } from "@/lib/powersync/rows"
+import type { CollectionWithCoordAndPhotos } from "./useTripDetails/types"
 
 export type FullCollection = CollectionWithCoordAndPhotos & {
   species?: Species
@@ -30,23 +23,17 @@ export const getCollection = async (id?: string) => {
   return data ? rowToCollection(data) : null
 }
 
-const useCollectionQuery = (
-  id: string,
-  placeholder: Collection | null = null,
-  enabled: boolean = true,
-) => {
+const useCollectionQuery = (id: string) => {
   const query = useQuery<PowerSyncCollectionRow>({
     queryKey: ["collections", "detail", id],
     query: "SELECT * FROM collection WHERE id = ?",
     parameters: [id],
-    enabled,
+    enabled: Boolean(id),
   })
   const row = query.data?.[0]
   const data: CollectionWithCoord | null = row
     ? parseLocation(rowToCollection(row))
-    : placeholder
-      ? parseLocation(placeholder)
-      : null
+    : null
 
   return { ...query, data }
 }
@@ -58,25 +45,16 @@ export const useCollection = ({
   collectionId: string
   tripId: string
 }) => {
-  const { data } = useHydrateTripDetails({ id: tripId })
-  const collection = data.trip?.collections.find((c) => c.id === collectionId)
   const { data: speciesList } = useSpeciesList()
-  const { data: collectionData } = useCollectionQuery(
-    collectionId,
-    collection,
-    !Boolean(collection),
-  )
+  const { data: collectionData } = useCollectionQuery(collectionId)
 
-  const { data: newPhotos } = usePhotosForTrip({
+  const { data: tripPhotos } = usePhotosForTrip({
     tripId: tripId,
     entityType: "collection",
-    enabled: !Boolean(collection),
   })
-  const photos =
-    collection?.photos ??
-    (newPhotos?.find(
+  const photos = tripPhotos?.filter(
       (p) => "collection_id" in p && p.collection_id === collectionId,
-    ) as unknown as TripCollectionPhotos)
+    ) as TripCollectionPhotos | undefined
 
   const species =
     speciesList?.find((s) => s.id === collectionData?.species_id) ?? undefined

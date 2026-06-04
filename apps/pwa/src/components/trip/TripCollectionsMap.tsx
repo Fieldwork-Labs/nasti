@@ -1,4 +1,4 @@
-import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
+import { useTripDetails } from "@/hooks/useTripDetails"
 
 import { useViewState } from "@nasti/common/hooks"
 import { BinocularsIcon, ShoppingBag } from "lucide-react"
@@ -61,7 +61,7 @@ const ScoutingNotePopup = ({
 }
 
 export const TripCollectionsMap = ({ id }: { id: string }) => {
-  const { data } = useHydrateTripDetails({ id })
+  const { data: trip } = useTripDetails({ tripId: id })
   const { location } = useGeoLocation()
 
   const [showPopup, setShowPopup] = useState<{
@@ -93,10 +93,10 @@ export const TripCollectionsMap = ({ id }: { id: string }) => {
   }, [])
 
   const collections =
-    data.trip?.collections.filter((col) => Boolean(col.locationCoord)) ?? []
+    trip?.collections.filter((col) => Boolean(col.locationCoord)) ?? []
 
   const scoutingNotes =
-    data.trip?.scoutingNotes.filter((sn) => Boolean(sn.locationCoord)) ?? []
+    trip?.scoutingNotes.filter((sn) => Boolean(sn.locationCoord)) ?? []
 
   const initialDataCoords: Array<[number, number]> = [
     ...collections,

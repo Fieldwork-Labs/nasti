@@ -1,8 +1,7 @@
 import {
   CollectionWithCoordAndPhotos,
   ScoutingNoteWithCoordAndPhotos,
-  useHydrateTripDetails,
-} from "@/hooks/useHydrateTripDetails"
+} from "@/hooks/useTripDetails/types"
 import {
   Card,
   CardContent,
@@ -43,15 +42,19 @@ import {
 
 import { useGeoLocation } from "@/contexts/location"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
+import { useOrgMembers } from "@/hooks/useOrgMembers"
 import {
   TripCollectionPhotos,
   TripScoutingNotePhotos,
 } from "@/hooks/usePhotosForTrip"
+import { useSpeciesForTrip } from "@/hooks/useSpeciesForTrip"
 import { Input } from "@nasti/ui/input"
-import { Link, useParams } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
+import { useTripDetails } from "@/hooks/useTripDetails"
+import { useSpeciesPhotosMap, useTripPhotoMaps } from "@/hooks/useTripPhotoMaps"
 
 // Base interface for entities that can be displayed in the list
 interface DisplayableEntity {
@@ -89,6 +92,7 @@ interface EntityListItemProps<TEntity extends DisplayableEntity> {
   config: EntityListItemConfig
   isPending?: boolean
   isMutating?: boolean
+  speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }
 
 function EntityListItem<TEntity extends DisplayableEntity>({
@@ -98,12 +102,9 @@ function EntityListItem<TEntity extends DisplayableEntity>({
   config,
   isMutating,
   isPending,
+  speciesPhotosMap,
 }: EntityListItemProps<TEntity>) {
   const displayDistance = useDisplayDistance(entity.locationCoord ?? {})
-  const { id } = useParams({ from: "/_private/trips/$id/" })
-  const {
-    data: { speciesPhotosMap },
-  } = useHydrateTripDetails({ id })
   const { image: speciesProfileImage } = useSpeciesDisplayImage(
     entity?.species_id ?? undefined,
     speciesPhotosMap,
@@ -201,10 +202,12 @@ export const CollectionListItem = ({
   collection,
   species,
   person,
+  speciesPhotosMap,
 }: {
   collection: CollectionWithSpecies
   species?: Species | null
   person?: Person | null
+  speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }) => {
   return (
     <EntityListItem
@@ -212,6 +215,7 @@ export const CollectionListItem = ({
       species={species}
       person={person}
       config={collectionConfig}
+      speciesPhotosMap={speciesPhotosMap}
     />
   )
 }
@@ -220,10 +224,12 @@ export const ScoutingNoteListItem = ({
   scoutingNote,
   species,
   person,
+  speciesPhotosMap,
 }: {
   scoutingNote: ScoutingNoteWithSpecies
   species?: Species | null
   person?: Person | null
+  speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }) => {
   return (
     <EntityListItem
@@ -231,6 +237,7 @@ export const ScoutingNoteListItem = ({
       species={species}
       person={person}
       config={scoutingNoteConfig}
+      speciesPhotosMap={speciesPhotosMap}
     />
   )
 }
@@ -244,13 +251,19 @@ export const TripDataList = ({ id }: { id: string }) => {
   >(null)
   const [searchValue, setSearchValue] = useState("")
   const isSearching = useRef(false)
-  const { data } = useHydrateTripDetails({ id })
+  const { data: trip } = useTripDetails({ tripId: id })
+  const { data: species } = useSpeciesForTrip(id)
+  const { data: peopleResponse } = useOrgMembers()
+  const { collectionPhotosMap, scoutingNotePhotosMap } = useTripPhotoMaps({
+    tripId: id,
+  })
+  const { speciesPhotosMap } = useSpeciesPhotosMap({ tripId: id })
   const { getDistanceKm } = useGeoLocation()
 
   const miniSearchRef = useRef<MiniSearch<DataWithSpecies> | null>(null)
   const speciesMap = useMemo(() => {
     return (
-      data.species?.reduce(
+      species?.reduce(
         (acc, species) => {
           acc[species.id] = species
           return acc
@@ -258,10 +271,10 @@ export const TripDataList = ({ id }: { id: string }) => {
         {} as Record<string, Species>,
       ) ?? {}
     )
-  }, [data.species])
+  }, [species])
 
   const peopleMap = useMemo(() => {
-    const people = data.people ?? []
+    const people = peopleResponse?.data ?? []
     return people.reduce(
       (acc, person) => {
         acc[person.id] = person
@@ -269,12 +282,12 @@ export const TripDataList = ({ id }: { id: string }) => {
       },
       {} as Record<string, Person>,
     )
-  }, [data.people])
+  }, [peopleResponse?.data])
 
   const previousDataRef = useRef<DataWithSpecies[]>([])
   const searchableData = useMemo(() => {
-    const collections = data.trip?.collections ?? []
-    const scoutingNotes = data.trip?.scoutingNotes ?? []
+    const collections = trip?.collections ?? []
+    const scoutingNotes = trip?.scoutingNotes ?? []
     if (collections.length === 0 && scoutingNotes.length === 0) return []
 
     // Use a stable reference check to avoid unnecessary recalculations
@@ -289,6 +302,7 @@ export const TripDataList = ({ id }: { id: string }) => {
       ...collections.map((coll) => {
         return {
           ...coll,
+          photos: collectionPhotosMap[coll.id] ?? [],
           dataType: "collection" as const,
           species: coll.species_id ? speciesMap[coll.species_id] : undefined,
         }
@@ -296,17 +310,22 @@ export const TripDataList = ({ id }: { id: string }) => {
       ...scoutingNotes.map((sn) => {
         return {
           ...sn,
+          photos: scoutingNotePhotosMap[sn.id] ?? [],
           dataType: "scoutingNote" as const,
           species: sn.species_id ? speciesMap[sn.species_id] : undefined,
         }
       }),
     ]
 
-    console.log({ result })
-
     previousDataRef.current = result
     return result
-  }, [data.trip?.collections, speciesMap])
+  }, [
+    trip?.collections,
+    trip?.scoutingNotes,
+    speciesMap,
+    collectionPhotosMap,
+    scoutingNotePhotosMap,
+  ])
 
   const [searchResults, setSearchResults] =
     useState<Array<DataWithSpecies>>(searchableData)
@@ -419,7 +438,7 @@ export const TripDataList = ({ id }: { id: string }) => {
     if (isSearching.current && searchValue.length === 0) resetSearch()
   }, [searchValue, resetSearch, searchableData])
 
-  if (!data) return <></>
+  if (!trip) return <></>
   return (
     <div className="flex flex-col gap-2">
       <div className="flex w-full justify-between gap-1 px-1 text-sm">
@@ -526,6 +545,7 @@ export const TripDataList = ({ id }: { id: string }) => {
                 collection={item}
                 species={item.species}
                 person={person}
+                speciesPhotosMap={speciesPhotosMap}
               />
             )
           if (item.dataType === "scoutingNote")
@@ -535,10 +555,11 @@ export const TripDataList = ({ id }: { id: string }) => {
                 scoutingNote={item}
                 species={item.species}
                 person={person}
+                speciesPhotosMap={speciesPhotosMap}
               />
             )
         })}
-        {data.trip && data.trip.collections.length === 0 && (
+        {trip.collections.length === 0 && (
           <div className="text-center">
             <span className="p-4 text-xl">No collections recorded yet</span>
           </div>

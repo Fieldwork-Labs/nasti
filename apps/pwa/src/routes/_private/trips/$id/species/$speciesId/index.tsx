@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { ChevronLeft, ImageIcon, PlusCircle, XIcon } from "lucide-react"
 import { Spinner } from "@nasti/ui/spinner"
-import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 import { useState, useEffect } from "react"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch"
 import { useSpeciesList } from "@/hooks/useSpeciesList"
+import { useSpeciesPhotosMap } from "@/hooks/useTripPhotoMaps"
 
 const SpeciesDetail = () => {
   const { id: tripId, speciesId } = useParams({
@@ -16,12 +16,14 @@ const SpeciesDetail = () => {
     null,
   )
 
-  const { data: tripData, isFetching } = useHydrateTripDetails({ id: tripId })
+  const { speciesPhotosMap, speciesPhotosIsFetching } = useSpeciesPhotosMap({
+    tripId,
+  })
 
   // Get species from species list (offline-safe)
   const { data: speciesList } = useSpeciesList()
   const species = speciesList?.find((s) => s.id === speciesId)
-  const speciesPhotos = tripData?.speciesPhotosMap?.[speciesId] || []
+  const speciesPhotos = speciesPhotosMap?.[speciesId] || []
   const primaryPhoto = speciesPhotos[0]
 
   const handleBackClick = () => {
@@ -36,7 +38,7 @@ const SpeciesDetail = () => {
     setSelectedPhotoIndex(null)
   }
 
-  if (isFetching || !tripData) {
+  if (speciesPhotosIsFetching) {
     return (
       <div className="px-auto mx-auto mt-36 flex flex-col items-center text-center">
         <Spinner size={"xl"} />

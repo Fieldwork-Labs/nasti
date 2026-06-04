@@ -1,7 +1,6 @@
 import {
   CollectionWithCoord,
   ScoutingNoteWithCoord,
-  Trip,
 } from "@nasti/common/types"
 
 import {
@@ -15,18 +14,4 @@ export type CollectionWithCoordAndPhotos = CollectionWithCoord & {
 
 export type ScoutingNoteWithCoordAndPhotos = ScoutingNoteWithCoord & {
   photos: TripScoutingNotePhotos
-}
-
-export type TripDetails = Trip & {
-  collections: Array<CollectionWithCoordAndPhotos>
-  scoutingNotes: Array<ScoutingNoteWithCoordAndPhotos>
-  members:
-    | {
-        id: string
-        joined_at: string | null
-        role: string | null
-        trip_id: string
-        user_id: string
-      }[]
-    | null
 }
