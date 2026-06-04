@@ -27,6 +27,6 @@ api:
     - !env PS_API_TOKEN
 
 client_auth:
-  jwks_uri: !env PS_JWKS_URL
+  supabase: true
   audience:
     - authenticated
