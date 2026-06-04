@@ -50,14 +50,6 @@ vi.mock("@powersync/tanstack-react-query", () => ({
   useQuery: powerSyncUseQueryMock,
 }))
 
-vi.mock("../useSpeciesList", () => ({
-  useSpeciesList: vi.fn(() => ({ data: [mockSpecies] })),
-}))
-
-vi.mock("../usePhotosForTrip", () => ({
-  usePhotosForTrip: vi.fn(() => ({ data: mockPhotos })),
-}))
-
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -73,12 +65,26 @@ const createWrapper = () => {
 
 describe("useCollection hook", () => {
   it("returns a collection with photos and species when one exists", async () => {
-    powerSyncUseQueryMock.mockReturnValue({
-      data: [mockCollection],
-      isPending: false,
-      isFetching: false,
-      isError: false,
-      refetch: vi.fn(),
+    powerSyncUseQueryMock.mockImplementation(({ queryKey }) => {
+      const key = queryKey.join(":")
+      const baseQuery = {
+        isPending: false,
+        isFetching: false,
+        isError: false,
+        refetch: vi.fn(),
+      }
+
+      if (key.startsWith("collections:detail")) {
+        return { ...baseQuery, data: [mockCollection] }
+      }
+      if (key.startsWith("photos:collection:byCollection")) {
+        return { ...baseQuery, data: mockPhotos }
+      }
+      if (key.startsWith("species:detail")) {
+        return { ...baseQuery, data: [mockSpecies] }
+      }
+
+      return { ...baseQuery, data: [] }
     })
 
     const { result } = renderHook(

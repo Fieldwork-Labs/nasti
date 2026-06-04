@@ -1,10 +1,13 @@
 import { ScoutingNoteWithCoord, Species } from "@nasti/common/types"
-import { useSpeciesList } from "./useSpeciesList"
 import { useQuery } from "@powersync/tanstack-react-query"
 import { parseLocation } from "./useTripDetails/helpers"
-import { TripScoutingNotePhotos, usePhotosForTrip } from "./usePhotosForTrip"
-import type { PowerSyncScoutingNoteRow } from "@/lib/powersync/schema"
-import { rowToScoutingNote } from "@/lib/powersync/rows"
+import { TripScoutingNotePhotos } from "./usePhotosForTrip"
+import type {
+  PowerSyncScoutingNotePhotoRow,
+  PowerSyncScoutingNoteRow,
+  PowerSyncSpeciesRow,
+} from "@/lib/powersync/schema"
+import { rowToScoutingNote, rowToSpecies } from "@/lib/powersync/rows"
 import type { ScoutingNoteWithCoordAndPhotos } from "./useTripDetails/types"
 
 export type FullScoutingNote = ScoutingNoteWithCoordAndPhotos & {
@@ -38,26 +41,42 @@ const useScoutingNoteQuery = (id: string) => {
   return { ...query, data }
 }
 
+const useScoutingNotePhotosQuery = (scoutingNoteId: string) => {
+  const query = useQuery<PowerSyncScoutingNotePhotoRow>({
+    queryKey: ["photos", "scoutingNote", "byScoutingNote", scoutingNoteId],
+    query:
+      "SELECT * FROM scouting_notes_photos WHERE scouting_notes_id = ? ORDER BY uploaded_at DESC",
+    parameters: [scoutingNoteId],
+    enabled: Boolean(scoutingNoteId),
+  })
+
+  return {
+    ...query,
+    data: query.data as TripScoutingNotePhotos | undefined,
+  }
+}
+
+const useScoutingNoteSpeciesQuery = (speciesId?: string | null) => {
+  const query = useQuery<PowerSyncSpeciesRow>({
+    queryKey: ["species", "detail", speciesId],
+    query: "SELECT * FROM species WHERE id = ?",
+    parameters: [speciesId ?? ""],
+    enabled: Boolean(speciesId),
+  })
+
+  const row = query.data?.[0]
+  return { ...query, data: row ? rowToSpecies(row) : undefined }
+}
+
 export const useScoutingNote = ({
   scoutingNoteId,
-  tripId,
 }: {
   scoutingNoteId: string
   tripId: string
 }) => {
-  const { data: speciesList } = useSpeciesList()
   const { data: snData } = useScoutingNoteQuery(scoutingNoteId)
-
-  const { data: tripPhotos } = usePhotosForTrip({
-    tripId: tripId,
-    entityType: "scoutingNote",
-  })
-  const photos = tripPhotos?.filter(
-      (p) => "scouting_notes_id" in p && p.scouting_notes_id === scoutingNoteId,
-    ) as TripScoutingNotePhotos | undefined
-
-  const species =
-    speciesList?.find((s) => s.id === snData?.species_id) ?? undefined
+  const { data: photos } = useScoutingNotePhotosQuery(scoutingNoteId)
+  const { data: species } = useScoutingNoteSpeciesQuery(snData?.species_id)
 
   const result: FullScoutingNote | undefined = snData
     ? { ...snData, photos: photos ?? [], species }

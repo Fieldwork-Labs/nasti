@@ -1,10 +1,13 @@
 import { CollectionWithCoord, Species } from "@nasti/common/types"
-import { useSpeciesList } from "./useSpeciesList"
 import { useQuery } from "@powersync/tanstack-react-query"
 import { parseLocation } from "./useTripDetails/helpers"
-import { TripCollectionPhotos, usePhotosForTrip } from "./usePhotosForTrip"
-import type { PowerSyncCollectionRow } from "@/lib/powersync/schema"
-import { rowToCollection } from "@/lib/powersync/rows"
+import { TripCollectionPhotos } from "./usePhotosForTrip"
+import type {
+  PowerSyncCollectionPhotoRow,
+  PowerSyncCollectionRow,
+  PowerSyncSpeciesRow,
+} from "@/lib/powersync/schema"
+import { rowToCollection, rowToSpecies } from "@/lib/powersync/rows"
 import type { CollectionWithCoordAndPhotos } from "./useTripDetails/types"
 
 export type FullCollection = CollectionWithCoordAndPhotos & {
@@ -38,26 +41,39 @@ const useCollectionQuery = (id: string) => {
   return { ...query, data }
 }
 
+const useCollectionPhotosQuery = (collectionId: string) => {
+  const query = useQuery<PowerSyncCollectionPhotoRow>({
+    queryKey: ["photos", "collection", "byCollection", collectionId],
+    query:
+      "SELECT * FROM collection_photo WHERE collection_id = ? ORDER BY uploaded_at DESC",
+    parameters: [collectionId],
+    enabled: Boolean(collectionId),
+  })
+
+  return { ...query, data: query.data as TripCollectionPhotos | undefined }
+}
+
+const useCollectionSpeciesQuery = (speciesId?: string | null) => {
+  const query = useQuery<PowerSyncSpeciesRow>({
+    queryKey: ["species", "detail", speciesId],
+    query: "SELECT * FROM species WHERE id = ?",
+    parameters: [speciesId ?? ""],
+    enabled: Boolean(speciesId),
+  })
+
+  const row = query.data?.[0]
+  return { ...query, data: row ? rowToSpecies(row) : undefined }
+}
+
 export const useCollection = ({
   collectionId,
-  tripId,
 }: {
   collectionId: string
   tripId: string
 }) => {
-  const { data: speciesList } = useSpeciesList()
   const { data: collectionData } = useCollectionQuery(collectionId)
-
-  const { data: tripPhotos } = usePhotosForTrip({
-    tripId: tripId,
-    entityType: "collection",
-  })
-  const photos = tripPhotos?.filter(
-      (p) => "collection_id" in p && p.collection_id === collectionId,
-    ) as TripCollectionPhotos | undefined
-
-  const species =
-    speciesList?.find((s) => s.id === collectionData?.species_id) ?? undefined
+  const { data: photos } = useCollectionPhotosQuery(collectionId)
+  const { data: species } = useCollectionSpeciesQuery(collectionData?.species_id)
 
   const result: FullCollection | undefined = collectionData
     ? { ...collectionData, photos: photos ?? [], species }
