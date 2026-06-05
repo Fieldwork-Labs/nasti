@@ -1,0 +1,39 @@
+name: Deploy PowerSync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "powersync/**"
+  workflow_dispatch: # Allow manual triggers
+
+jobs:
+  deploy:
+    name: Deploy PowerSync to Fly.io
+    runs-on: ubuntu-latest
+    concurrency: deploy-powersync
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      # Update config file secrets when service.yaml or sync-config.yaml change.
+      # These are mounted as files inside the container via [[files]] in fly.toml.
+      - name: Update PowerSync config secrets
+        working-directory: powersync
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl secrets set \
+            POWERSYNC_CONFIG_B64="$(base64 -w0 service.yaml)" \
+            POWERSYNC_SYNC_CONFIG_B64="$(base64 -w0 sync-config.yaml)" \
+            --stage
+
+      - name: Deploy to Fly.io
+        working-directory: powersync
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only

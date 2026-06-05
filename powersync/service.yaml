@@ -28,5 +28,6 @@ api:
 
 client_auth:
   supabase: true
+  supabase_jwt_secret: !env PS_SUPABASE_JWT_SECRET
   audience:
     - authenticated
