@@ -7,11 +7,33 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
 import path from "path"
 
 import { nodePolyfills } from "vite-plugin-node-polyfills"
+import { execSync } from "node:child_process"
 
 const isProd = process.env.CF_PAGES === "1"
 
+function getGitSha() {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim()
+  } catch {
+    return null
+  }
+}
+
+// Unique per build. Used as the TanStack Query persist `buster` so a new
+// deploy auto-discards a stale persisted cache (which can otherwise hold
+// data in an old shape and crash the app on hydrate). Cloudflare Workers
+// sets WORKERS_CI_COMMIT_SHA in the build env; locally we read the git
+// sha directly so HMR reloads don't bust the cache on every save.
+const buildId =
+  process.env.WORKERS_CI_COMMIT_SHA?.slice(0, 7) ??
+  getGitSha() ??
+  Date.now().toString()
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(buildId),
+  },
   test: {
     setupFiles: ["vitest-localstorage-mock", "fake-indexeddb/auto"],
     mockReset: false,

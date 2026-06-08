@@ -64,10 +64,6 @@ const useTripMembers = (tripId: string) => {
  */
 export const useTripDetails = ({ tripId }: { tripId: string }) => {
   const collectionsQuery = useTripCollections(tripId)
-  const collectionsWithCoord = useMemo(
-    () => collectionsQuery.data?.map(parseLocation),
-    [collectionsQuery.data],
-  )
   const scoutingNotesQuery = useTripScoutingNotes(tripId)
   const tripMembersQuery = useTripMembers(tripId)
 
@@ -83,13 +79,13 @@ export const useTripDetails = ({ tripId }: { tripId: string }) => {
     return {
       ...(rowToTrip(trip) as Trip),
       members: tripMembersQuery.data ?? [],
-      collections: collectionsWithCoord ?? [],
+      collections: collectionsQuery.data ?? [],
       scoutingNotes: scoutingNotesQuery.data ?? [],
     }
   }, [
     tripDetails.data,
     tripMembersQuery.data,
-    collectionsWithCoord,
+    collectionsQuery.data,
     scoutingNotesQuery.data,
   ])
   return { ...tripDetails, data: result }
