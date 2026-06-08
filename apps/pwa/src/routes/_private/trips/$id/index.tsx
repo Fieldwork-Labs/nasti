@@ -1,6 +1,5 @@
 import { Spinner } from "@nasti/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
-import { cn } from "@nasti/ui/utils"
 
 import { Button } from "@nasti/ui/button"
 import {
@@ -14,7 +13,6 @@ import {
   ChevronLeft,
   LeafIcon,
   PlusCircle,
-  RefreshCwIcon,
   ShoppingBag,
 } from "lucide-react"
 
@@ -29,7 +27,6 @@ import { useOpenClose } from "@nasti/ui/hooks"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useTripDetails } from "@/hooks/useTripDetails"
 import { useSpeciesForTrip } from "@/hooks/useSpeciesForTrip"
-import { useCallback, useState } from "react"
 
 const NewDataButton = () => {
   const { isOpen, setIsOpen } = useOpenClose()
@@ -80,7 +77,6 @@ const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const tripDetailsQuery = useTripDetails({ tripId: id })
   const tripSpeciesQuery = useSpeciesForTrip(id)
-  const [isRefetching, setIsRefetching] = useState(false)
   const navigate = useNavigate()
 
   const { setIsOpen } = useSpeciesDrawer()
