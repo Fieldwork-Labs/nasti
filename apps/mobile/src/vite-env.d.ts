@@ -13,3 +13,5 @@ declare const __BUILD_ID__: string
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+declare const __NASTI_TARGET__: "pwa" | "capacitor" | string

@@ -3,8 +3,9 @@ import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { cn } from "@nasti/ui/utils"
 import { PencilIcon } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
+import { photos } from "@/platform"
 
 type NewPhoto = { file: File; caption?: string; id: string }
 type Photos = Record<string, NewPhoto>
@@ -111,25 +112,21 @@ export function PhotosUploadField({
 }: PhotoUploadFieldProps) {
   const [photoMap, setPhotoMap] = useState<Photos>({})
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newEntries: Photos = {}
-      await Promise.all(
-        Array.from(e.target.files).map(async (file) => {
-          const url = URL.createObjectURL(file)
-          const id = crypto.randomUUID()
-          newEntries[url] = { file, id }
-        }),
-      )
-      setPhotoMap((prev) => ({ ...prev, ...newEntries }))
-    }
+  const addFiles = async (files: Array<File>) => {
+    const newEntries: Photos = {}
+    await Promise.all(
+      files.map(async (file) => {
+        const url = URL.createObjectURL(file)
+        const id = crypto.randomUUID()
+        newEntries[url] = { file, id }
+      }),
+    )
+    setPhotoMap((prev) => ({ ...prev, ...newEntries }))
   }
 
   const removePhoto = async (url: string) => {
     setPhotoMap((prev) => {
-      const { [url]: file, ...newMap } = prev
+      const { [url]: _file, ...newMap } = prev
       URL.revokeObjectURL(url)
       return newMap
     })
@@ -149,23 +146,13 @@ export function PhotosUploadField({
     setPhotoMap((prev) => ({ ...prev, [url]: { ...prev[url], caption } }))
   }, [])
 
-  const openFilePicker = () => {
-    fileInputRef.current?.click()
+  const openFilePicker = async () => {
+    await addFiles(await photos.addPhotos())
   }
 
   return (
     <div className={cn(className)}>
       <div className="mb-1 flex flex-col gap-2">
-        {/* Hidden file input */}
-        <input
-          type="file"
-          accept="image/*,android/force-camera-workaround"
-          multiple
-          onChange={handleUpload}
-          ref={fileInputRef}
-          style={{ display: "none" }}
-        />
-
         {/* Thumbnails */}
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(photoMap).map(([url, { caption }]) => (

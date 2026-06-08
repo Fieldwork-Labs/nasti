@@ -1,3 +1,4 @@
+import "./lib/supabase"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import "./style.css"
@@ -7,9 +8,10 @@ import { routeTree } from "./routeTree.gen"
 import { ThemeProvider } from "./contexts/theme"
 import { NastiPersistQueryClientProvider } from "./lib/queryClient"
 import { useAuth } from "./hooks/useAuth"
-import { SwStatusProvider } from "./contexts/swStatus"
+import { SwStatusProvider } from "@/contexts/swStatus"
 import { PowerSyncProvider } from "./contexts/PowerSync"
 import * as Sentry from "@sentry/react"
+import { appShell } from "@/platform"
 
 // Create a new router instance
 const router = createRouter({
@@ -60,6 +62,8 @@ export const App = () => {
     </ThemeProvider>
   )
 }
+
+appShell.prepareDocument()
 
 const rootElement = document.getElementById("root")
 if (!rootElement) throw new Error("No root element found")
