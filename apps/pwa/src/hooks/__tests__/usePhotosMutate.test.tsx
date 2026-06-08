@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { ROLE } from "@nasti/common/types"
 import { usePhotosMutate } from "../usePhotosMutate"
 
 const {
@@ -19,9 +20,31 @@ const {
   getSessionMock: vi.fn(),
 }))
 
+const toBase64Url = (value: unknown) =>
+  btoa(JSON.stringify(value))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "")
+
+const createJwt = (payload: Record<string, unknown>) =>
+  [
+    toBase64Url({ alg: "RS256", kid: "test-key" }),
+    toBase64Url(payload),
+    "signature",
+  ].join(".")
+
+const mockAccessToken = createJwt({
+  app_metadata: {
+    org_id: "org-1",
+    org_name: "Test Organisation",
+    role: ROLE.ADMIN,
+  },
+})
+
 vi.mock("../useAuth", () => ({
   useAuth: vi.fn(() => ({
-    org: { organisation_id: "org-1" },
+    organisation: { id: "org-1", name: "Test Organisation" },
+    role: ROLE.ADMIN,
   })),
 }))
 
@@ -82,7 +105,7 @@ describe("usePhotosMutate", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getSessionMock.mockResolvedValue({
-      data: { session: { access_token: "token" } },
+      data: { session: { access_token: mockAccessToken } },
       error: null,
     })
     psInsertMock.mockResolvedValue(undefined)

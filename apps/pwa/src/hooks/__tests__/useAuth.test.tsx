@@ -6,12 +6,26 @@ import React from "react"
 // Import the real supabase module and the hook under test
 import { supabase } from "@nasti/common/supabase"
 import { useAuth } from "../useAuth" // adjust this path if necessary
+import { ROLE } from "@nasti/common/types"
 import {
   AuthError,
   AuthRetryableFetchError,
-  Session,
-  User,
+  type Session,
+  type User,
 } from "@supabase/supabase-js"
+
+const toBase64Url = (value: unknown) =>
+  btoa(JSON.stringify(value))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "")
+
+const createJwt = (payload: Record<string, unknown>) =>
+  [
+    toBase64Url({ alg: "RS256", kid: "test-key" }),
+    toBase64Url(payload),
+    "signature",
+  ].join(".")
 
 // ─── Mock Data ─────────────────────────────────────────────────────────────────
 const mockUserData: User = {
@@ -24,20 +38,27 @@ const mockUserData: User = {
 }
 
 const mockSession: Session = {
-  access_token: "token-123",
+  access_token: createJwt({
+    app_metadata: {
+      org_id: "org-123",
+      org_name: "Test Organization",
+      role: ROLE.ADMIN,
+    },
+  }),
   refresh_token: "refresh-123",
   expires_in: 3600,
   token_type: "bearer",
   user: mockUserData,
 }
 
-const mockOrgData = {
-  id: "org-user-123",
-  user_id: "user-123",
-  organisation: {
-    id: "org-123",
-    name: "Test Organization",
-  },
+const mockSessionWithoutClaims: Session = {
+  ...mockSession,
+  access_token: createJwt({ app_metadata: {} }),
+}
+
+const mockOrganisation = {
+  id: "org-123",
+  name: "Test Organization",
 }
 
 // ─── Test‐wrapper for React Query ───────────────────────────────────────────────
@@ -80,10 +101,11 @@ describe("useAuth hook", () => {
     })
 
     // Now assert that `result.current.user` is explicitly null (not undefined),
-    // and that `org` is null, and isLoggedIn === false.
+    // and that auth-derived values are empty.
     await waitFor(() => {
       expect(result.current.user).toBeNull()
-      expect(result.current.org).toBeUndefined()
+      expect(result.current.organisation).toBeNull()
+      expect(result.current.role).toBeNull()
       expect(result.current.isLoggedIn).toBe(false)
     })
   })
@@ -108,38 +130,62 @@ describe("useAuth hook", () => {
     })
   })
 
-  it("fetches org data when supabase select org_user returns a valid org_user", async () => {
-    // ─── Arrange ───────────────────────────────────────────────────────────────
-    // 1) Spy on getUser → returns the mockUserData
+  it("derives organisation and role from JWT app_metadata claims on login", async () => {
     vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
       data: { user: mockUserData },
       error: null,
     })
-
-    // 2) Spy on the `.from("org_user")` chain so that `.single()` resolves with our org data.
-    //    We overwrite `supabase.from` to return an object whose `.select()` → `{ eq() → { single() }}`.
-    // each of these mocks need to be created separately because they are used in different places
-    // ─── Adjusted mock setup ────────────────────────────────────────────
-
-    const singleMock = vi.fn(() =>
-      Promise.resolve({ data: mockOrgData, error: null }),
-    )
-    const eqMock = vi.fn(() => ({ single: singleMock }))
-    const selectMock = vi.fn(() => ({ eq: eqMock }))
-    const fakeFrom = { select: selectMock }
-    vi.spyOn(supabase, "from").mockReturnValue(fakeFrom as any)
+    vi.spyOn(supabase.auth, "signInWithPassword").mockResolvedValue({
+      data: { user: mockUserData, session: mockSession },
+      error: null,
+    })
+    const fromSpy = vi.spyOn(supabase, "from")
 
     // ─── Act ─────────────────────────────────────────────────────────────────
-    const { result } = renderHook(() => useAuth(), {
+    const { result, rerender } = renderHook(() => useAuth(), {
       wrapper: createWrapper(),
     })
 
+    await result.current.login.mutateAsync({
+      email: mockUserData.email!,
+      password: "pw",
+    })
+
+    rerender()
+
     await waitFor(() => {
-      expect(supabase.from).toHaveBeenCalledWith("org_user")
-      expect(selectMock).toHaveBeenCalledWith("*, organisation(id, name)")
-      expect(eqMock).toHaveBeenCalled()
-      expect(eqMock.mock.calls[0]).toEqual(["user_id", mockUserData.id])
-      expect(result.current.org).toEqual(mockOrgData)
+      expect(result.current.organisation).toEqual(mockOrganisation)
+      expect(result.current.role).toBe(ROLE.ADMIN)
+      expect(result.current.isLoggedIn).toBe(true)
+    })
+    expect(fromSpy).not.toHaveBeenCalledWith("org_user")
+  })
+
+  it("leaves organisation and role null when login session has no JWT claims", async () => {
+    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
+      data: { user: mockUserData },
+      error: null,
+    })
+    vi.spyOn(supabase.auth, "signInWithPassword").mockResolvedValue({
+      data: { user: mockUserData, session: mockSessionWithoutClaims },
+      error: null,
+    })
+
+    const { result, rerender } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(),
+    })
+
+    await result.current.login.mutateAsync({
+      email: mockUserData.email!,
+      password: "pw",
+    })
+
+    rerender()
+
+    await waitFor(() => {
+      expect(result.current.organisation).toBeNull()
+      expect(result.current.role).toBeNull()
+      expect(result.current.isLoggedIn).toBe(true)
     })
   })
 
@@ -181,13 +227,11 @@ describe("useAuth hook", () => {
       error: null,
     })
 
-    const singleMock = vi.fn(() =>
-      Promise.resolve({ data: mockOrgData, error: null }),
-    )
-    const eqMock = vi.fn(() => ({ single: singleMock }))
-    const selectMock = vi.fn(() => ({ eq: eqMock }))
-    const fakeFrom = { select: selectMock }
-    vi.spyOn(supabase, "from").mockReturnValue(fakeFrom as any)
+    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
+      data: { user: mockUserData },
+      error: null,
+    })
+
     const { result, rerender } = renderHook(() => useAuth(), {
       wrapper: createWrapper(),
     })
@@ -201,7 +245,8 @@ describe("useAuth hook", () => {
     // Wait until the hook picks up both user and org:
     await waitFor(() => {
       expect(result.current.user).toEqual(mockUserData)
-      expect(result.current.org).toEqual(mockOrgData)
+      expect(result.current.organisation).toEqual(mockOrganisation)
+      expect(result.current.role).toBe(ROLE.ADMIN)
       expect(result.current.isLoggedIn).toBe(true)
     })
 
@@ -212,11 +257,12 @@ describe("useAuth hook", () => {
     await result.current.logout.mutateAsync()
 
     // ─── Assert ──────────────────────────────────────────────────────────────
-    // Because logout.onMutate() clears all queries under ["auth"], we expect the hook to return user=null, org=null, isLoggedIn=false
+    // Because logout.onMutate() clears all queries under ["auth"], we expect the hook to return user=null, organisation=null, isLoggedIn=false
     await waitFor(() => {
       expect(supabase.auth.signOut).toHaveBeenCalled()
       expect(result.current.user).toBeNull()
-      expect(result.current.org).toBeNull()
+      expect(result.current.organisation).toBeNull()
+      expect(result.current.role).toBeNull()
       expect(result.current.isLoggedIn).toBe(false)
     })
   })
