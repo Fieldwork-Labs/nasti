@@ -8,7 +8,7 @@ const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ??
   (isTest ? "http://localhost:54321" : undefined)
 const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? (isTest ? "test-anon-key" : "")
+  import.meta.env.VITE_SB_PUBLISHABLE_KEY ?? (isTest ? "test-anon-key" : "")
 
 export const createNastiSupabaseClient = (options?: {
   authStorage?: SupportedStorage
