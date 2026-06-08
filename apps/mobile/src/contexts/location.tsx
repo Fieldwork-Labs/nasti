@@ -10,6 +10,7 @@ import React, {
 
 import { point, distance } from "@turf/turf"
 import debounce from "lodash/debounce"
+import { geolocation } from "@/platform"
 
 // Type definitions
 type GeolocationData = Omit<GeolocationCoordinates, "toJSON">
@@ -45,30 +46,20 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
   const [warning, setWarning] = useState<number | undefined>(undefined)
 
   useEffect(() => {
-    let watchId: number
+    let stopWatching: (() => void) | undefined
 
-    const onSuccess: PositionCallback = debounce(({ coords }) => {
-      setLocation({
-        accuracy: coords.accuracy,
-        altitude: coords.altitude,
-        altitudeAccuracy: coords.altitudeAccuracy,
-        heading: coords.heading,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        speed: coords.speed,
-      })
+    const onUpdate = debounce(({ location, warning }) => {
+      if (location) setLocation(location)
+      if (warning) setWarning(warning)
     }, 1000)
 
-    const onError: PositionErrorCallback = ({ code }) => setWarning(code)
-
-    watchId = navigator.geolocation.watchPosition(onSuccess, onError, {
-      enableHighAccuracy: true,
+    void geolocation.watchPosition(onUpdate).then((stop: () => void) => {
+      stopWatching = stop
     })
 
     return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId)
-      }
+      stopWatching?.()
+      onUpdate.cancel()
     }
   }, [])
 
@@ -130,21 +121,11 @@ export const useHasGeoLocationPermission = () => {
   >()
 
   useEffect(() => {
-    const eventListener: EventListener = (e) =>
-      setPermStatus((e.target as PermissionStatus).state)
-
-    if (navigator.permissions)
-      navigator.permissions.query({ name: "geolocation" }).then((x) => {
-        setPermStatus(x.state)
-        x.addEventListener("change", eventListener)
-      })
-    else if (navigator.geolocation) setPermStatus("granted")
+    void geolocation.getPermissionState().then(setPermStatus)
+    const unsubscribe = geolocation.subscribePermissionState?.(setPermStatus)
 
     return () => {
-      navigator.permissions &&
-        navigator.permissions
-          .query({ name: "geolocation" })
-          .then((x) => x.removeEventListener("change", eventListener))
+      unsubscribe?.()
     }
   }, [])
 

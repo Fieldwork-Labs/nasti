@@ -1,17 +1,31 @@
 {
-  "name": "nasti-pwa",
+  "name": "nasti-mobile",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --clearScreen false --port 5172",
     "build": "tsc -b && vite build",
+    "build:capacitor": "NASTI_TARGET=capacitor corepack pnpm build",
+    "cap:add:ios": "corepack pnpm build:capacitor && cap add ios",
+    "cap:add:android": "corepack pnpm build:capacitor && cap add android",
+    "cap:sync": "corepack pnpm build:capacitor && cap sync",
+    "cap:open:ios": "corepack pnpm cap:sync && cap open ios",
+    "cap:open:android": "corepack pnpm cap:sync && cap open android",
     "lint": "eslint .",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "preview": "vite preview --port 5172"
   },
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.0",
+    "@capacitor/action-sheet": "8.1.1",
+    "@capacitor/android": "8.4.0",
+    "@capacitor/camera": "8.2.0",
+    "@capacitor/core": "8.4.0",
+    "@capacitor/geolocation": "8.2.0",
+    "@capacitor/ios": "8.4.0",
+    "@capacitor/status-bar": "8.0.2",
     "@headlessui/react": "^2.2.0",
     "@hookform/resolvers": "^4.1.3",
     "@journeyapps/wa-sqlite": "^1.5.0",
@@ -50,6 +64,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.4.0",
     "@eslint/js": "^9.18.0",
     "@nasti/eslint-config": "workspace:*",
     "@nasti/tailwind-config": "workspace:*",
