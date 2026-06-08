@@ -97,7 +97,7 @@ export const usePhotosMutate = ({
   entityType: "collection" | "scoutingNote"
   tripId: string
 }) => {
-  const { org } = useAuth()
+  const { organisation } = useAuth()
 
   const getFilePath = useCallback(
     (file: File, photoId: string) => {
@@ -106,9 +106,9 @@ export const usePhotosMutate = ({
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
 
-      return `${org?.organisation_id}/${entityType}s/${entityId}/${photoId}.${fileExt}`
+      return `${organisation?.id}/${entityType}s/${entityId}/${photoId}.${fileExt}`
     },
-    [org, entityId, entityType],
+    [organisation, entityId, entityType],
   )
 
   const updateUploadProgress = (photoId: string, percentage: number) => {

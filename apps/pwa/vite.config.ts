@@ -34,6 +34,7 @@ export default defineConfig({
     allowedHosts: [
       // Allow these hosts
       "nasti.loca.lt",
+      "ss-dev.fieldworklabs.xyz",
       "localhost",
       "127.0.0.1",
     ],

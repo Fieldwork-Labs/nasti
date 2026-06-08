@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { supabase } from "@nasti/common/supabase"
 import { powerSyncDb } from "@/lib/powersync/db"
 import { SupabaseConnector } from "@/lib/powersync/connector"
+import { useAuth } from "@/hooks/useAuth"
 
 function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (connectedRef.current) return
@@ -49,13 +50,13 @@ function TripDataSyncStreamInner({ tripId }: { tripId: string }) {
 export function PowerSyncProvider({
   children,
   isLoggedIn,
-  organisationId,
 }: {
   children: React.ReactNode
   isLoggedIn: boolean
-  organisationId?: string
 }) {
   const connectedRef = useRef(false)
+  const { organisation } = useAuth()
+  const organisationId = organisation?.id ?? undefined
 
   useEffect(() => {
     if (isLoggedIn) {

@@ -20,7 +20,7 @@ import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
 
 const CollectionDetail = () => {
-  const { user, org } = useAuth()
+  const { user, role } = useAuth()
   const { collectionId, id: tripId } = useParams({
     from: "/_private/trips/$id/collections/$collectionId/",
   })
@@ -39,8 +39,7 @@ const CollectionDetail = () => {
 
   const displayDistance = useDisplayDistance(collection?.locationCoord ?? {})
 
-  const canEdit =
-    collection?.created_by === user?.id || org?.role === ROLE.ADMIN
+  const canEdit = collection?.created_by === user?.id || role === ROLE.ADMIN
 
   if (!collection)
     return (

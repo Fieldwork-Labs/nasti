@@ -89,12 +89,6 @@ const TripDetail = () => {
     navigate({ to: "/trips" })
   }
 
-  const refetch = useCallback(async () => {
-    setIsRefetching(true)
-    await Promise.all([tripDetailsQuery.refetch(), tripSpeciesQuery.refetch()])
-    setIsRefetching(false)
-  }, [tripDetailsQuery, tripSpeciesQuery])
-
   const isPending = tripDetailsQuery.isPending || tripSpeciesQuery.isPending
   const isError = tripDetailsQuery.isError || tripSpeciesQuery.isError
   const trip = tripDetailsQuery.data
@@ -123,12 +117,6 @@ const TripDetail = () => {
         <div className="flex items-center p-2 text-2xl">
           <ChevronLeft onClick={handleBackClick} width={36} height={36} />{" "}
           {trip?.name}
-        </div>
-        <div className="p-2">
-          <RefreshCwIcon
-            onClick={refetch}
-            className={cn("h-5 w-5", isRefetching ? "animate-spin" : "")}
-          />
         </div>
       </div>
       <div className="flex justify-end p-1">

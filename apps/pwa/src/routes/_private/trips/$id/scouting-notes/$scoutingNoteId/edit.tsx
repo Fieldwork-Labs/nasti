@@ -125,7 +125,7 @@ function ScoutingNoteFormReady({
   scoutingNoteId: string
   tripId: string
 }) {
-  const { user, org } = useAuth()
+  const { user, organisation, role } = useAuth()
 
   const { photos: initialPhotos, species, ...initialValues } = scoutingNote
 
@@ -194,7 +194,7 @@ function ScoutingNoteFormReady({
   // Handlers
   const onFormSubmit = useCallback(
     async (data: FormValues) => {
-      if (!user || !org) throw new Error("Not logged in")
+      if (!user || !organisation) throw new Error("Not logged in")
       if (!tripId) throw new Error("tripId must be supplied")
 
       const { latitude, longitude, ...rest } = data
@@ -203,7 +203,7 @@ function ScoutingNoteFormReady({
       const payload: UpdateScoutingNote = {
         id: scoutingNoteIdRef.current,
         trip_id: tripId,
-        organisation_id: org.organisation_id,
+        organisation_id: organisation.id,
         created_by: user.id,
         created_at: new Date().toISOString(),
         location: locationPoint,
@@ -260,14 +260,14 @@ function ScoutingNoteFormReady({
         params: { id: tripId, scoutingNoteId },
       })
     },
-    [user, org, tripId, location, photoChanges, isDirty, isOnline],
+    [user, organisation, tripId, location, photoChanges, isDirty, isOnline],
   )
 
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   // You shouldn't be here
-  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN) {
+  if (initialValues.created_by !== user?.id && role !== ROLE.ADMIN) {
     navigate({
       to: "/trips/$id/scouting-notes/$scoutingNoteId",
       params: { id: tripId, scoutingNoteId },

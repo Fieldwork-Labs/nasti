@@ -44,16 +44,12 @@ declare module "@tanstack/react-router" {
 }
 
 export const App = () => {
-  const { isLoggedIn, getSession, org } = useAuth()
-  const organisationId = org?.organisation_id ?? undefined
+  const { isLoggedIn, getSession } = useAuth()
 
   return (
     <ThemeProvider>
       <SwStatusProvider>
-        <PowerSyncProvider
-          isLoggedIn={isLoggedIn}
-          organisationId={organisationId}
-        >
+        <PowerSyncProvider isLoggedIn={isLoggedIn}>
           <RouterProvider
             router={router}
             context={{ isLoggedIn, getSession }}

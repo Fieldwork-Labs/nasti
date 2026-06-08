@@ -91,7 +91,7 @@ function AddCollection() {
     from: "/_private/trips/$id/collections/new",
   })
   const { isOnline } = useNetwork()
-  const { user, org } = useAuth()
+  const { user, organisation } = useAuth()
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
@@ -135,7 +135,7 @@ function AddCollection() {
 
   const onSubmit = useCallback(
     async (data: CollectionFormData) => {
-      if (!user || !org) throw new Error("Not logged in")
+      if (!user || !organisation) throw new Error("Not logged in")
 
       if (!tripId) throw new Error("tripId must be supplied to CollectionForm")
       if (!location) throw new Error("No location available")
@@ -151,7 +151,7 @@ function AddCollection() {
         created_at: new Date().toISOString(),
         collected_on: new Date().toDateString(),
         location: locationPoint,
-        organisation_id: org.organisation_id,
+        organisation_id: organisation.id,
         trip_id: tripId,
       }
       const collectionPromise = createCollection(newCollection)
