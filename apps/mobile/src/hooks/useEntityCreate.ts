@@ -14,12 +14,11 @@ interface BaseEntity {
   species_id?: string | null
   trip_id: string | null
 }
-interface NewEntity extends BaseEntity {}
 
 // Generic create function
 const createEntity = async <
   TEntity extends BaseEntity,
-  TNewEntity extends NewEntity,
+  TNewEntity extends BaseEntity,
 >(
   createdItem: TNewEntity,
   tableName: "collection" | "scouting_notes",
@@ -36,7 +35,7 @@ export const getMutationKey = (tableName: string, tripId?: string) => [
 // Generic hook factory
 export function useEntityCreate<
   TEntity extends BaseEntity,
-  TNewEntity extends NewEntity,
+  TNewEntity extends BaseEntity,
 >(tripId: string, config: EntityConfig) {
   const { tableName } = config
 

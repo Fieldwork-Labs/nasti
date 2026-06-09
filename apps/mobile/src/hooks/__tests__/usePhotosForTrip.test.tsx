@@ -50,7 +50,7 @@ const { powerSyncUseQueryMock } = vi.hoisted(() => ({
   powerSyncUseQueryMock: vi.fn(),
 }))
 
-vi.mock("@powersync/tanstack-react-query", () => ({
+vi.mock("@/lib/powersync/query", () => ({
   useQuery: powerSyncUseQueryMock,
 }))
 

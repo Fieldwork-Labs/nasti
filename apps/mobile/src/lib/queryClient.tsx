@@ -19,7 +19,7 @@ export const queryClient = new QueryClient({
   },
 })
 
-export const PERSIST_KEY = "nasti-persist-data"
+export const PERSIST_KEY = "nasti-persist-data-v2"
 const persister = createAsyncStoragePersister({
   storage: window.localStorage,
   key: PERSIST_KEY,

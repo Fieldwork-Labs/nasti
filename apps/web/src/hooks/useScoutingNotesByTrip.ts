@@ -7,6 +7,7 @@ const getScoutingNotesByTrip = async (tripId: string) => {
     .from("scouting_notes")
     .select("*")
     .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
     .overrideTypes<ScoutingNote[]>()
 
   if (error) throw new Error(error.message)

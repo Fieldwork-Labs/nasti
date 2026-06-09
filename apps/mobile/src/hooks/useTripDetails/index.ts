@@ -1,7 +1,7 @@
 import { Trip } from "@nasti/common/types"
 import { parseLocation } from "./helpers"
 
-import { useQuery } from "@powersync/tanstack-react-query"
+import { useQuery } from "@/lib/powersync/query"
 import { useMemo } from "react"
 import type {
   PowerSyncCollectionRow,

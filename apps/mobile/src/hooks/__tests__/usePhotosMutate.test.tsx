@@ -11,6 +11,7 @@ const {
   psUpdateMock,
   removeMock,
   getSessionMock,
+  uploadStartMock,
 } = vi.hoisted(() => ({
   getOptionalMock: vi.fn(),
   psDeleteMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   psUpdateMock: vi.fn(),
   removeMock: vi.fn(),
   getSessionMock: vi.fn(),
+  uploadStartMock: vi.fn(),
 }))
 
 const toBase64Url = (value: unknown) =>
@@ -82,9 +84,7 @@ vi.mock("tus-js-client", () => ({
     file: _file,
     findPreviousUploads: vi.fn(() => Promise.resolve([])),
     start: vi.fn(() => {
-      options.onProgress?.(1, 2)
-      options.onProgress?.(2, 2)
-      options.onSuccess?.()
+      uploadStartMock(options)
     }),
   })),
 }))
@@ -112,6 +112,11 @@ describe("usePhotosMutate", () => {
     psUpdateMock.mockResolvedValue(undefined)
     psDeleteMock.mockResolvedValue(undefined)
     removeMock.mockResolvedValue({ error: null })
+    uploadStartMock.mockImplementation((options) => {
+      options.onProgress?.(1, 2)
+      options.onProgress?.(2, 2)
+      options.onSuccess?.()
+    })
   })
 
   it("creates collection photo metadata through PowerSync after storage upload", async () => {
@@ -142,6 +147,46 @@ describe("usePhotosMutate", () => {
         caption: "Leaf",
       }),
     )
+  })
+
+  it("keeps local collection photo metadata when storage upload fails", async () => {
+    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {})
+    uploadStartMock.mockImplementation((options) => {
+      options.onError?.(new Error("storage unavailable"))
+    })
+
+    const { result } = renderHook(
+      () =>
+        usePhotosMutate({
+          entityId: "collection-1",
+          entityType: "collection",
+          tripId: "trip-1",
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await act(async () => {
+      await result.current.createPhotoMutation.mutateAsync({
+        id: "photo-1",
+        caption: "Leaf",
+        file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
+      })
+    })
+
+    expect(psInsertMock).toHaveBeenCalledWith(
+      "collection_photo",
+      expect.objectContaining({
+        id: "photo-1",
+        collection_id: "collection-1",
+        url: "org-1/collections/collection-1/photo-1.jpg",
+        caption: "Leaf",
+      }),
+    )
+    consoleLogSpy.mockRestore()
+    consoleErrorSpy.mockRestore()
   })
 
   it("updates collection photo captions through PowerSync", async () => {

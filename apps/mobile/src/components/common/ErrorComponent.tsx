@@ -1,4 +1,5 @@
 import { queryClient } from "@/lib/queryClient"
+import { powerSyncQueryClient } from "@/lib/powersync/query"
 import { Button } from "@nasti/ui/button"
 import { useState } from "react"
 
@@ -28,13 +29,16 @@ async function checkForUpdateAndReload() {
 async function resetCachedDataAndReload() {
   try {
     // clear all querycaches related to the trip
-    queryClient.removeQueries({ queryKey: ["trip", "details"] })
-    queryClient.removeQueries({ queryKey: ["collections", "byTrip"] })
-    queryClient.removeQueries({ queryKey: ["photos", "collection", "byTrip"] })
-    queryClient.removeQueries({ queryKey: ["scoutingNotes", "byTrip"] })
-    queryClient.removeQueries({
+    powerSyncQueryClient.removeQueries({ queryKey: ["trip", "details"] })
+    powerSyncQueryClient.removeQueries({ queryKey: ["collections", "byTrip"] })
+    powerSyncQueryClient.removeQueries({
+      queryKey: ["photos", "collection", "byTrip"],
+    })
+    powerSyncQueryClient.removeQueries({ queryKey: ["scoutingNotes", "byTrip"] })
+    powerSyncQueryClient.removeQueries({
       queryKey: ["photos", "scoutingNote", "byTrip"],
     })
+    queryClient.removeQueries({ queryKey: ["photo", "url"] })
     await new Promise((resolve) => setTimeout(resolve, 1000))
   } catch {
     // ignore — reload anyway

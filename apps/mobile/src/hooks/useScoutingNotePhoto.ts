@@ -1,20 +1,15 @@
 import { ScoutingNotePhoto } from "@nasti/common/types"
 
-import { PendingScoutingNotePhoto } from "./usePhotosMutate"
-import { queryClient } from "@/lib/queryClient"
+import { useQuery } from "@/lib/powersync/query"
+import type { PowerSyncScoutingNotePhotoRow } from "@/lib/powersync/schema"
 
 export const useScoutingNotePhoto = ({ id }: { id?: string }) => {
-  const queries = queryClient.getQueriesData<
-    Array<ScoutingNotePhoto | PendingScoutingNotePhoto>
-  >({
-    queryKey: ["photos", "scoutingNote", "byTrip"],
+  const query = useQuery<PowerSyncScoutingNotePhotoRow>({
+    queryKey: ["photos", "scoutingNote", "detail", id],
+    query: "SELECT * FROM scouting_notes_photos WHERE id = ?",
+    parameters: [id ?? ""],
+    enabled: Boolean(id),
   })
-  let photo: ScoutingNotePhoto | PendingScoutingNotePhoto | undefined
-  while (!photo && queries.length > 0) {
-    const query = queries.pop()
-    if (!query) continue
-    const [, queryData] = query
-    photo = queryData?.find((item) => item.id === id)
-  }
-  return photo
+
+  return query.data?.[0] as ScoutingNotePhoto | undefined
 }

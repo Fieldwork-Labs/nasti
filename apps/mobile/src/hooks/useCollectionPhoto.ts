@@ -1,20 +1,15 @@
 import { CollectionPhoto } from "@nasti/common/types"
 
-import { PendingCollectionPhoto } from "./usePhotosMutate"
-import { queryClient } from "@/lib/queryClient"
+import { useQuery } from "@/lib/powersync/query"
+import type { PowerSyncCollectionPhotoRow } from "@/lib/powersync/schema"
 
 export const useCollectionPhoto = ({ id }: { id?: string }) => {
-  const queries = queryClient.getQueriesData<
-    Array<CollectionPhoto | PendingCollectionPhoto>
-  >({
-    queryKey: ["photos", "collection", "byTrip"],
+  const query = useQuery<PowerSyncCollectionPhotoRow>({
+    queryKey: ["photos", "collection", "detail", id],
+    query: "SELECT * FROM collection_photo WHERE id = ?",
+    parameters: [id ?? ""],
+    enabled: Boolean(id),
   })
-  let photo: CollectionPhoto | PendingCollectionPhoto | undefined
-  while (!photo && queries.length > 0) {
-    const query = queries.pop()
-    if (!query) continue
-    const [, queryData] = query
-    photo = queryData?.find((item) => item.id === id)
-  }
-  return photo
+
+  return query.data?.[0] as CollectionPhoto | undefined
 }

@@ -1,5 +1,5 @@
 import { supabase } from "@nasti/common/supabase"
-import { useQuery } from "@powersync/tanstack-react-query"
+import { useQuery } from "@/lib/powersync/query"
 import { getImage, putImage } from "@/lib/persistFiles"
 import { SpeciesPhoto } from "@nasti/common"
 import { useEffect } from "react"

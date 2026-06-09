@@ -1,5 +1,5 @@
 import { CollectionWithCoord, Species } from "@nasti/common/types"
-import { useQuery } from "@powersync/tanstack-react-query"
+import { useQuery } from "@/lib/powersync/query"
 import { parseLocation } from "./useTripDetails/helpers"
 import { TripCollectionPhotos } from "./usePhotosForTrip"
 import type {
