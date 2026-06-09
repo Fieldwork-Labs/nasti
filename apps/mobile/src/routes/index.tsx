@@ -50,7 +50,8 @@ export const HomePage = () => {
 
 export const Route = createFileRoute("/")({
   component: HomePage,
-  // @ts-expect-error
+  // @ts-expect-error not used
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   beforeLoad: async ({ location, context }) => {
     // can use context to determine auth state and redirect to login page
   },

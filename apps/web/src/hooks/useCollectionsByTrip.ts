@@ -7,6 +7,7 @@ const getCollectionsByTrip = async (tripId: string) => {
     .from("collection")
     .select("*")
     .eq("trip_id", tripId)
+    .order("created_at", { ascending: false })
 
   if (error) throw new Error(error.message)
 
