@@ -8,8 +8,8 @@ import { useAuth } from "@/hooks/useAuth"
 export const HomePage = () => {
   const { isLoggedIn } = useAuth()
   return (
-    <div className="flex h-full flex-col justify-center">
-      <div className="md:bg-background relative -top-20 mx-auto flex flex-col items-center justify-center gap-8 p-6 text-center md:w-2/3 md:rounded-xl lg:w-1/2">
+    <div className="entry-screen flex flex-col justify-center">
+      <div className="md:bg-background mx-auto flex flex-col items-center justify-center gap-8 p-6 text-center md:w-2/3 md:rounded-xl lg:w-1/2">
         <h1 className="font-serif text-2xl">Welcome To Seed Scout</h1>
         <img src={appLogo} alt="Seed Scout logo" className="w-2/3 lg:w-1/2" />
         {!isLoggedIn && (

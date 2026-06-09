@@ -61,8 +61,8 @@ export const SpeciesDrawer = ({
   const navigate = useNavigate()
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerContent>
-        <DrawerHeader>
+      <DrawerContent className="species-select-drawer overflow-hidden">
+        <DrawerHeader className="shrink-0">
           <div className="flex justify-between">
             <DrawerTitle>Target Species</DrawerTitle>
             <DrawerClose>
@@ -74,6 +74,7 @@ export const SpeciesDrawer = ({
           </DrawerDescription>
         </DrawerHeader>
         <SpeciesSelectList
+          className="px-0.5 pb-4"
           targetSpecies={species ?? undefined}
           onSelectSpecies={(sp) =>
             navigate({

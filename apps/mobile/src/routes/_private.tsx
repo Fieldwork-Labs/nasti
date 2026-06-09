@@ -1,5 +1,5 @@
 import { GeoLocationProvider } from "@/contexts/location"
-import { useAuth } from "@/hooks/useAuth"
+import { setAuthState, useAuth } from "@/hooks/useAuth"
 import { queryClient } from "@/lib/queryClient"
 import { supabase } from "@nasti/common/supabase"
 import { Spinner } from "@nasti/ui/spinner"
@@ -51,8 +51,7 @@ export const Route = createFileRoute("/_private")({
           },
         })
       } else {
-        queryClient.setQueryData(["auth", "user"], session.user)
-        queryClient.setQueryData(["auth", "loggedIn"], true)
+        setAuthState(queryClient, session)
         return {
           isLoggedIn: true,
         }

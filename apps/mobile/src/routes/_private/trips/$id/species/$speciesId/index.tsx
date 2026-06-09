@@ -221,10 +221,10 @@ const FullscreenPhotoViewer = ({
   const currentPhoto = photos[currentIndex]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+    <div className="safe-fullscreen-overlay fixed inset-0 z-50 flex items-center justify-center bg-black">
       <button
         onClick={onClose}
-        className="absolute right-4 top-4 z-10 rounded-full bg-gray-400/30 p-2 text-white backdrop-blur-sm"
+        className="safe-top-right absolute z-10 rounded-full bg-gray-400/30 p-2 text-white backdrop-blur-sm"
       >
         <XIcon className="h-6 w-6" />
       </button>
@@ -255,12 +255,12 @@ const FullscreenPhotoViewer = ({
       )}
 
       {currentPhoto.caption && (
-        <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-4 text-center">
+        <div className="safe-bottom absolute left-0 right-0 bg-black/60 p-4 text-center">
           <p className="text-white">{currentPhoto.caption}</p>
         </div>
       )}
 
-      <div className="absolute bottom-20 left-0 right-0 text-center text-white">
+      <div className="safe-bottom-20 absolute left-0 right-0 text-center text-white">
         {currentIndex + 1} / {photos.length}
       </div>
     </div>

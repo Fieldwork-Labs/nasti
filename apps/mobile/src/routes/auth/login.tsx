@@ -43,29 +43,28 @@ const LoginForm = () => {
       hasLoggedIn.current = true
       clearErrors()
       const { email, password } = values
-      login.mutate({
-        email,
-        password,
-      })
-
-      if (login.isError) {
+      try {
+        await login.mutateAsync({
+          email,
+          password,
+        })
+        navigate({ to: "/trips" })
+      } catch (error) {
         hasLoggedIn.current = false
-        if (login.error.message === "Failed to fetch") {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message === "Failed to fetch") {
           setError("root", {
             message: "Unable to connect to server",
           })
-        } else
-          setError("root", { type: "manual", message: login.error.message })
-      } else {
-        navigate({ to: "/trips" })
+        } else setError("root", { type: "manual", message })
       }
     },
     [login, navigate, setError, clearErrors],
   )
 
   return (
-    <div className="flex h-full flex-col justify-center">
-      <div className="relative -top-20 flex flex-col items-center justify-center md:px-2">
+    <div className="entry-screen flex flex-col justify-center">
+      <div className="flex flex-col items-center justify-center md:px-2">
         {isLoggedIn && !hasLoggedIn.current ? (
           <div className="bg-secondary-background w-full max-w-md rounded-lg p-8 text-center shadow-md">
             <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">

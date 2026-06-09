@@ -34,8 +34,8 @@ export const SpeciesSelectDrawer = ({
 
   return (
     <Drawer open={isOpen} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[70%]">
-        <DrawerHeader>
+      <DrawerContent className="species-select-drawer overflow-hidden">
+        <DrawerHeader className="shrink-0">
           <div className="flex justify-between">
             <DrawerTitle>Species</DrawerTitle>
             <DrawerClose>
@@ -47,6 +47,7 @@ export const SpeciesSelectDrawer = ({
           </DrawerDescription>
         </DrawerHeader>
         <SpeciesSelectList
+          className="px-0.5 pb-4"
           targetSpecies={targetSpecies ?? undefined}
           selectedSpeciesId={selectedSpeciesId}
           onSelectSpecies={handeSelectSpecies}
