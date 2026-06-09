@@ -5,6 +5,29 @@ type ImageRecord = {
   image: Base64URLString
   timestamp: number
 }
+
+type ImageChangeListener = () => void
+
+const imageChangeListeners = new Map<string, Set<ImageChangeListener>>()
+
+export const subscribeToImage = (
+  id: string,
+  listener: ImageChangeListener,
+) => {
+  const listeners = imageChangeListeners.get(id) ?? new Set()
+  listeners.add(listener)
+  imageChangeListeners.set(id, listeners)
+
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0) imageChangeListeners.delete(id)
+  }
+}
+
+function notifyImageChanged(id: string) {
+  imageChangeListeners.get(id)?.forEach((listener) => listener())
+}
+
 interface PhotosDB extends DBSchema {
   images: {
     key: string
@@ -57,11 +80,13 @@ export const getImages = async (ids: string[]) => {
 export const putImage = async (id: string, image: Base64URLString) => {
   const db = await imageDB
   await db.put("images", { image, id, timestamp: Date.now() })
+  notifyImageChanged(id)
 }
 
 export const deleteImage = async (id: string) => {
   const db = await imageDB
-  db.delete("images", id)
+  await db.delete("images", id)
+  notifyImageChanged(id)
 }
 
 export const fileToBase64 = (file: File): Promise<string> =>

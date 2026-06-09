@@ -1,4 +1,3 @@
-import { queryClient } from "@/lib/queryClient"
 import { powerSyncQueryClient } from "@/lib/powersync/query"
 import { Button } from "@nasti/ui/button"
 import { useState } from "react"
@@ -38,7 +37,6 @@ async function resetCachedDataAndReload() {
     powerSyncQueryClient.removeQueries({
       queryKey: ["photos", "scoutingNote", "byTrip"],
     })
-    queryClient.removeQueries({ queryKey: ["photo", "url"] })
     await new Promise((resolve) => setTimeout(resolve, 1000))
   } catch {
     // ignore — reload anyway
