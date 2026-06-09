@@ -12,7 +12,7 @@ import { useSwStatus } from "@/contexts/swStatus"
 import { UpdateNotification } from "@/components/app/UpdateNotification"
 import { Toaster } from "@nasti/ui/toaster"
 
-const TanStackRouterDevtools = false // import.meta.env.DEV
+const TanStackRouterDevtools = import.meta.env.DEV
   ? React.lazy(() =>
       // Lazy load in development
       import("@tanstack/router-devtools").then((res) => ({
@@ -63,35 +63,37 @@ const OfflineStateIndicator = () => {
   return null
 }
 
+const RootComponent = () => {
+  const { isLoggedIn } = useAuth()
+
+  const { isOpen, open, close } = useOpenClose()
+
+  return (
+    <div className="app-shell">
+      {isLoggedIn && (
+        <div className="flex items-center justify-end gap-4 py-2 pr-2">
+          <OfflineStateIndicator />
+          <Button
+            onClick={open}
+            className="bg-secondary-background text-foreground h-9 w-9 rounded-xl p-2"
+            size={"icon"}
+          >
+            <LeafIcon />
+          </Button>
+        </div>
+      )}
+      <Outlet />
+      <UpdateNotification />
+      <TanStackRouterDevtools />
+      <SettingsMenuModal isOpen={isOpen} close={close} />
+      <Toaster />
+    </div>
+  )
+}
+
 export const Route = createRootRouteWithContext<{
   isLoggedIn: boolean
   getSession?: SupabaseAuthClient["getSession"]
 }>()({
-  component: () => {
-    const { isLoggedIn } = useAuth()
-
-    const { isOpen, open, close } = useOpenClose()
-
-    return (
-      <div className="h-screen">
-        {isLoggedIn && (
-          <div className="flex items-center justify-end gap-4 py-2 pr-2">
-            <OfflineStateIndicator />
-            <Button
-              onClick={open}
-              className="bg-secondary-background text-foreground h-9 w-9 rounded-xl p-2"
-              size={"icon"}
-            >
-              <LeafIcon />
-            </Button>
-          </div>
-        )}
-        <Outlet />
-        <UpdateNotification />
-        <TanStackRouterDevtools />
-        <SettingsMenuModal isOpen={isOpen} close={close} />
-        <Toaster />
-      </div>
-    )
-  },
+  component: RootComponent,
 })

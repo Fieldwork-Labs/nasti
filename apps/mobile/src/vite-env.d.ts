@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SB_PUBLISHABLE_KEY: string
   readonly VITE_MAPBOX_ACCESS_TOKEN: string
   readonly VITE_WEB_APP_URL: string
+  readonly VITE_POWERSYNC_URL?: string
   readonly VITE_SENTRY_DSN: string
 }
 

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Seed Scout</string>
+    <string name="title_activity_main">Seed Scout</string>
+    <string name="package_name">com.fwl.seedscout</string>
+    <string name="custom_url_scheme">com.fwl.seedscout</string>
+</resources>
