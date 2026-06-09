@@ -24,13 +24,11 @@ const BOOLEAN_FIELDS: Record<string, string[]> = {
 const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
   species: 0,
   trip: 0,
-  trip_member: 1,
-  trip_species: 1,
-  collection: 2,
-  scouting_notes: 2,
-  collection_photo: 3,
-  scouting_notes_photos: 3,
-  species_photo: 3,
+  collection: 1,
+  scouting_notes: 1,
+  collection_photo: 2,
+  scouting_notes_photos: 2,
+  species_photo: 2,
 }
 
 const DEPENDENCY_ERROR_CODES = new Set(["23503"])
@@ -138,6 +136,16 @@ function transactionKey(transaction: CrudTransaction): string {
 
 const retryCountMap = new Map<string, number>()
 
+function getPowerSyncEndpoint(): string {
+  const endpoint = POWERSYNC_URL?.trim().replace(/\/+$/, "")
+
+  if (!endpoint) {
+    throw new Error("VITE_POWERSYNC_URL is not configured")
+  }
+
+  return endpoint
+}
+
 export class SupabaseConnector implements PowerSyncBackendConnector {
   async fetchCredentials() {
     const {
@@ -145,17 +153,16 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
       error,
     } = await supabase.auth.getSession()
 
-    if (!POWERSYNC_URL) {
-      throw new Error("VITE_POWERSYNC_URL is not configured")
-    }
-
     if (!session || error) {
       throw new Error("Not authenticated - cannot connect to PowerSync")
     }
 
     return {
-      endpoint: POWERSYNC_URL,
+      endpoint: getPowerSyncEndpoint(),
       token: session.access_token,
+      expiresAt: session.expires_at
+        ? new Date(session.expires_at * 1000)
+        : undefined,
     }
   }
 

@@ -1,23 +1,40 @@
 import { PowerSyncContext, useSyncStream } from "@powersync/react"
 import { useEffect, useMemo, useRef } from "react"
-import { supabase } from "@nasti/common/supabase"
 import { powerSyncDb } from "@/lib/powersync/db"
 import { SupabaseConnector } from "@/lib/powersync/connector"
 import { useAuth } from "@/hooks/useAuth"
 
 function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (connectedRef.current) return
-  powerSyncDb.connect(new SupabaseConnector())
   connectedRef.current = true
+  powerSyncDb
+    .connect(new SupabaseConnector(), {
+      appMetadata: {
+        app: "nasti-mobile",
+        target: __NASTI_TARGET__,
+      },
+    })
+    .catch((error) => {
+      connectedRef.current = false
+      console.error("[PowerSync] Failed to connect:", error)
+    })
 }
 
 function disconnectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (!connectedRef.current) return
-  powerSyncDb.disconnect()
   connectedRef.current = false
+  powerSyncDb.disconnect().catch((error) => {
+    console.error("[PowerSync] Failed to disconnect:", error)
+  })
 }
 
-function TripListSyncStream({ organisationId }: { organisationId: string }) {
+function TripListSyncStream({
+  connectedRef,
+  organisationId,
+}: {
+  connectedRef: React.MutableRefObject<boolean>
+  organisationId: string
+}) {
   const parameters = useMemo(
     () => ({ organisation_id: organisationId }),
     [organisationId],
@@ -27,6 +44,10 @@ function TripListSyncStream({ organisationId }: { organisationId: string }) {
     name: "trip_list",
     parameters,
   })
+
+  useEffect(() => {
+    connectPowerSync(connectedRef)
+  }, [connectedRef, organisationId])
 
   return null
 }
@@ -59,28 +80,24 @@ export function PowerSyncProvider({
   const organisationId = organisation?.id ?? undefined
 
   useEffect(() => {
-    if (isLoggedIn) {
-      connectPowerSync(connectedRef)
-    } else if (connectedRef.current) {
+    if (!isLoggedIn && connectedRef.current) {
       disconnectPowerSync(connectedRef)
     }
   }, [isLoggedIn])
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => {
-        if (session) connectPowerSync(connectedRef)
-      })
-      .catch((error) => {
-        console.error("[PowerSync] Failed to check existing session:", error)
-      })
-  }, [])
+    if (!organisationId && connectedRef.current) {
+      disconnectPowerSync(connectedRef)
+    }
+  }, [organisationId])
 
   return (
     <PowerSyncContext.Provider value={powerSyncDb}>
       {organisationId ? (
-        <TripListSyncStream organisationId={organisationId} />
+        <TripListSyncStream
+          connectedRef={connectedRef}
+          organisationId={organisationId}
+        />
       ) : null}
       {children}
     </PowerSyncContext.Provider>
