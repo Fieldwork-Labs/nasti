@@ -5,15 +5,20 @@ import { useMiniSearch } from "@/hooks/useMiniSearch"
 import { Input } from "@nasti/ui/input"
 import { Button } from "@nasti/ui/button"
 import { XIcon } from "lucide-react"
+import { cn } from "@nasti/ui/utils"
 
 export const SpeciesSelectList = ({
   targetSpecies,
   selectedSpeciesId,
   onSelectSpecies,
+  autoFocusSearch = false,
+  className,
 }: {
   targetSpecies?: Species[]
   selectedSpeciesId?: string
   onSelectSpecies: (species: Species) => void
+  autoFocusSearch?: boolean
+  className?: string
 }) => {
   const { data: speciesList } = useSpeciesList()
 
@@ -38,13 +43,13 @@ export const SpeciesSelectList = ({
     isSearching || targetSpecies?.length === 0 ? searchResults : targetSpecies
 
   return (
-    <div className="overflow-y-scroll">
-      <span className="relative mb-1 block">
+    <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
+      <span className="relative mb-1 block shrink-0">
         <Input
           className="focus-visible:ring-0"
           placeholder="Search species names"
           autoComplete="off"
-          autoFocus
+          autoFocus={autoFocusSearch}
           autoCorrect="off"
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -63,7 +68,7 @@ export const SpeciesSelectList = ({
         </Button>
       </span>
       {displaySpecies && displaySpecies.length > 0 && (
-        <div className="border-primary mb-2 overflow-y-scroll border-b">
+        <div className="border-primary mb-2 min-h-0 flex-1 overflow-y-auto overscroll-contain border-b">
           {displaySpecies.map((sp) => (
             <SpeciesListItem
               key={sp.id}

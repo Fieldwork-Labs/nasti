@@ -1,12 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { isAuthRetryableFetchError, type Session } from "@supabase/supabase-js"
 import { getAppMeta } from "@nasti/common/authClaims"
 import { ROLE, type Role } from "@nasti/common/types"
 
-// Given a session, derive the portion of the store that comes purely
-// from JWT claims. Returns null if the session has no claims (pre-hook
-// session) — caller falls back to org_user lookup.
 type Claims = {
   organisation: { id: string; name: string }
   orgId: string
@@ -14,6 +16,24 @@ type Claims = {
   isAdmin: boolean
 } | null
 
+type AuthState = {
+  session: Session | null
+  user: Session["user"] | null
+  claims: Claims
+  isLoggedIn: boolean
+}
+
+export const authStateQueryKey = ["auth", "state"] as const
+
+const loggedOutAuthState: AuthState = {
+  session: null,
+  user: null,
+  claims: null,
+  isLoggedIn: false,
+}
+
+// Given a session, derive the portion of auth state that comes from JWT
+// claims. Returns null if the session has no access-token-hook claims.
 const deriveFromClaims = (session: Session | null): Claims => {
   const meta = getAppMeta(session)
   if (!meta.org_id) return null
@@ -23,6 +43,26 @@ const deriveFromClaims = (session: Session | null): Claims => {
     role: meta.role ?? null,
     isAdmin: meta.role === ROLE.ADMIN,
   }
+}
+
+export const getAuthStateFromSession = (
+  session: Session | null,
+): AuthState => ({
+  session,
+  user: session?.user ?? null,
+  claims: deriveFromClaims(session),
+  isLoggedIn: Boolean(session?.user),
+})
+
+export const setAuthState = (
+  queryClient: QueryClient,
+  session: Session | null,
+) => {
+  queryClient.setQueryData(authStateQueryKey, getAuthStateFromSession(session))
+  queryClient.removeQueries({ queryKey: ["auth", "user"], exact: true })
+  queryClient.removeQueries({ queryKey: ["auth", "organisation"], exact: true })
+  queryClient.removeQueries({ queryKey: ["auth", "claims"], exact: true })
+  queryClient.removeQueries({ queryKey: ["auth", "loggedIn"], exact: true })
 }
 
 export const useAuth = () => {
@@ -49,13 +89,7 @@ export const useAuth = () => {
     networkMode: "online",
     retry: false,
     onSuccess: async (data) => {
-      const claims = deriveFromClaims(data.session)
-
-      // Update auth data in query client cache
-      queryClient.setQueryData(["auth", "user"], data.user)
-      queryClient.setQueryData(["auth", "organisation"], claims?.organisation)
-      queryClient.setQueryData<Claims>(["auth", "claims"], claims)
-      queryClient.setQueryData(["auth", "loggedIn"], true)
+      setAuthState(queryClient, data.session)
     },
   })
 
@@ -66,34 +100,32 @@ export const useAuth = () => {
       if (error) throw error
     },
     onMutate: () => {
-      // regardless of online state, we want to clear the user data
-      queryClient.setQueriesData({ queryKey: ["auth"] }, null)
+      // Regardless of online state, clear local auth state immediately.
+      setAuthState(queryClient, null)
     },
     networkMode: "online",
   })
 
-  const { data: user } = useQuery({
-    queryKey: ["auth", "user"],
+  const { data: authState = loggedOutAuthState } = useQuery({
+    queryKey: authStateQueryKey,
     queryFn: async () => {
-      const { data } = await supabase.auth.getUser()
-      return data.user
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      return getAuthStateFromSession(session)
     },
     networkMode: "online",
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 
-  const isLoggedIn =
-    queryClient.getQueryData<boolean>(["auth", "loggedIn"]) ?? false
-
   return {
-    user,
-    role: queryClient.getQueryData<Claims>(["auth", "claims"])?.role ?? null,
-    organisation:
-      queryClient.getQueryData<Claims>(["auth", "claims"])?.organisation ??
-      null,
+    session: authState.session,
+    user: authState.user,
+    role: authState.claims?.role ?? null,
+    organisation: authState.claims?.organisation ?? null,
     getSession: () => supabase.auth.getSession(),
     login,
     logout,
-    isLoggedIn,
+    isLoggedIn: authState.isLoggedIn,
   }
 }

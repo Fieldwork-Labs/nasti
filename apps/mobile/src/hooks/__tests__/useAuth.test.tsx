@@ -78,31 +78,24 @@ describe("useAuth hook", () => {
     vi.restoreAllMocks()
   })
 
-  it("returns user = null and isLoggedIn = false if getUser resolves with no user", async () => {
+  it("returns logged-out state when getSession resolves with no session", async () => {
     // ─── Arrange ───────────────────────────────────────────────────────────────
-    // Spy on supabase.auth.getUser() so that it resolves to { data: { user: null } }:
-    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
-      data: { user: null },
-      error: new AuthError("User not found"),
+    vi.spyOn(supabase.auth, "getSession").mockResolvedValue({
+      data: { session: null },
+      error: new AuthError("Session not found"),
     })
-
-    // No need to mock supabase.from(...) here, because the "org" query is disabled
-    // when user === null (enabled: Boolean(user) in the hook).
 
     // ─── Act ─────────────────────────────────────────────────────────────────
     const { result } = renderHook(() => useAuth(), {
       wrapper: createWrapper(),
     })
 
-    // ─── Assert ──────────────────────────────────────────────────────────────
-    // First wait for the getUser call to fire and the query to resolve:
     await waitFor(() => {
-      expect(supabase.auth.getUser).toHaveBeenCalledOnce()
+      expect(supabase.auth.getSession).toHaveBeenCalledOnce()
     })
 
-    // Now assert that `result.current.user` is explicitly null (not undefined),
-    // and that auth-derived values are empty.
     await waitFor(() => {
+      expect(result.current.session).toBeNull()
       expect(result.current.user).toBeNull()
       expect(result.current.organisation).toBeNull()
       expect(result.current.role).toBeNull()
@@ -112,9 +105,8 @@ describe("useAuth hook", () => {
 
   it("fetches user data when getUser returns a valid user", async () => {
     // ─── Arrange ───────────────────────────────────────────────────────────────
-    // 1) Spy on getUser → returns the mockUserData
-    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
-      data: { user: mockUserData },
+    vi.spyOn(supabase.auth, "getSession").mockResolvedValue({
+      data: { session: mockSession },
       error: null,
     })
 
@@ -123,10 +115,13 @@ describe("useAuth hook", () => {
       wrapper: createWrapper(),
     })
 
-    // 1) Wait until getUser has been called and `user` is set to mockUserData
     await waitFor(() => {
-      expect(supabase.auth.getUser).toHaveBeenCalledOnce()
+      expect(supabase.auth.getSession).toHaveBeenCalledOnce()
+      expect(result.current.session).toEqual(mockSession)
       expect(result.current.user).toEqual(mockUserData)
+      expect(result.current.organisation).toEqual(mockOrganisation)
+      expect(result.current.role).toBe(ROLE.ADMIN)
+      expect(result.current.isLoggedIn).toBe(true)
     })
   })
 

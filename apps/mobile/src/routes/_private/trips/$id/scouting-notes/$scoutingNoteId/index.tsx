@@ -195,10 +195,10 @@ const ScoutingNotesDetail = () => {
 
       {/* Full-screen overlay */}
       {fullScreenPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-2">
+        <div className="safe-fullscreen-overlay fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
           <button
             onClick={() => setFullScreenPhoto(null)}
-            className="absolute right-4 top-4 p-2"
+            className="safe-top-right absolute p-2"
             aria-label="Close photo"
           >
             <X size={28} className="text-white" />
