@@ -236,7 +236,6 @@ export const usePhotosMutate = ({
     },
     onSettled: async (id) => {
       if (!id) return
-      queryClient.removeQueries({ queryKey: ["photo", "url", id] })
       await deleteImage(id)
     },
   })
@@ -268,7 +267,6 @@ export const usePhotosMutate = ({
     },
     onSettled: async (id) => {
       if (!id) return
-      queryClient.removeQueries({ queryKey: ["photo", "url", id] })
       await deleteImage(id)
     },
   })

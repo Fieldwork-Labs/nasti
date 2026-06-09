@@ -1,6 +1,7 @@
 import type { Transaction } from "@powersync/web"
 import { powerSyncDb } from "./db"
 import * as Sentry from "@sentry/react"
+import { powerSyncQueryClient } from "./query"
 
 function toSqliteValue(value: unknown): unknown {
   if (value === null || value === undefined) return null
@@ -24,6 +25,7 @@ export async function psInsert(
       `INSERT OR REPLACE INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`,
       values,
     )
+    if (!tx) await powerSyncQueryClient.invalidateQueries()
   } catch (error) {
     console.error("PowerSync insert failed:", error)
     Sentry.captureException(error)
@@ -48,8 +50,10 @@ export async function psUpdate(
     ...values,
     id,
   ])
+  if (!tx) await powerSyncQueryClient.invalidateQueries()
 }
 
 export async function psDelete(table: string, id: string): Promise<void> {
   await powerSyncDb.execute(`DELETE FROM ${table} WHERE id = ?`, [id])
+  await powerSyncQueryClient.invalidateQueries()
 }
