@@ -38,6 +38,15 @@ interface GeoLocationProviderProps {
   children: ReactNode
 }
 
+function formatLocationError(error: unknown): string {
+  if (error instanceof Error) return error.message
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
 // Provider component
 export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
   children,
@@ -46,18 +55,55 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
   const [warning, setWarning] = useState<number | undefined>(undefined)
 
   useEffect(() => {
+    let cancelled = false
     let stopWatching: (() => void) | undefined
 
     const onUpdate = debounce(({ location, warning }) => {
+      if (cancelled) return
       if (location) setLocation(location)
       if (warning) setWarning(warning)
     }, 1000)
 
-    void geolocation.watchPosition(onUpdate).then((stop: () => void) => {
-      stopWatching = stop
+    const startLocation = async () => {
+      const permissionState = await geolocation.getPermissionState()
+      const nextPermissionState =
+        permissionState === "prompt"
+          ? await geolocation.requestPermission()
+          : permissionState
+
+      if (cancelled) return
+
+      if (nextPermissionState !== "granted") {
+        setWarning(1)
+        return
+      }
+
+      geolocation
+        .getCurrentPosition()
+        .then((location) => {
+          if (!cancelled) setLocation(location)
+        })
+        .catch((error) => {
+          console.warn(
+            "[Geolocation] getCurrentPosition failed:",
+            formatLocationError(error),
+          )
+          if (!cancelled) setWarning(2)
+        })
+
+      stopWatching = await geolocation.watchPosition(onUpdate)
+    }
+
+    void startLocation().catch((error) => {
+      console.warn(
+        "[Geolocation] Failed to start location tracking:",
+        formatLocationError(error),
+      )
+      if (!cancelled) setWarning(2)
     })
 
     return () => {
+      cancelled = true
       stopWatching?.()
       onUpdate.cancel()
     }

@@ -1,5 +1,6 @@
+import { Capacitor } from "@capacitor/core"
 import { Geolocation } from "@capacitor/geolocation"
-import type { Position } from "@capacitor/geolocation"
+import type { Position, PositionOptions } from "@capacitor/geolocation"
 import type { LocationPermissionState, LocationService } from "../types"
 
 function toLocationPermissionState(location: string): LocationPermissionState {
@@ -20,6 +21,55 @@ function getLocationResult(position: Position) {
   }
 }
 
+function isAndroid() {
+  return Capacitor.getPlatform() === "android"
+}
+
+function getCurrentPositionOptions(): PositionOptions {
+  if (isAndroid()) {
+    return {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 300000,
+      enableLocationFallback: true,
+    }
+  }
+
+  return {
+    enableHighAccuracy: true,
+    timeout: 30000,
+    maximumAge: 60000,
+  }
+}
+
+function getWatchPositionOptions(): PositionOptions {
+  if (isAndroid()) {
+    return {
+      enableHighAccuracy: false,
+      timeout: 15000,
+      maximumAge: 300000,
+      interval: 10000,
+      minimumUpdateInterval: 5000,
+      enableLocationFallback: true,
+    }
+  }
+
+  return {
+    enableHighAccuracy: true,
+    timeout: 30000,
+    maximumAge: 60000,
+  }
+}
+
+function formatGeolocationError(error: unknown): string {
+  if (error instanceof Error) return error.message
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
 export const geolocation: LocationService = {
   async getPermissionState() {
     const { location } = await Geolocation.checkPermissions()
@@ -34,19 +84,21 @@ export const geolocation: LocationService = {
   },
 
   async getCurrentPosition() {
-    const position = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 1000,
-    })
+    const position = await Geolocation.getCurrentPosition(
+      getCurrentPositionOptions(),
+    )
     return getLocationResult(position)
   },
 
   async watchPosition(callback) {
     const watchId = await Geolocation.watchPosition(
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+      getWatchPositionOptions(),
       (position, error) => {
         if (error) {
+          console.warn(
+            "[Geolocation] watchPosition failed:",
+            formatGeolocationError(error),
+          )
           callback({ warning: 2 })
           return
         }
