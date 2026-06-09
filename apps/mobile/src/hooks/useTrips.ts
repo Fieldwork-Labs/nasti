@@ -1,4 +1,4 @@
-import { useQuery } from "@powersync/tanstack-react-query"
+import { useQuery } from "@/lib/powersync/query"
 import type { Trip } from "@nasti/common/types"
 import type { PowerSyncTripRow } from "@/lib/powersync/schema"
 import { rowToTrip } from "@/lib/powersync/rows"

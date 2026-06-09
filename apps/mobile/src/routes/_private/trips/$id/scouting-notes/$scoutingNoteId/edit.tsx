@@ -225,14 +225,14 @@ function ScoutingNoteFormReady({
 
       const updatePromise = updateScoutingNote(payload)
       if (isOnline) await updatePromise
-      photoChanges.add.map((photo) =>
-        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
-      )
-      // even if the device is offline, we need to await the photo being stored in the DB so we do this
-      // separately to the mutation
       await Promise.all(
         photoChanges.add.map(async (photo) =>
           putImage(photo.id, await fileToBase64(photo.file)),
+        ),
+      )
+      await Promise.all(
+        photoChanges.add.map((photo) =>
+          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
         ),
       )
       // find which photos have been removed from the initial list

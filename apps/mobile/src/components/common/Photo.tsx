@@ -31,7 +31,7 @@ export function Photo({
   const photo = usePhoto({ id })
   const fallback = useALASpeciesImage({ guid: species?.ala_guid })
   const { data: url, status } = usePhotoUrl({ photoId: id })
-  const displayUrl = Boolean(url) ? url : fallback
+  const displayUrl = url ?? fallback
   const progress = usePhotoUploadProgress(id)
   const displayProgress = Boolean(
     showUploadProgress && progress && progress >= 0,

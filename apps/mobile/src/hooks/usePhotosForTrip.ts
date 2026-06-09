@@ -1,7 +1,7 @@
 import { supabase } from "@nasti/common/supabase"
 import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 
-import { useQuery } from "@powersync/tanstack-react-query"
+import { useQuery } from "@/lib/powersync/query"
 import {
   PendingCollectionPhoto,
   PendingScoutingNotePhoto,

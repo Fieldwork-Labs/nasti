@@ -66,7 +66,7 @@ async function uploadFile(
         reject(error)
       },
       onProgress: function (bytesUploaded, bytesTotal) {
-        var percentage = (bytesUploaded / bytesTotal) * 100
+        const percentage = (bytesUploaded / bytesTotal) * 100
         onProgressUpdate?.(percentage)
       },
       onSuccess: function () {
@@ -121,6 +121,12 @@ export const usePhotosMutate = ({
       })
   }
 
+  const clearUploadProgress = (photoId: string) => {
+    queryClient.removeQueries({
+      queryKey: getUploadProgressQueryKey(photoId),
+    })
+  }
+
   const createPhotoMutation = useMutation<
     CollectionPhoto | ScoutingNotePhoto,
     Error,
@@ -134,6 +140,28 @@ export const usePhotosMutate = ({
       if (!file) throw new Error(`No file found for ${photoId}`)
 
       const filePath = getFilePath(file, photoId)
+      const photoBase = {
+        id: photoId,
+        url: filePath,
+        caption: caption || null,
+        uploaded_at: new Date().toISOString(),
+      }
+      const photo =
+        entityType === "collection"
+          ? ({
+              ...photoBase,
+              collection_id: entityId,
+            } satisfies CollectionPhoto)
+          : ({
+              ...photoBase,
+              scouting_notes_id: entityId,
+            } satisfies ScoutingNotePhoto)
+
+      if (entityType === "collection") {
+        await psInsert("collection_photo", photo)
+      } else {
+        await psInsert("scouting_notes_photos", photo)
+      }
 
       // Get a fresh session before starting operations
       // This is critical when resuming from offline mode
@@ -143,15 +171,21 @@ export const usePhotosMutate = ({
       } = await supabase.auth.getSession()
 
       if (sessionError) {
-        throw new Error(`Failed to get session: ${sessionError.message}`)
+        console.error(
+          `[Photos] Saved ${entityType} photo locally, but could not get a session for storage upload:`,
+          sessionError,
+        )
+        return photo
       }
 
       if (!session) {
-        throw new Error("No active session. Please log in again.")
+        console.error(
+          `[Photos] Saved ${entityType} photo locally, but no active session was available for storage upload.`,
+        )
+        return photo
       }
 
       try {
-        // First, upload file to Supabase Storage
         await uploadFile(
           "collection-photos",
           filePath,
@@ -164,33 +198,14 @@ export const usePhotosMutate = ({
           session,
           (percentage) => updateUploadProgress(photoId, percentage),
         )
-        const photoBase = {
-          id: photoId,
-          url: filePath,
-          caption: caption || null,
-          uploaded_at: new Date().toISOString(),
-        }
-
-        if (entityType === "collection") {
-          const photo = {
-            ...photoBase,
-            collection_id: entityId,
-          } satisfies CollectionPhoto
-
-          await psInsert("collection_photo", photo)
-          return photo
-        }
-
-        const photo = {
-          ...photoBase,
-          scouting_notes_id: entityId,
-        } satisfies ScoutingNotePhoto
-
-        await psInsert("scouting_notes_photos", photo)
         return photo
       } catch (error) {
-        console.error("Error creating collection photo:", error)
-        throw error
+        clearUploadProgress(photoId)
+        console.error(
+          `[Photos] Saved ${entityType} photo locally, but storage upload failed:`,
+          error,
+        )
+        return photo
       }
     },
   })

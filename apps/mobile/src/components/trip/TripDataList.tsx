@@ -494,9 +494,9 @@ export const TripDataList = ({ id }: { id: string }) => {
               />
             )
         })}
-        {trip.collections.length === 0 && (
+        {searchableData.length === 0 && (
           <div className="text-center">
-            <span className="p-4 text-xl">No collections recorded yet</span>
+            <span className="p-4 text-xl">No data recorded yet</span>
           </div>
         )}
       </div>

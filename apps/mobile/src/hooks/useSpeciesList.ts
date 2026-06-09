@@ -2,7 +2,7 @@ import { Species } from "@nasti/common/types"
 
 import { rowToSpecies } from "@/lib/powersync/rows"
 import type { PowerSyncSpeciesRow } from "@/lib/powersync/schema"
-import { useQuery } from "@powersync/tanstack-react-query"
+import { useQuery } from "@/lib/powersync/query"
 
 export const getSpeciesListQueryOptions = () => ({
   queryKey: ["species", "list"],

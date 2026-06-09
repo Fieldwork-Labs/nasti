@@ -24,7 +24,6 @@ import { NewScoutingNote } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
-import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
@@ -51,8 +50,6 @@ function AddCollection() {
   const { speciesId: initialSpeciesId } = useSearch({
     from: "/_private/trips/$id/scouting-notes/new",
   })
-  const { isOnline } = useNetwork()
-
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createScoutingNote } = useScoutingNoteCreate({ tripId })
   const scoutingNoteIdRef = useRef<string>(crypto.randomUUID())
@@ -111,19 +108,15 @@ function AddCollection() {
         organisation_id: organisation.id,
         trip_id: tripId,
       }
-      const collectionPromise = createScoutingNote(newScoutingNote)
-      // The UI will get stuck here when offline so only await if online
-      if (isOnline) await collectionPromise
-      // We need the collection to be created before we can create the photos
-      const photoPromises = photos.map((photo) =>
-        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
-      )
-      if (isOnline) await Promise.all(photoPromises)
-      // even if the device is offline, we need to await the photo being stored in the DB so we do this
-      // separately to the mutation
+      await createScoutingNote(newScoutingNote)
       await Promise.all(
         photos.map(async (photo) =>
           putImage(photo.id, await fileToBase64(photo.file)),
+        ),
+      )
+      await Promise.all(
+        photos.map((photo) =>
+          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
         ),
       )
 
@@ -138,7 +131,7 @@ function AddCollection() {
       createScoutingNote,
       createPhotoMutation,
       navigate,
-      isOnline,
+      photos,
     ],
   )
 

@@ -26,7 +26,6 @@ import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
 import { stringToNumber } from "@nasti/common/utils"
-import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 
 const addCollectionSearchSchema = z.object({
@@ -98,7 +97,6 @@ function AddCollection() {
   const { speciesId: initialSpeciesId } = useSearch({
     from: "/_private/trips/$id/collections/new",
   })
-  const { isOnline } = useNetwork()
   const { user, organisation } = useAuth()
 
   const { location, locationDisplay } = useGeoLocation()
@@ -160,19 +158,15 @@ function AddCollection() {
         organisation_id: organisation.id,
         trip_id: tripId,
       }
-      const collectionPromise = createCollection(newCollection)
-      // The UI will get stuck here when offline so only await if online
-      if (isOnline) await collectionPromise
-      // We need the collection to be created before we can create the photos
-      const photoPromises = photos.map((photo) =>
-        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
-      )
-      if (isOnline) await Promise.all(photoPromises)
-      // even if the device is offline, we need to await the photo being stored in the DB so we do this
-      // separately to the mutation
+      await createCollection(newCollection)
       await Promise.all(
         photos.map(async (photo) =>
           putImage(photo.id, await fileToBase64(photo.file)),
+        ),
+      )
+      await Promise.all(
+        photos.map((photo) =>
+          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
         ),
       )
 
@@ -182,12 +176,13 @@ function AddCollection() {
     },
     [
       user,
+      organisation,
       tripId,
       location,
       createCollection,
+      photos,
       createPhotoMutation,
       navigate,
-      isOnline,
     ],
   )
   const [descriptionFocus, setDescriptionFocus] = useState(false)
