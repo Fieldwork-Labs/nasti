@@ -70,6 +70,13 @@ export default defineConfig({
       ...(isCapacitorBuild
         ? [
             {
+              find: "@/lib/powersync/db.impl",
+              replacement: path.resolve(
+                __dirname,
+                "./src/lib/powersync/db.native.ts",
+              ),
+            },
+            {
               find: "@/platform/impl",
               replacement: path.resolve(
                 __dirname,
@@ -77,7 +84,7 @@ export default defineConfig({
               ),
             },
             {
-              find: "@/contexts/swStatus",
+              find: "@/contexts/swStatus.impl",
               replacement: path.resolve(
                 __dirname,
                 "./src/contexts/swStatus.native.tsx",
