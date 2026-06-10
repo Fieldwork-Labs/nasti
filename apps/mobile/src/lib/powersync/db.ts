@@ -1,1 +1,1 @@
-export { powerSyncDb } from "./db.impl"
+export { powerSyncDb } from "@/lib/powersync/db.impl"

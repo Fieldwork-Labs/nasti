@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "8.0.0",
+    "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor/action-sheet": "8.1.1",
     "@capacitor/android": "8.4.0",
     "@capacitor/camera": "8.2.0",
@@ -31,6 +32,7 @@
     "@journeyapps/wa-sqlite": "^1.5.0",
     "@nasti/common": "workspace:*",
     "@nasti/ui": "workspace:*",
+    "@powersync/capacitor": "^0.6.1",
     "@powersync/react": "^1.9.0",
     "@powersync/tanstack-react-query": "^0.2.2",
     "@powersync/web": "^1.37.2",

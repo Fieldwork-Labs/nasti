@@ -55,6 +55,9 @@ importers:
       '@aparajita/capacitor-secure-storage':
         specifier: 8.0.0
         version: 8.0.0
+      '@capacitor-community/sqlite':
+        specifier: ^8.1.0
+        version: 8.1.0(@capacitor/core@8.4.0)
       '@capacitor/action-sheet':
         specifier: 8.1.1
         version: 8.1.1(@capacitor/core@8.4.0)
@@ -91,6 +94,9 @@ importers:
       '@nasti/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@powersync/capacitor':
+        specifier: ^0.6.1
+        version: 0.6.1(@capacitor-community/sqlite@8.1.0)(@capacitor/core@8.4.0)(@powersync/web@1.38.2)
       '@powersync/react':
         specifier: ^1.9.0
         version: 1.10.0(@powersync/common@1.53.2)(react@19.2.7)
@@ -205,7 +211,7 @@ importers:
         version: 4.0.12
       '@tanstack/router-devtools':
         specifier: ^1.64.0
-        version: 1.112.17(@tanstack/react-router@1.112.17)(csstype@3.1.3)(react-dom@19.2.7)(react@19.2.7)
+        version: 1.112.17(@tanstack/react-router@1.112.17)(csstype@3.2.3)(react-dom@19.2.7)(react@19.2.7)
       '@tanstack/router-plugin':
         specifier: ^1.64.0
         version: 1.112.17(@tanstack/react-router@1.112.17)(vite@6.2.1)
@@ -380,7 +386,7 @@ importers:
         version: link:../../packages/typescript-config
       '@tanstack/router-devtools':
         specifier: ^1.64.0
-        version: 1.112.17(@tanstack/react-router@1.112.17)(csstype@3.1.3)(react-dom@19.2.7)(react@19.2.7)
+        version: 1.112.17(@tanstack/react-router@1.112.17)(csstype@3.2.3)(react-dom@19.2.7)(react@19.2.7)
       '@tanstack/router-plugin':
         specifier: ^1.64.0
         version: 1.112.17(@tanstack/react-router@1.112.17)(vite@6.2.1)
@@ -1823,6 +1829,16 @@ packages:
   /@canvas/image-data@1.0.0:
     resolution: {integrity: sha512-BxOqI5LgsIQP1odU5KMwV9yoijleOPzHL18/YvNqF9KFSGF2K/DLlYAbDQsWqd/1nbaFuSkYD/191dpMtNh4vw==}
     dev: true
+
+  /@capacitor-community/sqlite@8.1.0(@capacitor/core@8.4.0):
+    resolution: {integrity: sha512-yhKZDAVPDPcM3QE6UGB3LXyV25a6Rve1SjZ1aUpTE0E2isnYTVM0PG9+JOI241f+NdsHzPTE7ESJiYSqKsKnuA==}
+    engines: {node: '>=16.0.0'}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+    dependencies:
+      '@capacitor/core': 8.4.0
+      jeep-sqlite: 2.8.0
+    dev: false
 
   /@capacitor/action-sheet@8.1.1(@capacitor/core@8.4.0):
     resolution: {integrity: sha512-yHuGSR/FS2dDr9oBmy+Ql+y7/i5XsUAlENx5oRND5NtzsNLLiFxpNPGLWV27aU9uf9ICjI92VzH93Zh0g2FL1A==}
@@ -3348,6 +3364,18 @@ packages:
   /@poppinss/exception@1.2.2:
     resolution: {integrity: sha512-m7bpKCD4QMlFCjA/nKTs23fuvoVFoA83brRKmObCUNmi/9tVu8Ve3w4YQAnJu4q3Tjf5fr685HYIC/IA2zHRSg==}
     dev: true
+
+  /@powersync/capacitor@0.6.1(@capacitor-community/sqlite@8.1.0)(@capacitor/core@8.4.0)(@powersync/web@1.38.2):
+    resolution: {integrity: sha512-QHT1JulywoGaRnD/pUdQxGYHUL+SydRTmLJkocGC8ZGicM5nn+gO1jyoQGpCl6HHtQFk/itoREXJtV1IdNcmJA==}
+    peerDependencies:
+      '@capacitor-community/sqlite': ^8.1.0
+      '@capacitor/core': '>=8.0.0'
+      '@powersync/web': ^1.38.2
+    dependencies:
+      '@capacitor-community/sqlite': 8.1.0(@capacitor/core@8.4.0)
+      '@capacitor/core': 8.4.0
+      '@powersync/web': 1.38.2(@journeyapps/wa-sqlite@1.7.0)(@powersync/common@1.53.2)
+    dev: false
 
   /@powersync/common@1.53.2:
     resolution: {integrity: sha512-y+GtaLL4imFIWOatErIAEozNZPcIkAcA24c2Mso124ZFStOEeP8LJTSMDxPhyK14mzSnBk2dSjrOAjNz7m2B8g==}
@@ -5121,11 +5149,27 @@ packages:
     requiresBuild: true
     optional: true
 
+  /@rollup/rollup-darwin-arm64@4.44.0:
+    resolution: {integrity: sha512-VGF3wy0Eq1gcEIkSCr8Ke03CWT+Pm2yveKLaDvq51pPpZza3JX/ClxXOCmTYYq3us5MvEuNRTaeyFThCKRQhOA==}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@rollup/rollup-darwin-x64@4.34.9:
     resolution: {integrity: sha512-eOojSEAi/acnsJVYRxnMkPFqcxSMFfrw7r2iD9Q32SGkb/Q9FpUY1UlAu1DH9T7j++gZ0lHjnm4OyH2vCI7l7Q==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
+    optional: true
+
+  /@rollup/rollup-darwin-x64@4.44.0:
+    resolution: {integrity: sha512-fBkyrDhwquRvrTxSGH/qqt3/T0w5Rg0L7ZIDypvBPc1/gzjJle6acCpZ36blwuwcKD/u6oCE/sRWlUAcxLWQbQ==}
+    cpu: [x64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
     optional: true
 
   /@rollup/rollup-freebsd-arm64@4.34.9:
@@ -5163,11 +5207,27 @@ packages:
     requiresBuild: true
     optional: true
 
+  /@rollup/rollup-linux-arm64-gnu@4.44.0:
+    resolution: {integrity: sha512-ZTR2mxBHb4tK4wGf9b8SYg0Y6KQPjGpR4UWwTFdnmjB4qRtoATZ5dWn3KsDwGa5Z2ZBOE7K52L36J9LueKBdOQ==}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@rollup/rollup-linux-arm64-musl@4.34.9:
     resolution: {integrity: sha512-LD2fytxZJZ6xzOKnMbIpgzFOuIKlxVOpiMAXawsAZ2mHBPEYOnLRK5TTEsID6z4eM23DuO88X0Tq1mErHMVq0A==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
+    optional: true
+
+  /@rollup/rollup-linux-arm64-musl@4.44.0:
+    resolution: {integrity: sha512-GFWfAhVhWGd4r6UxmnKRTBwP1qmModHtd5gkraeW2G490BpFOZkFtem8yuX2NyafIP/mGpRJgTJ2PwohQkUY/Q==}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
     optional: true
 
   /@rollup/rollup-linux-loongarch64-gnu@4.34.9:
@@ -5205,6 +5265,14 @@ packages:
     requiresBuild: true
     optional: true
 
+  /@rollup/rollup-linux-x64-gnu@4.44.0:
+    resolution: {integrity: sha512-iUVJc3c0o8l9Sa/qlDL2Z9UP92UZZW1+EmQ4xfjTc1akr0iUFZNfxrXJ/R1T90h/ILm9iXEY6+iPrmYB3pXKjw==}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@rollup/rollup-linux-x64-musl@4.34.9:
     resolution: {integrity: sha512-cYRpV4650z2I3/s6+5/LONkjIz8MBeqrk+vPXV10ORBnshpn8S32bPqQ2Utv39jCiDcO2eJTuSlPXpnvmaIgRA==}
     cpu: [x64]
@@ -5212,11 +5280,27 @@ packages:
     requiresBuild: true
     optional: true
 
+  /@rollup/rollup-linux-x64-musl@4.44.0:
+    resolution: {integrity: sha512-PQUobbhLTQT5yz/SPg116VJBgz+XOtXt8D1ck+sfJJhuEsMj2jSej5yTdp8CvWBSceu+WW+ibVL6dm0ptG5fcA==}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@rollup/rollup-win32-arm64-msvc@4.34.9:
     resolution: {integrity: sha512-z4mQK9dAN6byRA/vsSgQiPeuO63wdiDxZ9yg9iyX2QTzKuQM7T4xlBoeUP/J8uiFkqxkcWndWi+W7bXdPbt27Q==}
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
+    optional: true
+
+  /@rollup/rollup-win32-arm64-msvc@4.44.0:
+    resolution: {integrity: sha512-M0CpcHf8TWn+4oTxJfh7LQuTuaYeXGbk0eageVjQCKzYLsajWS/lFC94qlRqOlyC2KvRT90ZrfXULYmukeIy7w==}
+    cpu: [arm64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
     optional: true
 
   /@rollup/rollup-win32-ia32-msvc@4.34.9:
@@ -5231,6 +5315,14 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
+    optional: true
+
+  /@rollup/rollup-win32-x64-msvc@4.44.0:
+    resolution: {integrity: sha512-Q2Mgwt+D8hd5FIPUuPDsvPR7Bguza6yTkJxspDGkZj7tBRn2y4KSWYuIXpftFSjBra76TbKerCV7rgFPQrn+wQ==}
+    cpu: [x64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
     optional: true
 
   /@sentry-internal/browser-utils@9.19.0:
@@ -5434,6 +5526,21 @@ packages:
 
   /@standard-schema/utils@0.3.0:
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
+    dev: false
+
+  /@stencil/core@4.43.5:
+    resolution: {integrity: sha512-cgWD+GeuvJpTe1WQn40p02+BJ2j0j1YJ17GdkF2qKIQ23s2e3Zivq5yISXS3dcuV6oUJFN93jprdk+nk/sq99Q==}
+    engines: {node: '>=16.0.0', npm: '>=7.10.0'}
+    hasBin: true
+    optionalDependencies:
+      '@rollup/rollup-darwin-arm64': 4.44.0
+      '@rollup/rollup-darwin-x64': 4.44.0
+      '@rollup/rollup-linux-arm64-gnu': 4.44.0
+      '@rollup/rollup-linux-arm64-musl': 4.44.0
+      '@rollup/rollup-linux-x64-gnu': 4.44.0
+      '@rollup/rollup-linux-x64-musl': 4.44.0
+      '@rollup/rollup-win32-arm64-msvc': 4.44.0
+      '@rollup/rollup-win32-x64-msvc': 4.44.0
     dev: false
 
   /@supabase/auth-js@2.68.0:
@@ -5731,7 +5838,7 @@ packages:
       '@tanstack/history': 1.112.8
       '@tanstack/store': 0.7.0
 
-  /@tanstack/router-devtools@1.112.17(@tanstack/react-router@1.112.17)(csstype@3.1.3)(react-dom@19.2.7)(react@19.2.7):
+  /@tanstack/router-devtools@1.112.17(@tanstack/react-router@1.112.17)(csstype@3.2.3)(react-dom@19.2.7)(react@19.2.7):
     resolution: {integrity: sha512-BfbmYGY3pqAO5Z3qKzW+ei5cjkd1Lb4xXhzIVU8r2kGTREfAenxVtheIcV4mu2HZ0Jgs85D4T7upDGJZyogxXw==}
     engines: {node: '>=12'}
     peerDependencies:
@@ -5745,8 +5852,8 @@ packages:
     dependencies:
       '@tanstack/react-router': 1.112.17(react-dom@19.2.7)(react@19.2.7)
       clsx: 2.1.1
-      csstype: 3.1.3
-      goober: 2.1.16(csstype@3.1.3)
+      csstype: 3.2.3
+      goober: 2.1.16(csstype@3.2.3)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
     dev: true
@@ -8140,6 +8247,10 @@ packages:
   /brorand@1.1.0:
     resolution: {integrity: sha512-cKV8tMCEpQs4hK/ik71d6LrPOnpkpGBR0wzxqr68g2m/LB2GxVYQroAjMJZRVM1Y4BCjCKc3vAamxSzOY2RP+w==}
 
+  /browser-fs-access@0.35.0:
+    resolution: {integrity: sha512-sLoadumpRfsjprP8XzVjpQc0jK8yqHBx0PtUTGYj2fftT+P/t+uyDAQdMgGAPKD011in/O+YYGh7fIs0oG/viw==}
+    dev: false
+
   /browser-resolve@2.0.0:
     resolution: {integrity: sha512-7sWsQlYL2rGLy2IWm8WL8DCTJvYLc/qlOnsakDac87SOoCd16WLsaAMdCiAqsTNHIe+SXfaqyxyo6THoWqs8WQ==}
     dependencies:
@@ -8697,6 +8808,7 @@ packages:
 
   /csstype@3.1.3:
     resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
+    dev: false
 
   /csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
@@ -9816,12 +9928,12 @@ packages:
       gopd: 1.2.0
     dev: true
 
-  /goober@2.1.16(csstype@3.1.3):
+  /goober@2.1.16(csstype@3.2.3):
     resolution: {integrity: sha512-erjk19y1U33+XAMe1VTvIONHYoSqE4iS7BYUZfHaqeohLmnC0FdxEh7rQU+6MZ4OajItzjZFSRtVANrQwNq6/g==}
     peerDependencies:
       csstype: ^3.0.10
     dependencies:
-      csstype: 3.1.3
+      csstype: 3.2.3
     dev: true
 
   /gopd@1.2.0:
@@ -9984,6 +10096,10 @@ packages:
   /ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
     engines: {node: '>= 4'}
+
+  /immediate@3.0.6:
+    resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}
+    dev: false
 
   /import-fresh@3.3.1:
     resolution: {integrity: sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ==}
@@ -10423,6 +10539,16 @@ packages:
       chalk: 4.1.2
       filelist: 1.0.4
       minimatch: 3.1.2
+
+  /jeep-sqlite@2.8.0:
+    resolution: {integrity: sha512-FWNUP6OAmrUHwiW7H1xH5YUQ8tN2O4l4psT1sLd7DQtHd5PfrA1nvNdeKPNj+wQBtu7elJa8WoUibTytNTaaCg==}
+    dependencies:
+      '@stencil/core': 4.43.5
+      browser-fs-access: 0.35.0
+      jszip: 3.10.1
+      localforage: 1.10.0
+      sql.js: 1.14.1
+    dev: false
 
   /jest-changed-files@29.7.0:
     resolution: {integrity: sha512-fEArFiwf1BpQ+4bXSprcDc3/x4HSzL4al2tozwVpDFpsxALjLYdyiIK4e5Vz66GQJIbXJ82+35PtysofptNX2w==}
@@ -10939,6 +11065,15 @@ packages:
     engines: {node: '>= 12'}
     dev: false
 
+  /jszip@3.10.1:
+    resolution: {integrity: sha512-xXDvecyTpGLrqFrvkrUSoxxfJI5AH7U8zxxtVclpsUtMCq4JQ290LY8AW5c7Ggnr/Y/oK+bQMbqK2qmtk3pN4g==}
+    dependencies:
+      lie: 3.3.0
+      pako: 1.0.11
+      readable-stream: 2.3.8
+      setimmediate: 1.0.5
+    dev: false
+
   /kdbush@4.0.2:
     resolution: {integrity: sha512-WbCVYJ27Sz8zi9Q7Q0xHC+05iwkm3Znipc2XTlrnJbsHMYktW4hPhXUE8Ys1engBrvffoSCqbil1JQAa7clRpA==}
     dev: false
@@ -10967,6 +11102,18 @@ packages:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
+
+  /lie@3.1.1:
+    resolution: {integrity: sha512-RiNhHysUjhrDQntfYSfY4MU24coXXdEOgw9WGcKHNeEwffDYbF//u87M1EWaMGzuFoSbqW0C9C6lEEhDOAswfw==}
+    dependencies:
+      immediate: 3.0.6
+    dev: false
+
+  /lie@3.3.0:
+    resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
+    dependencies:
+      immediate: 3.0.6
+    dev: false
 
   /lightningcss-darwin-arm64@1.29.2:
     resolution: {integrity: sha512-cK/eMabSViKn/PG8U/a7aCorpeKLMlK0bQeNHmdb7qUnBkNPnL+oV5DjJUo0kqWsJUapZsM4jCfYItbqBDvlcA==}
@@ -11103,6 +11250,12 @@ packages:
       rfdc: 1.4.1
       wrap-ansi: 9.0.0
     dev: true
+
+  /localforage@1.10.0:
+    resolution: {integrity: sha512-14/H1aX7hzBBmmh7sGPd+AOMkkIrHM3Z1PAyGgZigA1H1p5O5ANnMyWzvpAETtG68/dC4pC0ncy3+PPGzXZHPg==}
+    dependencies:
+      lie: 3.1.1
+    dev: false
 
   /locate-path@5.0.0:
     resolution: {integrity: sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g==}
@@ -12996,6 +13149,10 @@ packages:
 
   /sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}
+
+  /sql.js@1.14.1:
+    resolution: {integrity: sha512-gcj8zBWU5cFsi9WUP+4bFNXAyF1iRpA3LLyS/DP5xlrNzGmPIizUeBggKa8DbDwdqaKwUcTEnChtd2grWo/x/A==}
+    dev: false
 
   /stack-utils@2.0.6:
     resolution: {integrity: sha512-XlkWvfIm6RmsWtNJx+uqtKLS8eqFbxUg0ZzLXqY0caEy9l7hruX8IpiDnjsLavoBgqCCR71TqWO8MaXYheJ3RQ==}
