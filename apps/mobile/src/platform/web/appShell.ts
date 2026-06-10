@@ -18,4 +18,19 @@ export const appShell: AppShellService = {
       document.body.classList.add("pwa")
     }
   },
+
+  async getIsActive() {
+    return !document.hidden
+  },
+
+  onActiveChange(callback) {
+    const onVisibilityChange = () => {
+      callback(!document.hidden)
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  },
 }

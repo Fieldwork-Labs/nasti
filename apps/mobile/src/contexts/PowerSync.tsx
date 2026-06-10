@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react"
 import { powerSyncDb } from "@/lib/powersync/db"
 import { SupabaseConnector } from "@/lib/powersync/connector"
 import { useAuth } from "@/hooks/useAuth"
+import { useAppIsActive } from "@/hooks/useAppIsActive"
 
 function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (connectedRef.current) return
@@ -78,12 +79,13 @@ export function PowerSyncProvider({
   const connectedRef = useRef(false)
   const { organisation } = useAuth()
   const organisationId = organisation?.id ?? undefined
+  const isAppActive = useAppIsActive()
 
   useEffect(() => {
-    if (!isLoggedIn && connectedRef.current) {
+    if ((!isLoggedIn || !isAppActive) && connectedRef.current) {
       disconnectPowerSync(connectedRef)
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, isAppActive])
 
   useEffect(() => {
     if (!organisationId && connectedRef.current) {
@@ -93,7 +95,7 @@ export function PowerSyncProvider({
 
   return (
     <PowerSyncContext.Provider value={powerSyncDb}>
-      {organisationId ? (
+      {organisationId && isAppActive ? (
         <TripListSyncStream
           connectedRef={connectedRef}
           organisationId={organisationId}

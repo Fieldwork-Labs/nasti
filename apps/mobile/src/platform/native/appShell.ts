@@ -11,4 +11,24 @@ export const appShell: AppShellService = {
     requestPersistentStorage()
     document.body.classList.add("capacitor")
   },
+
+  async getIsActive() {
+    return !document.hidden
+  },
+
+  onActiveChange(callback) {
+    const onVisibilityChange = () => callback(!document.hidden)
+    const onPause = () => callback(false)
+    const onResume = () => callback(true)
+
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    document.addEventListener("pause", onPause)
+    document.addEventListener("resume", onResume)
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+      document.removeEventListener("pause", onPause)
+      document.removeEventListener("resume", onResume)
+    }
+  },
 }

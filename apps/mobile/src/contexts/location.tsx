@@ -11,6 +11,7 @@ import React, {
 import { point, distance } from "@turf/turf"
 import debounce from "lodash/debounce"
 import { geolocation } from "@/platform"
+import { useAppIsActive } from "@/hooks/useAppIsActive"
 
 // Type definitions
 type GeolocationData = Omit<GeolocationCoordinates, "toJSON">
@@ -53,13 +54,16 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
 }) => {
   const [location, setLocation] = useState<GeolocationData>()
   const [warning, setWarning] = useState<number | undefined>(undefined)
+  const isAppActive = useAppIsActive()
 
   useEffect(() => {
-    let cancelled = false
+    if (!isAppActive) return
+
+    let stopped = false
     let stopWatching: (() => void) | undefined
 
     const onUpdate = debounce(({ location, warning }) => {
-      if (cancelled) return
+      if (stopped) return
       if (location) setLocation(location)
       if (warning) setWarning(warning)
     }, 1000)
@@ -71,7 +75,7 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
           ? await geolocation.requestPermission()
           : permissionState
 
-      if (cancelled) return
+      if (stopped) return
 
       if (nextPermissionState !== "granted") {
         setWarning(1)
@@ -81,17 +85,18 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
       geolocation
         .getCurrentPosition()
         .then((location) => {
-          if (!cancelled) setLocation(location)
+          if (!stopped) setLocation(location)
         })
         .catch((error) => {
           console.warn(
             "[Geolocation] getCurrentPosition failed:",
             formatLocationError(error),
           )
-          if (!cancelled) setWarning(2)
+          if (!stopped) setWarning(2)
         })
 
       stopWatching = await geolocation.watchPosition(onUpdate)
+      if (stopped) stopWatching()
     }
 
     void startLocation().catch((error) => {
@@ -99,15 +104,15 @@ export const GeoLocationProvider: React.FC<GeoLocationProviderProps> = ({
         "[Geolocation] Failed to start location tracking:",
         formatLocationError(error),
       )
-      if (!cancelled) setWarning(2)
+      if (!stopped) setWarning(2)
     })
 
     return () => {
-      cancelled = true
+      stopped = true
       stopWatching?.()
       onUpdate.cancel()
     }
-  }, [])
+  }, [isAppActive])
 
   const getDistanceKm = useCallback(
     ({ latitude, longitude }: { latitude: number; longitude: number }) => {

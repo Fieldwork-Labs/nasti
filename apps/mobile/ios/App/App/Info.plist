@@ -26,8 +26,6 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Seed Scout uses the camera to attach field photos to seed collections and scouting notes.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Seed Scout uses your location to record where seed collections and scouting notes are made.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Seed Scout uses your location to record where seed collections and scouting notes are made.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
