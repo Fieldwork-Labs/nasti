@@ -36,6 +36,8 @@ export interface PhotoService {
 
 export interface AppShellService {
   prepareDocument(): void
+  getIsActive(): Promise<boolean>
+  onActiveChange(callback: (isActive: boolean) => void): () => void
 }
 
 export type AuthStorageService = SupportedStorage
