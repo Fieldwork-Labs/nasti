@@ -151,8 +151,6 @@ function AddCollection() {
       const locationPoint = `POINT(${longitude} ${latitude})`
       const newCollection: NewCollection = {
         ...data,
-        species_uncertain:
-          data.species_uncertain || data.field_name.trim().length > 0,
         id: collectionIdRef.current,
         created_by: user.id,
         collected_by: user.id,

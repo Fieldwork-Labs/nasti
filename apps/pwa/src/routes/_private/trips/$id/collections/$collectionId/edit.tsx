@@ -65,7 +65,6 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
-  plants_sampled_estimate: null,
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
@@ -440,15 +439,6 @@ function CollectionFormReady({
             </div>
           </div>
 
-          <div>
-            <Label># Plants Sampled</Label>
-            <Input {...register("plants_sampled_estimate")} />
-            {errors.plants_sampled_estimate && (
-              <p className="text-amber-600">
-                {errors.plants_sampled_estimate.message}
-              </p>
-            )}
-          </div>
           <Controller
             control={control}
             name="phenology_start"
