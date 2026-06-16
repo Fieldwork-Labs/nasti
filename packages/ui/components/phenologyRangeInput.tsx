@@ -15,12 +15,6 @@ type PhenologyRangeInputProps = {
   className?: string
 }
 
-const stages = [
-  { value: -100, label: "Pre flowering" },
-  { value: 0, label: "Seed dispersal" },
-  { value: 100, label: "Fruiting completed" },
-]
-
 const segmentLabels = ["Bud", "Flowers", "Fruiting", "Dispersal"]
 
 const valueToPosition = (value: number) => {
@@ -32,9 +26,6 @@ const positionToValue = (position: number) => {
   if (position <= 75) return Math.round((position / 75) * 100 - 100)
   return Math.round(((position - 75) / 25) * 100)
 }
-
-const formatPhenologyValue = (value: number | null) =>
-  value === null ? "--" : value.toString()
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
@@ -182,11 +173,6 @@ export function PhenologyRangeInput({
       <div className="flex items-center justify-between gap-3">
         <Label>{label}</Label>
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
-          <span>
-            {value[1] === null
-              ? "No phenology set"
-              : `Peak ${formatPhenologyValue(value[1])}; range ${formatPhenologyValue(value[0])}-${formatPhenologyValue(value[2])}`}
-          </span>
           {value[1] !== null && (
             <button
               type="button"
@@ -211,7 +197,9 @@ export function PhenologyRangeInput({
               key={segmentLabel}
               className={cn(
                 "bg-background flex min-h-12 items-center justify-center px-1 text-center",
-                i != 0 ? "border-l border-dashed" : "",
+                i !== 0 ? "border-l border-dashed" : "",
+                i === 0 && "rounded-l-md",
+                i === segmentLabels.length - 1 && "rounded-r-md",
               )}
             >
               {segmentLabel}
@@ -290,24 +278,6 @@ export function PhenologyRangeInput({
               <span className="bg-primary after:border-t-primary rounded-xs pointer-events-none relative h-3 w-1.5 shadow-[0_0_0_1px_hsl(var(--primary))] after:absolute after:left-1/2 after:top-full after:h-0 after:w-0 after:-translate-x-1/2 after:border-x-[4px] after:border-t-[5px] after:border-x-transparent" />
             </button>
           )}
-        </div>
-        <div className="text-muted-foreground relative h-5 px-2 pb-2 text-sm">
-          {stages.map((stage) => (
-            <span
-              key={stage.value}
-              className={cn(
-                "absolute text-center",
-                stage.value === -100
-                  ? "translate-x-0"
-                  : stage.value === 100
-                    ? "-translate-x-full"
-                    : "-translate-x-1/2",
-              )}
-              style={{ left: `calc(${valueToPosition(stage.value)}%)` }}
-            >
-              {stage.value}
-            </span>
-          ))}
         </div>
       </div>
     </div>
