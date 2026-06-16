@@ -169,8 +169,8 @@ export function PhenologyRangeInput({
   }
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="flex items-center justify-between gap-3">
+    <div className={cn("space-y-2", className)}>
+      <div className="flex min-h-14 items-center justify-between gap-2">
         <Label>{label}</Label>
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           {value[1] !== null && (
@@ -196,7 +196,7 @@ export function PhenologyRangeInput({
             <div
               key={segmentLabel}
               className={cn(
-                "bg-background flex min-h-12 items-center justify-center px-1 text-center",
+                "bg-background min-h-15 flex items-center justify-center px-1 text-center",
                 i !== 0 ? "border-l border-dashed" : "",
                 i === 0 && "rounded-l-md",
                 i === segmentLabels.length - 1 && "rounded-r-md",
@@ -239,7 +239,7 @@ export function PhenologyRangeInput({
                   >
                     <path
                       d={curvePath}
-                      className="fill-primary/35 stroke-primary"
+                      className="fill-primary/45 stroke-primary"
                       strokeWidth="1.8"
                       vectorEffect="non-scaling-stroke"
                     />
