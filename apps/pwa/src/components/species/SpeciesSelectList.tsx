@@ -38,7 +38,7 @@ export const SpeciesSelectList = ({
     isSearching || targetSpecies?.length === 0 ? searchResults : targetSpecies
 
   return (
-    <div>
+    <div className="overflow-y-scroll">
       <span className="relative mb-1 block">
         <Input
           className="focus-visible:ring-0"

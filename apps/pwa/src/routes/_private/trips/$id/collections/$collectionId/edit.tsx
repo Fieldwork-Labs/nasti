@@ -21,16 +21,7 @@ import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
-
-// --- Schema & Types ---
-const stringToNumber = z.preprocess(
-  (val) => {
-    if (typeof val === "string" && val.trim() === "") return null
-    const num = Number(val)
-    return isNaN(num) ? undefined : num
-  },
-  z.number({ message: "Please enter a valid number" }).nullable(),
-)
+import { stringToNumber } from "@nasti/common/utils"
 
 const schema = z
   .object({
@@ -48,12 +39,8 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    amount_description: z
-      .string()
-      .optional()
-      .nullish()
-      .transform((val) => val || ""),
-    plants_sampled_estimate: stringToNumber,
+    amount_units: z.string().nullable(),
+    amount_quantity: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
     phenology_start: z.number().min(-100).max(100).nullable(),
@@ -78,11 +65,12 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
-  amount_description: "",
   plants_sampled_estimate: null,
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
+  amount_units: "",
+  amount_quantity: null,
 }
 
 export const Route = createFileRoute(
@@ -140,7 +128,7 @@ function CollectionFormReady({
   collectionId: string
   tripId: string
 }) {
-  const { user, org } = useAuth()
+  const { user, organisation, role } = useAuth()
 
   const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
@@ -173,11 +161,6 @@ function CollectionFormReady({
     keep: initialPhotos,
   })
 
-  // Field name entry toggle
-  const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(collection.field_name && !collection.species_id),
-  )
-
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...collection,
@@ -200,10 +183,20 @@ function CollectionFormReady({
     reValidateMode: "onChange",
   })
 
+  // Field name entry toggle
+  const isFieldName =
+    watch("specimen_collected") || Boolean(defaultValues.field_name)
+  const [enterFieldName, setEnterFieldName] = useState(isFieldName)
+
+  const handleSetIsSpecimenCollected = (val: boolean) => {
+    setValue("specimen_collected", val)
+    setEnterFieldName(val)
+  }
+
   // Handlers
   const onFormSubmit = useCallback(
     async (data: FormValues) => {
-      if (!user || !org) throw new Error("Not logged in")
+      if (!user || !organisation) throw new Error("Not logged in")
       if (!tripId) throw new Error("tripId must be supplied")
 
       const { latitude, longitude, ...rest } = data
@@ -212,7 +205,7 @@ function CollectionFormReady({
       const payload: UpdateCollection = {
         id: collectionIdRef.current,
         trip_id: tripId,
-        organisation_id: org.organisation_id,
+        organisation_id: organisation.id,
         created_by: user.id,
         created_at: new Date().toISOString(),
         location: locationPoint,
@@ -269,24 +262,14 @@ function CollectionFormReady({
         params: { id: tripId, collectionId },
       })
     },
-    [user, org, tripId, location, photoChanges, isDirty, isOnline],
+    [user, organisation, tripId, location, photoChanges, isDirty, isOnline],
   )
-
-  const handleSetFieldName = useCallback(() => {
-    setEnterFieldName(true)
-    setValue("species_uncertain", true)
-  }, [setValue])
-
-  const handleResetFieldName = useCallback(() => {
-    setEnterFieldName(false)
-    setValue("field_name", "", { shouldValidate: true })
-  }, [setValue])
 
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   // You shouldn't be here
-  if (collection.created_by !== user?.id && org?.role !== ROLE.ADMIN) {
+  if (collection.created_by !== user?.id && role !== ROLE.ADMIN) {
     navigate({
       to: "/trips/$id/collections/$collectionId",
       params: { id: tripId, collectionId },
@@ -302,28 +285,35 @@ function CollectionFormReady({
         onSubmit={hookSubmit(onFormSubmit)}
       >
         <div className="space-y-4 overflow-y-auto px-2">
-          {!enterFieldName ? (
-            <SpeciesSelectInput
-              tripId={tripId}
-              selectedSpeciesId={speciesId || undefined}
-              onSelectSpecies={(id) =>
-                setValue("species_id", id, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                })
-              }
-              onClickFieldName={handleSetFieldName}
-            />
-          ) : (
+          <SpeciesSelectInput
+            onSelectSpecies={(speciesId) =>
+              setValue("species_id", speciesId, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+            tripId={tripId}
+            selectedSpeciesId={speciesId ?? undefined}
+          />
+          {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
-              <div className="flex items-center space-x-2">
+              <Label>Specimen Name</Label>
+              <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
                   className="h-12 text-lg"
+                  autoComplete="off"
+                  tabIndex={1}
                   autoFocus
                 />
-                <Button onClick={handleResetFieldName} variant="outline">
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setValue("field_name", "", { shouldValidate: true })
+                  }}
+                  className="h-12"
+                  variant={"outline"}
+                >
                   <X />
                 </Button>
               </div>
@@ -331,26 +321,30 @@ function CollectionFormReady({
           )}
 
           <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="species_uncertain"
-              render={({ field }) => (
-                <Switch checked={field.value} onChange={field.onChange} />
-              )}
-            />
+            <Switch {...register("species_uncertain")} />
             <Label>Species Uncertain?</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <InfoIcon className="h-5 w-5" />
               </PopoverTrigger>
               <PopoverContent>
-                Toggle if not 100% certain or after entering field name
+                Toggle if not 100% certain or to enter a specimen name
               </PopoverContent>
             </Popover>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch {...register("specimen_collected")} />
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field: { value } }) => (
+                <Switch
+                  id="specimen_collected"
+                  checked={value}
+                  onCheckedChange={handleSetIsSpecimenCollected}
+                />
+              )}
+            />
             <Label>Specimen Collected?</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -399,13 +393,51 @@ function CollectionFormReady({
           </div>
 
           <div>
-            <Label>Amount Desription</Label>
-            <Input {...register("amount_description")} />
-            {errors.amount_description && (
-              <p className="text-amber-600">
-                {errors.amount_description.message}
-              </p>
-            )}
+            <Label className="flex items-center gap-2">
+              <span>Amount</span>
+            </Label>
+            <div className="flex w-full gap-2">
+              <div className="w-full">
+                <Label htmlFor="amount_quantity" className="text-sm">
+                  Quantity
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_quantity")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_quantity ? "border-amber-600" : "",
+                  )}
+                  id="amount_quantity"
+                  name="amount_quantity"
+                />
+                {errors.amount_quantity && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_quantity.message}
+                  </div>
+                )}
+              </div>
+              <div className="w-full">
+                <Label htmlFor="amount_units" className="text-sm">
+                  Units
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_units")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_units ? "border-amber-600" : "",
+                  )}
+                  id="amount_units"
+                  name="amount_units"
+                />
+                {errors.amount_units && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_units.message}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>

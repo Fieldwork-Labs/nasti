@@ -1,83 +1,70 @@
-import {
-  CollectionWithCoordAndPhotos,
-  useHydrateTripDetails,
-} from "./useHydrateTripDetails"
-import { Collection, Species } from "@nasti/common/types"
-import { useSpeciesList } from "./useSpeciesList"
-import { supabase } from "@nasti/common/supabase"
-import { useQuery } from "@tanstack/react-query"
+import { CollectionWithCoord, Species } from "@nasti/common/types"
+import { useQuery } from "@powersync/tanstack-react-query"
 import { parseLocation } from "./useTripDetails/helpers"
-import { TripCollectionPhotos, usePhotosForTrip } from "./usePhotosForTrip"
+import { TripCollectionPhotos } from "./usePhotosForTrip"
+import type {
+  PowerSyncCollectionPhotoRow,
+  PowerSyncCollectionRow,
+} from "@/lib/powersync/schema"
+import { rowToCollection } from "@/lib/powersync/rows"
+import type { CollectionWithCoordAndPhotos } from "./useTripDetails/types"
+import { useSpecies } from "./useSpecies"
 
 export type FullCollection = CollectionWithCoordAndPhotos & {
-  species?: Species
+  species?: Species | null
 }
 
 export const getCollection = async (id?: string) => {
   if (!id) return null
-  const { data, error } = await supabase
-    .from("collection")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle()
-    .overrideTypes<Collection>()
+  const data = await import("@/lib/powersync/db").then(({ powerSyncDb }) =>
+    powerSyncDb.getOptional<PowerSyncCollectionRow>(
+      "SELECT * FROM collection WHERE id = ?",
+      [id],
+    ),
+  )
 
-  if (error) throw new Error(error.message)
-  if (!data) throw new Error("No data returned from collection upsert")
-
-  return data
+  return data ? rowToCollection(data) : null
 }
 
-const useCollectionQuery = (
-  id: string,
-  placeholder: Collection | null = null,
-  enabled: boolean = true,
-) => {
-  return useQuery({
+const useCollectionQuery = (id: string) => {
+  const query = useQuery<PowerSyncCollectionRow>({
     queryKey: ["collections", "detail", id],
-    queryFn: () => getCollection(id),
-    enabled,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    select(data) {
-      return data ? parseLocation(data) : null
-    },
-    placeholderData: placeholder,
+    query: "SELECT * FROM collection WHERE id = ?",
+    parameters: [id],
+    enabled: Boolean(id),
   })
+  const row = query.data?.[0]
+  const data: CollectionWithCoord | null = row
+    ? parseLocation(rowToCollection(row))
+    : null
+
+  return { ...query, data }
+}
+
+const useCollectionPhotosQuery = (collectionId: string) => {
+  const query = useQuery<PowerSyncCollectionPhotoRow>({
+    queryKey: ["photos", "collection", "byCollection", collectionId],
+    query:
+      "SELECT * FROM collection_photo WHERE collection_id = ? ORDER BY uploaded_at DESC",
+    parameters: [collectionId],
+    enabled: Boolean(collectionId),
+  })
+
+  return { ...query, data: query.data as TripCollectionPhotos | undefined }
 }
 
 export const useCollection = ({
   collectionId,
-  tripId,
 }: {
   collectionId: string
   tripId: string
 }) => {
-  const { data } = useHydrateTripDetails({ id: tripId })
-  const collection = data.trip?.collections.find((c) => c.id === collectionId)
-  const { data: speciesList } = useSpeciesList()
-  const { data: collectionData } = useCollectionQuery(
-    collectionId,
-    collection,
-    !Boolean(collection),
-  )
+  const { data: collectionData } = useCollectionQuery(collectionId)
+  const { data: photos } = useCollectionPhotosQuery(collectionId)
+  const { data: species } = useSpecies(collectionData?.species_id)
 
-  const { data: newPhotos } = usePhotosForTrip({
-    tripId: tripId,
-    entityType: "collection",
-    enabled: !Boolean(collection),
-  })
-  const photos =
-    collection?.photos ??
-    (newPhotos?.find(
-      (p) => "collection_id" in p && p.collection_id === collectionId,
-    ) as unknown as TripCollectionPhotos)
-
-  const species =
-    speciesList?.find((s) => s.id === collectionData?.species_id) ?? undefined
-
-  const result = collectionData
-    ? { ...collectionData, photos, species }
+  const result: FullCollection | undefined = collectionData
+    ? { ...collectionData, photos: photos ?? [], species }
     : undefined
   return result
 }

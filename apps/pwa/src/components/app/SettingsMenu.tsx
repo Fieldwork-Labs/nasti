@@ -45,6 +45,12 @@ export const SettingsMenuModal = ({
           >
             Close
           </AlertDialogCancel>
+          <div className="flex items-center justify-between border-t pb-2 pt-4">
+            <span className="text-muted-foreground">Seed Scout Version</span>
+            <span className="text-muted-foreground font-mono">
+              {__BUILD_ID__}
+            </span>
+          </div>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

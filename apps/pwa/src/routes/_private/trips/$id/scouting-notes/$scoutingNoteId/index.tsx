@@ -20,7 +20,7 @@ import { ScoutingNotesMap } from "@/components/scouting-notes/ScoutingNotesMap"
 import { TaxonName } from "@nasti/common"
 
 const ScoutingNotesDetail = () => {
-  const { user, org } = useAuth()
+  const { user, role } = useAuth()
   const { scoutingNoteId, id: tripId } = useParams({
     from: "/_private/trips/$id/scouting-notes/$scoutingNoteId/",
   })
@@ -39,8 +39,7 @@ const ScoutingNotesDetail = () => {
 
   const displayDistance = useDisplayDistance(scoutingNote?.locationCoord ?? {})
 
-  const canEdit =
-    scoutingNote?.created_by === user?.id || org?.role === ROLE.ADMIN
+  const canEdit = scoutingNote?.created_by === user?.id || role === ROLE.ADMIN
 
   if (!scoutingNote)
     return (

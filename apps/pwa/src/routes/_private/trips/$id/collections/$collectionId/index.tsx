@@ -20,7 +20,7 @@ import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
 
 const CollectionDetail = () => {
-  const { user, org } = useAuth()
+  const { user, role } = useAuth()
   const { collectionId, id: tripId } = useParams({
     from: "/_private/trips/$id/collections/$collectionId/",
   })
@@ -39,8 +39,7 @@ const CollectionDetail = () => {
 
   const displayDistance = useDisplayDistance(collection?.locationCoord ?? {})
 
-  const canEdit =
-    collection?.created_by === user?.id || org?.role === ROLE.ADMIN
+  const canEdit = collection?.created_by === user?.id || role === ROLE.ADMIN
 
   if (!collection)
     return (
@@ -125,53 +124,46 @@ const CollectionDetail = () => {
           </tr>
         </tbody>
       </table>
-      {Boolean(
-        collection.plants_sampled_estimate ||
-          collection.amount_description ||
-          collection.description,
-      ) && (
-        <div>
-          <hr />
-          <table className="table-fixed">
-            <thead>
-              <tr className="text-muted-foreground text-left">
-                {Boolean(collection.plants_sampled_estimate) && (
-                  <th>Plants Sampled</th>
-                )}
-                {Boolean(collection.amount_description) && (
-                  <th>Amount Description</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                {Boolean(collection.plants_sampled_estimate) && (
-                  <td className="w-1/2">
-                    {collection.plants_sampled_estimate}
-                  </td>
-                )}
-                {Boolean(collection.amount_description) && (
-                  <td>{collection.amount_description}</td>
-                )}
-              </tr>
-            </tbody>
-            {collection.description && (
-              <>
-                <thead>
-                  <tr className="text-muted-foreground text-left">
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{collection.description}</td>
-                  </tr>
-                </tbody>
-              </>
-            )}
-          </table>
-        </div>
-      )}
+      {Boolean(collection.description) ||
+        (Boolean(collection.amount_quantity || collection.amount_units) && (
+          <div>
+            <hr />
+            <table className="table-fixed">
+              <thead>
+                <tr className="text-muted-foreground text-left">
+                  {Boolean(
+                    collection.amount_quantity || collection.amount_units,
+                  ) && <th>Amount Description</th>}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {Boolean(
+                    collection.amount_quantity || collection.amount_units,
+                  ) && (
+                    <td>
+                      {collection.amount_quantity} {collection.amount_units}
+                    </td>
+                  )}
+                </tr>
+              </tbody>
+              {collection.description && (
+                <>
+                  <thead>
+                    <tr className="text-muted-foreground text-left">
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>{collection.description}</td>
+                    </tr>
+                  </tbody>
+                </>
+              )}
+            </table>
+          </div>
+        ))}
       <Tabs defaultValue="photos">
         <TabsList className="bg-secondary-background mb-2 w-full">
           <TabsTrigger className="w-full" value="photos">

@@ -9,11 +9,12 @@ import { deleteImage } from "@/lib/persistFiles"
 
 import { Upload } from "tus-js-client"
 import { Session } from "@supabase/supabase-js"
-import {
-  getPhotosByTripQueryKey,
-  TripCollectionPhotos,
-  TripScoutingNotePhotos,
-} from "./usePhotosForTrip"
+import { powerSyncDb } from "@/lib/powersync/db"
+import { psDelete, psInsert, psUpdate } from "@/lib/powersync/crud"
+import type {
+  PowerSyncCollectionPhotoRow,
+  PowerSyncScoutingNotePhotoRow,
+} from "@/lib/powersync/schema"
 
 // Upload photo mutation
 export type UploadPhotoVariables = {
@@ -91,13 +92,12 @@ export const getUploadProgressQueryKey = (photoId: string) => [
 export const usePhotosMutate = ({
   entityId,
   entityType,
-  tripId,
 }: {
   entityId: string
   entityType: "collection" | "scoutingNote"
   tripId: string
 }) => {
-  const { org } = useAuth()
+  const { organisation } = useAuth()
 
   const getFilePath = useCallback(
     (file: File, photoId: string) => {
@@ -106,9 +106,9 @@ export const usePhotosMutate = ({
       if (!fileExt)
         throw new Error(`No file extension available for ${file.name}`)
 
-      return `${org?.organisation_id}/${entityType}s/${entityId}/${photoId}.${fileExt}`
+      return `${organisation?.id}/${entityType}s/${entityId}/${photoId}.${fileExt}`
     },
-    [org, tripId, entityId, entityType],
+    [organisation, entityId, entityType],
   )
 
   const updateUploadProgress = (photoId: string, percentage: number) => {
@@ -164,101 +164,33 @@ export const usePhotosMutate = ({
           session,
           (percentage) => updateUploadProgress(photoId, percentage),
         )
-
-        const table =
-          entityType === "collection"
-            ? "collection_photo"
-            : "scouting_notes_photos"
-        const insertBase =
-          entityType === "collection"
-            ? { collection_id: entityId }
-            : { scouting_notes_id: entityId }
-        // Then, insert record into database
-        const { data, error } = await supabase
-          .from(table)
-          .insert([
-            {
-              ...insertBase,
-              id: photoId,
-              url: filePath,
-              caption: caption || null,
-            },
-          ])
-          .select()
-          .single()
-
-        if (error) {
-          // Provide better error messages for RLS violations
-          if (error.message.includes("row-level security")) {
-            throw new Error(
-              `Permission denied: Unable to create photo record. This may indicate a session or permissions issue. ${error.message}`,
-            )
-          }
-          throw error
+        const photoBase = {
+          id: photoId,
+          url: filePath,
+          caption: caption || null,
+          uploaded_at: new Date().toISOString(),
         }
 
-        return data as CollectionPhoto | ScoutingNotePhoto
+        if (entityType === "collection") {
+          const photo = {
+            ...photoBase,
+            collection_id: entityId,
+          } satisfies CollectionPhoto
+
+          await psInsert("collection_photo", photo)
+          return photo
+        }
+
+        const photo = {
+          ...photoBase,
+          scouting_notes_id: entityId,
+        } satisfies ScoutingNotePhoto
+
+        await psInsert("scouting_notes_photos", photo)
+        return photo
       } catch (error) {
         console.error("Error creating collection photo:", error)
         throw error
-      }
-    },
-    onMutate: async ({ file, ...variables }) => {
-      // IndexedDB Put is not done here because it needs to be awaited regardless of online state
-
-      const base = {
-        ...variables,
-        url: getFilePath(file, variables.id),
-      }
-      // Get the trip details data blob
-      if (entityType === "collection") {
-        const pendingItem = {
-          ...base,
-          collection_id: entityId,
-        } satisfies PendingCollectionPhoto
-
-        queryClient.setQueriesData<TripCollectionPhotos>(
-          { queryKey: getPhotosByTripQueryKey(entityType, tripId) },
-          (oldData) => {
-            return [...(oldData || []), pendingItem]
-          },
-        )
-      } else {
-        const pendingItem = {
-          ...base,
-          scouting_notes_id: entityId,
-        } satisfies PendingScoutingNotePhoto
-
-        queryClient.setQueriesData<TripScoutingNotePhotos>(
-          { queryKey: getPhotosByTripQueryKey(entityType, tripId) },
-          (oldData) => {
-            return [...(oldData || []), pendingItem]
-          },
-        )
-      }
-    },
-    onSettled: async (createdItem, _, { id }) => {
-      if (!createdItem) return
-      const options = { queryKey: getPhotosByTripQueryKey(entityType, tripId) }
-      if (entityType === "collection") {
-        queryClient.setQueriesData<TripCollectionPhotos>(options, (oldData) => {
-          if (!oldData) return []
-          return [
-            ...oldData?.filter((c) => c.id !== id),
-            createdItem as CollectionPhoto,
-          ]
-        })
-      } else {
-        queryClient.setQueriesData<TripScoutingNotePhotos>(
-          options,
-          (oldData) => {
-            if (!oldData) return []
-            return [
-              ...oldData?.filter((c) => c.id !== id),
-              createdItem as ScoutingNotePhoto,
-            ]
-          },
-        )
       }
     },
   })
@@ -266,15 +198,12 @@ export const usePhotosMutate = ({
   // Delete photo mutation
   const deletePhotoMutationCollectionPhoto = useMutation({
     mutationFn: async (photoId: string) => {
-      // Get the photo first to get the URL
-      // TODO this is going to fail/throw error if the photo is pending
-      const { data: photo, error: fetchError } = await supabase
-        .from("collection_photo")
-        .select("url")
-        .eq("id", photoId)
-        .single()
-
-      if (fetchError) throw fetchError
+      const photo = await powerSyncDb.getOptional<PowerSyncCollectionPhotoRow>(
+        "SELECT * FROM collection_photo WHERE id = ?",
+        [photoId],
+      )
+      if (!photo) throw new Error(`Collection photo ${photoId} not found`)
+      if (!photo.url) throw new Error(`Collection photo ${photoId} has no URL`)
 
       // Delete from storage
       const { error: storageError } = await supabase.storage
@@ -283,27 +212,12 @@ export const usePhotosMutate = ({
 
       if (storageError) throw storageError
 
-      // delete record from supabase
-      const { error: deleteError } = await supabase
-        .from("collection_photo")
-        .delete()
-        .eq("id", photoId)
-
-      if (deleteError) throw deleteError
+      await psDelete("collection_photo", photoId)
 
       return photoId
     },
     onError: (error) => {
       console.log("error deleting photo", error)
-    },
-    onMutate: (photoId) => {
-      queryClient.setQueriesData<CollectionPhoto[]>(
-        { queryKey: ["photos"] },
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-          return oldData.filter((item) => item.id !== photoId)
-        },
-      )
     },
     onSettled: async (id) => {
       if (!id) return
@@ -314,15 +228,14 @@ export const usePhotosMutate = ({
 
   const deletePhotoMutationScoutingNotesPhoto = useMutation({
     mutationFn: async (photoId: string) => {
-      // Get the photo first to get the URL
-      // TODO this is going to fail/throw error if the photo is pending
-      const { data: photo, error: fetchError } = await supabase
-        .from("scouting_notes_photos")
-        .select("url")
-        .eq("id", photoId)
-        .single()
-
-      if (fetchError) throw fetchError
+      const photo =
+        await powerSyncDb.getOptional<PowerSyncScoutingNotePhotoRow>(
+          "SELECT * FROM scouting_notes_photos WHERE id = ?",
+          [photoId],
+        )
+      if (!photo) throw new Error(`Scouting note photo ${photoId} not found`)
+      if (!photo.url)
+        throw new Error(`Scouting note photo ${photoId} has no URL`)
 
       // Delete from storage
       const { error: storageError } = await supabase.storage
@@ -331,27 +244,12 @@ export const usePhotosMutate = ({
 
       if (storageError) throw storageError
 
-      // delete record from supabase
-      const { error: deleteError } = await supabase
-        .from("scouting_notes_photos")
-        .delete()
-        .eq("id", photoId)
-
-      if (deleteError) throw deleteError
+      await psDelete("scouting_notes_photos", photoId)
 
       return photoId
     },
     onError: (error) => {
       console.log("error deleting photo", error)
-    },
-    onMutate: (photoId) => {
-      queryClient.setQueriesData<ScoutingNotePhoto[]>(
-        { queryKey: ["photos"] },
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-          return oldData.filter((item) => item.id !== photoId)
-        },
-      )
     },
     onSettled: async (id) => {
       if (!id) return
@@ -376,46 +274,14 @@ export const usePhotosMutate = ({
     UpdateCaptionPayload
   >({
     mutationFn: async ({ photoId, caption }) => {
-      const { data, error } = await supabase
-        .from("collection_photo")
-        .update({ caption })
-        .eq("id", photoId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onMutate: (variables) => {
-      // update query data
-      queryClient.setQueriesData<CollectionPhoto[]>(
-        { queryKey: ["photos"] },
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-
-          return oldData.map((item) =>
-            item.id === variables.photoId
-              ? { ...item, caption: variables.caption || null }
-              : item,
-          )
-        },
+      const row = await powerSyncDb.getOptional<PowerSyncCollectionPhotoRow>(
+        "SELECT * FROM collection_photo WHERE id = ?",
+        [photoId],
       )
-    },
-    async onSettled(data, error, variables) {
-      if (error) throw error
-      if (!data)
-        throw new Error("No data returned from collection photo update")
-
-      queryClient.setQueriesData<CollectionPhoto[]>(
-        { queryKey: ["photos"] },
-
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-          return oldData.map((item) =>
-            item.id === variables.photoId ? { ...data } : item,
-          )
-        },
-      )
+      if (!row) throw new Error(`Collection photo ${photoId} not found`)
+      const nextCaption = caption || null
+      await psUpdate("collection_photo", photoId, { caption: nextCaption })
+      return { ...row, caption: nextCaption } as CollectionPhoto
     },
   })
 
@@ -425,46 +291,14 @@ export const usePhotosMutate = ({
     UpdateCaptionPayload
   >({
     mutationFn: async ({ photoId, caption }) => {
-      const { data, error } = await supabase
-        .from("scouting_notes_photos")
-        .update({ caption })
-        .eq("id", photoId)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    },
-    onMutate: (variables) => {
-      // update query data
-      queryClient.setQueriesData<ScoutingNotePhoto[]>(
-        { queryKey: ["photos"] },
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-
-          return oldData.map((item) =>
-            item.id === variables.photoId
-              ? { ...item, caption: variables.caption || null }
-              : item,
-          )
-        },
+      const row = await powerSyncDb.getOptional<PowerSyncScoutingNotePhotoRow>(
+        "SELECT * FROM scouting_notes_photos WHERE id = ?",
+        [photoId],
       )
-    },
-    async onSettled(data, error, variables) {
-      if (error) throw error
-      if (!data)
-        throw new Error("No data returned from collection photo update")
-
-      queryClient.setQueriesData<ScoutingNotePhoto[]>(
-        { queryKey: ["photos"] },
-
-        (oldData) => {
-          if (!oldData || oldData.length === 0) return []
-          return oldData.map((item) =>
-            item.id === variables.photoId ? { ...data } : item,
-          )
-        },
-      )
+      if (!row) throw new Error(`Scouting note photo ${photoId} not found`)
+      const nextCaption = caption || null
+      await psUpdate("scouting_notes_photos", photoId, { caption: nextCaption })
+      return { ...row, caption: nextCaption } as ScoutingNotePhoto
     },
   })
 

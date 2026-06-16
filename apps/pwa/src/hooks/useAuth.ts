@@ -1,13 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
-import { isAuthRetryableFetchError } from "@supabase/supabase-js"
+import { isAuthRetryableFetchError, type Session } from "@supabase/supabase-js"
+import { getAppMeta } from "@nasti/common/authClaims"
+import { ROLE, type Role } from "@nasti/common/types"
 
-export const getOrgUser = async (userId: string) => {
-  return await supabase
-    .from("org_user")
-    .select("*, organisation(id, name)")
-    .eq("user_id", userId)
-    .single()
+// Given a session, derive the portion of the store that comes purely
+// from JWT claims. Returns null if the session has no claims (pre-hook
+// session) — caller falls back to org_user lookup.
+type Claims = {
+  organisation: { id: string; name: string }
+  orgId: string
+  role: Role | null
+  isAdmin: boolean
+} | null
+
+const deriveFromClaims = (session: Session | null): Claims => {
+  const meta = getAppMeta(session)
+  if (!meta.org_id) return null
+  return {
+    organisation: { id: meta.org_id, name: meta.org_name ?? "" },
+    orgId: meta.org_id,
+    role: meta.role ?? null,
+    isAdmin: meta.role === ROLE.ADMIN,
+  }
 }
 
 export const useAuth = () => {
@@ -34,22 +49,13 @@ export const useAuth = () => {
     networkMode: "online",
     retry: false,
     onSuccess: async (data) => {
-      // Fetch organization and role
-      const { data: orgData, error: orgError } = await getOrgUser(data.user.id)
+      const claims = deriveFromClaims(data.session)
 
-      if (orgError) {
-        throw new Error("Unable to fetch organisation")
-      } else {
-        // Update auth data in query client cache
-        queryClient.setQueryData(["auth", "user"], data.user)
-        queryClient.setQueryData(["auth", "orgUser"], orgData)
-        queryClient.setQueryData(["auth", "loggedIn"], true)
-        // Prefetch necessary data for offline use
-        queryClient.prefetchQuery({
-          queryKey: ["trips", "list"],
-          queryFn: fetchTrips,
-        })
-      }
+      // Update auth data in query client cache
+      queryClient.setQueryData(["auth", "user"], data.user)
+      queryClient.setQueryData(["auth", "organisation"], claims?.organisation)
+      queryClient.setQueryData<Claims>(["auth", "claims"], claims)
+      queryClient.setQueryData(["auth", "loggedIn"], true)
     },
   })
 
@@ -76,35 +82,18 @@ export const useAuth = () => {
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 
-  const { data: org } = useQuery({
-    queryKey: ["auth", "orgUser"],
-    queryFn: async () => {
-      if (!user) return null
-      const { data: orgData, error: orgError } = await getOrgUser(user.id)
-      if (orgError) throw new Error("Unable to fetch organisation")
-      return orgData
-    },
-    enabled: Boolean(user),
-    networkMode: "online",
-    staleTime: 60 * 60 * 1000, // 1 hour
-  })
-
   const isLoggedIn =
     queryClient.getQueryData<boolean>(["auth", "loggedIn"]) ?? false
 
   return {
     user,
-    org,
+    role: queryClient.getQueryData<Claims>(["auth", "claims"])?.role ?? null,
+    organisation:
+      queryClient.getQueryData<Claims>(["auth", "claims"])?.organisation ??
+      null,
     getSession: () => supabase.auth.getSession(),
     login,
     logout,
     isLoggedIn,
   }
-}
-
-const fetchTrips = async () => {
-  const { data, error } = await supabase.from("trip").select("*")
-
-  if (error) throw error
-  return data
 }

@@ -1,22 +1,25 @@
 import { Species } from "@nasti/common/types"
 
-import { supabase } from "@nasti/common/supabase"
-import { useQuery } from "@tanstack/react-query"
-
-const getTripSpecies = async (tripId: string) => {
-  const { data, error } = await supabase
-    .from("trip_species")
-    .select("*, species(*)")
-    .eq("trip_id", tripId)
-    .overrideTypes<Species[]>()
-  if (error) throw new Error(error.message)
-  return data?.map((ts) => ts.species) ?? []
-}
+import { rowToSpecies } from "@/lib/powersync/rows"
+import type { PowerSyncSpeciesRow } from "@/lib/powersync/schema"
+import { useQuery } from "@powersync/tanstack-react-query"
 
 export const useSpeciesForTrip = (tripId?: string) => {
-  return useQuery({
+  const query = useQuery<PowerSyncSpeciesRow>({
     queryKey: ["species", "byTrip", tripId],
-    queryFn: async () => (tripId ? await getTripSpecies(tripId) : null),
+    query: `
+      SELECT s.* FROM species s
+      INNER JOIN trip_species ts ON ts.species_id = s.id
+      WHERE ts.trip_id = ?
+      ORDER BY s.name ASC
+    `,
+    parameters: [tripId ?? ""],
     enabled: Boolean(tripId),
   })
+
+  const data: Species[] | null | undefined = tripId
+    ? query.data?.map(rowToSpecies)
+    : null
+
+  return { ...query, data }
 }

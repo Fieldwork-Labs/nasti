@@ -1,6 +1,5 @@
 import { TripsMap } from "@/components/trip/TripsMap"
-import { queryClient } from "@/lib/queryClient"
-import { getTripsQueryOptions } from "@nasti/common/hooks"
+import { useTrips } from "@/hooks/useTrips"
 import { Trip } from "@nasti/common/types"
 
 import {
@@ -31,21 +30,11 @@ export const Route = createFileRoute("/_private/trips/")({
       <Spinner size={"xl"} />
     </div>
   ),
-  loader: async () => {
-    const queryOptions = getTripsQueryOptions()
-    const trips = await queryClient.ensureQueryData<Trip[] | null>(queryOptions)
-    return { trips }
-  },
 })
 
 function TripsList() {
-  const { trips } = Route.useLoaderData()
+  const { data: trips, refetch, isFetching } = useTrips()
   const navigate = useNavigate({ from: "/trips" })
-  const queryOptions = getTripsQueryOptions()
-  const refetch = () => queryClient.refetchQueries(queryOptions)
-
-  const state = queryClient.getQueryState(queryOptions.queryKey)
-  const isFetching = state?.fetchStatus === "fetching"
 
   return (
     <div>
@@ -53,7 +42,7 @@ function TripsList() {
         <div className="p-2 text-2xl">Trips</div>
         <div className="p-2">
           <RefreshCwIcon
-            onClick={refetch}
+            onClick={() => refetch()}
             className={cn("h-5 w-5", isFetching ? "animate-spin" : "")}
           />
         </div>

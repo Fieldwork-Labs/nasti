@@ -10,7 +10,7 @@ import {
 } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { usePhotosForTrip, getPhotosByTripQueryKey } from "../usePhotosForTrip"
+import { usePhotosForTrip } from "../usePhotosForTrip"
 import type { CollectionPhoto } from "@nasti/common/types"
 
 type CollectionPhotoWithCollection = CollectionPhoto & {
@@ -46,44 +46,15 @@ const expectedPhotos: CollectionPhotoWithCollection[] = [
   },
 ]
 
-// ── Mock @nasti/common/supabase WITHOUT referencing `expectedPhotos` ───────────────────
+const { powerSyncUseQueryMock } = vi.hoisted(() => ({
+  powerSyncUseQueryMock: vi.fn(),
+}))
+
+vi.mock("@powersync/tanstack-react-query", () => ({
+  useQuery: powerSyncUseQueryMock,
+}))
+
 vi.mock("@nasti/common/supabase", () => {
-  // Inline array inside factory (identical to `expectedPhotos` above, duplicated because variables outside of this function are not available in the factory):
-  const inlinePhotos: CollectionPhotoWithCollection[] = [
-    {
-      id: "photo1",
-      caption: "A leaf",
-      collection_id: "col1",
-      uploaded_at: "2025-05-13T10:00:00.000+00:00",
-      url: "public/image1.jpg",
-      collection: {
-        id: "col1",
-        trip_id: "trip123",
-      },
-    },
-    {
-      id: "photo2",
-      caption: "Another leaf",
-      collection_id: "col2",
-      uploaded_at: "2025-05-13T11:00:00.000+00:00",
-      url: "public/image2.jpg",
-      collection: {
-        id: "col2",
-        trip_id: "trip123",
-      },
-    },
-  ]
-
-  // 1) supabase.from("collection_photo")... → resolves to { data: inlinePhotos, error: null }
-  const selectResult = { data: inlinePhotos, error: null }
-  const overrideTypesFn = vi.fn(() => Promise.resolve(selectResult))
-  const orderFn2 = vi.fn(() => ({ overrideTypes: overrideTypesFn }))
-  const orderFn1 = vi.fn(() => ({ order: orderFn2 }))
-  const eqFn = vi.fn(() => ({ order: orderFn1 }))
-  const selectFn = vi.fn(() => ({ eq: eqFn }))
-  const fromFn = vi.fn(() => ({ select: selectFn }))
-
-  // 2) supabase.storage.from("collection-photos").createSignedUrls(...) → no-op (no missing)
   const createSignedUrlsFn = vi.fn(() =>
     Promise.resolve({ data: [], error: null }),
   )
@@ -92,7 +63,6 @@ vi.mock("@nasti/common/supabase", () => {
 
   return {
     supabase: {
-      from: fromFn,
       storage,
     },
   }
@@ -110,6 +80,14 @@ describe("usePhotosForTrip", () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
+    powerSyncUseQueryMock.mockReturnValue({
+      data: expectedPhotos,
+      isSuccess: true,
+      isPending: false,
+      isFetching: false,
+      isError: false,
+      refetch: vi.fn(),
+    })
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -121,9 +99,8 @@ describe("usePhotosForTrip", () => {
     vi.clearAllMocks()
   })
 
-  it("returns the supabase data array when all images are already cached locally", async () => {
+  it("returns the PowerSync data array when all images are already cached locally", async () => {
     const tripId = "trip123"
-    const queryKey = getPhotosByTripQueryKey("collection", tripId)
 
     // Wrap the hook in a QueryClientProvider
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -143,55 +120,23 @@ describe("usePhotosForTrip", () => {
       }
     })
 
-    // 1) The returned data must match the duplicated `expectedPhotos`
+    expect(powerSyncUseQueryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["photos", "collection", "byTrip", tripId],
+      }),
+    )
     expect(result.current.data).toEqual(expectedPhotos)
 
-    // 2) Verify supabase.from("collection_photo") was called
-    const { supabase } = await import("@nasti/common/supabase")
-    expect(supabase.from).toHaveBeenCalledWith("collection_photo")
-
-    // 3) Verify .select(...) was called with the correct projection
-    const selectProjection = `
-          *,
-          collection!inner (
-            id,
-            trip_id
-          )
-        `
-    const fromReturn = supabase.from("collection_photo")
-    expect(fromReturn.select).toHaveBeenCalledWith(selectProjection)
-
-    // 4) Verify .eq("collection.trip_id", tripId) was called
-    const selectReturn = fromReturn.select(selectProjection)
-    expect(selectReturn.eq).toHaveBeenCalledWith("collection.trip_id", tripId)
-
-    // 5) Verify .order("collection_id", { ascending: false }) then .order("uploaded_at", { ascending: false })
-    const eqReturn = selectReturn.eq("collection.trip_id", tripId)
-    expect(eqReturn.order).toHaveBeenCalledWith("collection_id", {
-      ascending: false,
-    })
-    const orderReturn = eqReturn.order("collection_id", { ascending: false })
-    expect(orderReturn.order).toHaveBeenCalledWith("uploaded_at", {
-      ascending: false,
-    })
-
-    // 6) Because getImage always returns a value, storage.createSignedUrls & putImage should not be called
     const { getImage, putImage } = await import("@/lib/persistFiles")
     expect(getImage).toHaveBeenCalledTimes(expectedPhotos.length)
 
-    // storage.from should never run (no missingPhotos)
     const { supabase: supa } = await import("@nasti/common/supabase")
     expect(supa.storage.from).not.toHaveBeenCalled()
     expect(putImage).not.toHaveBeenCalled()
-
-    // 7) Finally, confirm that React Query cached the data under the proper key
-    const cached = queryClient.getQueryData<CollectionPhoto[]>(queryKey)
-    expect(cached).toEqual(expectedPhotos)
   })
 
   it("fetches signed URLs and calls putImage for missing photos", async () => {
     const tripId = "trip123"
-    const queryKey = getPhotosByTripQueryKey("collection", tripId)
 
     // ── Step A: Override getImage so that it returns null for every photo (all missing) ────
     const persist = await import("@/lib/persistFiles")
@@ -253,7 +198,7 @@ describe("usePhotosForTrip", () => {
 
     // ── Step F: Assertions ─────────────────────────────────────────────────────────────
 
-    // 1) The returned data must still match expectedPhotos (the hook returns supabase data)
+    // 1) The returned data must still match expectedPhotos (the hook returns PowerSync data)
     expect(result.current.data).toEqual(expectedPhotos)
 
     // 2) Because getImage returned null, the hook should have called storage.createSignedUrls(...)
@@ -272,8 +217,5 @@ describe("usePhotosForTrip", () => {
     expect(fetchSpy).toHaveBeenCalledWith("https://example.com/fake1.jpg")
     expect(fetchSpy).toHaveBeenCalledWith("https://example.com/fake2.jpg")
 
-    // 4) Finally, confirm caching under ['collectionPhotos', 'byTrip', tripId]
-    const cached = queryClient.getQueryData<CollectionPhoto[]>(queryKey)
-    expect(cached).toEqual(expectedPhotos)
   })
 })

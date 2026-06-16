@@ -151,9 +151,11 @@ content_path = "./supabase/templates/reset-password.html"
 # inactivity_timeout = "8h"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
-# [auth.hook.custom_access_token]
-# enabled = true
-# uri = "pg-functions://<database>/<schema>/<hook_name>"
+# Injects org_id / org_name / role into JWT app_metadata so clients can work
+# offline without a round-trip to org_user. See migration 20260608121845.
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]

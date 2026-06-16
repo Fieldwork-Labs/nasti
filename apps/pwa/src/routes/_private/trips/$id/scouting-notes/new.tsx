@@ -78,22 +78,29 @@ function AddCollection() {
 
   const speciesId = watch("species_id")
 
-  const [enterFieldName, setEnterFieldName] = useState(false)
+  const isSpecimenCollected = watch("specimen_collected")
+  const [enterFieldName, setEnterFieldName] = useState(isSpecimenCollected)
+
+  const handleSetIsSpecimenCollected = (val: boolean) => {
+    setValue("specimen_collected", val)
+    setEnterFieldName(val)
+  }
+
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
 
-  const { user, org } = useAuth()
+  const { user, organisation } = useAuth()
 
   const navigate = useNavigate()
 
   const onSubmit = useCallback(
     async (data: BaseFormData) => {
-      if (!user || !org) throw new Error("Not logged in")
+      if (!user || !organisation) throw new Error("Not logged in")
 
       if (!tripId) throw new Error("tripId must be supplied to CollectionForm")
       if (!location) throw new Error("No location available")
       const { latitude, longitude } = location
       const locationPoint = `POINT(${longitude} ${latitude})`
-      const newCollection: NewScoutingNote = {
+      const newScoutingNote: NewScoutingNote = {
         ...data,
         species_uncertain:
           data.species_uncertain || data.field_name.trim().length > 0,
@@ -101,10 +108,10 @@ function AddCollection() {
         created_by: user.id,
         created_at: new Date().toISOString(),
         location: locationPoint,
-        organisation_id: org.organisation_id,
+        organisation_id: organisation.id,
         trip_id: tripId,
       }
-      const collectionPromise = createScoutingNote(newCollection)
+      const collectionPromise = createScoutingNote(newScoutingNote)
       // The UI will get stuck here when offline so only await if online
       if (isOnline) await collectionPromise
       // We need the collection to be created before we can create the photos
@@ -135,16 +142,6 @@ function AddCollection() {
     ],
   )
 
-  const handleSetEnterFieldName = useCallback(() => {
-    setEnterFieldName(true)
-    setValue("species_uncertain", true)
-  }, [setEnterFieldName, setValue])
-
-  const handleResetEnterFieldName = useCallback(() => {
-    setEnterFieldName(false)
-    setValue("field_name", "", { shouldValidate: true })
-  }, [setEnterFieldName, setValue])
-
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   return (
@@ -152,27 +149,19 @@ function AddCollection() {
       <div>
         <div className="flex items-center p-2 text-2xl">New Scouting Note</div>
         <div className="flex flex-col gap-4 px-1">
-          {!enterFieldName && (
-            <>
-              {/* -mx-1 is to remove the padding on this item */}
-              <div className="-mx-1">
-                <SpeciesSelectInput
-                  onClickFieldName={handleSetEnterFieldName}
-                  onSelectSpecies={(speciesId) =>
-                    setValue("species_id", speciesId, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    })
-                  }
-                  tripId={tripId}
-                  selectedSpeciesId={speciesId ?? undefined}
-                />
-              </div>
-            </>
-          )}
+          <SpeciesSelectInput
+            onSelectSpecies={(speciesId) =>
+              setValue("species_id", speciesId, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+            tripId={tripId}
+            selectedSpeciesId={speciesId ?? undefined}
+          />
           {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
+              <Label>Specimen Name</Label>
               <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
@@ -182,7 +171,9 @@ function AddCollection() {
                   autoFocus
                 />
                 <Button
-                  onClick={handleResetEnterFieldName}
+                  onClick={() =>
+                    setValue("field_name", "", { shouldValidate: true })
+                  }
                   className="h-12"
                   variant={"outline"}
                 >
@@ -192,18 +183,7 @@ function AddCollection() {
             </div>
           )}
           <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="species_uncertain"
-              render={({ field: { onChange, value } }) => (
-                <Switch
-                  id="species_uncertain"
-                  checked={value}
-                  onChange={onChange}
-                  onClick={() => onChange(!value)}
-                />
-              )}
-            />
+            <Switch id="species_uncertain" {...register("species_uncertain")} />
 
             <div className="flex items-center gap-2">
               <Label htmlFor="species_uncertain" className="text-lg">
@@ -222,9 +202,16 @@ function AddCollection() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Switch
-              id="specimen_collected"
-              {...register("specimen_collected")}
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field: { value } }) => (
+                <Switch
+                  id="specimen_collected"
+                  checked={value}
+                  onCheckedChange={handleSetIsSpecimenCollected}
+                />
+              )}
             />
             <div className="flex items-center gap-2">
               <Label htmlFor="specimen_collected" className="text-lg">

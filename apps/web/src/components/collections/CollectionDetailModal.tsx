@@ -262,12 +262,6 @@ export const CollectionDetailModal = ({
                     {collection.specimen_collected && (
                       <Badge>Specimen Collected</Badge>
                     )}
-                    {collection.amount_description && (
-                      <Badge>{collection.amount_description}</Badge>
-                    )}
-                    {collection.plants_sampled_estimate && (
-                      <Badge>{collection.plants_sampled_estimate} plants</Badge>
-                    )}
                   </div>
                 </div>
                 {collection.description && (

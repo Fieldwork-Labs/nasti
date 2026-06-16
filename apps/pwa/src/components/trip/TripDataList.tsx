@@ -1,8 +1,7 @@
 import {
   CollectionWithCoordAndPhotos,
   ScoutingNoteWithCoordAndPhotos,
-  useHydrateTripDetails,
-} from "@/hooks/useHydrateTripDetails"
+} from "@/hooks/useTripDetails/types"
 import {
   Card,
   CardContent,
@@ -32,29 +31,23 @@ import {
   X,
 } from "lucide-react"
 import MiniSearch from "minisearch"
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { Suspense, useCallback, useMemo, useState } from "react"
 
 import { useGeoLocation } from "@/contexts/location"
-import { useCollectionCreate } from "@/hooks/useCollectionCreate"
 import { useDisplayDistance } from "@/hooks/useDisplayDistance"
+import { useOrgMembers } from "@/hooks/useOrgMembers"
 import {
   TripCollectionPhotos,
   TripScoutingNotePhotos,
 } from "@/hooks/usePhotosForTrip"
-import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
+import { useSpeciesList } from "@/hooks/useSpeciesList"
 import { Input } from "@nasti/ui/input"
-import { Link, useParams } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { Photo } from "../common/Photo"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
-import { useSpeciesList } from "@/hooks/useSpeciesList"
+import { useTripDetails } from "@/hooks/useTripDetails"
+import { useSpeciesPhotosMap, useTripPhotoMaps } from "@/hooks/useTripPhotoMaps"
 
 // Base interface for entities that can be displayed in the list
 interface DisplayableEntity {
@@ -92,6 +85,7 @@ interface EntityListItemProps<TEntity extends DisplayableEntity> {
   config: EntityListItemConfig
   isPending?: boolean
   isMutating?: boolean
+  speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }
 
 function EntityListItem<TEntity extends DisplayableEntity>({
@@ -101,12 +95,9 @@ function EntityListItem<TEntity extends DisplayableEntity>({
   config,
   isMutating,
   isPending,
+  speciesPhotosMap,
 }: EntityListItemProps<TEntity>) {
   const displayDistance = useDisplayDistance(entity.locationCoord ?? {})
-  const { id } = useParams({ from: "/_private/trips/$id/" })
-  const {
-    data: { speciesPhotosMap },
-  } = useHydrateTripDetails({ id })
   const { image: speciesProfileImage } = useSpeciesDisplayImage(
     entity?.species_id ?? undefined,
     speciesPhotosMap,
@@ -204,23 +195,20 @@ export const CollectionListItem = ({
   collection,
   species,
   person,
+  speciesPhotosMap,
 }: {
   collection: CollectionWithSpecies
   species?: Species | null
   person?: Person | null
+  speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }) => {
-  const { getIsMutating, getIsPending } = useCollectionCreate({
-    tripId: collection.trip_id ?? "",
-  })
-  const isPending = getIsPending({ id: collection.id })
   return (
     <EntityListItem
       entity={collection}
       species={species}
       person={person}
       config={collectionConfig}
-      isPending={Boolean(isPending)}
-      isMutating={getIsMutating({ id: collection.id, includeChildren: true })}
+      speciesPhotosMap={speciesPhotosMap}
     />
   )
 }
@@ -229,28 +217,25 @@ export const ScoutingNoteListItem = ({
   scoutingNote,
   species,
   person,
+  speciesPhotosMap,
 }: {
   scoutingNote: ScoutingNoteWithSpecies
   species?: Species | null
   person?: Person | null
+  speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }) => {
-  const { getIsMutating, getIsPending } = useScoutingNoteCreate({
-    tripId: scoutingNote.trip_id ?? "",
-  })
-  const isPending = getIsPending({ id: scoutingNote.id })
   return (
     <EntityListItem
       entity={scoutingNote}
       species={species}
       person={person}
       config={scoutingNoteConfig}
-      isPending={Boolean(isPending)}
-      isMutating={getIsMutating({ id: scoutingNote.id, includeChildren: true })}
+      speciesPhotosMap={speciesPhotosMap}
     />
   )
 }
 
-export const TripCollectionList = ({ id }: { id: string }) => {
+export const TripDataList = ({ id }: { id: string }) => {
   const [sortMode, setSortMode] = useState<
     "created_at-asc" | "created_at-desc" | "distance-asc" | "distance-desc"
   >("created_at-desc")
@@ -258,15 +243,18 @@ export const TripCollectionList = ({ id }: { id: string }) => {
     "collection" | "scoutingNote" | null
   >(null)
   const [searchValue, setSearchValue] = useState("")
-  const isSearching = useRef(false)
-  const { data } = useHydrateTripDetails({ id })
+  const { data: trip } = useTripDetails({ tripId: id })
+  const { data: species } = useSpeciesList()
+  const { data: peopleResponse } = useOrgMembers()
+  const { collectionPhotosMap, scoutingNotePhotosMap } = useTripPhotoMaps({
+    tripId: id,
+  })
+  const { speciesPhotosMap } = useSpeciesPhotosMap({ tripId: id })
   const { getDistanceKm } = useGeoLocation()
 
-  const miniSearchRef = useRef<MiniSearch<DataWithSpecies> | null>(null)
-  const { data: speciesList } = useSpeciesList()
   const speciesMap = useMemo(() => {
     return (
-      speciesList?.reduce(
+      species?.reduce(
         (acc, species) => {
           acc[species.id] = species
           return acc
@@ -274,10 +262,10 @@ export const TripCollectionList = ({ id }: { id: string }) => {
         {} as Record<string, Species>,
       ) ?? {}
     )
-  }, [speciesList])
+  }, [species])
 
   const peopleMap = useMemo(() => {
-    const people = data.people ?? []
+    const people = peopleResponse?.data ?? []
     return people.reduce(
       (acc, person) => {
         acc[person.id] = person
@@ -285,48 +273,70 @@ export const TripCollectionList = ({ id }: { id: string }) => {
       },
       {} as Record<string, Person>,
     )
-  }, [data.people])
+  }, [peopleResponse?.data])
 
-  const previousDataRef = useRef<DataWithSpecies[]>([])
   const searchableData = useMemo(() => {
-    const collections = data.trip?.collections ?? []
-    const scoutingNotes = data.trip?.scoutingNotes ?? []
-    if (collections.length === 0 && scoutingNotes.length === 0) return []
-
-    // Use a stable reference check to avoid unnecessary recalculations
-    if (
-      previousDataRef.current?.length === collections.length &&
-      JSON.stringify(previousDataRef.current) === JSON.stringify(collections)
-    ) {
-      return previousDataRef.current
-    }
-
-    const result = [
+    const collections = trip?.collections ?? []
+    const scoutingNotes = trip?.scoutingNotes ?? []
+    return [
       ...collections.map((coll) => {
         return {
           ...coll,
+          photos: collectionPhotosMap[coll.id] ?? [],
           dataType: "collection" as const,
           species: coll.species_id ? speciesMap[coll.species_id] : undefined,
         }
       }),
-      ...scoutingNotes.map((coll) => {
+      ...scoutingNotes.map((sn) => {
         return {
-          ...coll,
+          ...sn,
+          photos: scoutingNotePhotosMap[sn.id] ?? [],
           dataType: "scoutingNote" as const,
-          species: coll.species_id ? speciesMap[coll.species_id] : undefined,
+          species: sn.species_id ? speciesMap[sn.species_id] : undefined,
         }
       }),
     ]
+  }, [
+    trip?.collections,
+    trip?.scoutingNotes,
+    speciesMap,
+    collectionPhotosMap,
+    scoutingNotePhotosMap,
+  ])
 
-    previousDataRef.current = result
-    return result
-  }, [data.trip?.collections, speciesMap])
+  const miniSearch = useMemo(() => {
+    const search = new MiniSearch<DataWithSpecies>({
+      fields: ["field_name", "description", "species.name"],
+      searchOptions: {
+        fuzzy: 0.2,
+      },
+      extractField: (document, fieldName) => {
+        // Access nested fields
+        return (
+          fieldName
+            .split(".")
+            // sorry this is necessary due to poor type inference of minisearch library
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .reduce((doc: any, key: string) => doc && doc[key], document)
+        )
+      },
+    })
+    search.addAll(searchableData)
+    return search
+  }, [searchableData])
 
-  const [searchResults, setSearchResults] =
-    useState<Array<DataWithSpecies>>(searchableData)
+  const searchResults = useMemo(() => {
+    if (searchValue.length === 0) return searchableData
+
+    const searchMatches = new Set(
+      miniSearch.search(searchValue, { prefix: true }).map((item) => item.id),
+    )
+
+    return searchableData.filter((item) => searchMatches.has(item.id))
+  }, [miniSearch, searchValue, searchableData])
 
   const sortedSearchResults = useMemo(() => {
-    let sorted = searchResults.sort((a, b) => {
+    let sorted = [...searchResults].sort((a, b) => {
       if (sortMode.startsWith("created_at")) {
         return (
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -348,104 +358,34 @@ export const TripCollectionList = ({ id }: { id: string }) => {
     return sorted.filter(
       (item) => typeFilter === null || item.dataType === typeFilter,
     )
-  }, [searchResults, sortMode, typeFilter])
-
-  // Initialize miniSearch
-  useEffect(() => {
-    if (!miniSearchRef.current) {
-      miniSearchRef.current = new MiniSearch<DataWithSpecies>({
-        fields: ["field_name", "description", "species.name"],
-        searchOptions: {
-          fuzzy: 0.2,
-        },
-        extractField: (document, fieldName) => {
-          // Access nested fields
-          return (
-            fieldName
-              .split(".")
-              // sorry this is necessary due to poor type inference of minisearch library
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .reduce((doc: any, key: string) => doc && doc[key], document)
-          )
-        },
-      })
-    }
-  }, [])
-
-  // Effect for updating the search index when collections change
-  useEffect(() => {
-    if (!miniSearchRef.current) return
-
-    miniSearchRef.current.removeAll()
-    miniSearchRef.current.addAll(searchableData)
-
-    // Don't update search results here - let the second effect handle that
-  }, [searchableData])
-
-  // Separate effect for updating search results when search value changes
-  useEffect(() => {
-    if (!miniSearchRef.current || !searchableData.length) return
-
-    if (searchValue.length > 0) {
-      const searchMatches = miniSearchRef.current
-        .search(searchValue, { prefix: true })
-        .map((item) => item.id)
-
-      setSearchResults(
-        searchableData.filter((coll) => searchMatches.includes(coll.id)),
-      )
-    } else {
-      setSearchResults(searchableData)
-    }
-  }, [searchValue]) // Only depend on searchValue, not searchableData
+  }, [getDistanceKm, searchResults, sortMode, typeFilter])
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newSearchValue = e.target.value
-      isSearching.current = true
-      setSearchValue(newSearchValue)
-
-      if (newSearchValue.length === 0) {
-        setSearchResults(searchableData)
-        return
-      }
-
-      if (!miniSearchRef.current) return
-
-      const searchMatches = miniSearchRef.current
-        .search(newSearchValue, { prefix: true })
-        .map((item) => item.id)
-
-      setSearchResults(
-        searchableData.filter((coll) => searchMatches.includes(coll.id)),
-      )
+      setSearchValue(e.target.value)
     },
-    [searchableData],
+    [],
   )
 
   const resetSearch = useCallback(() => {
     setSearchValue("")
-    setSearchResults(searchableData)
-    isSearching.current = false
-  }, [setSearchValue, setSearchResults])
+  }, [])
 
-  useEffect(() => {
-    if (isSearching.current && searchValue.length === 0) resetSearch()
-  }, [searchValue, resetSearch, searchableData])
+  const isSearching = searchValue.length > 0
 
-  if (!data) return <></>
+  if (!trip) return <></>
   return (
     <div className="flex flex-col gap-2">
       <div className="flex w-full justify-between gap-1 px-1 text-sm">
         <Input
           placeholder="Search collections"
           className={`transition-all duration-500 ease-in-out ${
-            isSearching.current ? "w-full flex-grow" : "w-full"
+            isSearching ? "w-full flex-grow" : "w-full"
           }`}
           value={searchValue}
           onChange={handleSearchChange}
         />
-        {isSearching.current && (
+        {isSearching && (
           <Button
             onClick={resetSearch}
             className="text-xs opacity-100 transition-opacity duration-500 ease-in-out"
@@ -501,7 +441,7 @@ export const TripCollectionList = ({ id }: { id: string }) => {
               {sortMode.split("-")[1] === "asc" && (
                 <SortAsc aria-label="Settings" size={14} />
               )}
-              {!isSearching.current ? (
+              {!isSearching ? (
                 <span className="opacity-100 transition-opacity duration-300 ease-in-out">
                   {sortMode.startsWith("created_at") ? "Created" : "Distance"}
                 </span>
@@ -540,6 +480,7 @@ export const TripCollectionList = ({ id }: { id: string }) => {
                 collection={item}
                 species={item.species}
                 person={person}
+                speciesPhotosMap={speciesPhotosMap}
               />
             )
           if (item.dataType === "scoutingNote")
@@ -549,10 +490,11 @@ export const TripCollectionList = ({ id }: { id: string }) => {
                 scoutingNote={item}
                 species={item.species}
                 person={person}
+                speciesPhotosMap={speciesPhotosMap}
               />
             )
         })}
-        {data.trip && data.trip.collections.length === 0 && (
+        {trip.collections.length === 0 && (
           <div className="text-center">
             <span className="p-4 text-xl">No collections recorded yet</span>
           </div>

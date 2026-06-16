@@ -132,7 +132,7 @@ function ScoutingNoteFormReady({
   scoutingNoteId: string
   tripId: string
 }) {
-  const { user, org } = useAuth()
+  const { user, organisation, role } = useAuth()
 
   const { photos: initialPhotos, species, ...initialValues } = scoutingNote
 
@@ -166,11 +166,6 @@ function ScoutingNoteFormReady({
     keep: initialPhotos,
   })
 
-  // Field name entry toggle
-  const [enterFieldName, setEnterFieldName] = useState(
-    Boolean(initialValues.field_name && !initialValues.species_id),
-  )
-
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...initialValues,
@@ -193,10 +188,20 @@ function ScoutingNoteFormReady({
     reValidateMode: "onChange",
   })
 
+  // Field name entry toggle
+  const isFieldName =
+    watch("specimen_collected") || Boolean(initialValues.field_name)
+  const [enterFieldName, setEnterFieldName] = useState(isFieldName)
+
+  const handleSetIsSpecimenCollected = (val: boolean) => {
+    setValue("specimen_collected", val)
+    setEnterFieldName(val)
+  }
+
   // Handlers
   const onFormSubmit = useCallback(
     async (data: FormValues) => {
-      if (!user || !org) throw new Error("Not logged in")
+      if (!user || !organisation) throw new Error("Not logged in")
       if (!tripId) throw new Error("tripId must be supplied")
 
       const { latitude, longitude, ...rest } = data
@@ -205,7 +210,7 @@ function ScoutingNoteFormReady({
       const payload: UpdateScoutingNote = {
         id: scoutingNoteIdRef.current,
         trip_id: tripId,
-        organisation_id: org.organisation_id,
+        organisation_id: organisation.id,
         created_by: user.id,
         created_at: new Date().toISOString(),
         location: locationPoint,
@@ -262,24 +267,14 @@ function ScoutingNoteFormReady({
         params: { id: tripId, scoutingNoteId },
       })
     },
-    [user, org, tripId, location, photoChanges, isDirty, isOnline],
+    [user, organisation, tripId, location, photoChanges, isDirty, isOnline],
   )
-
-  const handleSetFieldName = useCallback(() => {
-    setEnterFieldName(true)
-    setValue("species_uncertain", true)
-  }, [setValue])
-
-  const handleResetFieldName = useCallback(() => {
-    setEnterFieldName(false)
-    setValue("field_name", "", { shouldValidate: true })
-  }, [setValue])
 
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   // You shouldn't be here
-  if (initialValues.created_by !== user?.id && org?.role !== ROLE.ADMIN) {
+  if (initialValues.created_by !== user?.id && role !== ROLE.ADMIN) {
     navigate({
       to: "/trips/$id/scouting-notes/$scoutingNoteId",
       params: { id: tripId, scoutingNoteId },
@@ -295,28 +290,35 @@ function ScoutingNoteFormReady({
         onSubmit={hookSubmit(onFormSubmit)}
       >
         <div className="space-y-4 overflow-y-auto px-2">
-          {!enterFieldName ? (
-            <SpeciesSelectInput
-              tripId={tripId}
-              selectedSpeciesId={speciesId || undefined}
-              onSelectSpecies={(id) =>
-                setValue("species_id", id, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                })
-              }
-              onClickFieldName={handleSetFieldName}
-            />
-          ) : (
+          <SpeciesSelectInput
+            onSelectSpecies={(speciesId) =>
+              setValue("species_id", speciesId, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+            tripId={tripId}
+            selectedSpeciesId={speciesId ?? undefined}
+          />
+          {enterFieldName && (
             <div>
-              <Label>Field Name</Label>
-              <div className="flex items-center space-x-2">
+              <Label>Specimen Name</Label>
+              <div className="flex w-full items-center space-x-2">
                 <Input
                   {...register("field_name")}
                   className="h-12 text-lg"
+                  autoComplete="off"
+                  tabIndex={1}
                   autoFocus
                 />
-                <Button onClick={handleResetFieldName} variant="outline">
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setValue("field_name", "", { shouldValidate: true })
+                  }}
+                  className="h-12"
+                  variant={"outline"}
+                >
                   <X />
                 </Button>
               </div>
@@ -324,13 +326,8 @@ function ScoutingNoteFormReady({
           )}
 
           <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="species_uncertain"
-              render={({ field }) => (
-                <Switch checked={field.value} onChange={field.onChange} />
-              )}
-            />
+            <Switch id="species_uncertain" {...register("species_uncertain")} />
+
             <Label>Species Uncertain?</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -343,7 +340,17 @@ function ScoutingNoteFormReady({
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch {...register("specimen_collected")} />
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field: { value } }) => (
+                <Switch
+                  id="specimen_collected"
+                  checked={value}
+                  onCheckedChange={handleSetIsSpecimenCollected}
+                />
+              )}
+            />
             <Label>Specimen Collected?</Label>
             <Popover>
               <PopoverTrigger asChild>

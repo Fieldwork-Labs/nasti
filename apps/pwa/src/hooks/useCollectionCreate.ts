@@ -1,8 +1,4 @@
-import {
-  Collection,
-  CollectionWithCoord,
-  NewCollection,
-} from "@nasti/common/types"
+import { Collection, NewCollection } from "@nasti/common/types"
 import { EntityConfig, useEntityCreate } from "./useEntityCreate"
 
 // Configs for each entity type
@@ -12,7 +8,4 @@ const collectionConfig = {
 } satisfies EntityConfig
 
 export const useCollectionCreate = ({ tripId }: { tripId: string }) =>
-  useEntityCreate<Collection, NewCollection, CollectionWithCoord>(
-    tripId,
-    collectionConfig,
-  )
+  useEntityCreate<Collection, NewCollection>(tripId, collectionConfig)

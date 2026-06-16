@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/theme"
 import { NastiPersistQueryClientProvider } from "./lib/queryClient"
 import { useAuth } from "./hooks/useAuth"
 import { SwStatusProvider } from "./contexts/swStatus"
+import { PowerSyncProvider } from "./contexts/PowerSync"
 import * as Sentry from "@sentry/react"
 
 // Create a new router instance
@@ -33,6 +34,7 @@ Sentry.init({
   sendDefaultPii: true,
   integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
   transport: Sentry.makeBrowserOfflineTransport(Sentry.makeFetchTransport),
+  release: __BUILD_ID__,
 })
 
 // Register the router instance for type safety
@@ -44,10 +46,16 @@ declare module "@tanstack/react-router" {
 
 export const App = () => {
   const { isLoggedIn, getSession } = useAuth()
+
   return (
     <ThemeProvider>
       <SwStatusProvider>
-        <RouterProvider router={router} context={{ isLoggedIn, getSession }} />
+        <PowerSyncProvider isLoggedIn={isLoggedIn}>
+          <RouterProvider
+            router={router}
+            context={{ isLoggedIn, getSession }}
+          />
+        </PowerSyncProvider>
       </SwStatusProvider>
     </ThemeProvider>
   )

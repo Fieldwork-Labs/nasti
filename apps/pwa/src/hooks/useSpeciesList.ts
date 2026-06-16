@@ -1,22 +1,18 @@
 import { Species } from "@nasti/common/types"
 
-import { supabase } from "@nasti/common/supabase"
-import { useQuery } from "@tanstack/react-query"
-
-const getSpeciesList = async () => {
-  const { data, error } = await supabase
-    .from("species")
-    .select("*")
-    .overrideTypes<Species[]>()
-  if (error) throw new Error(error.message)
-  return data
-}
+import { rowToSpecies } from "@/lib/powersync/rows"
+import type { PowerSyncSpeciesRow } from "@/lib/powersync/schema"
+import { useQuery } from "@powersync/tanstack-react-query"
 
 export const getSpeciesListQueryOptions = () => ({
   queryKey: ["species", "list"],
-  queryFn: async () => await getSpeciesList(),
+  query: "SELECT * FROM species ORDER BY name ASC",
+  staleTime: 5 * 60 * 1000, // 5 minutes
 })
 
 export const useSpeciesList = () => {
-  return useQuery(getSpeciesListQueryOptions())
+  const query = useQuery<PowerSyncSpeciesRow>(getSpeciesListQueryOptions())
+  const data: Species[] | undefined = query.data?.map(rowToSpecies)
+
+  return { ...query, data }
 }

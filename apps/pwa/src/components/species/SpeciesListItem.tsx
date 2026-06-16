@@ -10,9 +10,9 @@ import {
 import { cn } from "@nasti/ui/utils"
 import { LeafIcon, X } from "lucide-react"
 import { useParams } from "@tanstack/react-router"
-import { useHydrateTripDetails } from "@/hooks/useHydrateTripDetails"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
+import { useSpeciesPhotosMap } from "@/hooks/useTripPhotoMaps"
 
 const TruncateTooltip = ({
   tooltipTrigger,
@@ -50,12 +50,11 @@ export const SpeciesListItem = ({
   // Get trip ID from route params
   const { id: tripId } = useParams({ strict: false })
 
-  // Get species photos map from hydrated trip data
-  const { data: tripData } = useHydrateTripDetails({ id: tripId || "" })
+  const { speciesPhotosMap } = useSpeciesPhotosMap({ tripId })
 
   const { image: profilePhotoImage } = useSpeciesDisplayImage(
     species?.id,
-    tripData?.speciesPhotosMap,
+    speciesPhotosMap,
   )
   // Priority: profile photo > ALA image > placeholder
   const image = profilePhotoImage?.image || alaImage

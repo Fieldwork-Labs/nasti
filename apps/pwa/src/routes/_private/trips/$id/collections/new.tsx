@@ -25,6 +25,7 @@ import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
+import { stringToNumber } from "@nasti/common/utils"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 
@@ -36,28 +37,6 @@ export const Route = createFileRoute("/_private/trips/$id/collections/new")({
   component: AddCollection,
   validateSearch: (search) => addCollectionSearchSchema.parse(search),
 })
-
-type CollectionFormData = {
-  species_id: string | null
-  species_uncertain: boolean
-  field_name: string
-  specimen_collected: boolean
-  description: string
-  amount_description: string
-  plants_sampled_estimate: number | null
-  phenology_start: number | null
-  phenology_peak: number | null
-  phenology_end: number | null
-}
-
-const stringToNumber = z.preprocess(
-  (val) => {
-    if (typeof val === "string" && val.trim() === "") return null
-    const num = Number(val)
-    return isNaN(num) ? undefined : num
-  },
-  z.number({ message: "Please enter a valid number" }).nullable(),
-)
 
 const schema = z
   .object({
@@ -75,14 +54,11 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    amount_description: z
-      .string()
-      .optional()
-      .transform((val) => val ?? ""),
-    plants_sampled_estimate: stringToNumber,
     phenology_start: z.number().min(-100).max(100).nullable(),
     phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
+    amount_units: z.string().nullable(),
+    amount_quantity: stringToNumber,
   })
   .refine(
     (data) => {
@@ -98,17 +74,20 @@ const schema = z
     },
   )
 
+type CollectionFormData = z.infer<typeof schema>
+
 const defaultValues = {
   species_id: null,
   species_uncertain: false,
   field_name: "",
   specimen_collected: false,
   description: "",
-  amount_description: "",
   plants_sampled_estimate: null,
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
+  amount_units: "",
+  amount_quantity: null,
 }
 
 function AddCollection() {
@@ -120,7 +99,7 @@ function AddCollection() {
     from: "/_private/trips/$id/collections/new",
   })
   const { isOnline } = useNetwork()
-  const { user, org } = useAuth()
+  const { user, organisation } = useAuth()
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
@@ -136,8 +115,8 @@ function AddCollection() {
     setValue,
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting, errors },
     control,
+    formState: { isValid, isSubmitting, errors },
   } = useForm<CollectionFormData>({
     defaultValues: {
       ...defaultValues,
@@ -150,14 +129,21 @@ function AddCollection() {
 
   const speciesId = watch("species_id")
 
-  const [enterFieldName, setEnterFieldName] = useState(false)
+  const isSpecimenCollected = watch("specimen_collected")
+  const [enterFieldName, setEnterFieldName] = useState(isSpecimenCollected)
+
+  const handleSetIsSpecimenCollected = (val: boolean) => {
+    setValue("specimen_collected", val)
+    setEnterFieldName(val)
+  }
+
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
 
   const navigate = useNavigate()
 
   const onSubmit = useCallback(
     async (data: CollectionFormData) => {
-      if (!user || !org) throw new Error("Not logged in")
+      if (!user || !organisation) throw new Error("Not logged in")
 
       if (!tripId) throw new Error("tripId must be supplied to CollectionForm")
       if (!location) throw new Error("No location available")
@@ -173,7 +159,7 @@ function AddCollection() {
         created_at: new Date().toISOString(),
         collected_on: new Date().toDateString(),
         location: locationPoint,
-        organisation_id: org.organisation_id,
+        organisation_id: organisation.id,
         trip_id: tripId,
       }
       const collectionPromise = createCollection(newCollection)
@@ -206,17 +192,6 @@ function AddCollection() {
       isOnline,
     ],
   )
-
-  const handleSetEnterFieldName = useCallback(() => {
-    setEnterFieldName(true)
-    setValue("species_uncertain", true)
-  }, [setEnterFieldName, setValue])
-
-  const handleResetEnterFieldName = useCallback(() => {
-    setEnterFieldName(false)
-    setValue("field_name", "", { shouldValidate: true })
-  }, [setEnterFieldName, setValue])
-
   const [descriptionFocus, setDescriptionFocus] = useState(false)
 
   return (
@@ -224,24 +199,16 @@ function AddCollection() {
       <div>
         <div className="flex items-center p-2 text-2xl">New Collection</div>
         <div className="flex flex-col gap-4 px-1">
-          {!enterFieldName && (
-            <>
-              {/* -mx-1 is to remove the padding on this item */}
-              <div className="-mx-1">
-                <SpeciesSelectInput
-                  onClickFieldName={handleSetEnterFieldName}
-                  onSelectSpecies={(speciesId) =>
-                    setValue("species_id", speciesId, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    })
-                  }
-                  tripId={tripId}
-                  selectedSpeciesId={speciesId ?? undefined}
-                />
-              </div>
-            </>
-          )}
+          <SpeciesSelectInput
+            onSelectSpecies={(speciesId) =>
+              setValue("species_id", speciesId, {
+                shouldValidate: true,
+                shouldDirty: true,
+              })
+            }
+            tripId={tripId}
+            selectedSpeciesId={speciesId ?? undefined}
+          />
           {enterFieldName && (
             <div>
               <Label>Specimen Name</Label>
@@ -254,7 +221,9 @@ function AddCollection() {
                   autoFocus
                 />
                 <Button
-                  onClick={handleResetEnterFieldName}
+                  onClick={() =>
+                    setValue("field_name", "", { shouldValidate: true })
+                  }
                   className="h-12"
                   variant={"outline"}
                 >
@@ -264,18 +233,7 @@ function AddCollection() {
             </div>
           )}
           <div className="flex items-center space-x-2">
-            <Controller
-              control={control}
-              name="species_uncertain"
-              render={({ field: { onChange, value } }) => (
-                <Switch
-                  id="species_uncertain"
-                  checked={value}
-                  onChange={onChange}
-                  onClick={() => onChange(!value)}
-                />
-              )}
-            />
+            <Switch id="species_uncertain" {...register("species_uncertain")} />
 
             <div className="flex items-center gap-2">
               <Label htmlFor="species_uncertain" className="text-lg">
@@ -294,9 +252,16 @@ function AddCollection() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Switch
-              id="specimen_collected"
-              {...register("specimen_collected")}
+            <Controller
+              control={control}
+              name="specimen_collected"
+              render={({ field: { value } }) => (
+                <Switch
+                  id="specimen_collected"
+                  checked={value}
+                  onCheckedChange={handleSetIsSpecimenCollected}
+                />
+              )}
             />
             <div className="flex items-center gap-2">
               <Label htmlFor="specimen_collected" className="text-lg">
@@ -348,63 +313,51 @@ function AddCollection() {
             />
           </div>
           <div>
-            <Label
-              htmlFor="amount_description"
-              className="flex items-center gap-2"
-            >
-              <span>Amount Description</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoIcon className="h-4 w-4" />
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  Description of the amount collection (eg, "Three large
-                  buckets" or "10 bags")
-                </PopoverContent>
-              </Popover>
+            <Label className="flex items-center gap-2">
+              <span>Amount</span>
             </Label>
-            <Input
-              autoComplete="off"
-              {...register("amount_description")}
-              className={errors.amount_description ? "border-amber-600" : ""}
-              id="amount_description"
-              name="amount_description"
-            />
-            {errors.amount_description && (
-              <div className="mt-1 text-sm text-amber-600">
-                {errors.amount_description.message}
+            <div className="flex w-full gap-2">
+              <div className="w-full">
+                <Label htmlFor="amount_quantity" className="text-sm">
+                  Quantity
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_quantity")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_quantity ? "border-amber-600" : "",
+                  )}
+                  id="amount_quantity"
+                  name="amount_quantity"
+                />
+                {errors.amount_quantity && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_quantity.message}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div>
-            <Label
-              htmlFor="plants_sampled_estimate"
-              className="flex items-center gap-2"
-            >
-              <span>Number of plants sampled</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <InfoIcon className="h-4 w-4" />
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  Estimate of the number of plants sampled in this collection
-                </PopoverContent>
-              </Popover>
-            </Label>
-            <Input
-              autoComplete="off"
-              {...register("plants_sampled_estimate")}
-              className={
-                errors.plants_sampled_estimate ? "border-amber-600" : ""
-              }
-              id="plants_sampled_estimate"
-              name="plants_sampled_estimate"
-            />
-            {errors.plants_sampled_estimate && (
-              <div className="mt-1 text-sm text-amber-600">
-                {errors.plants_sampled_estimate.message}
+              <div className="w-full">
+                <Label htmlFor="amount_units" className="text-sm">
+                  Units
+                </Label>
+                <Input
+                  autoComplete="off"
+                  {...register("amount_units")}
+                  className={cn(
+                    "w-full",
+                    errors.amount_units ? "border-amber-600" : "",
+                  )}
+                  id="amount_units"
+                  name="amount_units"
+                />
+                {errors.amount_units && (
+                  <div className="mt-1 text-sm text-amber-600">
+                    {errors.amount_units.message}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
           <Controller
             control={control}

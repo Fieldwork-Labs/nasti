@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://unpkg.com/@powersync/cli-schemas@latest/json-schema/cli-config.json
+
+type: self-hosted
+api_url: http://localhost:8081
+api_key: dev-token-do-not-use-in-production
+plugins:
+  docker:
+    project_name: powersync_nasti

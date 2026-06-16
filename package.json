@@ -10,6 +10,9 @@
     "test": "turbo run test",
     "prepare": "husky",
     "clean": "turbo run clean && rm -rf node_modules",
+    "powersync:up": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml up -d",
+    "powersync:down": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml down",
+    "powersync:logs": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml logs -f",
     "gen-types": "supabase gen types --lang=typescript --local > packages/common/types/database.ts"
   },
   "lint-staged": {
