@@ -7,6 +7,7 @@ export type BaseFormData = {
   specimen_collected: boolean
   description: string
   phenology_start: number | null
+  phenology_peak: number | null
   phenology_end: number | null
 }
 
@@ -27,6 +28,7 @@ export const baseSchema = z
       .optional()
       .transform((val) => val || ""),
     phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
@@ -50,5 +52,6 @@ export const baseDefaultValues = {
   specimen_collected: false,
   description: "",
   phenology_start: null,
+  phenology_peak: null,
   phenology_end: null,
 }

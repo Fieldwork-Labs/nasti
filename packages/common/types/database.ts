@@ -574,6 +574,7 @@ export type Database = {
           organisation_id: string | null
           plants_sampled_estimate: number | null
           phenology_end: number | null
+          phenology_peak: number | null
           phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
@@ -594,6 +595,7 @@ export type Database = {
           organisation_id?: string | null
           plants_sampled_estimate?: number | null
           phenology_end?: number | null
+          phenology_peak?: number | null
           phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
@@ -614,6 +616,7 @@ export type Database = {
           organisation_id?: string | null
           plants_sampled_estimate?: number | null
           phenology_end?: number | null
+          phenology_peak?: number | null
           phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
@@ -946,6 +949,7 @@ export type Database = {
           location: unknown
           organisation_id: string | null
           phenology_end: number | null
+          phenology_peak: number | null
           phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
@@ -961,6 +965,7 @@ export type Database = {
           location?: unknown
           organisation_id?: string | null
           phenology_end?: number | null
+          phenology_peak?: number | null
           phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
@@ -976,6 +981,7 @@ export type Database = {
           location?: unknown
           organisation_id?: string | null
           phenology_end?: number | null
+          phenology_peak?: number | null
           phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean

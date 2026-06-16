@@ -51,6 +51,7 @@ const schema = z
     latitude: stringToNumber,
     longitude: stringToNumber,
     phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
@@ -72,6 +73,7 @@ const DEFAULT_VALUES: FormValues = {
   specimen_collected: false,
   description: "",
   phenology_start: null,
+  phenology_peak: null,
   phenology_end: null,
 }
 
@@ -395,14 +397,25 @@ function ScoutingNoteFormReady({
             render={({ field: startField }) => (
               <Controller
                 control={control}
-                name="phenology_end"
-                render={({ field: endField }) => (
-                  <PhenologyRangeInput
-                    value={[startField.value, endField.value]}
-                    onValueChange={([start, end]) => {
-                      startField.onChange(start)
-                      endField.onChange(end)
-                    }}
+                name="phenology_peak"
+                render={({ field: peakField }) => (
+                  <Controller
+                    control={control}
+                    name="phenology_end"
+                    render={({ field: endField }) => (
+                      <PhenologyRangeInput
+                        value={[
+                          startField.value,
+                          peakField.value,
+                          endField.value,
+                        ]}
+                        onValueChange={([start, peak, end]) => {
+                          startField.onChange(start)
+                          peakField.onChange(peak)
+                          endField.onChange(end)
+                        }}
+                      />
+                    )}
                   />
                 )}
               />

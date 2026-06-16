@@ -46,6 +46,7 @@ type CollectionFormData = {
   amount_description: string
   plants_sampled_estimate: number | null
   phenology_start: number | null
+  phenology_peak: number | null
   phenology_end: number | null
 }
 
@@ -80,6 +81,7 @@ const schema = z
       .transform((val) => val ?? ""),
     plants_sampled_estimate: stringToNumber,
     phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
@@ -105,6 +107,7 @@ const defaultValues = {
   amount_description: "",
   plants_sampled_estimate: null,
   phenology_start: null,
+  phenology_peak: null,
   phenology_end: null,
 }
 
@@ -409,14 +412,25 @@ function AddCollection() {
             render={({ field: startField }) => (
               <Controller
                 control={control}
-                name="phenology_end"
-                render={({ field: endField }) => (
-                  <PhenologyRangeInput
-                    value={[startField.value, endField.value]}
-                    onValueChange={([start, end]) => {
-                      startField.onChange(start)
-                      endField.onChange(end)
-                    }}
+                name="phenology_peak"
+                render={({ field: peakField }) => (
+                  <Controller
+                    control={control}
+                    name="phenology_end"
+                    render={({ field: endField }) => (
+                      <PhenologyRangeInput
+                        value={[
+                          startField.value,
+                          peakField.value,
+                          endField.value,
+                        ]}
+                        onValueChange={([start, peak, end]) => {
+                          startField.onChange(start)
+                          peakField.onChange(peak)
+                          endField.onChange(end)
+                        }}
+                      />
+                    )}
                   />
                 )}
               />

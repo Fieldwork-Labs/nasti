@@ -194,14 +194,25 @@ export const ScoutingNoteForm = ({ form, tripId }: ScoutingNoteFormProps) => {
           render={({ field: startField }) => (
             <Controller
               control={control}
-              name="phenology_end"
-              render={({ field: endField }) => (
-                <PhenologyRangeInput
-                  value={[startField.value, endField.value]}
-                  onValueChange={([start, end]) => {
-                    startField.onChange(start)
-                    endField.onChange(end)
-                  }}
+              name="phenology_peak"
+              render={({ field: peakField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_end"
+                  render={({ field: endField }) => (
+                    <PhenologyRangeInput
+                      value={[
+                        startField.value,
+                        peakField.value,
+                        endField.value,
+                      ]}
+                      onValueChange={([start, peak, end]) => {
+                        startField.onChange(start)
+                        peakField.onChange(peak)
+                        endField.onChange(end)
+                      }}
+                    />
+                  )}
                 />
               )}
             />
