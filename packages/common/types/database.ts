@@ -1780,6 +1780,9 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: string
       }
+      current_org_id: { Args: never; Returns: string }
+      current_user_role: { Args: never; Returns: string }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -2994,3 +2997,4 @@ export const Constants = {
     },
   },
 } as const
+
