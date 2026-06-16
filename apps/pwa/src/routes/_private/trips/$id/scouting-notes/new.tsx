@@ -18,6 +18,7 @@ import { Button } from "@nasti/ui/button"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { InfoIcon, X } from "lucide-react"
 import { NewScoutingNote } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
@@ -261,6 +262,36 @@ function AddCollection() {
               onBlur={() => setDescriptionFocus(false)}
             />
           </div>
+          <Controller
+            control={control}
+            name="phenology_start"
+            render={({ field: startField }) => (
+              <Controller
+                control={control}
+                name="phenology_peak"
+                render={({ field: peakField }) => (
+                  <Controller
+                    control={control}
+                    name="phenology_end"
+                    render={({ field: endField }) => (
+                      <PhenologyRangeInput
+                        value={[
+                          startField.value,
+                          peakField.value,
+                          endField.value,
+                        ]}
+                        onValueChange={([start, peak, end]) => {
+                          startField.onChange(start)
+                          peakField.onChange(peak)
+                          endField.onChange(end)
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              />
+            )}
+          />
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>

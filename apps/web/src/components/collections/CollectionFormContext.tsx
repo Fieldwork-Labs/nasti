@@ -44,6 +44,9 @@ export const schema = z
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
     collected_by: z.string().uuid().nullable(),
+    phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_peak: z.number().min(-100).max(100).nullable(),
+    phenology_end: z.number().min(-100).max(100).nullable(),
   })
   .refine(
     (data) => {
@@ -87,6 +90,9 @@ const useCollectionForm = ({
               }),
           specimen_collected: Boolean(collection.specimen_collected),
           description: collection.description ?? "",
+          phenology_start: collection.phenology_start,
+          phenology_peak: collection.phenology_peak,
+          phenology_end: collection.phenology_end,
           amount_quantity: collection.amount_quantity,
           amount_units: collection.amount_units ?? "",
           collected_on: collection.collected_on,
@@ -102,6 +108,9 @@ const useCollectionForm = ({
           collected_on: new Date().toLocaleDateString(),
           collected_by: user?.id,
           description: "",
+          phenology_start: null,
+          phenology_peak: null,
+          phenology_end: null,
           amount_units: "",
           amount_quantity: undefined,
         }

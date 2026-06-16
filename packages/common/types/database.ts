@@ -573,6 +573,9 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
+          phenology_end: number | null
+          phenology_peak: number | null
+          phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
@@ -591,6 +594,9 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -609,6 +615,9 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -939,6 +948,9 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
+          phenology_end: number | null
+          phenology_peak: number | null
+          phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
@@ -952,6 +964,9 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -965,6 +980,9 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -1762,6 +1780,9 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: string
       }
+      current_org_id: { Args: never; Returns: string }
+      current_user_role: { Args: never; Returns: string }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {

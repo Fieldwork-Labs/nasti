@@ -19,6 +19,7 @@ import { Button } from "@nasti/ui/button"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
+import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { InfoIcon, X } from "lucide-react"
 import { NewCollection } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
@@ -53,6 +54,9 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
+    phenology_start: z.number().min(-100).max(100).nullable(),
+    phenology_peak: z.number().min(-100).max(100).nullable(),
+    phenology_end: z.number().min(-100).max(100).nullable(),
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
   })
@@ -78,6 +82,10 @@ const defaultValues = {
   field_name: "",
   specimen_collected: false,
   description: "",
+  plants_sampled_estimate: null,
+  phenology_start: null,
+  phenology_peak: null,
+  phenology_end: null,
   amount_units: "",
   amount_quantity: null,
 }
@@ -143,8 +151,6 @@ function AddCollection() {
       const locationPoint = `POINT(${longitude} ${latitude})`
       const newCollection: NewCollection = {
         ...data,
-        species_uncertain:
-          data.species_uncertain || data.field_name.trim().length > 0,
         id: collectionIdRef.current,
         created_by: user.id,
         collected_by: user.id,
@@ -351,7 +357,36 @@ function AddCollection() {
               </div>
             </div>
           </div>
-
+          <Controller
+            control={control}
+            name="phenology_start"
+            render={({ field: startField }) => (
+              <Controller
+                control={control}
+                name="phenology_peak"
+                render={({ field: peakField }) => (
+                  <Controller
+                    control={control}
+                    name="phenology_end"
+                    render={({ field: endField }) => (
+                      <PhenologyRangeInput
+                        value={[
+                          startField.value,
+                          peakField.value,
+                          endField.value,
+                        ]}
+                        onValueChange={([start, peak, end]) => {
+                          startField.onChange(start)
+                          peakField.onChange(peak)
+                          endField.onChange(end)
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              />
+            )}
+          />
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
         </div>
       </div>
