@@ -30,6 +30,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@nasti/ui/carousel"
+import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 
 const PhotosTab = ({
   photos,
@@ -221,14 +222,14 @@ export const CollectionDetailModal = ({
                                   <Link
                                     to={`/trips/$id`}
                                     params={{ id: collection.trip_id }}
-                                    className="underline"
+                                    className="text-foreground underline"
                                   >
                                     {trip.name}
                                   </Link>
                                 )}
                               {pathname === `/trips/${collection.trip_id}` && (
                                 <Button
-                                  className="bg-transparent p-0 text-xs underline hover:bg-transparent"
+                                  className="text-foreground bg-transparent p-0 text-xs underline hover:bg-transparent"
                                   onClick={onClose}
                                 >
                                   <span>{trip.name}</span>
@@ -252,6 +253,20 @@ export const CollectionDetailModal = ({
                     </tbody>
                   </table>
                 </div>
+                {collection.phenology_start !== null && (
+                  <div className="space-y-2">
+                    <span className="text-muted-foreground h-min text-left align-middle font-medium">
+                      Phenology
+                    </span>
+                    <PhenologyRangeDisplay
+                      value={[
+                        collection.phenology_start,
+                        collection.phenology_peak,
+                        collection.phenology_end,
+                      ]}
+                    />
+                  </div>
+                )}
                 <div>
                   <div className="flex gap-2">
                     {collection.species_uncertain ? (

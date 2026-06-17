@@ -30,6 +30,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@nasti/ui/carousel"
+import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 
 const PhotosTab = ({
   photos,
@@ -207,7 +208,7 @@ export const ScoutingNoteDetailModal = ({
                                   <Link
                                     to={`/trips/$id`}
                                     params={{ id: scoutingNote.trip_id }}
-                                    className="underline"
+                                    className="text-foreground underline"
                                   >
                                     {trip.name}
                                   </Link>
@@ -215,7 +216,7 @@ export const ScoutingNoteDetailModal = ({
                               {pathname ===
                                 `/trips/${scoutingNote.trip_id}` && (
                                 <Button
-                                  className="bg-transparent p-0 text-xs underline hover:bg-transparent"
+                                  className="text-foreground bg-transparent p-0 text-xs underline hover:bg-transparent"
                                   onClick={onClose}
                                 >
                                   <span>{trip.name}</span>
@@ -233,6 +234,20 @@ export const ScoutingNoteDetailModal = ({
                       </tr>
                     </tbody>
                   </table>
+                  {scoutingNote.phenology_start !== null && (
+                    <div className="space-y-2">
+                      <span className="text-muted-foreground h-min text-left align-middle font-medium">
+                        Phenology
+                      </span>
+                      <PhenologyRangeDisplay
+                        value={[
+                          scoutingNote.phenology_start,
+                          scoutingNote.phenology_peak,
+                          scoutingNote.phenology_end,
+                        ]}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="flex gap-2">
