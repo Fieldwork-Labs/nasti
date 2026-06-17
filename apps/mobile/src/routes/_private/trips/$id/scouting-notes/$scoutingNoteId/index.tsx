@@ -189,7 +189,7 @@ const ScoutingNotesDetail = () => {
           })}
         </TabsContent>
         <TabsContent value="map" className="">
-          <ScoutingNotesMap tripId={tripId} scoutingNoteId={scoutingNoteId} />
+          <ScoutingNotesMap scoutingNoteId={scoutingNoteId} />
         </TabsContent>
       </Tabs>
 

@@ -3,13 +3,11 @@ import { LocationMap } from "../common/LocationMap"
 import { useScoutingNote } from "@/hooks/useScoutingNote"
 
 export const ScoutingNotesMap = ({
-  tripId,
   scoutingNoteId,
 }: {
-  tripId: string
   scoutingNoteId: string
 }) => {
-  const scoutingNote = useScoutingNote({ tripId, scoutingNoteId })
+  const scoutingNote = useScoutingNote({ scoutingNoteId })
 
   if (!scoutingNote?.locationCoord) return null
 

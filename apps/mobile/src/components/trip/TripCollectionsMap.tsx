@@ -45,7 +45,7 @@ const ScoutingNotePopup = ({
   tripId: string
   onClose: () => void
 }) => {
-  const scoutingNote = useScoutingNote({ scoutingNoteId, tripId })
+  const scoutingNote = useScoutingNote({ scoutingNoteId })
   if (!scoutingNote || !scoutingNote.locationCoord) return <></>
   return (
     <Popup onClose={onClose} {...scoutingNote.locationCoord}>
