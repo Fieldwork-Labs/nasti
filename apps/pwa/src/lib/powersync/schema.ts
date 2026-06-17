@@ -82,6 +82,9 @@ const collection = new Table(
     species_uncertain: column.integer,
     specimen_collected: column.integer,
     trip_id: column.text,
+    phenology_start: column.real,
+    phenology_peak: column.real,
+    phenology_end: column.real,
   },
   {
     indexes: {
@@ -119,6 +122,9 @@ const scouting_notes = new Table(
     species_uncertain: column.integer,
     specimen_collected: column.integer,
     trip_id: column.text,
+    phenology_start: column.real,
+    phenology_peak: column.real,
+    phenology_end: column.real,
   },
   {
     indexes: {
@@ -203,8 +209,7 @@ export type PowerSyncTripSpeciesRow = PowerSyncAppDatabase["trip_species"]
 export type PowerSyncCollectionRow = PowerSyncAppDatabase["collection"]
 export type PowerSyncCollectionPhotoRow =
   PowerSyncAppDatabase["collection_photo"]
-export type PowerSyncScoutingNoteRow =
-  PowerSyncAppDatabase["scouting_notes"]
+export type PowerSyncScoutingNoteRow = PowerSyncAppDatabase["scouting_notes"]
 export type PowerSyncScoutingNotePhotoRow =
   PowerSyncAppDatabase["scouting_notes_photos"]
 export type PowerSyncSpeciesPhotoRow = PowerSyncAppDatabase["species_photo"]

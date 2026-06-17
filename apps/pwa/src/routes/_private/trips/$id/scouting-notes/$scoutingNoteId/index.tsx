@@ -18,6 +18,7 @@ import { ROLE } from "@nasti/common/types"
 import { useScoutingNote } from "@/hooks/useScoutingNote"
 import { ScoutingNotesMap } from "@/components/scouting-notes/ScoutingNotesMap"
 import { TaxonName } from "@nasti/common"
+import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 
 const ScoutingNotesDetail = () => {
   const { user, role } = useAuth()
@@ -25,7 +26,7 @@ const ScoutingNotesDetail = () => {
     from: "/_private/trips/$id/scouting-notes/$scoutingNoteId/",
   })
 
-  const scoutingNote = useScoutingNote({ scoutingNoteId, tripId })
+  const scoutingNote = useScoutingNote({ scoutingNoteId })
 
   const navigate = useNavigate({
     from: "/trips/$id/scouting-notes/$scoutingNoteId",
@@ -125,22 +126,46 @@ const ScoutingNotesDetail = () => {
             </td>
           </tr>
         </tbody>
+
+        {scoutingNote.description && (
+          <>
+            <thead>
+              <tr className="text-muted-foreground text-left">
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{scoutingNote.description}</td>
+              </tr>
+            </tbody>
+          </>
+        )}
+
+        {scoutingNote.phenology_start && (
+          <>
+            <thead>
+              <tr className="text-muted-foreground text-left">
+                <th>Phenology</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="pt-2" colSpan={2}>
+                  <PhenologyRangeDisplay
+                    value={[
+                      scoutingNote.phenology_start,
+                      scoutingNote.phenology_peak,
+                      scoutingNote.phenology_end,
+                    ]}
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </>
+        )}
       </table>
 
-      {scoutingNote.description && (
-        <table className="table-fixed">
-          <thead>
-            <tr className="text-muted-foreground text-left">
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{scoutingNote.description}</td>
-            </tr>
-          </tbody>
-        </table>
-      )}
       <Tabs defaultValue="photos">
         <TabsList className="bg-secondary-background mb-2 w-full">
           <TabsTrigger className="w-full" value="photos">

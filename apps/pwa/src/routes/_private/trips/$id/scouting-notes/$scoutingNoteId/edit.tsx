@@ -87,7 +87,7 @@ function ScoutingNoteForm() {
   const { scoutingNoteId, id: tripId } = useParams({
     from: "/_private/trips/$id/scouting-notes/$scoutingNoteId/edit",
   })
-  const scoutingNote = useScoutingNote({ scoutingNoteId, tripId })
+  const scoutingNote = useScoutingNote({ scoutingNoteId })
 
   const navigate = useNavigate({
     from: "/trips/$id/scouting-notes/$scoutingNoteId/edit",
@@ -216,6 +216,7 @@ function ScoutingNoteFormReady({
         location: locationPoint,
         ...rest,
       }
+      console.log({ payload })
       if (!isDirty && photoChanges.add.length === 0)
         navigate({
           to: "/trips/$id/scouting-notes/$scoutingNoteId",

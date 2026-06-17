@@ -18,6 +18,7 @@ import { Button } from "@nasti/ui/button"
 import { ROLE } from "@nasti/common/types"
 import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
+import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 
 const CollectionDetail = () => {
   const { user, role } = useAuth()
@@ -128,7 +129,7 @@ const CollectionDetail = () => {
         (Boolean(collection.amount_quantity || collection.amount_units) && (
           <div>
             <hr />
-            <table className="table-fixed">
+            <table className="w-full table-fixed">
               <thead>
                 <tr className="text-muted-foreground text-left">
                   {Boolean(
@@ -157,6 +158,28 @@ const CollectionDetail = () => {
                   <tbody>
                     <tr>
                       <td>{collection.description}</td>
+                    </tr>
+                  </tbody>
+                </>
+              )}
+              {collection.phenology_start && (
+                <>
+                  <thead>
+                    <tr className="text-muted-foreground text-left">
+                      <th>Phenology</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="pt-2">
+                        <PhenologyRangeDisplay
+                          value={[
+                            collection.phenology_start,
+                            collection.phenology_peak,
+                            collection.phenology_end,
+                          ]}
+                        />
+                      </td>
                     </tr>
                   </tbody>
                 </>

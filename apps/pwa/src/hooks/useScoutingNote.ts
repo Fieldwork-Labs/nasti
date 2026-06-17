@@ -72,7 +72,6 @@ export const useScoutingNote = ({
   scoutingNoteId,
 }: {
   scoutingNoteId: string
-  tripId: string
 }) => {
   const { data: snData } = useScoutingNoteQuery(scoutingNoteId)
   const { data: photos } = useScoutingNotePhotosQuery(scoutingNoteId)

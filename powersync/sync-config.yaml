@@ -91,6 +91,9 @@ streams:
           species_id,
           species_uncertain,
           specimen_collected,
+          phenology_start,
+          phenology_peak,
+          phenology_end,
           trip_id
         FROM collection
         WHERE trip_id = subscription.parameter('trip_id')
@@ -132,6 +135,9 @@ streams:
           species_id,
           species_uncertain,
           specimen_collected,
+          phenology_start,
+          phenology_peak,
+          phenology_end,
           trip_id
         FROM scouting_notes
         WHERE trip_id = subscription.parameter('trip_id')
