@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { CollectionMap } from "@/components/collection/CollectionMap"
 import { useState } from "react"
 import { Photo } from "@/components/common/Photo"
+import { AudioPlayer } from "@/components/common/AudioPlayer"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 import { Button } from "@nasti/ui/button"
 import { ROLE } from "@nasti/common/types"
@@ -27,7 +28,7 @@ const CollectionDetail = () => {
   })
 
   const collection = useCollection({ collectionId, tripId })
-
+  console.log({ collection })
   const navigate = useNavigate({
     from: "/trips/$id/collections/$collectionId",
   })
@@ -192,6 +193,9 @@ const CollectionDetail = () => {
           <TabsTrigger className="w-full" value="photos">
             Photos
           </TabsTrigger>
+          <TabsTrigger className="w-full" value="audio">
+            Audio
+          </TabsTrigger>
           <TabsTrigger className="w-full" value="map">
             Map
           </TabsTrigger>
@@ -208,6 +212,23 @@ const CollectionDetail = () => {
               />
             )
           })}
+        </TabsContent>
+        <TabsContent value="audio" className="flex flex-col gap-2">
+          {collection.audios?.map((audio) => (
+            <AudioPlayer
+              key={audio.id}
+              id={audio.id}
+              url={audio.url}
+              mimeType={audio.mime_type}
+              caption={audio.caption}
+              durationMs={audio.duration_ms}
+              showCaption
+              showUploadProgress
+            />
+          ))}
+          {collection.audios?.length === 0 && (
+            <span className="text-muted-foreground">No audio recordings.</span>
+          )}
         </TabsContent>
         <TabsContent value="map" className="">
           <CollectionMap tripId={tripId} collectionId={collectionId} />

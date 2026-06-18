@@ -32,6 +32,8 @@ export type UpdateCollection = TablesUpdate<"collection"> & {
 
 export type CollectionPhoto = Table<"collection_photo">
 
+export type CollectionAudio = Table<"collection_audio">
+
 export type ScoutingNote = Table<"scouting_notes"> & { location: string | null }
 export type ScoutingNoteWithCoord = ScoutingNote & {
   locationCoord?: { latitude: number; longitude: number }
@@ -48,6 +50,8 @@ export type UpdateScoutingNote = TablesUpdate<"scouting_notes"> & {
 }
 
 export type ScoutingNotePhoto = Table<"scouting_notes_photos">
+
+export type ScoutingNoteAudio = Table<"scouting_notes_audio">
 
 export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">

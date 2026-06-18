@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { useState } from "react"
 import { Photo } from "@/components/common/Photo"
+import { AudioPlayer } from "@/components/common/AudioPlayer"
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
@@ -171,6 +172,9 @@ const ScoutingNotesDetail = () => {
           <TabsTrigger className="w-full" value="photos">
             Photos
           </TabsTrigger>
+          <TabsTrigger className="w-full" value="audio">
+            Audio
+          </TabsTrigger>
           <TabsTrigger className="w-full" value="map">
             Map
           </TabsTrigger>
@@ -187,6 +191,23 @@ const ScoutingNotesDetail = () => {
               />
             )
           })}
+        </TabsContent>
+        <TabsContent value="audio" className="flex flex-col gap-2">
+          {scoutingNote.audios.map((audio) => (
+            <AudioPlayer
+              key={audio.id}
+              id={audio.id}
+              url={audio.url}
+              mimeType={audio.mime_type}
+              caption={audio.caption}
+              durationMs={audio.duration_ms}
+              showCaption
+              showUploadProgress
+            />
+          ))}
+          {scoutingNote.audios.length === 0 && (
+            <span className="text-muted-foreground">No audio recordings.</span>
+          )}
         </TabsContent>
         <TabsContent value="map" className="">
           <ScoutingNotesMap scoutingNoteId={scoutingNoteId} />

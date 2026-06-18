@@ -24,6 +24,8 @@ import { NewScoutingNote } from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
+import { AudiosForm } from "@/components/common/AudiosForm"
+import { UploadAudioVariables, useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
@@ -58,6 +60,11 @@ function AddCollection() {
     entityType: "scoutingNote",
     tripId,
   })
+  const { createAudioMutation } = useAudiosMutate({
+    entityId: scoutingNoteIdRef.current,
+    entityType: "scoutingNote",
+    tripId,
+  })
 
   const {
     watch,
@@ -84,6 +91,7 @@ function AddCollection() {
   }
 
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
+  const [audios, setAudios] = useState<UploadAudioVariables[]>([])
 
   const { user, organisation } = useAuth()
 
@@ -119,6 +127,11 @@ function AddCollection() {
           createPhotoMutation.mutateAsync(photo, { onError: console.error }),
         ),
       )
+      await Promise.all(
+        audios.map((audio) =>
+          createAudioMutation.mutateAsync(audio, { onError: console.error }),
+        ),
+      )
 
       if (createPhotoMutation.isError) {
         console.error(createPhotoMutation.error)
@@ -130,8 +143,10 @@ function AddCollection() {
       location,
       createScoutingNote,
       createPhotoMutation,
+      createAudioMutation,
       navigate,
       photos,
+      audios,
     ],
   )
 
@@ -286,6 +301,7 @@ function AddCollection() {
             )}
           />
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
+          <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">

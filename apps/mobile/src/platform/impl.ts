@@ -1,1 +1,1 @@
-export { appShell, authStorage, geolocation, photos } from "./web"
+export { appShell, authStorage, geolocation, photos, audio } from "./web"
