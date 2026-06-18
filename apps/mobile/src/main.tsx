@@ -1,0 +1,79 @@
+import "./lib/supabase"
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import "./style.css"
+
+import { RouterProvider, createRouter } from "@tanstack/react-router"
+import { routeTree } from "./routeTree.gen"
+import { ThemeProvider } from "./contexts/theme"
+import { NastiPersistQueryClientProvider } from "./lib/queryClient"
+import { useAuth } from "./hooks/useAuth"
+import { SwStatusProvider } from "@/contexts/swStatus"
+import { PowerSyncProvider } from "./contexts/PowerSync"
+import * as Sentry from "@sentry/react"
+import { appShell } from "@/platform"
+
+// Create a new router instance
+const router = createRouter({
+  routeTree,
+  defaultPreload: "intent",
+  defaultNotFoundComponent: () => (
+    <div className="mt-6 flex-col pb-6 sm:w-full">
+      <div className="rounded-lg border-2 p-6 text-lg md:w-1/2">
+        <h4 className="text-primary mb-2 text-xl font-bold">404 Error</h4>
+        We were unable to find the page you are looking for.
+      </div>
+    </div>
+  ),
+  context: {
+    isLoggedIn: false,
+    getSession: undefined,
+  },
+})
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  sendDefaultPii: true,
+  integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+  transport: Sentry.makeBrowserOfflineTransport(Sentry.makeFetchTransport),
+  release: __BUILD_ID__,
+})
+
+// Register the router instance for type safety
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router
+  }
+}
+
+export const App = () => {
+  const { isLoggedIn, getSession } = useAuth()
+
+  return (
+    <ThemeProvider>
+      <SwStatusProvider>
+        <PowerSyncProvider isLoggedIn={isLoggedIn}>
+          <RouterProvider
+            router={router}
+            context={{ isLoggedIn, getSession }}
+          />
+        </PowerSyncProvider>
+      </SwStatusProvider>
+    </ThemeProvider>
+  )
+}
+
+appShell.prepareDocument()
+
+const rootElement = document.getElementById("root")
+if (!rootElement) throw new Error("No root element found")
+if (!rootElement.innerHTML) {
+  const root = createRoot(rootElement)
+  root.render(
+    <StrictMode>
+      <NastiPersistQueryClientProvider>
+        <App />
+      </NastiPersistQueryClientProvider>
+    </StrictMode>,
+  )
+}

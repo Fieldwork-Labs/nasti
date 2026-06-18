@@ -1,0 +1,244 @@
+import { sentryVitePlugin } from "@sentry/vite-plugin"
+import { VitePWA } from "vite-plugin-pwa"
+import { defineConfig } from "vitest/config"
+import tailwindcss from "@tailwindcss/vite"
+import react from "@vitejs/plugin-react"
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite"
+import path from "path"
+import { execSync } from "node:child_process"
+import { nodePolyfills } from "vite-plugin-node-polyfills"
+
+const isProd = process.env.CF_PAGES === "1"
+const nastiTarget = process.env.NASTI_TARGET ?? "pwa"
+const isCapacitorBuild = nastiTarget === "capacitor"
+
+function getGitSha() {
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim()
+  } catch {
+    return null
+  }
+}
+
+// Unique per build. Used as the TanStack Query persist `buster` so a new
+// deploy auto-discards a stale persisted cache (which can otherwise hold
+// data in an old shape and crash the app on hydrate). Cloudflare Workers
+// sets WORKERS_CI_COMMIT_SHA in the build env; locally we read the git
+// sha directly so HMR reloads don't bust the cache on every save.
+const buildId =
+  process.env.WORKERS_CI_COMMIT_SHA?.slice(0, 7) ??
+  getGitSha() ??
+  Date.now().toString()
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  define: {
+    __NASTI_TARGET__: JSON.stringify(nastiTarget),
+    __BUILD_ID__: JSON.stringify(buildId),
+  },
+  test: {
+    setupFiles: ["vitest-localstorage-mock", "fake-indexeddb/auto"],
+    mockReset: false,
+    environment: "jsdom",
+    coverage: { include: ["src/**/*.{ts,tsx}"] },
+    deps: {
+      optimizer: {
+        web: {
+          include: [
+            "vite-plugin-node-polyfills/shims/buffer",
+            "vite-plugin-node-polyfills/shims/global",
+          ],
+          enabled: true,
+        },
+      },
+    },
+  },
+  server: {
+    host: "0.0.0.0", // Listen on all network interfaces
+    allowedHosts: [
+      // Allow these hosts
+      "nasti.loca.lt",
+      "ss-dev.fieldworklabs.xyz",
+      "localhost",
+      "127.0.0.1",
+    ],
+    cors: true,
+  },
+
+  resolve: {
+    alias: [
+      ...(isCapacitorBuild
+        ? [
+            {
+              find: "@/lib/powersync/db.impl",
+              replacement: path.resolve(
+                __dirname,
+                "./src/lib/powersync/db.native.ts",
+              ),
+            },
+            {
+              find: "@/platform/impl",
+              replacement: path.resolve(
+                __dirname,
+                "./src/platform/native/index.ts",
+              ),
+            },
+            {
+              find: "@/contexts/swStatus.impl",
+              replacement: path.resolve(
+                __dirname,
+                "./src/contexts/swStatus.native.tsx",
+              ),
+            },
+          ]
+        : []),
+      {
+        find: "@/platform/impl",
+        replacement: path.resolve(__dirname, "./src/platform/web/index.ts"),
+      },
+      {
+        find: "@",
+        replacement: path.resolve(__dirname, "./src"),
+      },
+    ],
+  },
+
+  // Use no envDir in production, default behavior works with Cloudflare
+  envDir:
+    isProd && !isCapacitorBuild ? undefined : path.resolve(__dirname, "../.."),
+
+  plugins: [
+    TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
+    react(),
+    nodePolyfills({ globals: { Buffer: true }, include: ["buffer"] }),
+    tailwindcss(),
+    ...(isCapacitorBuild
+      ? []
+      : [
+          VitePWA({
+            srcDir: "./src",
+            registerType: "prompt",
+            includeAssets: [
+              "assets/favicon.ico",
+              "pwa-64x64.png",
+              "pwa-192x192.png",
+              "pwa-512x512.png",
+            ],
+            pwaAssets: {
+              disabled: false,
+              config: true,
+            },
+
+            manifest: {
+              id: "/",
+              name: "Seed Scout",
+              short_name: "Seed Scout",
+              description: "Seed Scout PWA",
+              start_url: "/",
+              scope: "/",
+              display: "standalone",
+              theme_color: "#092a0b",
+              background_color: "#092a0b",
+              icons: [
+                {
+                  src: "pwa-192x192.png",
+                  sizes: "192x192",
+                  type: "image/png",
+                },
+                {
+                  src: "pwa-512x512.png",
+                  sizes: "512x512",
+                  type: "image/png",
+                  purpose: "any maskable",
+                },
+              ],
+            },
+
+            workbox: {
+              globPatterns: ["**/*.{ts,tsx,js,css,html,svg,png,jpg,ico}"],
+              cleanupOutdatedCaches: true,
+              navigateFallback: "index.html",
+              runtimeCaching: [
+                {
+                  // Cache ALA API responses (species search, detail, occurrences, etc.)
+                  urlPattern: ({ url }) =>
+                    url.hostname === "api.ala.org.au" ||
+                    url.hostname === "images.ala.org.au",
+                  handler: "NetworkFirst",
+                  method: "GET",
+                  options: {
+                    cacheName: "ala-api",
+                    expiration: {
+                      maxEntries: 500,
+                      maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                    },
+                    cacheableResponse: {
+                      statuses: [0, 200],
+                    },
+                    networkTimeoutSeconds: 5, // fall back to cache after 5s
+                  },
+                },
+                {
+                  // Cache ALA image proxy responses
+                  urlPattern: ({ url }) =>
+                    url.hostname.endsWith("nasti.pages.dev") &&
+                    url.pathname.startsWith("/api/ala_image_proxy"),
+                  handler: "CacheFirst",
+                  method: "GET",
+                  options: {
+                    cacheName: "ala-remote-images",
+                    expiration: {
+                      maxEntries: 500,
+                      maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                    },
+                    cacheableResponse: {
+                      statuses: [0, 200],
+                    },
+                  },
+                },
+                {
+                  // Cache Mapbox tiles
+                  urlPattern: ({ url }) => url.hostname.endsWith("mapbox.com"),
+                  handler: "CacheFirst",
+                  method: "GET",
+                  options: {
+                    cacheName: "mapbox-tiles",
+                    expiration: {
+                      maxEntries: 100,
+                      maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                    },
+                    cacheableResponse: {
+                      statuses: [0, 200],
+                    },
+                  },
+                },
+              ],
+            },
+
+            devOptions: {
+              enabled: true,
+              navigateFallback: "/",
+              type: "module",
+              suppressWarnings: true,
+            },
+          }),
+        ]),
+    sentryVitePlugin({
+      org: "fieldworklabs",
+      project: "nasti-mobile",
+      telemetry: isProd,
+    }),
+  ],
+
+  optimizeDeps: {
+    exclude: ["@journeyapps/wa-sqlite", "@powersync/web"],
+  },
+
+  worker: {
+    format: "es",
+  },
+
+  build: {
+    sourcemap: true,
+  },
+})
