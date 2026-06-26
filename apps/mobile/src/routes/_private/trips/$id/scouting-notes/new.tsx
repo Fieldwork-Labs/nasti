@@ -145,6 +145,7 @@ function AddCollection() {
       createPhotoMutation,
       createAudioMutation,
       navigate,
+      organisation,
       photos,
       audios,
     ],
@@ -253,23 +254,7 @@ function AddCollection() {
               className="h-12 text-lg"
             />
           </div>
-          <div>
-            <Label htmlFor="description">
-              <span>Description</span>
-            </Label>
-            <Textarea
-              {...register("description")}
-              id="description"
-              name="description"
-              className={cn(
-                "h-20 text-lg transition-all duration-500 ease-in-out",
-                descriptionFocus && "h-40",
-              )}
-              placeholder="Enter notes or description here"
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
-            />
-          </div>
+
           <Controller
             control={control}
             name="phenology_start"
@@ -301,7 +286,24 @@ function AddCollection() {
             )}
           />
           <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
-          <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
+          <div>
+            <Label htmlFor="description">
+              <span>Description</span>
+            </Label>
+            <Textarea
+              {...register("description")}
+              id="description"
+              name="description"
+              className={cn(
+                "h-20 text-lg transition-all duration-500 ease-in-out",
+                descriptionFocus && "h-40",
+              )}
+              placeholder="Enter notes or description here"
+              onFocus={() => setDescriptionFocus(true)}
+              onBlur={() => setDescriptionFocus(false)}
+            />
+            <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
+          </div>
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">
@@ -318,7 +320,7 @@ function AddCollection() {
           className="h-12 w-full text-lg"
           onClick={handleSubmit(onSubmit)}
         >
-          {isSubmitting ? "Saving..." : "Save"}
+          {isSubmitting ? "Saving..." : "Save Scouting Note"}
         </Button>
       </div>
     </div>

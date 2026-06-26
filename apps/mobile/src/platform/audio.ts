@@ -1,4 +1,5 @@
 import { CapacitorAudioRecorder } from "@capgo/capacitor-audio-recorder"
+import { Capacitor } from "@capacitor/core"
 import type { PluginListenerHandle } from "@capacitor/core"
 import type {
   AudioRecording,
@@ -27,7 +28,12 @@ async function uriToFile(
 ): Promise<AudioRecording> {
   const ext = extensionFromPath(uri) || "m4a"
   const mime_type = extensionToMime(ext)
-  const response = await fetch(uri)
+  // The native `uri` is a `file://` path, which the WebView refuses to fetch
+  // directly (Android blocks `fetch("file://…")`). `convertFileSrc` rewrites it
+  // to a WebView-served URL (`https://localhost/_capacitor_file_/…` on Android,
+  // `capacitor://…` on iOS) that fetch can read — same approach the Camera
+  // plugin's `webPath` uses for photos.
+  const response = await fetch(Capacitor.convertFileSrc(uri))
   const blob = await response.blob()
   const filename = `nasti-audio-${Date.now()}-${crypto.randomUUID()}.${mimeToExtension(mime_type)}`
   const file = new File([blob], filename, { type: mime_type })

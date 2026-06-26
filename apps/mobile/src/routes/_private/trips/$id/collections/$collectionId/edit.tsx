@@ -228,7 +228,11 @@ function CollectionFormReady({
         location: locationPoint,
         ...rest,
       }
-      if (!isDirty && photoChanges.add.length === 0 && audioChanges.add.length === 0)
+      if (
+        !isDirty &&
+        photoChanges.add.length === 0 &&
+        audioChanges.add.length === 0
+      )
         navigate({
           to: "/trips/$id/collections/$collectionId",
           params: { id: tripId, collectionId },
@@ -312,6 +316,13 @@ function CollectionFormReady({
       photoChanges,
       audioChanges,
       isDirty,
+      photoChanges.add,
+      photoChanges.keep,
+      audioChanges.add,
+      audioChanges.keep,
+      navigate,
+      collectionId,
+      updateCollection,
       isOnline,
     ],
   )

@@ -96,16 +96,26 @@ export function AudioRecorder({ onRecorded }: Props) {
 
   const handleStop = useCallback(async () => {
     clearTick()
-    const recording = await sessionRef.current?.stop()
-    sessionRef.current = null
-    if (!recording) {
+    try {
+      const recording = await sessionRef.current?.stop()
+      sessionRef.current = null
+      if (!recording) {
+        setStatus("idle")
+        return
+      }
+      const url = URL.createObjectURL(recording.file)
+      setPreview({ recording, url })
+      setElapsedMs(recording.duration_ms || elapsedMs)
+      setStatus("preview")
+    } catch (e) {
+      // If finalizing the recording fails (e.g. reading the native file),
+      // surface the error and reset so the UI isn't left stuck mid-recording.
+      sessionRef.current = null
+      setError(e instanceof Error ? e.message : "Could not save recording")
+      setElapsedMs(0)
+      setAmplitude(0)
       setStatus("idle")
-      return
     }
-    const url = URL.createObjectURL(recording.file)
-    setPreview({ recording, url })
-    setElapsedMs(recording.duration_ms || elapsedMs)
-    setStatus("preview")
   }, [elapsedMs])
 
   const handleCancel = useCallback(async () => {

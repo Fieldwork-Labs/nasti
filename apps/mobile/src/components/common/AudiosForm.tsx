@@ -1,6 +1,5 @@
 import { AudioRecording } from "@/platform"
 import { UploadAudioVariables } from "@/hooks/useAudiosMutate"
-import { Label } from "@nasti/ui/label"
 import { cn } from "@nasti/ui/utils"
 import { Button } from "@nasti/ui/button"
 import { useCallback, useEffect, useState } from "react"
@@ -37,7 +36,8 @@ export const AudiosForm = ({
       add: add.map(({ id, recording }) => ({ id, ...recording })),
       keep,
     })
-  }, [add, keep])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [add, keep]) // don't add onAudiosChange to deps
 
   // Revoke pending preview URLs on unmount.
   useEffect(
@@ -65,7 +65,6 @@ export const AudiosForm = ({
 
   return (
     <div className={cn(className)}>
-      <Label className="block text-lg">Audio</Label>
       <AudiosEditField existingAudios={keep} onAudiosChange={setKeep} />
 
       {add.length > 0 && (
