@@ -1,5 +1,28 @@
 # React + TypeScript + Vite
 
+## Android APK from GitHub Actions
+
+The `Build Android APK` workflow builds the Capacitor Android debug APK and
+uploads it as a downloadable artifact.
+
+To run it:
+
+1. Add these repository secrets in GitHub if the APK should point at real
+   services:
+   - `VITE_MAPBOX_ACCESS_TOKEN`
+   - `VITE_POWERSYNC_URL`
+   - `VITE_SB_PUBLISHABLE_KEY`
+   - `VITE_SENTRY_DSN`
+   - `VITE_SUPABASE_URL`
+   - `VITE_WEB_APP_URL`
+1. Open GitHub Actions.
+1. Select `Build Android APK`.
+1. Click `Run workflow`.
+1. When the run completes, download the `seed-scout-debug-apk` artifact.
+
+The artifact contains `app-debug.apk`, which is signed with Android's debug
+key and is suitable for internal testing.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
