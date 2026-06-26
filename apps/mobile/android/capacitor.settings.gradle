@@ -20,5 +20,8 @@ project(':capacitor-geolocation').projectDir = new File('../../../node_modules/.
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/status-bar/android')
 
+include ':capgo-capacitor-audio-recorder'
+project(':capgo-capacitor-audio-recorder').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-audio-recorder@8.2.4_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-audio-recorder/android')
+
 include ':powersync-capacitor'
 project(':powersync-capacitor').projectDir = new File('../node_modules/@powersync/capacitor/android')

@@ -1,6 +1,9 @@
-export { appShell, authStorage, geolocation, photos } from "@/platform/impl"
+export { appShell, authStorage, geolocation, photos, audio } from "@/platform/impl"
 export type {
   AppShellService,
+  AudioRecording,
+  AudioService,
+  AudioSession,
   AuthStorageService,
   LocationPermissionState,
   LocationResult,

@@ -2,7 +2,9 @@ import { ScoutingNoteWithCoord, Species } from "@nasti/common/types"
 import { useQuery } from "@/lib/powersync/query"
 import { parseLocation } from "./useTripDetails/helpers"
 import { TripScoutingNotePhotos } from "./usePhotosForTrip"
+import { TripScoutingNoteAudio } from "./useAudiosForTrip"
 import type {
+  PowerSyncScoutingNoteAudioRow,
   PowerSyncScoutingNotePhotoRow,
   PowerSyncScoutingNoteRow,
   PowerSyncSpeciesRow,
@@ -56,6 +58,21 @@ const useScoutingNotePhotosQuery = (scoutingNoteId: string) => {
   }
 }
 
+const useScoutingNoteAudioQuery = (scoutingNoteId: string) => {
+  const query = useQuery<PowerSyncScoutingNoteAudioRow>({
+    queryKey: ["audio", "scoutingNote", "byScoutingNote", scoutingNoteId],
+    query:
+      "SELECT * FROM scouting_notes_audio WHERE scouting_notes_id = ? ORDER BY uploaded_at DESC",
+    parameters: [scoutingNoteId],
+    enabled: Boolean(scoutingNoteId),
+  })
+
+  return {
+    ...query,
+    data: query.data as TripScoutingNoteAudio | undefined,
+  }
+}
+
 const useScoutingNoteSpeciesQuery = (speciesId?: string | null) => {
   const query = useQuery<PowerSyncSpeciesRow>({
     queryKey: ["species", "detail", speciesId],
@@ -75,10 +92,11 @@ export const useScoutingNote = ({
 }) => {
   const { data: snData } = useScoutingNoteQuery(scoutingNoteId)
   const { data: photos } = useScoutingNotePhotosQuery(scoutingNoteId)
+  const { data: audios } = useScoutingNoteAudioQuery(scoutingNoteId)
   const { data: species } = useScoutingNoteSpeciesQuery(snData?.species_id)
 
   const result: FullScoutingNote | undefined = snData
-    ? { ...snData, photos: photos ?? [], species }
+    ? { ...snData, photos: photos ?? [], audios: audios ?? [], species }
     : undefined
   return result
 }

@@ -27,7 +27,9 @@ const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
   collection: 1,
   scouting_notes: 1,
   collection_photo: 2,
+  collection_audio: 2,
   scouting_notes_photos: 2,
+  scouting_notes_audio: 2,
   species_photo: 2,
 }
 

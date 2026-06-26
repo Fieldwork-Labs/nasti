@@ -21,6 +21,8 @@ import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
+import { AudiosForm, AudioChanges } from "@/components/common/AudiosForm"
+import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
 
 const schema = z
@@ -136,6 +138,15 @@ function CollectionFormReady({
       entityType: "collection",
       tripId,
     })
+  const {
+    createAudioMutation,
+    deleteAudioMutation,
+    updateCaptionMutation: updateAudioCaptionMutation,
+  } = useAudiosMutate({
+    entityId: collectionId,
+    entityType: "collection",
+    tripId,
+  })
 
   const { isOnline } = useNetwork()
 
@@ -158,6 +169,13 @@ function CollectionFormReady({
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges>({
     add: [],
     keep: initialPhotos,
+  })
+
+  const initialAudios = collection.audios ?? []
+  // Audio state
+  const [audioChanges, setAudioChanges] = useState<AudioChanges>({
+    add: [],
+    keep: initialAudios,
   })
 
   const defaultValues = schema.parse({
@@ -210,7 +228,11 @@ function CollectionFormReady({
         location: locationPoint,
         ...rest,
       }
-      if (!isDirty && photoChanges.add.length === 0)
+      if (
+        !isDirty &&
+        photoChanges.add.length === 0 &&
+        audioChanges.add.length === 0
+      )
         navigate({
           to: "/trips/$id/collections/$collectionId",
           params: { id: tripId, collectionId },
@@ -226,6 +248,11 @@ function CollectionFormReady({
       await Promise.all(
         photoChanges.add.map((photo) =>
           createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+        ),
+      )
+      await Promise.all(
+        audioChanges.add.map((audio) =>
+          createAudioMutation.mutateAsync(audio, { onError: console.error }),
         ),
       )
       // find which photos have been removed from the initial list
@@ -249,11 +276,31 @@ function CollectionFormReady({
         }),
       )
 
+      // removed + caption-changed audio
+      const removedAudios = initialAudios.filter(
+        (audio) => !audioChanges.keep.find((a) => a.id === audio.id),
+      )
+      const deleteAudioPromises = removedAudios.map((audio) =>
+        deleteAudioMutation.mutateAsync(audio.id, { onError: console.error }),
+      )
+      const changedAudios = audioChanges.keep.filter((kept) => {
+        const existing = initialAudios.find((a) => a.id === kept.id)
+        return existing?.caption !== kept.caption
+      })
+      const changeAudioPromises = changedAudios.map((audio) =>
+        updateAudioCaptionMutation.mutateAsync({
+          audioId: audio.id,
+          caption: audio.caption,
+        }),
+      )
+
       if (isOnline) {
         // do not await the add photo Promises - they're slower and can happen in parallel
         // await Promise.all(addPhotoPromises)
         await Promise.all(deletePhotoPromises)
         await Promise.all(changePhotoPromises)
+        await Promise.all(deleteAudioPromises)
+        await Promise.all(changeAudioPromises)
       }
 
       return navigate({
@@ -261,7 +308,23 @@ function CollectionFormReady({
         params: { id: tripId, collectionId },
       })
     },
-    [user, organisation, tripId, location, photoChanges, isDirty, isOnline],
+    [
+      user,
+      organisation,
+      tripId,
+      location,
+      photoChanges,
+      audioChanges,
+      isDirty,
+      photoChanges.add,
+      photoChanges.keep,
+      audioChanges.add,
+      audioChanges.keep,
+      navigate,
+      collectionId,
+      updateCollection,
+      isOnline,
+    ],
   )
 
   const speciesId = watch("species_id")
@@ -472,6 +535,10 @@ function CollectionFormReady({
           <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
+          />
+          <AudiosForm
+            initialAudios={initialAudios}
+            onAudiosChange={setAudioChanges}
           />
         </div>
 

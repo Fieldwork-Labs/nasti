@@ -2,7 +2,9 @@ import { CollectionWithCoord, Species } from "@nasti/common/types"
 import { useQuery } from "@/lib/powersync/query"
 import { parseLocation } from "./useTripDetails/helpers"
 import { TripCollectionPhotos } from "./usePhotosForTrip"
+import { TripCollectionAudio } from "./useAudiosForTrip"
 import type {
+  PowerSyncCollectionAudioRow,
   PowerSyncCollectionPhotoRow,
   PowerSyncCollectionRow,
 } from "@/lib/powersync/schema"
@@ -53,6 +55,18 @@ const useCollectionPhotosQuery = (collectionId: string) => {
   return { ...query, data: query.data as TripCollectionPhotos | undefined }
 }
 
+const useCollectionAudioQuery = (collectionId: string) => {
+  const query = useQuery<PowerSyncCollectionAudioRow>({
+    queryKey: ["audio", "collection", "byCollection", collectionId],
+    query:
+      "SELECT * FROM collection_audio WHERE collection_id = ? ORDER BY uploaded_at DESC",
+    parameters: [collectionId],
+    enabled: Boolean(collectionId),
+  })
+
+  return { ...query, data: query.data as TripCollectionAudio | undefined }
+}
+
 export const useCollection = ({
   collectionId,
 }: {
@@ -61,10 +75,16 @@ export const useCollection = ({
 }) => {
   const { data: collectionData } = useCollectionQuery(collectionId)
   const { data: photos } = useCollectionPhotosQuery(collectionId)
+  const { data: audios } = useCollectionAudioQuery(collectionId)
   const { data: species } = useSpecies(collectionData?.species_id)
 
   const result: FullCollection | undefined = collectionData
-    ? { ...collectionData, photos: photos ?? [], species }
+    ? {
+        ...collectionData,
+        photos: photos ?? [],
+        audios: audios ?? [],
+        species,
+      }
     : undefined
   return result
 }

@@ -110,6 +110,22 @@ const collection_photo = new Table(
   },
 )
 
+const collection_audio = new Table(
+  {
+    caption: column.text,
+    collection_id: column.text,
+    duration_ms: column.integer,
+    mime_type: column.text,
+    uploaded_at: column.text,
+    url: column.text,
+  },
+  {
+    indexes: {
+      collection: ["collection_id"],
+    },
+  },
+)
+
 const scouting_notes = new Table(
   {
     created_at: column.text,
@@ -140,6 +156,22 @@ const scouting_notes_photos = new Table(
   {
     caption: column.text,
     scouting_notes_id: column.text,
+    uploaded_at: column.text,
+    url: column.text,
+  },
+  {
+    indexes: {
+      scouting_notes: ["scouting_notes_id"],
+    },
+  },
+)
+
+const scouting_notes_audio = new Table(
+  {
+    caption: column.text,
+    scouting_notes_id: column.text,
+    duration_ms: column.integer,
+    mime_type: column.text,
     uploaded_at: column.text,
     url: column.text,
   },
@@ -195,8 +227,10 @@ export const AppSchema = new Schema({
   trip_species,
   collection,
   collection_photo,
+  collection_audio,
   scouting_notes,
   scouting_notes_photos,
+  scouting_notes_audio,
   species_photo,
   sync_failures,
 })
@@ -209,7 +243,11 @@ export type PowerSyncTripSpeciesRow = PowerSyncAppDatabase["trip_species"]
 export type PowerSyncCollectionRow = PowerSyncAppDatabase["collection"]
 export type PowerSyncCollectionPhotoRow =
   PowerSyncAppDatabase["collection_photo"]
+export type PowerSyncCollectionAudioRow =
+  PowerSyncAppDatabase["collection_audio"]
 export type PowerSyncScoutingNoteRow = PowerSyncAppDatabase["scouting_notes"]
 export type PowerSyncScoutingNotePhotoRow =
   PowerSyncAppDatabase["scouting_notes_photos"]
+export type PowerSyncScoutingNoteAudioRow =
+  PowerSyncAppDatabase["scouting_notes_audio"]
 export type PowerSyncSpeciesPhotoRow = PowerSyncAppDatabase["species_photo"]

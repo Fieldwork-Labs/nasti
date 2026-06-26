@@ -283,6 +283,7 @@ export const TripDataList = ({ id }: { id: string }) => {
         return {
           ...coll,
           photos: collectionPhotosMap[coll.id] ?? [],
+          audios: [],
           dataType: "collection" as const,
           species: coll.species_id ? speciesMap[coll.species_id] : undefined,
         }
@@ -291,6 +292,7 @@ export const TripDataList = ({ id }: { id: string }) => {
         return {
           ...sn,
           photos: scoutingNotePhotosMap[sn.id] ?? [],
+          audios: [],
           dataType: "scoutingNote" as const,
           species: sn.species_id ? speciesMap[sn.species_id] : undefined,
         }

@@ -1,6 +1,6 @@
 import { useViewState } from "@nasti/common/hooks"
 import { Trip } from "@nasti/common/types"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWktPoint } from "@nasti/common/utils"
 import { Link } from "@tanstack/react-router"
 import { MapPin } from "lucide-react"
 import mapboxgl from "mapbox-gl"
@@ -18,9 +18,9 @@ export const tripWithLocationFilter = (trip: Trip): trip is TripWithLocation =>
 export const getTripCoordinates = (
   trip: Trip,
 ): { latitude: number; longitude: number } => {
-  const wkbString = trip.location_coordinate
-  if (!wkbString) throw new Error("No location coordinate")
-  return parsePostGISPoint(wkbString)
+  const wktString = trip.location_coordinate
+  if (!wktString) throw new Error("No location coordinate")
+  return parseWktPoint(wktString)
 }
 
 export const TripsMap = ({ trips }: { trips: Trip[] }) => {
@@ -48,12 +48,13 @@ export const TripsMap = ({ trips }: { trips: Trip[] }) => {
     return () => window.removeEventListener("resize", updateMapHeight)
   }, [])
 
+  const mapTrips = trips
+    .filter(tripWithLocationFilter)
+    .map((t) => ({ ...t, ...getTripCoordinates(t) }))
+
   // Calculate bounds based on all trip coordinates
   const initialViewState = useViewState(
-    trips
-      .filter(tripWithLocationFilter)
-      .map(getTripCoordinates)
-      .map(({ longitude, latitude }) => [longitude, latitude]),
+    mapTrips.map(({ longitude, latitude }) => [longitude, latitude]),
   )
 
   return (
@@ -65,8 +66,8 @@ export const TripsMap = ({ trips }: { trips: Trip[] }) => {
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/mapbox/satellite-v9"
       >
-        {trips.filter(tripWithLocationFilter).map((trip) => (
-          <Marker {...getTripCoordinates(trip)} key={trip.id}>
+        {mapTrips.map((trip) => (
+          <Marker {...trip} key={trip.id}>
             <div className="rounded-full bg-white/50 p-2">
               <MapPin
                 className="text-primary h-5 w-5 cursor-pointer"

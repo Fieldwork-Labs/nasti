@@ -1,8 +1,10 @@
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { PhotoChanges, PhotosForm } from "@/components/common/PhotosForm"
+import { AudioChanges, AudiosForm } from "@/components/common/AudiosForm"
 import { useAuth } from "@/hooks/useAuth"
 import { useNetwork } from "@/hooks/useNetwork"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
+import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { FullScoutingNote, useScoutingNote } from "@/hooks/useScoutingNote"
 import { useScoutingNoteUpdate } from "@/hooks/useScoutingNoteUpdate"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
@@ -134,7 +136,12 @@ function ScoutingNoteFormReady({
 }) {
   const { user, organisation, role } = useAuth()
 
-  const { photos: initialPhotos, species, ...initialValues } = scoutingNote
+  const {
+    photos: initialPhotos,
+    audios: initialAudios,
+    species,
+    ...initialValues
+  } = scoutingNote
 
   const { mutateAsync: updateScoutingNote } = useScoutingNoteUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
@@ -143,6 +150,15 @@ function ScoutingNoteFormReady({
       entityType: "scoutingNote",
       tripId,
     })
+  const {
+    createAudioMutation,
+    deleteAudioMutation,
+    updateCaptionMutation: updateAudioCaptionMutation,
+  } = useAudiosMutate({
+    entityId: scoutingNoteId,
+    entityType: "scoutingNote",
+    tripId,
+  })
 
   const { isOnline } = useNetwork()
 
@@ -164,6 +180,12 @@ function ScoutingNoteFormReady({
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges>({
     add: [],
     keep: initialPhotos,
+  })
+
+  // Audio state
+  const [audioChanges, setAudioChanges] = useState<AudioChanges>({
+    add: [],
+    keep: initialAudios,
   })
 
   const defaultValues = schema.parse({
@@ -217,7 +239,11 @@ function ScoutingNoteFormReady({
         ...rest,
       }
       console.log({ payload })
-      if (!isDirty && photoChanges.add.length === 0)
+      if (
+        !isDirty &&
+        photoChanges.add.length === 0 &&
+        audioChanges.add.length === 0
+      )
         navigate({
           to: "/trips/$id/scouting-notes/$scoutingNoteId",
           params: { id: tripId, scoutingNoteId },
@@ -233,6 +259,11 @@ function ScoutingNoteFormReady({
       await Promise.all(
         photoChanges.add.map((photo) =>
           createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+        ),
+      )
+      await Promise.all(
+        audioChanges.add.map((audio) =>
+          createAudioMutation.mutateAsync(audio, { onError: console.error }),
         ),
       )
       // find which photos have been removed from the initial list
@@ -256,11 +287,31 @@ function ScoutingNoteFormReady({
         }),
       )
 
+      // removed + caption-changed audio
+      const removedAudios = initialAudios.filter(
+        (audio) => !audioChanges.keep.find((a) => a.id === audio.id),
+      )
+      const deleteAudioPromises = removedAudios.map((audio) =>
+        deleteAudioMutation.mutateAsync(audio.id, { onError: console.error }),
+      )
+      const changedAudios = audioChanges.keep.filter((kept) => {
+        const existing = initialAudios.find((a) => a.id === kept.id)
+        return existing?.caption !== kept.caption
+      })
+      const changeAudioPromises = changedAudios.map((audio) =>
+        updateAudioCaptionMutation.mutateAsync({
+          audioId: audio.id,
+          caption: audio.caption,
+        }),
+      )
+
       if (isOnline) {
         // do not await the add photo Promises - they're slower and can happen in parallel
         // await Promise.all(addPhotoPromises)
         await Promise.all(deletePhotoPromises)
         await Promise.all(changePhotoPromises)
+        await Promise.all(deleteAudioPromises)
+        await Promise.all(changeAudioPromises)
       }
 
       return navigate({
@@ -268,7 +319,16 @@ function ScoutingNoteFormReady({
         params: { id: tripId, scoutingNoteId },
       })
     },
-    [user, organisation, tripId, location, photoChanges, isDirty, isOnline],
+    [
+      user,
+      organisation,
+      tripId,
+      location,
+      photoChanges,
+      audioChanges,
+      isDirty,
+      isOnline,
+    ],
   )
 
   const speciesId = watch("species_id")
@@ -433,6 +493,10 @@ function ScoutingNoteFormReady({
           <PhotosForm
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
+          />
+          <AudiosForm
+            initialAudios={initialAudios}
+            onAudiosChange={setAudioChanges}
           />
         </div>
 

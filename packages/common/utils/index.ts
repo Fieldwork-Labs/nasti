@@ -1,3 +1,3 @@
 export { queryClient } from "./queryClient"
-export { parsePostGISPoint } from "./parseGISPoint"
+export { parseWktPoint } from "./parseWktPoint"
 export { stringToNumber } from "./stringToNumber"
