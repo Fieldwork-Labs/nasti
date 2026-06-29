@@ -21,6 +21,7 @@ jobs:
   build:
     name: Build debug APK
     runs-on: ubuntu-latest
+    environment: production
 
     env:
       WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
@@ -70,6 +71,24 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Check build variables
+        run: |
+          missing=0
+          for name in \
+            VITE_MAPBOX_ACCESS_TOKEN \
+            VITE_POWERSYNC_URL \
+            VITE_SB_PUBLISHABLE_KEY \
+            VITE_SENTRY_DSN \
+            VITE_SUPABASE_URL \
+            VITE_WEB_APP_URL
+          do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set for the production environment"
+              missing=1
+            fi
+          done
+          exit "$missing"
 
       - name: Build Capacitor web app
         run: pnpm --filter nasti-mobile build:capacitor

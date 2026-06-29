@@ -7,8 +7,8 @@ uploads it as a downloadable artifact.
 
 To run it:
 
-1. Add these repository secrets in GitHub if the APK should point at real
-   services:
+1. Add these variables to the GitHub `production` environment if the APK should
+   point at real services:
    - `VITE_MAPBOX_ACCESS_TOKEN`
    - `VITE_POWERSYNC_URL`
    - `VITE_SB_PUBLISHABLE_KEY`
