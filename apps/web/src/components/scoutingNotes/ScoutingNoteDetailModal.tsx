@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react"
 import { Modal } from "@nasti/ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { ScoutingNote } from "@nasti/common/types"
 import { SpeciesListItem } from "@/routes/_private/species"
 import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
@@ -74,7 +74,7 @@ export const ScoutingNoteDetailModal = ({
   // Parse location coordinates
   const coordinates = useMemo(() => {
     if (!scoutingNote?.location) return null
-    return parsePostGISPoint(scoutingNote.location)
+    return parseWkbPoint(scoutingNote.location)
   }, [scoutingNote])
 
   const [viewState, setViewState] = useState({

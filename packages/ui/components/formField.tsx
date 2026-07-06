@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  ReactNode,
   type DetailedHTMLProps,
   type InputHTMLAttributes,
 } from "react"
@@ -9,7 +10,7 @@ import { Label } from "./label"
 import { Input } from "./input"
 
 type FormFieldProps = {
-  label: string | JSX.Element
+  label: string | ReactNode
   error?: FieldError
 } & DetailedHTMLProps<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>
 

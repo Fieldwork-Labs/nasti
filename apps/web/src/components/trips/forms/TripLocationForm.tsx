@@ -1,6 +1,6 @@
 import { LocationSelectorMap } from "@/components/common/LocationSelectorMap"
 import { Trip } from "@nasti/common/types"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { Button } from "@nasti/ui/button"
 import debounce from "lodash/debounce"
 import { XIcon } from "lucide-react"
@@ -33,7 +33,7 @@ export function useTripLocationForm({ trip, onSave }: TripLocationFormProps) {
 
   const existingCoords = useMemo(() => {
     if (!trip?.location_coordinate) return
-    return parsePostGISPoint(trip.location_coordinate)
+    return parseWkbPoint(trip.location_coordinate)
   }, [trip])
 
   const [locationCoords, setLocationCoords] = useState<

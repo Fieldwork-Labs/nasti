@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react"
 import { Modal } from "@nasti/ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { Collection } from "@nasti/common/types"
 import { SpeciesListItem } from "@/routes/_private/species"
 import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
@@ -102,7 +102,7 @@ export const CollectionDetailModal = ({
   // Parse location coordinates
   const coordinates = useMemo(() => {
     if (!collection?.location) return null
-    return parsePostGISPoint(collection.location)
+    return parseWkbPoint(collection.location)
   }, [collection])
 
   const [viewState, setViewState] = useState({

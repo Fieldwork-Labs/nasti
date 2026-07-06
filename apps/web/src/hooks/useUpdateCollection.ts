@@ -4,7 +4,10 @@ import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@nasti/common/utils"
 import { useMutation } from "@tanstack/react-query"
 
-type MaybeNewCollection = Omit<Collection, "id" | "created_at" | "code"> & {
+export type MaybeNewCollection = Omit<
+  Collection,
+  "id" | "created_at" | "code"
+> & {
   id?: string
   created_at?: string
   code?: string

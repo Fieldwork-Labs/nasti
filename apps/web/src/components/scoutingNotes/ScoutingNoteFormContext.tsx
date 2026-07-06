@@ -13,7 +13,7 @@ import { z } from "zod"
 
 import { useUpdateScoutingNote } from "@/hooks/useUpdateScoutingNote"
 import useUserStore from "@/store/userStore"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
 
 type ScoutingNoteFormData = {
@@ -90,7 +90,7 @@ const useScoutingNoteForm = ({
           species_uncertain: Boolean(scoutingNote.species_uncertain),
           field_name: scoutingNote.field_name ?? "",
           ...(scoutingNote?.location
-            ? parsePostGISPoint(scoutingNote.location)
+            ? parseWkbPoint(scoutingNote.location)
             : {
                 latitude: undefined,
                 longitude: undefined,

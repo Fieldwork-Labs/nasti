@@ -13,8 +13,11 @@ import { z } from "zod"
 
 import useUserStore from "@/store/userStore"
 
-import { parsePostGISPoint } from "@nasti/common/utils"
-import { useUpdateCollection } from "../../hooks/useUpdateCollection"
+import { parseWkbPoint } from "@nasti/common/utils"
+import {
+  MaybeNewCollection,
+  useUpdateCollection,
+} from "../../hooks/useUpdateCollection"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
 import { stringToNumber } from "@nasti/common/utils"
 
@@ -43,7 +46,7 @@ export const schema = z
     description: z.string(),
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
-    collected_by: z.string().uuid().nullable(),
+    collected_by: z.string().uuid(),
     phenology_start: z.number().min(-100).max(100).nullable(),
     phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
@@ -83,7 +86,7 @@ const useCollectionForm = ({
           species_uncertain: Boolean(collection.species_uncertain),
           field_name: collection.field_name ?? "",
           ...(collection?.location
-            ? parsePostGISPoint(collection.location)
+            ? parseWkbPoint(collection.location)
             : {
                 latitude: undefined,
                 longitude: undefined,
@@ -144,7 +147,7 @@ const useCollectionForm = ({
 
       const { latitude, longitude, ...rest } = data
       const location = `POINT(${longitude} ${latitude})`
-      const newCollection = {
+      const newCollection: MaybeNewCollection = {
         ...rest,
         id: collection?.id,
         created_by: user.id,
