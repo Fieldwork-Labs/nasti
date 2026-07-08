@@ -32,6 +32,7 @@ import {
 } from "@nasti/ui/carousel"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
+import { formatDuration } from "@/lib/duration"
 
 const PhotosTab = ({
   photos,
@@ -154,6 +155,7 @@ export const CollectionDetailModal = ({
   const presentPeople = persons?.filter((person) =>
     collection?.person_ids?.includes(person.id),
   )
+  const formattedDuration = formatDuration(collection?.duration)
 
   if (!collection) return null
 
@@ -258,6 +260,12 @@ export const CollectionDetailModal = ({
                     </tbody>
                   </table>
                 </div>
+                {formattedDuration && (
+                  <div>
+                    <div className="text-lead mb-1">Duration</div>
+                    <div className="text-sm">{formattedDuration}</div>
+                  </div>
+                )}
                 {collection.phenology_start !== null && (
                   <div className="space-y-2">
                     <span className="text-muted-foreground h-min text-left align-middle font-medium">

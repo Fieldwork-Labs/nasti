@@ -79,9 +79,6 @@ importers:
       '@capacitor/status-bar':
         specifier: 8.0.2
         version: 8.0.2(@capacitor/core@8.4.0)
-      '@capawesome-team/capacitor-datetime-picker':
-        specifier: 8.1.1
-        version: 8.1.1(@capacitor/core@8.4.0)
       '@capgo/capacitor-audio-recorder':
         specifier: ^8.2.4
         version: 8.2.4(@capacitor/core@8.4.0)
@@ -1948,14 +1945,6 @@ packages:
 
   /@capacitor/synapse@1.0.4:
     resolution: {integrity: sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw==}
-    dev: false
-
-  /@capawesome-team/capacitor-datetime-picker@8.1.1(@capacitor/core@8.4.0):
-    resolution: {integrity: sha512-Fyghonjm9KrC1BuXmKVWCRbY0HkX7wfqgAsZBwKxK64iucDEcTkVGx8qBwcrIsvO5WbYXukSrSLsWO2Hod/YjQ==}
-    peerDependencies:
-      '@capacitor/core': '>=8.0.0'
-    dependencies:
-      '@capacitor/core': 8.4.0
     dev: false
 
   /@capgo/capacitor-audio-recorder@8.2.4(@capacitor/core@8.4.0):

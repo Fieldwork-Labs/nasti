@@ -35,6 +35,7 @@ export interface PhotoService {
 }
 
 export interface DurationPickerService {
+  isNativeDurationPickerAvailable(): boolean
   pickDuration(value?: string | null): Promise<string | null>
 }
 

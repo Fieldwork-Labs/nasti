@@ -20,9 +20,6 @@ project(':capacitor-geolocation').projectDir = new File('../../../node_modules/.
 include ':capacitor-status-bar'
 project(':capacitor-status-bar').projectDir = new File('../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/status-bar/android')
 
-include ':capawesome-team-capacitor-datetime-picker'
-project(':capawesome-team-capacitor-datetime-picker').projectDir = new File('../../../node_modules/.pnpm/@capawesome-team+capacitor-datetime-picker@8.1.1_@capacitor+core@8.4.0/node_modules/@capawesome-team/capacitor-datetime-picker/android')
-
 include ':capgo-capacitor-audio-recorder'
 project(':capgo-capacitor-audio-recorder').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-audio-recorder@8.2.4_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-audio-recorder/android')
 

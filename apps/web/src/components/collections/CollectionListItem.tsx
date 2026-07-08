@@ -16,6 +16,7 @@ import { useTripDetail } from "@/hooks/useTripDetail"
 import { Spinner } from "@nasti/ui/spinner"
 import { useSpeciesDisplayImage } from "@/hooks/useSpeciesDisplayImage"
 import { TaxonName } from "@nasti/common"
+import { formatDuration } from "@/lib/duration"
 
 export const CollectionListItem = ({
   id,
@@ -51,6 +52,7 @@ export const CollectionListItem = ({
   const speciesName = species?.name ?? collection.field_name
 
   const creator = people?.find((person) => person.id === collection.created_by)
+  const formattedDuration = formatDuration(collection.duration)
 
   return (
     <>
@@ -109,6 +111,7 @@ export const CollectionListItem = ({
                 {new Date(collection.collected_on).toLocaleDateString()}
               </span>
             }
+            {formattedDuration && <span>{formattedDuration}</span>}
           </div>
         </div>
       </div>

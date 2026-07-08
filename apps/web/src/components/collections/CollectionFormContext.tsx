@@ -46,6 +46,7 @@ export const schema = z
     description: z.string(),
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
+    duration: z.string().nullable(),
     collected_by: z.string().uuid(),
     person_ids: z.array(z.string().uuid()).default([]),
     phenology_start: z.number().min(-100).max(100).nullable(),
@@ -99,6 +100,7 @@ const useCollectionForm = ({
           phenology_end: collection.phenology_end,
           amount_quantity: collection.amount_quantity,
           amount_units: collection.amount_units ?? "",
+          duration: collection.duration ?? null,
           collected_on: collection.collected_on,
           collected_by: collection.collected_by,
           person_ids: collection.person_ids ?? [],
@@ -119,6 +121,7 @@ const useCollectionForm = ({
           phenology_end: null,
           amount_units: "",
           amount_quantity: undefined,
+          duration: null,
         }
   }, [collection, user?.id])
 

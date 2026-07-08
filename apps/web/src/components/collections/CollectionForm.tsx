@@ -26,6 +26,7 @@ import {
 } from "./CollectionFormContext"
 import { useEffect, useMemo, useState } from "react"
 import useUserStore from "@/store/userStore"
+import { DurationInput } from "./DurationInput"
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
@@ -303,6 +304,14 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           className="w-full"
         />
       </div>
+
+      <Controller
+        control={control}
+        name="duration"
+        render={({ field }) => (
+          <DurationInput value={field.value} onChange={field.onChange} />
+        )}
+      />
 
       <Controller
         control={control}
