@@ -31,6 +31,7 @@ import {
   CarouselPrevious,
 } from "@nasti/ui/carousel"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
+import { usePersons } from "@/hooks/usePersons"
 
 const PhotosTab = ({
   photos,
@@ -149,6 +150,10 @@ export const CollectionDetailModal = ({
 
   const { data: people } = usePeople()
   const creator = people?.find((person) => person.id === collection?.created_by)
+  const { data: persons } = usePersons()
+  const presentPeople = persons?.filter((person) =>
+    collection?.person_ids?.includes(person.id),
+  )
 
   if (!collection) return null
 
@@ -265,6 +270,21 @@ export const CollectionDetailModal = ({
                         collection.phenology_end,
                       ]}
                     />
+                  </div>
+                )}
+                {presentPeople && presentPeople.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">People present</div>
+                    <div className="flex flex-wrap gap-2">
+                      {presentPeople.map((person) => (
+                        <Badge
+                          key={person.id}
+                          variant={person.is_active ? "default" : "secondary"}
+                        >
+                          {person.display_name}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div>

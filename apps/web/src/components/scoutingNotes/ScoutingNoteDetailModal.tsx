@@ -31,6 +31,7 @@ import {
   CarouselPrevious,
 } from "@nasti/ui/carousel"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
+import { usePersons } from "@/hooks/usePersons"
 
 const PhotosTab = ({
   photos,
@@ -122,6 +123,10 @@ export const ScoutingNoteDetailModal = ({
   const { data: people } = usePeople()
   const creator = people?.find(
     (person) => person.id === scoutingNote?.created_by,
+  )
+  const { data: persons } = usePersons()
+  const presentPeople = persons?.filter((person) =>
+    scoutingNote?.person_ids?.includes(person.id),
   )
 
   const EditButtons = () => (
@@ -249,6 +254,21 @@ export const ScoutingNoteDetailModal = ({
                     </div>
                   )}
                 </div>
+                {presentPeople && presentPeople.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">People present</div>
+                    <div className="flex flex-wrap gap-2">
+                      {presentPeople.map((person) => (
+                        <Badge
+                          key={person.id}
+                          variant={person.is_active ? "default" : "secondary"}
+                        >
+                          {person.display_name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <div className="flex gap-2">
                     {scoutingNote.species_uncertain ? (

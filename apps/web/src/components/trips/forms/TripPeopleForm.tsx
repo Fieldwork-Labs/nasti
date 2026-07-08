@@ -115,7 +115,6 @@ export const useTripPeopleForm = ({ trip, onSave }: TripPeopleFormArgs) => {
     error,
     onPeopleChange: setSelectedPeople,
     handleSubmit,
-    defaultValue: tripMembers?.map((member) => member.user_id),
   }
 }
 
@@ -123,21 +122,22 @@ export interface TripPeopleFormProps {
   options: Option[]
   error: string | null
   onPeopleChange: (ids: UserId[]) => void
-  defaultValue?: UserId[]
+  selectedPeople: UserId[]
 }
 
 export const TripPeopleForm = ({
   options,
   error,
   onPeopleChange,
-  defaultValue,
+  selectedPeople,
 }: TripPeopleFormProps) => {
   return (
     <>
       <MultiSelect
         options={options}
         onValueChange={onPeopleChange}
-        defaultValue={defaultValue}
+        value={selectedPeople}
+        defaultValue={selectedPeople}
         placeholder="Select people"
         animation={2}
       />

@@ -48,6 +48,7 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
+          person_ids: string[]
           phenology_end: number | null
           phenology_peak: number | null
           phenology_start: number | null
@@ -69,6 +70,7 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          person_ids?: string[]
           phenology_end?: number | null
           phenology_peak?: number | null
           phenology_start?: number | null
@@ -90,6 +92,7 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          person_ids?: string[]
           phenology_end?: number | null
           phenology_peak?: number | null
           phenology_start?: number | null
@@ -346,6 +349,104 @@ export type Database = {
         }
         Relationships: []
       }
+      person: {
+        Row: {
+          created_at: string
+          display_name: string
+          email: string | null
+          id: string
+          is_active: boolean
+          job_role: string | null
+          organisation_id: string
+          personnel_id: string | null
+          source_type: Database["public"]["Enums"]["person_source_type"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          organisation_id: string
+          personnel_id?: string | null
+          source_type: Database["public"]["Enums"]["person_source_type"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          organisation_id?: string
+          personnel_id?: string | null
+          source_type?: Database["public"]["Enums"]["person_source_type"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          job_role: string | null
+          name: string
+          organisation_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          name: string
+          organisation_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          name?: string
+          organisation_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scouting_notes: {
         Row: {
           created_at: string
@@ -355,6 +456,7 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
+          person_ids: string[]
           phenology_end: number | null
           phenology_peak: number | null
           phenology_start: number | null
@@ -371,6 +473,7 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          person_ids?: string[]
           phenology_end?: number | null
           phenology_peak?: number | null
           phenology_start?: number | null
@@ -387,6 +490,7 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          person_ids?: string[]
           phenology_end?: number | null
           phenology_peak?: number | null
           phenology_start?: number | null
@@ -1881,6 +1985,7 @@ export type Database = {
     }
     Enums: {
       org_user_types: "Member" | "Admin"
+      person_source_type: "user" | "personnel"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -2037,7 +2142,7 @@ export const Constants = {
   public: {
     Enums: {
       org_user_types: ["Member", "Admin"],
+      person_source_type: ["user", "personnel"],
     },
   },
 } as const
-

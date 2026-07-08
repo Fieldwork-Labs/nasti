@@ -1,5 +1,6 @@
 import type {
   Collection,
+  Person,
   ScoutingNote,
   Species,
   Trip,
@@ -7,6 +8,7 @@ import type {
 } from "@nasti/common/types"
 import type {
   PowerSyncCollectionRow,
+  PowerSyncPersonRow,
   PowerSyncScoutingNoteRow,
   PowerSyncSpeciesRow,
   PowerSyncTripMemberRow,
@@ -24,6 +26,26 @@ function parseJson<T>(value: string | null | undefined, fallback: T): T {
     return JSON.parse(value) as T
   } catch {
     return fallback
+  }
+}
+
+function parseUuidArray(value: string | null | undefined): string[] {
+  if (!value) return []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => typeof item === "string")
+      : []
+  } catch {
+    if (value === "{}") return []
+    if (value.startsWith("{") && value.endsWith("}")) {
+      return value
+        .slice(1, -1)
+        .split(",")
+        .map((item) => item.trim().replace(/^"|"$/g, ""))
+        .filter(Boolean)
+    }
+    return []
   }
 }
 
@@ -47,15 +69,22 @@ export function rowToCollection(row: PowerSyncCollectionRow): Collection {
     ...row,
     species_uncertain: Boolean(row.species_uncertain),
     specimen_collected: sqliteBoolean(row.specimen_collected),
+    person_ids: parseUuidArray(row.person_ids),
   } as unknown as Collection
 }
 
-export function rowToScoutingNote(
-  row: PowerSyncScoutingNoteRow,
-): ScoutingNote {
+export function rowToScoutingNote(row: PowerSyncScoutingNoteRow): ScoutingNote {
   return {
     ...row,
     species_uncertain: Boolean(row.species_uncertain),
     specimen_collected: sqliteBoolean(row.specimen_collected),
+    person_ids: parseUuidArray(row.person_ids),
   } as unknown as ScoutingNote
+}
+
+export function rowToPerson(row: PowerSyncPersonRow): Person {
+  return {
+    ...row,
+    is_active: Boolean(row.is_active),
+  } as unknown as Person
 }

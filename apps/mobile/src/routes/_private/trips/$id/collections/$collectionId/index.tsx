@@ -20,6 +20,7 @@ import { ROLE } from "@nasti/common/types"
 import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
+import { usePersons } from "@/hooks/usePersons"
 
 const CollectionDetail = () => {
   const { user, role } = useAuth()
@@ -29,6 +30,7 @@ const CollectionDetail = () => {
 
   const collection = useCollection({ collectionId, tripId })
   console.log({ collection })
+  const { data: persons } = usePersons(collection?.organisation_id)
   const navigate = useNavigate({
     from: "/trips/$id/collections/$collectionId",
   })
@@ -42,6 +44,9 @@ const CollectionDetail = () => {
   const displayDistance = useDisplayDistance(collection?.locationCoord ?? {})
 
   const canEdit = collection?.created_by === user?.id || role === ROLE.ADMIN
+  const presentPeople = persons?.filter((person) =>
+    collection?.person_ids?.includes(person.id),
+  )
 
   if (!collection)
     return (
@@ -125,6 +130,29 @@ const CollectionDetail = () => {
             </td>
           </tr>
         </tbody>
+        {presentPeople && presentPeople.length > 0 && (
+          <>
+            <thead>
+              <tr className="text-muted-foreground text-left">
+                <th>People present</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="flex flex-wrap gap-2 pt-1">
+                  {presentPeople.map((person) => (
+                    <Badge
+                      key={person.id}
+                      variant={person.is_active ? "default" : "secondary"}
+                    >
+                      {person.display_name}
+                    </Badge>
+                  ))}
+                </td>
+              </tr>
+            </tbody>
+          </>
+        )}
       </table>
       {Boolean(collection.description) ||
         (Boolean(collection.amount_quantity || collection.amount_units) && (

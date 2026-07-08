@@ -20,6 +20,7 @@ import { useScoutingNote } from "@/hooks/useScoutingNote"
 import { ScoutingNotesMap } from "@/components/scouting-notes/ScoutingNotesMap"
 import { TaxonName } from "@nasti/common"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
+import { usePersons } from "@/hooks/usePersons"
 
 const ScoutingNotesDetail = () => {
   const { user, role } = useAuth()
@@ -28,6 +29,7 @@ const ScoutingNotesDetail = () => {
   })
 
   const scoutingNote = useScoutingNote({ scoutingNoteId })
+  const { data: persons } = usePersons(scoutingNote?.organisation_id)
 
   const navigate = useNavigate({
     from: "/trips/$id/scouting-notes/$scoutingNoteId",
@@ -42,6 +44,9 @@ const ScoutingNotesDetail = () => {
   const displayDistance = useDisplayDistance(scoutingNote?.locationCoord ?? {})
 
   const canEdit = scoutingNote?.created_by === user?.id || role === ROLE.ADMIN
+  const presentPeople = persons?.filter((person) =>
+    scoutingNote?.person_ids?.includes(person.id),
+  )
 
   if (!scoutingNote)
     return (
@@ -127,6 +132,30 @@ const ScoutingNotesDetail = () => {
             </td>
           </tr>
         </tbody>
+
+        {presentPeople && presentPeople.length > 0 && (
+          <>
+            <thead>
+              <tr className="text-muted-foreground text-left">
+                <th>People present</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="flex flex-wrap gap-2 pt-1">
+                  {presentPeople.map((person) => (
+                    <Badge
+                      key={person.id}
+                      variant={person.is_active ? "default" : "secondary"}
+                    >
+                      {person.display_name}
+                    </Badge>
+                  ))}
+                </td>
+              </tr>
+            </tbody>
+          </>
+        )}
 
         {scoutingNote.description && (
           <>

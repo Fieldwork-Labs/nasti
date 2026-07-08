@@ -16,6 +16,11 @@ const JSON_FIELDS: Record<string, string[]> = {
   trip: ["metadata"],
 }
 
+const ARRAY_FIELDS: Record<string, string[]> = {
+  collection: ["person_ids"],
+  scouting_notes: ["person_ids"],
+}
+
 const BOOLEAN_FIELDS: Record<string, string[]> = {
   collection: ["species_uncertain", "specimen_collected"],
   scouting_notes: ["species_uncertain", "specimen_collected"],
@@ -51,6 +56,18 @@ function prepareForSupabase(
         result[field] = JSON.parse(value)
       } catch {
         // Keep the value as-is if it was not JSON text.
+      }
+    }
+  }
+
+  for (const field of ARRAY_FIELDS[table] ?? []) {
+    const value = result[field]
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value)
+        result[field] = Array.isArray(parsed) ? parsed : []
+      } catch {
+        result[field] = []
       }
     }
   }

@@ -24,6 +24,7 @@ type ScoutingNoteFormData = {
   latitude: number
   longitude: number
   description: string
+  person_ids: string[]
   phenology_start: number | null
   phenology_peak: number | null
   phenology_end: number | null
@@ -51,6 +52,7 @@ const schema = z
       .max(180),
 
     description: z.string(),
+    person_ids: z.array(z.string().uuid()).default([]),
     phenology_start: z.number().min(-100).max(100).nullable(),
     phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
@@ -97,6 +99,7 @@ const useScoutingNoteForm = ({
               }),
           specimen_collected: Boolean(scoutingNote.specimen_collected),
           description: scoutingNote.description ?? "",
+          person_ids: scoutingNote.person_ids ?? [],
           phenology_start: scoutingNote.phenology_start,
           phenology_peak: scoutingNote.phenology_peak,
           phenology_end: scoutingNote.phenology_end,
@@ -109,6 +112,7 @@ const useScoutingNoteForm = ({
           longitude: undefined,
           specimen_collected: false,
           description: "",
+          person_ids: [],
           phenology_start: null,
           phenology_peak: null,
           phenology_end: null,

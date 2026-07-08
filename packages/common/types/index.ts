@@ -7,6 +7,8 @@ type Function<T extends keyof Database["public"]["Functions"]> =
 
 export type Organisation = Table<"organisation">
 export type Invitation = Table<"invitation">
+export type Person = Table<"person">
+export type Personnel = Table<"personnel">
 export type Species = Table<"species">
 export type TripSpecies = Table<"trip_species">
 export type SpeciesPhoto = Table<"species_photo"> & {
@@ -55,7 +57,7 @@ export type ScoutingNoteAudio = Table<"scouting_notes_audio">
 
 export type TripMember = Table<"trip_member">
 export type GetOrgUsers = Function<"get_organisation_users">
-export type Person = GetOrgUsers["Returns"][number]
+export type OrganisationUser = GetOrgUsers["Returns"][number]
 
 export type Role = Database["public"]["Enums"]["org_user_types"]
 
