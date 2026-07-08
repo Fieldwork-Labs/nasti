@@ -1,6 +1,10 @@
 import { Capacitor, registerPlugin } from "@capacitor/core"
 import type { DurationPickerService } from "../types"
-import { parseDurationMinutes, timeValueToDuration } from "@/lib/duration"
+import {
+  clampDurationMinutes,
+  parseDurationMinutes,
+  timeValueToDuration,
+} from "@/lib/duration"
 
 type NativeDurationPickerPlugin = {
   present(options: {
@@ -26,7 +30,7 @@ export const durationPicker: DurationPickerService = {
       const selectedValue = await NativeDurationPicker.present({
         cancelButtonText: "Cancel",
         doneButtonText: "OK",
-        valueMinutes: parseDurationMinutes(value) ?? 0,
+        valueMinutes: clampDurationMinutes(parseDurationMinutes(value) ?? 0),
       })
 
       const hours = Math.floor(selectedValue.valueMinutes / 60)

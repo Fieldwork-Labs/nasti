@@ -8,16 +8,23 @@ import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { X } from "lucide-react"
+import { useState } from "react"
 
 type DurationPickerFieldProps = {
   value: string | null
   onChange: (value: string | null) => void
 }
 
+type DurationSegment = "hours" | "minutes"
+type DurationDraft = Partial<Record<DurationSegment, string>>
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
 const toTwoDigits = (value: number) => value.toString().padStart(2, "0")
+
+const cleanSegmentInput = (value: string) =>
+  value.replace(/\D/g, "").slice(0, 2)
 
 const parseDurationParts = (value: string | null) => {
   const timeValue = durationToTimeValue(value) || "00:00"
@@ -35,6 +42,7 @@ export function DurationPickerField({
 }: DurationPickerFieldProps) {
   const formattedValue = formatDuration(value)
   const { hours, minutes } = parseDurationParts(value)
+  const [draft, setDraft] = useState<DurationDraft>({})
   const useNativePicker = durationPicker.isNativeDurationPickerAvailable()
 
   const handleNativePick = async () => {
@@ -45,16 +53,41 @@ export function DurationPickerField({
   const handleWebChange = (nextHours: number, nextMinutes: number) => {
     onChange(
       timeValueToDuration(
-        `${toTwoDigits(clamp(nextHours, 0, 99))}:${toTwoDigits(
+        `${toTwoDigits(clamp(nextHours, 0, 23))}:${toTwoDigits(
           clamp(nextMinutes, 0, 59),
         )}`,
       ),
     )
   }
 
+  const beginEdit = (segment: DurationSegment) => {
+    setDraft((current) => ({ ...current, [segment]: "" }))
+  }
+
+  const endEdit = (segment: DurationSegment) => {
+    setDraft((current) => {
+      const next = { ...current }
+      delete next[segment]
+      return next
+    })
+  }
+
+  const handleSegmentChange = (segment: DurationSegment, value: string) => {
+    const nextDraft = cleanSegmentInput(value)
+    setDraft((current) => ({ ...current, [segment]: nextDraft }))
+
+    if (segment === "hours") {
+      handleWebChange(Number(nextDraft) || 0, minutes)
+    } else {
+      handleWebChange(hours, Number(nextDraft) || 0)
+    }
+  }
+
   return (
     <div>
-      <Label htmlFor="duration">Duration</Label>
+      <Label id="duration-label" htmlFor="duration">
+        Duration
+      </Label>
       <div className="flex items-center gap-2">
         {useNativePicker ? (
           <Button
@@ -70,16 +103,20 @@ export function DurationPickerField({
           <div
             id="duration"
             className="flex flex-1 items-center gap-2"
+            role="group"
+            aria-labelledby="duration-label"
             aria-label="Duration in hours and minutes"
           >
             <Input
               aria-label="Duration hours"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={toTwoDigits(hours)}
+              value={draft.hours ?? toTwoDigits(hours)}
               className="h-12 text-center text-lg"
+              onFocus={() => beginEdit("hours")}
+              onBlur={() => endEdit("hours")}
               onChange={(event) =>
-                handleWebChange(Number(event.currentTarget.value) || 0, minutes)
+                handleSegmentChange("hours", event.currentTarget.value)
               }
             />
             <span className="text-muted-foreground text-lg">:</span>
@@ -87,10 +124,12 @@ export function DurationPickerField({
               aria-label="Duration minutes"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={toTwoDigits(minutes)}
+              value={draft.minutes ?? toTwoDigits(minutes)}
               className="h-12 text-center text-lg"
+              onFocus={() => beginEdit("minutes")}
+              onBlur={() => endEdit("minutes")}
               onChange={(event) =>
-                handleWebChange(hours, Number(event.currentTarget.value) || 0)
+                handleSegmentChange("minutes", event.currentTarget.value)
               }
             />
           </div>

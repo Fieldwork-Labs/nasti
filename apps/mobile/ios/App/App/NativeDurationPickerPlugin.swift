@@ -16,7 +16,11 @@ public class NativeDurationPickerPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            let valueMinutes = max(0, call.getInt("valueMinutes", 0))
+            let maxDurationMinutes = (23 * 60) + 59
+            let valueMinutes = min(
+                max(call.getInt("valueMinutes", 0), 0),
+                maxDurationMinutes
+            )
             let cancelButtonText = call.getString("cancelButtonText", "Cancel")
             let doneButtonText = call.getString("doneButtonText", "OK")
 

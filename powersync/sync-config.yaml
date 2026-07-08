@@ -85,7 +85,7 @@ streams:
           created_at,
           created_by,
           description,
-          duration,
+          duration::text AS duration,
           field_name,
           ST_AsText(location) AS location,
           organisation_id,

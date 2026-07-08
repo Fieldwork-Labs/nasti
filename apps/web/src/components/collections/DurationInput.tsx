@@ -2,6 +2,7 @@ import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { X } from "lucide-react"
+import { useState } from "react"
 
 import { durationToTimeValue, timeValueToDuration } from "@/lib/duration"
 
@@ -10,10 +11,16 @@ type DurationInputProps = {
   onChange: (value: string | null) => void
 }
 
+type DurationSegment = "hours" | "minutes"
+type DurationDraft = Partial<Record<DurationSegment, string>>
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
 const toTwoDigits = (value: number) => value.toString().padStart(2, "0")
+
+const cleanSegmentInput = (value: string) =>
+  value.replace(/\D/g, "").slice(0, 2)
 
 const parseDurationParts = (value: string | null) => {
   const timeValue = durationToTimeValue(value) || "00:00"
@@ -27,24 +34,52 @@ const parseDurationParts = (value: string | null) => {
 
 export function DurationInput({ value, onChange }: DurationInputProps) {
   const { hours, minutes } = parseDurationParts(value)
+  const [draft, setDraft] = useState<DurationDraft>({})
 
   const handleChange = (nextHours: number, nextMinutes: number) => {
     onChange(
       timeValueToDuration(
-        `${toTwoDigits(clamp(nextHours, 0, 99))}:${toTwoDigits(
+        `${toTwoDigits(clamp(nextHours, 0, 23))}:${toTwoDigits(
           clamp(nextMinutes, 0, 59),
         )}`,
       ),
     )
   }
 
+  const beginEdit = (segment: DurationSegment) => {
+    setDraft((current) => ({ ...current, [segment]: "" }))
+  }
+
+  const endEdit = (segment: DurationSegment) => {
+    setDraft((current) => {
+      const next = { ...current }
+      delete next[segment]
+      return next
+    })
+  }
+
+  const handleSegmentChange = (segment: DurationSegment, value: string) => {
+    const nextDraft = cleanSegmentInput(value)
+    setDraft((current) => ({ ...current, [segment]: nextDraft }))
+
+    if (segment === "hours") {
+      handleChange(Number(nextDraft) || 0, minutes)
+    } else {
+      handleChange(hours, Number(nextDraft) || 0)
+    }
+  }
+
   return (
     <div className="form-group flex w-full flex-col gap-2">
       <div className="grid w-full items-center gap-1.5">
-        <Label htmlFor="duration-hours">Duration</Label>
+        <Label id="duration-label" htmlFor="duration-hours">
+          Duration
+        </Label>
         <div className="flex items-center gap-2">
           <div
             className="flex flex-1 items-center gap-2"
+            role="group"
+            aria-labelledby="duration-label"
             aria-label="Duration in hours and minutes"
           >
             <Input
@@ -52,10 +87,12 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
               aria-label="Duration hours"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={toTwoDigits(hours)}
+              value={draft.hours ?? toTwoDigits(hours)}
               className="text-center"
+              onFocus={() => beginEdit("hours")}
+              onBlur={() => endEdit("hours")}
               onChange={(event) =>
-                handleChange(Number(event.currentTarget.value) || 0, minutes)
+                handleSegmentChange("hours", event.currentTarget.value)
               }
             />
             <span className="text-muted-foreground">:</span>
@@ -63,10 +100,12 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
               aria-label="Duration minutes"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={toTwoDigits(minutes)}
+              value={draft.minutes ?? toTwoDigits(minutes)}
               className="text-center"
+              onFocus={() => beginEdit("minutes")}
+              onBlur={() => endEdit("minutes")}
               onChange={(event) =>
-                handleChange(hours, Number(event.currentTarget.value) || 0)
+                handleSegmentChange("minutes", event.currentTarget.value)
               }
             />
           </div>
