@@ -18,6 +18,7 @@ let package = Package(
         .package(name: "CapacitorCamera", path: "../../../../../node_modules/.pnpm/@capacitor+camera@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/camera"),
         .package(name: "CapacitorGeolocation", path: "../../../../../node_modules/.pnpm/@capacitor+geolocation@8.2.0_@capacitor+core@8.4.0/node_modules/@capacitor/geolocation"),
         .package(name: "CapacitorStatusBar", path: "../../../../../node_modules/.pnpm/@capacitor+status-bar@8.0.2_@capacitor+core@8.4.0/node_modules/@capacitor/status-bar"),
+        .package(name: "CapawesomeTeamCapacitorDatetimePicker", path: "../../../../../node_modules/.pnpm/@capawesome-team+capacitor-datetime-picker@8.1.1_@capacitor+core@8.4.0/node_modules/@capawesome-team/capacitor-datetime-picker"),
         .package(name: "CapgoCapacitorAudioRecorder", path: "../../../../../node_modules/.pnpm/@capgo+capacitor-audio-recorder@8.2.4_@capacitor+core@8.4.0/node_modules/@capgo/capacitor-audio-recorder"),
         .package(name: "PowersyncCapacitor", path: "../../../node_modules/@powersync/capacitor")
     ],
@@ -33,6 +34,7 @@ let package = Package(
                 .product(name: "CapacitorCamera", package: "CapacitorCamera"),
                 .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar"),
+                .product(name: "CapawesomeTeamCapacitorDatetimePicker", package: "CapawesomeTeamCapacitorDatetimePicker"),
                 .product(name: "CapgoCapacitorAudioRecorder", package: "CapgoCapacitorAudioRecorder"),
                 .product(name: "PowersyncCapacitor", package: "PowersyncCapacitor")
             ]

@@ -75,6 +75,7 @@ const collection = new Table(
     created_at: column.text,
     created_by: column.text,
     description: column.text,
+    duration: column.text,
     field_name: column.text,
     location: column.text,
     organisation_id: column.text,

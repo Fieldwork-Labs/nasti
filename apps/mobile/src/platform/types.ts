@@ -34,6 +34,10 @@ export interface PhotoService {
   addPhotos(): Promise<Array<File>>
 }
 
+export interface DurationPickerService {
+  pickDuration(value?: string | null): Promise<string | null>
+}
+
 /**
  * A captured audio recording, ready to persist + upload.
  * `mime_type` is determined by the platform at capture time and flows into the

@@ -30,6 +30,7 @@ import { UploadAudioVariables, useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
+import { DurationPickerField } from "@/components/common/DurationPickerField"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -61,6 +62,7 @@ const schema = z
     phenology_end: z.number().min(-100).max(100).nullable(),
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
+    duration: z.string().nullable(),
     person_ids: z.array(z.string().uuid()).default([]),
   })
   .refine(
@@ -91,6 +93,7 @@ const defaultValues = {
   phenology_end: null,
   amount_units: "",
   amount_quantity: null,
+  duration: null,
   person_ids: [],
 }
 
@@ -315,6 +318,16 @@ function AddCollection() {
                 value={field.value}
                 onChange={field.onChange}
                 defaultToCurrentUser
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="duration"
+            render={({ field }) => (
+              <DurationPickerField
+                value={field.value}
+                onChange={field.onChange}
               />
             )}
           />

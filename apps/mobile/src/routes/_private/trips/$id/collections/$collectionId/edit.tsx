@@ -25,6 +25,7 @@ import { AudiosForm, AudioChanges } from "@/components/common/AudiosForm"
 import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
+import { DurationPickerField } from "@/components/common/DurationPickerField"
 
 const schema = z
   .object({
@@ -44,6 +45,7 @@ const schema = z
       .transform((val) => val || ""),
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
+    duration: z.string().nullable(),
     latitude: stringToNumber,
     longitude: stringToNumber,
     person_ids: z.array(z.string().uuid()).default([]),
@@ -75,6 +77,7 @@ const DEFAULT_VALUES: FormValues = {
   phenology_end: null,
   amount_units: "",
   amount_quantity: null,
+  duration: null,
 }
 
 export const Route = createFileRoute(
@@ -463,6 +466,17 @@ function CollectionFormReady({
             render={({ field }) => (
               <PersonMultiSelectField
                 organisationId={collection.organisation_id}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
+          <Controller
+            control={control}
+            name="duration"
+            render={({ field }) => (
+              <DurationPickerField
                 value={field.value}
                 onChange={field.onChange}
               />

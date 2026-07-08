@@ -21,6 +21,7 @@ import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
+import { formatDuration } from "@/lib/duration"
 
 const CollectionDetail = () => {
   const { user, role } = useAuth()
@@ -47,6 +48,7 @@ const CollectionDetail = () => {
   const presentPeople = persons?.filter((person) =>
     collection?.person_ids?.includes(person.id),
   )
+  const formattedDuration = formatDuration(collection?.duration)
 
   if (!collection)
     return (
@@ -154,68 +156,82 @@ const CollectionDetail = () => {
           </>
         )}
       </table>
-      {Boolean(collection.description) ||
-        (Boolean(collection.amount_quantity || collection.amount_units) && (
-          <div>
-            <hr />
-            <table className="w-full table-fixed">
-              <thead>
-                <tr className="text-muted-foreground text-left">
-                  {Boolean(
-                    collection.amount_quantity || collection.amount_units,
-                  ) && <th>Amount Description</th>}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  {Boolean(
-                    collection.amount_quantity || collection.amount_units,
-                  ) && (
+      {(Boolean(collection.description) ||
+        Boolean(collection.amount_quantity || collection.amount_units) ||
+        Boolean(formattedDuration) ||
+        Boolean(collection.phenology_start)) && (
+        <div>
+          <hr />
+          <table className="w-full table-fixed">
+            {formattedDuration && (
+              <>
+                <thead>
+                  <tr className="text-muted-foreground text-left">
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{formattedDuration}</td>
+                  </tr>
+                </tbody>
+              </>
+            )}
+            {Boolean(collection.amount_quantity || collection.amount_units) && (
+              <>
+                <thead>
+                  <tr className="text-muted-foreground text-left">
+                    <th>Amount Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
                     <td>
                       {collection.amount_quantity} {collection.amount_units}
                     </td>
-                  )}
-                </tr>
-              </tbody>
-              {collection.description && (
-                <>
-                  <thead>
-                    <tr className="text-muted-foreground text-left">
-                      <th>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>{collection.description}</td>
-                    </tr>
-                  </tbody>
-                </>
-              )}
-              {collection.phenology_start && (
-                <>
-                  <thead>
-                    <tr className="text-muted-foreground text-left">
-                      <th>Phenology</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="pt-2">
-                        <PhenologyRangeDisplay
-                          value={[
-                            collection.phenology_start,
-                            collection.phenology_peak,
-                            collection.phenology_end,
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </>
-              )}
-            </table>
-          </div>
-        ))}
+                  </tr>
+                </tbody>
+              </>
+            )}
+            {collection.description && (
+              <>
+                <thead>
+                  <tr className="text-muted-foreground text-left">
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{collection.description}</td>
+                  </tr>
+                </tbody>
+              </>
+            )}
+            {collection.phenology_start && (
+              <>
+                <thead>
+                  <tr className="text-muted-foreground text-left">
+                    <th>Phenology</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="pt-2">
+                      <PhenologyRangeDisplay
+                        value={[
+                          collection.phenology_start,
+                          collection.phenology_peak,
+                          collection.phenology_end,
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </>
+            )}
+          </table>
+        </div>
+      )}
       <Tabs defaultValue="photos">
         <TabsList className="bg-secondary-background mb-2 w-full">
           <TabsTrigger className="w-full" value="photos">
