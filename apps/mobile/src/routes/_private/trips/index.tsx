@@ -20,8 +20,6 @@ export type TripWithLocation = Omit<Trip, "location_coordinate"> & {
   location_coordinate: string
 }
 
-export const tripWithLocationFilter = (trip: Trip): trip is TripWithLocation =>
-  Boolean(trip.location_coordinate)
 
 export const Route = createFileRoute("/_private/trips/")({
   component: TripsList,

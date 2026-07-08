@@ -9,7 +9,7 @@ import { getTripCoordinates } from "@/components/trips/utils"
 import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
 import { TripSpeciesWithDetails, useTripSpecies } from "@/hooks/useTripSpecies"
 import useUserStore from "@/store/userStore"
-import { parsePostGISPoint, queryClient } from "@nasti/common/utils"
+import { parseWkbPoint, queryClient } from "@nasti/common/utils"
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
 import {
@@ -98,7 +98,7 @@ const TripDetail = () => {
         .concat(
           collections
             ?.filter(({ location }) => Boolean(location))
-            .map(({ location }) => parsePostGISPoint(location!)) ?? [],
+            .map(({ location }) => parseWkbPoint(location!)) ?? [],
         )
 
         .map((coord) => [coord.longitude, coord.latitude]),
@@ -199,7 +199,7 @@ const TripDetail = () => {
 
                     return (
                       <CollectionMapMarker
-                        {...parsePostGISPoint(coll.location!)}
+                        {...parseWkbPoint(coll.location!)}
                         key={coll.id}
                         isHovered={itemHovered === coll.id}
                         popupContent={
@@ -229,7 +229,7 @@ const TripDetail = () => {
 
                     return (
                       <ScoutingNoteMapMarker
-                        {...parsePostGISPoint(sn.location!)}
+                        {...parseWkbPoint(sn.location!)}
                         key={sn.id}
                         isHovered={itemHovered === sn.id}
                         popupContent={

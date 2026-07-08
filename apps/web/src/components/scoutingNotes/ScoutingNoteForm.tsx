@@ -4,6 +4,7 @@ import { Controller } from "react-hook-form"
 import { Checkbox } from "@nasti/ui/checkbox"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
+import { MultiSelect, Option } from "@nasti/ui/multi-select"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { withTooltip } from "@nasti/ui/tooltip"
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
@@ -12,7 +13,9 @@ import {
   useScoutingNoteFormContext,
 } from "./ScoutingNoteFormContext"
 import { Button } from "@nasti/ui/button"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { usePersons } from "@/hooks/usePersons"
+import useUserStore from "@/store/userStore"
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
@@ -28,11 +31,43 @@ export const ScoutingNoteForm = ({ form, tripId }: ScoutingNoteFormProps) => {
     watch,
   } = form
 
-  const { setShowLocationMap } = useScoutingNoteFormContext()
+  const { scoutingNote, setShowLocationMap } = useScoutingNoteFormContext()
+  const { user } = useUserStore()
 
   const speciesValue = watch("species_id")
+  const selectedPersonIds = watch("person_ids")
+  const { data: persons } = usePersons()
+  const personOptions: Option[] = useMemo(
+    () =>
+      persons
+        ?.filter(
+          (person) =>
+            person.is_active || selectedPersonIds?.includes(person.id),
+        )
+        .map((person) => ({
+          value: person.id,
+          label: person.job_role
+            ? `${person.display_name} (${person.job_role})`
+            : person.display_name,
+        })) ?? [],
+    [persons, selectedPersonIds],
+  )
 
   const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (scoutingNote || selectedPersonIds?.length || !user?.id || !persons)
+      return
+    const currentPerson = persons.find(
+      (person) => person.source_type === "user" && person.user_id === user.id,
+    )
+    if (currentPerson) {
+      setValue("person_ids", [currentPerson.id], {
+        shouldDirty: false,
+        shouldValidate: true,
+      })
+    }
+  }, [persons, scoutingNote, selectedPersonIds?.length, setValue, user?.id])
 
   return (
     <div className="space-y-6">
@@ -187,6 +222,23 @@ export const ScoutingNoteForm = ({ form, tripId }: ScoutingNoteFormProps) => {
           {...register("description")}
           error={errors.description}
         />
+
+        <div className="space-y-2">
+          <Label>People present</Label>
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <MultiSelect
+                options={personOptions}
+                onValueChange={field.onChange}
+                value={field.value}
+                defaultValue={field.value}
+                placeholder="Select people"
+              />
+            )}
+          />
+        </div>
 
         <Controller
           control={control}

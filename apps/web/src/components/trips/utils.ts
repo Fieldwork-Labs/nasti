@@ -1,4 +1,4 @@
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { Trip } from "@nasti/common/types"
 
 export type TripWithLocation = Omit<Trip, "location_coordinate"> & {
@@ -13,5 +13,5 @@ export const getTripCoordinates = (
 ): { latitude: number; longitude: number } => {
   const wkbString = trip.location_coordinate
   if (!wkbString) throw new Error("No location coordinate")
-  return parsePostGISPoint(wkbString)
+  return parseWkbPoint(wkbString)
 }

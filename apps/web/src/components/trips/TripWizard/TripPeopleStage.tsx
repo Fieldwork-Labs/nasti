@@ -9,7 +9,7 @@ export const TripPeopleStage = () => {
     handleSubmit,
     options,
     onPeopleChange,
-    defaultValue,
+    selectedPeople,
     error,
   } = useTripPeopleForm({ trip, onSave: () => setCurrentStep(3) })
 
@@ -27,7 +27,7 @@ export const TripPeopleStage = () => {
       <TripPeopleForm
         options={options}
         onPeopleChange={onPeopleChange}
-        defaultValue={defaultValue}
+        selectedPeople={selectedPeople}
         error={error}
       />
     </TripWizardStage>

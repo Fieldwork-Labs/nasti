@@ -54,7 +54,7 @@ export type Option = {
  * Props for MultiSelect component
  */
 interface MultiSelectProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "value">,
     VariantProps<typeof multiSelectVariants> {
   /**
    * An array of option objects to be displayed in the multi-select component.
@@ -70,6 +70,9 @@ interface MultiSelectProps
 
   /** The default selected values when the component mounts. */
   defaultValue?: string[]
+
+  /** The selected values when the component is controlled. */
+  value?: string[]
 
   /**
    * Placeholder text to be displayed when no values are selected.
@@ -126,6 +129,7 @@ export const MultiSelect = React.forwardRef<
       onSearchInputChange,
       variant,
       defaultValue = [],
+      value,
       placeholder = "Select options",
       maxCount = 3,
       modalPopover = false,
@@ -137,6 +141,13 @@ export const MultiSelect = React.forwardRef<
     const [selectedValues, setSelectedValues] =
       React.useState<string[]>(defaultValue)
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
+    const isControlled = value !== undefined
+    const currentSelectedValues = value ?? selectedValues
+
+    const updateSelectedValues = (newSelectedValues: string[]) => {
+      if (!isControlled) setSelectedValues(newSelectedValues)
+      onValueChange(newSelectedValues)
+    }
 
     const handleInputKeyDown = (
       event: React.KeyboardEvent<HTMLInputElement>,
@@ -144,24 +155,21 @@ export const MultiSelect = React.forwardRef<
       if (event.key === "Enter") {
         setIsPopoverOpen(true)
       } else if (event.key === "Backspace" && !event.currentTarget.value) {
-        const newSelectedValues = [...selectedValues]
+        const newSelectedValues = [...currentSelectedValues]
         newSelectedValues.pop()
-        setSelectedValues(newSelectedValues)
-        onValueChange(newSelectedValues)
+        updateSelectedValues(newSelectedValues)
       }
     }
 
     const toggleOption = (option: string) => {
-      const newSelectedValues = selectedValues.includes(option)
-        ? selectedValues.filter((value) => value !== option)
-        : [...selectedValues, option]
-      setSelectedValues(newSelectedValues)
-      onValueChange(newSelectedValues)
+      const newSelectedValues = currentSelectedValues.includes(option)
+        ? currentSelectedValues.filter((value) => value !== option)
+        : [...currentSelectedValues, option]
+      updateSelectedValues(newSelectedValues)
     }
 
     const handleClear = () => {
-      setSelectedValues([])
-      onValueChange([])
+      updateSelectedValues([])
     }
 
     const handleTogglePopover = () => {
@@ -169,18 +177,16 @@ export const MultiSelect = React.forwardRef<
     }
 
     const clearExtraOptions = () => {
-      const newSelectedValues = selectedValues.slice(0, maxCount)
-      setSelectedValues(newSelectedValues)
-      onValueChange(newSelectedValues)
+      const newSelectedValues = currentSelectedValues.slice(0, maxCount)
+      updateSelectedValues(newSelectedValues)
     }
 
     const toggleAll = () => {
-      if (selectedValues.length === options.length) {
+      if (currentSelectedValues.length === options.length) {
         handleClear()
       } else {
         const allValues = options.map((option) => option.value)
-        setSelectedValues(allValues)
-        onValueChange(allValues)
+        updateSelectedValues(allValues)
       }
     }
 
@@ -200,10 +206,10 @@ export const MultiSelect = React.forwardRef<
               className,
             )}
           >
-            {selectedValues.length > 0 ? (
+            {currentSelectedValues.length > 0 ? (
               <div className="flex w-full items-center justify-between">
                 <div className="flex flex-wrap items-center">
-                  {selectedValues.slice(0, maxCount).map((value) => {
+                  {currentSelectedValues.slice(0, maxCount).map((value) => {
                     const option = options.find((o) => o.value === value)
                     const IconComponent = option?.icon
                     return (
@@ -225,14 +231,14 @@ export const MultiSelect = React.forwardRef<
                       </Badge>
                     )
                   })}
-                  {selectedValues.length > maxCount && (
+                  {currentSelectedValues.length > maxCount && (
                     <Badge
                       className={cn(
                         "border-foreground/1 text-foreground bg-transparent hover:bg-transparent",
                         multiSelectVariants({ variant }),
                       )}
                     >
-                      {`+ ${selectedValues.length - maxCount} more`}
+                      {`+ ${currentSelectedValues.length - maxCount} more`}
                       <XCircle
                         className="ml-2 h-4 w-4 cursor-pointer"
                         onClick={(event) => {
@@ -290,7 +296,7 @@ export const MultiSelect = React.forwardRef<
                   <div
                     className={cn(
                       "border-primary mr-2 flex h-4 w-4 items-center justify-center rounded-sm border",
-                      selectedValues.length === options.length
+                      currentSelectedValues.length === options.length
                         ? "bg-primary text-primary-foreground"
                         : "opacity-50 [&_svg]:invisible",
                     )}
@@ -300,7 +306,9 @@ export const MultiSelect = React.forwardRef<
                   <span>(Select All)</span>
                 </CommandItem>
                 {options.map((option) => {
-                  const isSelected = selectedValues.includes(option.value)
+                  const isSelected = currentSelectedValues.includes(
+                    option.value,
+                  )
                   return (
                     <CommandItem
                       key={option.value}
@@ -328,7 +336,7 @@ export const MultiSelect = React.forwardRef<
               <CommandSeparator />
               <CommandGroup>
                 <div className="flex items-center justify-between">
-                  {selectedValues.length > 0 && (
+                  {currentSelectedValues.length > 0 && (
                     <>
                       <CommandItem
                         onSelect={handleClear}

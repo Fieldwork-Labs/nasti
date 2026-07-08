@@ -29,6 +29,7 @@ import { AudiosForm } from "@/components/common/AudiosForm"
 import { UploadAudioVariables, useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
+import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -60,6 +61,7 @@ const schema = z
     phenology_end: z.number().min(-100).max(100).nullable(),
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
+    person_ids: z.array(z.string().uuid()).default([]),
   })
   .refine(
     (data) => {
@@ -89,6 +91,7 @@ const defaultValues = {
   phenology_end: null,
   amount_units: "",
   amount_quantity: null,
+  person_ids: [],
 }
 
 function AddCollection() {
@@ -303,6 +306,18 @@ function AddCollection() {
               className="h-12 text-lg"
             />
           </div>
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={organisation?.id}
+                value={field.value}
+                onChange={field.onChange}
+                defaultToCurrentUser
+              />
+            )}
+          />
           <div>
             <Label className="flex items-center gap-2">
               <span>Amount</span>
@@ -397,7 +412,7 @@ function AddCollection() {
               onFocus={() => setDescriptionFocus(true)}
               onBlur={() => setDescriptionFocus(false)}
             />
-          <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
+            <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
           </div>
         </div>
       </div>

@@ -94,6 +94,7 @@ streams:
           phenology_start,
           phenology_peak,
           phenology_end,
+          person_ids::text AS person_ids,
           trip_id
         FROM collection
         WHERE trip_id = subscription.parameter('trip_id')
@@ -154,6 +155,7 @@ streams:
           phenology_start,
           phenology_peak,
           phenology_end,
+          person_ids::text AS person_ids,
           trip_id
         FROM scouting_notes
         WHERE trip_id = subscription.parameter('trip_id')
@@ -197,6 +199,14 @@ streams:
                     AND is_active = true
                 )
             )
+        )
+
+      - |
+        SELECT * FROM person
+        WHERE organisation_id IN (
+          SELECT organisation_id FROM org_user
+          WHERE user_id = auth.user_id()
+            AND is_active = true
         )
 
       - |

@@ -85,6 +85,7 @@ const collection = new Table(
     phenology_start: column.real,
     phenology_peak: column.real,
     phenology_end: column.real,
+    person_ids: column.text,
   },
   {
     indexes: {
@@ -141,6 +142,7 @@ const scouting_notes = new Table(
     phenology_start: column.real,
     phenology_peak: column.real,
     phenology_end: column.real,
+    person_ids: column.text,
   },
   {
     indexes: {
@@ -201,6 +203,27 @@ const species_photo = new Table(
   },
 )
 
+const person = new Table(
+  {
+    created_at: column.text,
+    display_name: column.text,
+    email: column.text,
+    is_active: column.integer,
+    job_role: column.text,
+    organisation_id: column.text,
+    personnel_id: column.text,
+    source_type: column.text,
+    updated_at: column.text,
+    user_id: column.text,
+  },
+  {
+    indexes: {
+      organisation: ["organisation_id"],
+      source: ["source_type"],
+    },
+  },
+)
+
 const sync_failures = new Table(
   {
     target_table: column.text,
@@ -232,6 +255,7 @@ export const AppSchema = new Schema({
   scouting_notes_photos,
   scouting_notes_audio,
   species_photo,
+  person,
   sync_failures,
 })
 
@@ -251,3 +275,4 @@ export type PowerSyncScoutingNotePhotoRow =
 export type PowerSyncScoutingNoteAudioRow =
   PowerSyncAppDatabase["scouting_notes_audio"]
 export type PowerSyncSpeciesPhotoRow = PowerSyncAppDatabase["species_photo"]
+export type PowerSyncPersonRow = PowerSyncAppDatabase["person"]

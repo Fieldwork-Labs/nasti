@@ -24,6 +24,7 @@ import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
 import { AudiosForm, AudioChanges } from "@/components/common/AudiosForm"
 import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
+import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 
 const schema = z
   .object({
@@ -45,6 +46,7 @@ const schema = z
     amount_quantity: stringToNumber,
     latitude: stringToNumber,
     longitude: stringToNumber,
+    person_ids: z.array(z.string().uuid()).default([]),
     phenology_start: z.number().min(-100).max(100).nullable(),
     phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
@@ -67,6 +69,7 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
+  person_ids: [],
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
@@ -453,6 +456,18 @@ function CollectionFormReady({
               onBlur={() => setDescriptionFocus(false)}
             />
           </div>
+
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={collection.organisation_id}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
 
           <div>
             <Label className="flex items-center gap-2">

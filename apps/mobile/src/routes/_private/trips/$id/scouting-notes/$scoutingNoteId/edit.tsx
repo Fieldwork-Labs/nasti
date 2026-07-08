@@ -23,6 +23,7 @@ import { ChevronLeft, InfoIcon, X } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
+import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 
 // --- Schema & Types ---
 const stringToNumber = z.preprocess(
@@ -52,6 +53,7 @@ const schema = z
       .transform((val) => val || ""),
     latitude: stringToNumber,
     longitude: stringToNumber,
+    person_ids: z.array(z.string().uuid()).default([]),
     phenology_start: z.number().min(-100).max(100).nullable(),
     phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
@@ -74,6 +76,7 @@ const DEFAULT_VALUES: FormValues = {
   longitude: null,
   specimen_collected: false,
   description: "",
+  person_ids: [],
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
@@ -445,6 +448,18 @@ function ScoutingNoteFormReady({
               )}
             </div>
           </div>
+
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={initialValues.organisation_id}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
 
           <div>
             <Label>Description</Label>

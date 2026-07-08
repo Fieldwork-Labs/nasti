@@ -12,10 +12,10 @@ export type TripWithLocation = Omit<Trip, "location_coordinate"> & {
   location_coordinate: string
 }
 
-export const tripWithLocationFilter = (trip: Trip): trip is TripWithLocation =>
+const tripWithLocationFilter = (trip: Trip): trip is TripWithLocation =>
   Boolean(trip.location_coordinate)
 
-export const getTripCoordinates = (
+const getTripCoordinates = (
   trip: Trip,
 ): { latitude: number; longitude: number } => {
   const wktString = trip.location_coordinate

@@ -13,16 +13,19 @@ import {
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
 
 import { usePeople } from "@/hooks/usePeople"
+import { usePersons } from "@/hooks/usePersons"
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
+import { MultiSelect, Option } from "@nasti/ui/multi-select"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { withTooltip } from "@nasti/ui/tooltip"
 import {
   CollectionFormProps,
   useCollectionFormContext,
 } from "./CollectionFormContext"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import useUserStore from "@/store/userStore"
 
 // Create tooltip-wrapped component
 const InfoIconWithTooltip = withTooltip(
@@ -38,13 +41,44 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
     watch,
   } = form
 
-  const { setShowLocationMap } = useCollectionFormContext()
+  const { collection, setShowLocationMap } = useCollectionFormContext()
+  const { user } = useUserStore()
 
   const speciesValue = watch("species_id")
 
   const { data: people } = usePeople()
+  const { data: persons } = usePersons()
+  const selectedPersonIds = watch("person_ids")
+  const personOptions: Option[] = useMemo(
+    () =>
+      persons
+        ?.filter(
+          (person) =>
+            person.is_active || selectedPersonIds?.includes(person.id),
+        )
+        .map((person) => ({
+          value: person.id,
+          label: person.job_role
+            ? `${person.display_name} (${person.job_role})`
+            : person.display_name,
+        })) ?? [],
+    [persons, selectedPersonIds],
+  )
 
   const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (collection || selectedPersonIds?.length || !user?.id || !persons) return
+    const currentPerson = persons.find(
+      (person) => person.source_type === "user" && person.user_id === user.id,
+    )
+    if (currentPerson) {
+      setValue("person_ids", [currentPerson.id], {
+        shouldDirty: false,
+        shouldValidate: true,
+      })
+    }
+  }, [collection, persons, selectedPersonIds?.length, setValue, user?.id])
 
   return (
     <div className="space-y-6">
@@ -185,6 +219,23 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
                 </SelectGroup>
               </SelectContent>
             </Select>
+          )}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>People present</Label>
+        <Controller
+          control={control}
+          name="person_ids"
+          render={({ field }) => (
+            <MultiSelect
+              options={personOptions}
+              onValueChange={field.onChange}
+              value={field.value}
+              defaultValue={field.value}
+              placeholder="Select people"
+            />
           )}
         />
       </div>

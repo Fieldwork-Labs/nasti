@@ -1,6 +1,6 @@
 import { useOpenClose } from "@nasti/ui/hooks"
 import { getSpecies, useSpecies } from "@/hooks/useSpecies"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { queryClient } from "@nasti/common/utils"
 import {
   createFileRoute,
@@ -150,7 +150,7 @@ const SpeciesMap = ({
         .map((coll) => ({
           id: coll.id,
           trip_id: coll.trip_id,
-          ...parsePostGISPoint(coll.location!),
+          ...parseWkbPoint(coll.location!),
         })) as {
         id: string
         trip_id: string

@@ -34,6 +34,7 @@ import {
   BaseFormData,
   baseSchema,
 } from "@/components/common/dataSchema"
+import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -254,6 +255,19 @@ function AddCollection() {
               className="h-12 text-lg"
             />
           </div>
+
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={organisation?.id}
+                value={field.value}
+                onChange={field.onChange}
+                defaultToCurrentUser
+              />
+            )}
+          />
 
           <Controller
             control={control}

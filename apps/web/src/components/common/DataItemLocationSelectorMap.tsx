@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 
 import { useTripDetail } from "@/hooks/useTripDetail"
-import { parsePostGISPoint } from "@nasti/common/utils"
+import { parseWkbPoint } from "@nasti/common/utils"
 import { Button } from "@nasti/ui/button"
 import { LocationSelectorMap } from "../common/LocationSelectorMap"
 
@@ -24,7 +24,7 @@ export const DataItemLocationSelectorMap = ({
   const initialViewCoord = useMemo(() => {
     if (initialLocation) return initialLocation
     if (trip?.location_coordinate) {
-      const parsedLocation = parsePostGISPoint(trip?.location_coordinate)
+      const parsedLocation = parseWkbPoint(trip?.location_coordinate)
       return {
         lat: parsedLocation.latitude,
         lng: parsedLocation.longitude,

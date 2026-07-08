@@ -8,7 +8,7 @@ const getScoutingNotesByTrip = async (tripId: string) => {
     .select("*")
     .eq("trip_id", tripId)
     .order("created_at", { ascending: false })
-    .overrideTypes<ScoutingNote[]>()
+    .overrideTypes<ScoutingNote[], { merge: false }>()
 
   if (error) throw new Error(error.message)
 
