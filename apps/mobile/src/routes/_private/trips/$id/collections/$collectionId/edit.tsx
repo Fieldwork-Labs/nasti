@@ -26,6 +26,8 @@ import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
+import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
 
 const schema = z
   .object({
@@ -136,6 +138,7 @@ function CollectionFormReady({
   tripId: string
 }) {
   const { user, organisation, role } = useAuth()
+  const currentUserPerson = useCurrentUserPerson(collection.organisation_id)
 
   const { mutateAsync: updateCollection } = useCollectionUpdate({ tripId })
   const { createPhotoMutation, updateCaptionMutation, deletePhotoMutation } =
@@ -222,8 +225,11 @@ function CollectionFormReady({
       if (!user || !organisation) throw new Error("Not logged in")
       if (!tripId) throw new Error("tripId must be supplied")
 
-      const { latitude, longitude, ...rest } = data
+      const { latitude, longitude, person_ids, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
+      const filteredPersonIds = currentUserPerson?.id
+        ? person_ids.filter((personId) => personId !== currentUserPerson.id)
+        : person_ids
 
       const payload: UpdateCollection = {
         id: collectionIdRef.current,
@@ -233,6 +239,7 @@ function CollectionFormReady({
         created_at: new Date().toISOString(),
         location: locationPoint,
         ...rest,
+        person_ids: filteredPersonIds,
       }
       if (
         !isDirty &&
@@ -330,6 +337,7 @@ function CollectionFormReady({
       collectionId,
       updateCollection,
       isOnline,
+      currentUserPerson?.id,
     ],
   )
 
@@ -458,6 +466,10 @@ function CollectionFormReady({
               onFocus={() => setDescriptionFocus(true)}
               onBlur={() => setDescriptionFocus(false)}
             />
+            <AudiosForm
+              initialAudios={initialAudios}
+              onAudiosChange={setAudioChanges}
+            />
           </div>
 
           <Controller
@@ -468,17 +480,8 @@ function CollectionFormReady({
                 organisationId={collection.organisation_id}
                 value={field.value}
                 onChange={field.onChange}
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="duration"
-            render={({ field }) => (
-              <DurationPickerField
-                value={field.value}
-                onChange={field.onChange}
+                displayCurrentUser
+                label="Collectors"
               />
             )}
           />
@@ -565,10 +568,19 @@ function CollectionFormReady({
             initialPhotos={initialPhotos}
             onPhotosChange={setPhotoChanges}
           />
-          <AudiosForm
-            initialAudios={initialAudios}
-            onAudiosChange={setAudioChanges}
-          />
+
+          <ExtraFieldsAccordion>
+            <Controller
+              control={control}
+              name="duration"
+              render={({ field }) => (
+                <DurationPickerField
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </ExtraFieldsAccordion>
         </div>
 
         <div className="flex space-x-2 border-t p-2">

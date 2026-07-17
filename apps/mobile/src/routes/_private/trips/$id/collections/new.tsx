@@ -31,6 +31,8 @@ import { stringToNumber } from "@nasti/common/utils"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
+import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -106,6 +108,7 @@ function AddCollection() {
     from: "/_private/trips/$id/collections/new",
   })
   const { user, organisation } = useAuth()
+  const currentUserPerson = useCurrentUserPerson(organisation?.id)
 
   const { location, locationDisplay } = useGeoLocation()
   const { mutateAsync: createCollection } = useCollectionCreate({ tripId })
@@ -161,8 +164,14 @@ function AddCollection() {
       if (!location) throw new Error("No location available")
       const { latitude, longitude } = location
       const locationPoint = `POINT(${longitude} ${latitude})`
+      const person_ids = currentUserPerson?.id
+        ? data.person_ids.filter(
+            (personId) => personId !== currentUserPerson.id,
+          )
+        : data.person_ids
       const newCollection: NewCollection = {
         ...data,
+        person_ids,
         id: collectionIdRef.current,
         created_by: user.id,
         collected_by: user.id,
@@ -203,6 +212,7 @@ function AddCollection() {
       audios,
       createPhotoMutation,
       createAudioMutation,
+      currentUserPerson?.id,
       navigate,
     ],
   )
@@ -317,20 +327,12 @@ function AddCollection() {
                 organisationId={organisation?.id}
                 value={field.value}
                 onChange={field.onChange}
-                defaultToCurrentUser
+                displayCurrentUser
+                label="Collectors"
               />
             )}
           />
-          <Controller
-            control={control}
-            name="duration"
-            render={({ field }) => (
-              <DurationPickerField
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
+
           <div>
             <Label className="flex items-center gap-2">
               <span>Amount</span>
@@ -427,6 +429,18 @@ function AddCollection() {
             />
             <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
           </div>
+          <ExtraFieldsAccordion>
+            <Controller
+              control={control}
+              name="duration"
+              render={({ field }) => (
+                <DurationPickerField
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </ExtraFieldsAccordion>
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">
