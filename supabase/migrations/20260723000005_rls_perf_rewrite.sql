@@ -12,6 +12,79 @@
 -- replaced; references in app code use table+action, not policy names.
 
 -- ============================================================================
+-- custody policy helpers
+-- ============================================================================
+-- current_batch_custody is now a security-invoker view. The original helper
+-- functions queried that view (or batch_custody directly) as the caller, which
+-- re-entered batch_custody's own RLS policy and caused a stack-depth error.
+-- These boolean-only predicates need an unfiltered custody history to answer
+-- correctly, so they bypass RLS in a tightly scoped function and reject calls
+-- made on behalf of any user other than the authenticated caller.
+
+CREATE OR REPLACE FUNCTION public.is_current_custodian(
+  p_user_id uuid,
+  p_batch_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    $1 = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1
+      FROM public.org_user ou
+      WHERE ou.user_id = $1
+        AND ou.is_active = true
+        AND ou.organisation_id = (
+          SELECT bc.organisation_id
+          FROM public.batch_custody bc
+          WHERE bc.batch_id = $2
+          ORDER BY bc.received_at DESC, bc.id DESC
+          LIMIT 1
+        )
+    )
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_batch_custodian_or_past(
+  auth_uid uuid,
+  batch_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    $1 = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1
+      FROM public.batch_custody bc
+      INNER JOIN public.org_user ou
+        ON ou.organisation_id = bc.organisation_id
+      WHERE bc.batch_id = $2
+        AND ou.user_id = $1
+        AND ou.is_active = true
+    )
+$$;
+
+REVOKE ALL PRIVILEGES
+  ON FUNCTION public.is_current_custodian(uuid, uuid)
+  FROM PUBLIC, anon;
+REVOKE ALL PRIVILEGES
+  ON FUNCTION public.is_batch_custodian_or_past(uuid, uuid)
+  FROM PUBLIC, anon;
+GRANT EXECUTE
+  ON FUNCTION public.is_current_custodian(uuid, uuid)
+  TO authenticated;
+GRANT EXECUTE
+  ON FUNCTION public.is_batch_custodian_or_past(uuid, uuid)
+  TO authenticated;
+
+-- ============================================================================
 -- collection
 -- ============================================================================
 DROP POLICY IF EXISTS "collection_rls" ON public.collection;
@@ -44,7 +117,10 @@ CREATE POLICY collection_update ON public.collection
   FOR UPDATE TO authenticated
   USING (
     created_by = (SELECT auth.uid())
-    OR (SELECT public.auth_org_role()) = 'Admin'
+    OR (
+      organisation_id = (SELECT public.get_user_organisation_id())
+      AND (SELECT public.auth_org_role()) = 'Admin'
+    )
   )
   WITH CHECK (organisation_id = (SELECT public.get_user_organisation_id()));
 
@@ -66,6 +142,8 @@ DROP POLICY IF EXISTS "Allow authenticated users to select their collection phot
 DROP POLICY IF EXISTS "Allow authenticated users to insert collection photos" ON public.collection_photo;
 DROP POLICY IF EXISTS "Allow authenticated users to update their own collection photos" ON public.collection_photo;
 DROP POLICY IF EXISTS "Allow authenticated users to delete their own collection photos" ON public.collection_photo;
+DROP POLICY IF EXISTS "Allow authenticated users to update their own collection photos or admin to update any that belong to the organisation" ON public.collection_photo;
+DROP POLICY IF EXISTS "Allow authenticated users to delete their own collection photos or admin to delete any that belong to the organisation" ON public.collection_photo;
 
 CREATE POLICY collection_photo_select ON public.collection_photo
   FOR SELECT TO authenticated
@@ -89,6 +167,10 @@ CREATE POLICY collection_photo_update ON public.collection_photo
     SELECT 1 FROM public.collection c
     WHERE c.id = collection_photo.collection_id
       AND c.organisation_id = (SELECT public.get_user_organisation_id())
+      AND (
+        c.created_by = (SELECT auth.uid())
+        OR (SELECT public.auth_org_role()) = 'Admin'
+      )
   ));
 
 CREATE POLICY collection_photo_delete ON public.collection_photo
@@ -97,30 +179,52 @@ CREATE POLICY collection_photo_delete ON public.collection_photo
     SELECT 1 FROM public.collection c
     WHERE c.id = collection_photo.collection_id
       AND c.organisation_id = (SELECT public.get_user_organisation_id())
+      AND (
+        c.created_by = (SELECT auth.uid())
+        OR (SELECT public.auth_org_role()) = 'Admin'
+      )
   ));
 
 -- ============================================================================
 -- invitation
 -- ============================================================================
 DROP POLICY IF EXISTS "invitation_rls" ON public.invitation;
+DROP POLICY IF EXISTS invitation_all ON public.invitation;
 
-CREATE POLICY invitation_all ON public.invitation
-  FOR ALL TO authenticated
-  USING (organisation_id = (SELECT public.get_user_organisation_id()))
-  WITH CHECK (organisation_id = (SELECT public.get_user_organisation_id()));
+CREATE POLICY invitation_select ON public.invitation
+  FOR SELECT TO authenticated
+  USING (
+    organisation_id = (SELECT public.get_user_organisation_id())
+    AND (SELECT public.auth_org_role()) = 'Admin'
+  );
+
+CREATE POLICY invitation_update ON public.invitation
+  FOR UPDATE TO authenticated
+  USING (
+    organisation_id = (SELECT public.get_user_organisation_id())
+    AND (SELECT public.auth_org_role()) = 'Admin'
+  )
+  WITH CHECK (
+    organisation_id = (SELECT public.get_user_organisation_id())
+    AND (SELECT public.auth_org_role()) = 'Admin'
+  );
+
+CREATE POLICY invitation_delete ON public.invitation
+  FOR DELETE TO authenticated
+  USING (
+    organisation_id = (SELECT public.get_user_organisation_id())
+    AND (SELECT public.auth_org_role()) = 'Admin'
+  );
 
 -- ============================================================================
 -- org_user
 -- ============================================================================
 DROP POLICY IF EXISTS "org_user_rls" ON public.org_user;
+DROP POLICY IF EXISTS org_user_all ON public.org_user;
 
-CREATE POLICY org_user_all ON public.org_user
-  FOR ALL TO authenticated
+CREATE POLICY org_user_select ON public.org_user
+  FOR SELECT TO authenticated
   USING (
-    organisation_id = (SELECT public.get_user_organisation_id())
-    OR user_id = (SELECT auth.uid())
-  )
-  WITH CHECK (
     organisation_id = (SELECT public.get_user_organisation_id())
     OR user_id = (SELECT auth.uid())
   );
@@ -282,7 +386,8 @@ CREATE POLICY batch_storage_insert ON public.batch_storage
 
 CREATE POLICY batch_storage_update ON public.batch_storage
   FOR UPDATE TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  USING (public.is_current_custodian((SELECT auth.uid()), batch_id))
+  WITH CHECK (public.is_current_custodian((SELECT auth.uid()), batch_id));
 
 -- ============================================================================
 -- organisation

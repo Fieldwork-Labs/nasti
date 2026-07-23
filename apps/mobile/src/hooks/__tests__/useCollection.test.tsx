@@ -14,7 +14,7 @@ const mockCollection = {
   field_name: "",
   specimen_collected: 0,
   organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
-  location: "0101000020E6100000798A691471F35C4037D5DD4FAE0940C0",
+  location: "POINT(115.80378 -32.07563)",
   created_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
   created_at: "2025-05-13T08:58:52.807+00:00",
   trip_id: tripId,

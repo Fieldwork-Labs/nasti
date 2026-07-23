@@ -25,7 +25,7 @@ import {
 } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
-import { CollectionListItem } from "@/components/collections/CollectionListItem"
+import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import { useActiveBatchAssignment } from "@/hooks/useBatchAssignments"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
@@ -461,7 +461,7 @@ const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {
   if (isTesting) return
   return (
     <span className="lg:max-w-1/2">
-      <CollectionListItem id={batch.collection_id} />
+      <CollectionListItemWithModal id={batch.collection_id} />
     </span>
   )
 }

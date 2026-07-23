@@ -107,12 +107,18 @@ export const BatchSplitForm = ({
       // order matches output order from fn_split_sub_batch.
       const storageRows = data.outputs
         .map((o, i) => ({
+          batch_id: parentBatch.id,
           sub_batch_id: newSubBatchIds[i],
           location_id: o.location_id,
         }))
         .filter(
-          (r): r is { sub_batch_id: string; location_id: string } =>
-            Boolean(r.sub_batch_id) && Boolean(r.location_id),
+          (
+            r,
+          ): r is {
+            batch_id: string
+            sub_batch_id: string
+            location_id: string
+          } => Boolean(r.sub_batch_id) && Boolean(r.location_id),
         )
 
       if (storageRows.length > 0) {

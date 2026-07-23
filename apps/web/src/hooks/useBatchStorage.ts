@@ -315,6 +315,7 @@ type MoveBatchToStorageParams = {
 export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
     mutationFn: async ({
+      batchId,
       subBatchId,
       currentBatchStorageId,
       locationId,
@@ -338,6 +339,7 @@ export const useMoveBatchToStorage = () => {
       const { data, error } = await supabase
         .from("batch_storage")
         .insert({
+          batch_id: batchId,
           sub_batch_id: subBatchId,
           location_id: locationId,
           stored_at: storedAt || timestamp,
@@ -425,11 +427,12 @@ type CreateStorageRecordParams = {
 
 export const useCreateStorageRecord = () => {
   return useMutation<BatchStorage, Error, CreateStorageRecordParams>({
-    mutationFn: async ({ locationId, subBatchId, notes }) => {
+    mutationFn: async ({ locationId, subBatchId, batchId, notes }) => {
       const { data, error } = await supabase
         .from("batch_storage")
         .insert({
           notes,
+          batch_id: batchId,
           location_id: locationId,
           sub_batch_id: subBatchId,
         })

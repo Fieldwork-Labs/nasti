@@ -8,6 +8,7 @@
     "lint": "turbo run lint",
     "preview": "turbo run preview",
     "test": "turbo run test",
+    "test:db": "supabase test db",
     "prepare": "husky",
     "clean": "turbo run clean && rm -rf node_modules",
     "powersync:up": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml up -d",

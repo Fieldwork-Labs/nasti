@@ -353,6 +353,7 @@ export type Database = {
       }
       batch_storage: {
         Row: {
+          batch_id: string
           created_at: string
           id: string
           location_id: string
@@ -362,6 +363,7 @@ export type Database = {
           sub_batch_id: string
         }
         Insert: {
+          batch_id: string
           created_at?: string
           id?: string
           location_id: string
@@ -371,6 +373,7 @@ export type Database = {
           sub_batch_id: string
         }
         Update: {
+          batch_id?: string
           created_at?: string
           id?: string
           location_id?: string
@@ -380,6 +383,27 @@ export type Database = {
           sub_batch_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "batch_storage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "batch_storage_location_id_fkey"
             columns: ["location_id"]
@@ -598,58 +622,73 @@ export type Database = {
       }
       collection: {
         Row: {
+          amount_quantity: number | null
+          amount_units: string | null
           code: string | null
           collected_by: string
           collected_on: string
           created_at: string
           created_by: string | null
           description: string | null
+          duration: string | null
           field_name: string | null
           id: string
           location: unknown
           organisation_id: string | null
-          plants_sampled_estimate: number | null
+          person_ids: string[]
+          phenology_end: number | null
+          phenology_peak: number | null
+          phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
           trip_id: string | null
-          weight_estimate_kg: number | null
         }
         Insert: {
+          amount_quantity?: number | null
+          amount_units?: string | null
           code?: string | null
           collected_by: string
           collected_on?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
+          duration?: string | null
           field_name?: string | null
           id?: string
           location?: unknown
           organisation_id?: string | null
-          plants_sampled_estimate?: number | null
+          person_ids?: string[]
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
           trip_id?: string | null
-          weight_estimate_kg?: number | null
         }
         Update: {
+          amount_quantity?: number | null
+          amount_units?: string | null
           code?: string | null
           collected_by?: string
           collected_on?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
+          duration?: string | null
           field_name?: string | null
           id?: string
           location?: unknown
           organisation_id?: string | null
-          plants_sampled_estimate?: number | null
+          person_ids?: string[]
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
           trip_id?: string | null
-          weight_estimate_kg?: number | null
         }
         Relationships: [
           {
@@ -671,6 +710,51 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trip"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_audio: {
+        Row: {
+          caption: string | null
+          collection_id: string
+          duration_ms: number | null
+          id: string
+          mime_type: string
+          uploaded_at: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          collection_id: string
+          duration_ms?: number | null
+          id?: string
+          mime_type: string
+          uploaded_at?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          collection_id?: string
+          duration_ms?: number | null
+          id?: string
+          mime_type?: string
+          uploaded_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_audio_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collection"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_audio_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
             referencedColumns: ["id"]
           },
         ]
@@ -967,6 +1051,104 @@ export type Database = {
           },
         ]
       }
+      person: {
+        Row: {
+          created_at: string
+          display_name: string
+          email: string | null
+          id: string
+          is_active: boolean
+          job_role: string | null
+          organisation_id: string
+          personnel_id: string | null
+          source_type: Database["public"]["Enums"]["person_source_type"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          organisation_id: string
+          personnel_id?: string | null
+          source_type: Database["public"]["Enums"]["person_source_type"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          organisation_id?: string
+          personnel_id?: string | null
+          source_type?: Database["public"]["Enums"]["person_source_type"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          job_role: string | null
+          name: string
+          organisation_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          name: string
+          organisation_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          job_role?: string | null
+          name?: string
+          organisation_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scouting_notes: {
         Row: {
           created_at: string
@@ -976,6 +1158,10 @@ export type Database = {
           id: string
           location: unknown
           organisation_id: string | null
+          person_ids: string[]
+          phenology_end: number | null
+          phenology_peak: number | null
+          phenology_start: number | null
           species_id: string | null
           species_uncertain: boolean
           specimen_collected: boolean | null
@@ -989,6 +1175,10 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          person_ids?: string[]
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -1002,6 +1192,10 @@ export type Database = {
           id?: string
           location?: unknown
           organisation_id?: string | null
+          person_ids?: string[]
+          phenology_end?: number | null
+          phenology_peak?: number | null
+          phenology_start?: number | null
           species_id?: string | null
           species_uncertain?: boolean
           specimen_collected?: boolean | null
@@ -1027,6 +1221,44 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trip"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scouting_notes_audio: {
+        Row: {
+          caption: string | null
+          duration_ms: number | null
+          id: string
+          mime_type: string
+          scouting_notes_id: string
+          uploaded_at: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          duration_ms?: number | null
+          id?: string
+          mime_type: string
+          scouting_notes_id: string
+          uploaded_at?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          duration_ms?: number | null
+          id?: string
+          mime_type?: string
+          scouting_notes_id?: string
+          uploaded_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouting_notes_audio_scouting_notes_id_fkey"
+            columns: ["scouting_notes_id"]
+            isOneToOne: false
+            referencedRelation: "scouting_notes"
             referencedColumns: ["id"]
           },
         ]
@@ -1989,6 +2221,7 @@ export type Database = {
         Args: { p_batch_ids: string[] }
         Returns: string
       }
+      auth_org_role: { Args: never; Returns: string }
       batch_weight_info: {
         Args: { batch_row: Database["public"]["Tables"]["batches"]["Row"] }
         Returns: Json
@@ -2006,6 +2239,9 @@ export type Database = {
         Args: { p_batch_id: string }
         Returns: string
       }
+      current_org_id: { Args: never; Returns: string }
+      current_user_role: { Args: never; Returns: string }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
@@ -2443,6 +2679,7 @@ export type Database = {
         Args: { p_general_org_id: string; p_testing_org_id: string }
         Returns: boolean
       }
+      is_org_admin: { Args: { org_id: string }; Returns: boolean }
       is_org_member: {
         Args: { org_id: string; user_id: string }
         Returns: boolean
@@ -3109,6 +3346,7 @@ export type Database = {
       batch_treatment_type: "sort" | "coat" | "treat" | "other"
       org_user_types: "Member" | "Admin"
       organisation_type: "General" | "Testing"
+      person_source_type: "user" | "personnel"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3140,7 +3378,6 @@ export type Database = {
     }
   }
 }
-
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
@@ -3265,6 +3502,7 @@ export const Constants = {
       batch_treatment_type: ["sort", "coat", "treat", "other"],
       org_user_types: ["Member", "Admin"],
       organisation_type: ["General", "Testing"],
+      person_source_type: ["user", "personnel"],
     },
   },
 } as const

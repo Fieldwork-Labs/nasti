@@ -1,9 +1,10 @@
-import type { Collection } from "@nasti/common/types"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, afterEach, vi } from "vitest"
 import { parseLocation } from "../useTripDetails/helpers"
 import { useTripDetails } from "../useTripDetails"
+import { rowToCollection } from "@/lib/powersync/rows"
+import type { PowerSyncCollectionRow } from "@/lib/powersync/schema"
 
 const { powerSyncUseQueryMock } = vi.hoisted(() => ({
   powerSyncUseQueryMock: vi.fn(),
@@ -24,7 +25,7 @@ const mockTrip = {
     end_date: "2025-01-22",
     created_at: "2025-01-13T06:21:32.971891+00:00",
     created_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
-    location_coordinate: "0101000020E61000003048FAB48A785D404DA088450C8341C0",
+    location_coordinate: "POINT(117.88347 -35.02381)",
     location_name: "Albany",
   },
   count: null,
@@ -54,36 +55,60 @@ const mockTripMembers = {
   statusText: "OK",
 }
 
-const mockTripCollections = {
+const mockTripCollections: {
+  error: null
+  data: PowerSyncCollectionRow[]
+  count: null
+  status: number
+  statusText: string
+} = {
   error: null,
   data: [
     {
       id: "a9b6d7f6-bf43-455b-a306-6050191e3637",
       species_id: "3ef49a8c-c020-4418-b3ef-9efbc9a80d57",
-      species_uncertain: false,
+      species_uncertain: 0,
       field_name: "",
-      specimen_collected: false,
+      specimen_collected: 0,
       organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
-      location: "0101000020E6100000798A691471F35C4037D5DD4FAE0940C0",
+      person_ids: "[]",
+      location: "POINT(115.80378 -32.07563)",
       created_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
       created_at: "2025-05-13T08:58:52.807+00:00",
       trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
       description: "",
       amount_quantity: 0,
+      amount_units: "buckets",
+      code: "NONE",
+      collected_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
+      collected_on: "2025-05-13T08:58:52.807+00:00",
+      duration: "0",
+      phenology_start: -15,
+      phenology_peak: 10,
+      phenology_end: 25,
     },
     {
       id: "random-collection-id-1",
       species_id: "3ef49a8c-c020-4418-b3ef-9efbc9a80d57",
-      species_uncertain: false,
+      species_uncertain: 0,
       field_name: "",
-      specimen_collected: false,
+      specimen_collected: 0,
       organisation_id: "33db6b9c-2920-4a36-b970-0d399d1f3a66",
-      location: "0101000020E6100000798A691471F35C4037D5DD4FAE0940C0",
+      person_ids: "[]",
+      location: "POINT(115.80378 -32.07563)",
       created_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
       created_at: "2025-05-13T08:58:52.807+00:00",
       trip_id: "cd9aa864-3bae-43d9-af5a-2e635a5bd640",
       description: "",
       amount_quantity: 0,
+      amount_units: "buckets",
+      code: "NONE",
+      collected_by: "db47a359-4510-47db-8f0e-1a6cb8919af2",
+      collected_on: "2025-05-13T08:58:52.807+00:00",
+      duration: "0",
+      phenology_start: -15,
+      phenology_peak: 10,
+      phenology_end: 25,
     },
   ],
   count: null,
@@ -92,9 +117,9 @@ const mockTripCollections = {
 }
 
 const getUseTripDetailsExpected = () => {
-  const collectionsWithCoord = (mockTripCollections.data as Collection[]).map(
-    parseLocation,
-  )
+  const collectionsWithCoord = (
+    mockTripCollections.data as PowerSyncCollectionRow[]
+  ).map((row) => parseLocation(rowToCollection(row)))
 
   return {
     ...mockTrip.data,

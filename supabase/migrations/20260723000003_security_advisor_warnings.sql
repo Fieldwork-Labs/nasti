@@ -3,8 +3,8 @@
 -- left behind, silently overriding them.
 DROP POLICY IF EXISTS species_rls ON public.species;
 
--- Group 1: lock down search_path on every public function flagged by the
--- advisor. Prevents search_path hijacking, especially against SECURITY DEFINER
+-- Group 1: lock down search_path on every public function.
+-- Prevents search_path hijacking, especially against SECURITY DEFINER
 -- functions where it could lead to code execution as the function owner.
 -- Wrapped in DO blocks so missing functions (e.g. on a partially-migrated
 -- local DB) don't abort the whole migration.
@@ -86,7 +86,7 @@ DECLARE
 BEGIN
   FOREACH sig IN ARRAY sigs LOOP
     BEGIN
-      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM anon', sig);
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon', sig);
     EXCEPTION WHEN undefined_function THEN
       RAISE NOTICE 'skipping missing function %', sig;
     END;

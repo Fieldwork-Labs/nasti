@@ -7,7 +7,8 @@ CREATE TABLE sub_batches (
   batch_id UUID NOT NULL REFERENCES batches(id) ON DELETE CASCADE,
   weight_grams INTEGER NOT NULL CHECK (weight_grams > 0),
   notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (id, batch_id)
 );
 
 CREATE INDEX idx_sub_batches_batch_id ON sub_batches(batch_id);
@@ -178,47 +179,30 @@ DROP POLICY IF EXISTS custodian_can_update_batch_storage ON batch_storage;
 -- Drop dependent view before altering columns
 DROP VIEW IF EXISTS current_batch_storage CASCADE;
 
--- Replace batch_id with sub_batch_id
+-- Keep batch_id as the direct RLS key and add sub_batch_id for inventory
+-- tracking. The composite foreign key guarantees both values describe the
+-- same batch without requiring a policy-time join through sub_batches.
 ALTER TABLE batch_storage ADD COLUMN sub_batch_id UUID NOT NULL REFERENCES sub_batches(id) ON DELETE CASCADE;
-ALTER TABLE batch_storage DROP COLUMN batch_id;
+ALTER TABLE batch_storage
+  ADD CONSTRAINT batch_storage_sub_batch_matches_batch_fkey
+  FOREIGN KEY (sub_batch_id, batch_id)
+  REFERENCES sub_batches(id, batch_id)
+  ON DELETE CASCADE;
 CREATE INDEX idx_batch_storage_sub_batch_id ON batch_storage(sub_batch_id);
 
--- New RLS policies based on sub_batch_id (custody checked through sub_batches → batches)
+-- Use the retained batch_id for non-recursive custody checks.
 CREATE POLICY custodian_can_view_batch_storage ON batch_storage
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM sub_batches sb
-      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
-      WHERE sb.id = batch_storage.sub_batch_id
-        AND is_org_member(auth.uid(), cbc.organisation_id)
-    )
-  );
+  FOR SELECT TO authenticated
+  USING (is_current_custodian((SELECT auth.uid()), batch_id));
 
 CREATE POLICY custodian_can_insert_batch_storage ON batch_storage
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM sub_batches sb
-      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
-      WHERE sb.id = batch_storage.sub_batch_id
-        AND is_org_member(auth.uid(), cbc.organisation_id)
-    )
-  );
+  FOR INSERT TO authenticated
+  WITH CHECK (is_current_custodian((SELECT auth.uid()), batch_id));
 
 CREATE POLICY custodian_can_update_batch_storage ON batch_storage
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM sub_batches sb
-      JOIN current_batch_custody cbc ON cbc.batch_id = sb.batch_id
-      WHERE sb.id = batch_storage.sub_batch_id
-        AND is_org_member(auth.uid(), cbc.organisation_id)
-    )
-  );
+  FOR UPDATE TO authenticated
+  USING (is_current_custodian((SELECT auth.uid()), batch_id))
+  WITH CHECK (is_current_custodian((SELECT auth.uid()), batch_id));
 
 -- Recreate current_batch_storage view — derives batch_id from sub_batches
 CREATE VIEW current_batch_storage AS
@@ -626,7 +610,25 @@ DECLARE
   v_total_weight NUMERIC := 0;
   v_repeat JSONB;
   v_sub_batch_batch_id UUID;
+  v_user_organisation_id UUID;
 BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  SELECT organisation_id INTO v_user_organisation_id
+  FROM org_user
+  WHERE user_id = auth.uid()
+    AND is_active = true;
+
+  IF v_user_organisation_id IS NULL THEN
+    RAISE EXCEPTION 'Active organisation membership required';
+  END IF;
+
+  IF p_performed_by_organisation_id IS DISTINCT FROM v_user_organisation_id THEN
+    RAISE EXCEPTION 'Test organisation does not match authenticated user';
+  END IF;
+
   -- Validate sub-batch belongs to the batch
   SELECT batch_id INTO v_sub_batch_batch_id
   FROM sub_batches WHERE id = p_sub_batch_id;
@@ -637,6 +639,19 @@ BEGIN
 
   IF v_sub_batch_batch_id != p_batch_id THEN
     RAISE EXCEPTION 'Sub-batch does not belong to the specified batch';
+  END IF;
+
+  IF NOT (
+    is_current_custodian(auth.uid(), p_batch_id)
+    OR EXISTS (
+      SELECT 1
+      FROM batch_testing_assignment bta
+      WHERE bta.batch_id = p_batch_id
+        AND bta.assigned_to_org_id = v_user_organisation_id
+        AND bta.returned_at IS NULL
+    )
+  ) THEN
+    RAISE EXCEPTION 'Not authorised to test this batch';
   END IF;
 
   -- Calculate total weight consumed from repeats
@@ -673,6 +688,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+REVOKE ALL ON FUNCTION fn_create_quality_test(UUID, UUID, JSONB, UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION fn_create_quality_test(UUID, UUID, JSONB, UUID) TO authenticated;
 
 -- ============================================================================

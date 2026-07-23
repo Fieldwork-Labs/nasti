@@ -300,9 +300,13 @@ export const useCreateQualityTest = () => {
       // find the batch in the filter queries
       const batchFilterQueries = queryClient.getQueriesData<ActiveBatch[]>({
         queryKey: ["batches", "byFilter"],
-        predicate: (query) =>
-          query.state.data?.find((batch) => batch.id === newTest.batch_id) !==
-          undefined,
+        predicate: (query) => {
+          const data = query.state.data
+          return (
+            Array.isArray(data) &&
+            data.some((batch: ActiveBatch) => batch.id === newTest.batch_id)
+          )
+        },
       })
 
       if (batchFilterQueries) {
