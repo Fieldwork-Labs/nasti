@@ -29,6 +29,7 @@ import { Route as PrivateInventoryIndexImport } from "./routes/_private/inventor
 import { Route as PrivateSettingsTestingOrgsImport } from "./routes/_private/settings/testing-orgs"
 import { Route as PrivateSettingsStorageLocationsImport } from "./routes/_private/settings/storage-locations"
 import { Route as PrivateSettingsOrganisationDetailsImport } from "./routes/_private/settings/organisation-details"
+import { Route as PrivateSettingsContainersImport } from "./routes/_private/settings/containers"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
 import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
 import { Route as PrivateSpeciesIdIndexImport } from "./routes/_private/species/$id/index"
@@ -147,6 +148,12 @@ const PrivateSettingsOrganisationDetailsRoute =
     getParentRoute: () => PrivateRoute,
   } as any)
 
+const PrivateSettingsContainersRoute = PrivateSettingsContainersImport.update({
+  id: "/settings/containers",
+  path: "/settings/containers",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
 const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
   id: "/invitations/new",
   path: "/invitations/new",
@@ -245,6 +252,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateInvitationsNewImport
       parentRoute: typeof PrivateImport
     }
+    "/_private/settings/containers": {
+      id: "/_private/settings/containers"
+      path: "/settings/containers"
+      fullPath: "/settings/containers"
+      preLoaderRoute: typeof PrivateSettingsContainersImport
+      parentRoute: typeof PrivateImport
+    }
     "/_private/settings/organisation-details": {
       id: "/_private/settings/organisation-details"
       path: "/settings/organisation-details"
@@ -336,6 +350,7 @@ declare module "@tanstack/react-router" {
 
 interface PrivateRouteChildren {
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
+  PrivateSettingsContainersRoute: typeof PrivateSettingsContainersRoute
   PrivateSettingsOrganisationDetailsRoute: typeof PrivateSettingsOrganisationDetailsRoute
   PrivateSettingsStorageLocationsRoute: typeof PrivateSettingsStorageLocationsRoute
   PrivateSettingsTestingOrgsRoute: typeof PrivateSettingsTestingOrgsRoute
@@ -352,6 +367,7 @@ interface PrivateRouteChildren {
 
 const PrivateRouteChildren: PrivateRouteChildren = {
   PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
+  PrivateSettingsContainersRoute: PrivateSettingsContainersRoute,
   PrivateSettingsOrganisationDetailsRoute:
     PrivateSettingsOrganisationDetailsRoute,
   PrivateSettingsStorageLocationsRoute: PrivateSettingsStorageLocationsRoute,
@@ -381,6 +397,7 @@ export interface FileRoutesByFullPath {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
+  "/settings/containers": typeof PrivateSettingsContainersRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
@@ -406,6 +423,7 @@ export interface FileRoutesByTo {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
+  "/settings/containers": typeof PrivateSettingsContainersRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
@@ -432,6 +450,7 @@ export interface FileRoutesById {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
+  "/_private/settings/containers": typeof PrivateSettingsContainersRoute
   "/_private/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/_private/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/_private/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
@@ -459,6 +478,7 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/invitations/new"
+    | "/settings/containers"
     | "/settings/organisation-details"
     | "/settings/storage-locations"
     | "/settings/testing-orgs"
@@ -483,6 +503,7 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/invitations/new"
+    | "/settings/containers"
     | "/settings/organisation-details"
     | "/settings/storage-locations"
     | "/settings/testing-orgs"
@@ -507,6 +528,7 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/_private/invitations/new"
+    | "/_private/settings/containers"
     | "/_private/settings/organisation-details"
     | "/_private/settings/storage-locations"
     | "/_private/settings/testing-orgs"
@@ -574,6 +596,7 @@ export const routeTree = rootRoute
       "filePath": "_private.tsx",
       "children": [
         "/_private/invitations/new",
+        "/_private/settings/containers",
         "/_private/settings/organisation-details",
         "/_private/settings/storage-locations",
         "/_private/settings/testing-orgs",
@@ -611,6 +634,10 @@ export const routeTree = rootRoute
     },
     "/_private/invitations/new": {
       "filePath": "_private/invitations/new.tsx",
+      "parent": "/_private"
+    },
+    "/_private/settings/containers": {
+      "filePath": "_private/settings/containers.tsx",
       "parent": "/_private"
     },
     "/_private/settings/organisation-details": {

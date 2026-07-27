@@ -38,6 +38,20 @@ export type CollectionPhoto = Table<"collection_photo">
 
 export type CollectionAudio = Table<"collection_audio">
 
+// Containers: the organisation's catalogue of seed containers
+export type Container = Table<"containers">
+export type ContainerPurpose = Enums["container_purpose"]
+export const CONTAINER_PURPOSES = ["collection", "storage"] as const
+export const CONTAINER_PURPOSE_LABELS: Record<ContainerPurpose, string> = {
+  collection: "Collection",
+  storage: "Storage",
+}
+
+export type CollectionContainer = Table<"collection_containers">
+export type CollectionContainerWithContainer = CollectionContainer & {
+  container: Container
+}
+
 export type ScoutingNote = Table<"scouting_notes"> & { location: string | null }
 export type ScoutingNoteWithCoord = ScoutingNote & {
   locationCoord?: { latitude: number; longitude: number }

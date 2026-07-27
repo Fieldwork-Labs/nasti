@@ -19,7 +19,6 @@ const mockCollection = {
   created_at: "2025-05-13T08:58:52.807+00:00",
   trip_id: tripId,
   description: "",
-  amount_quantity: 0,
 }
 
 const mockSpecies = {

@@ -31,6 +31,7 @@ const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
   trip: 0,
   collection: 1,
   scouting_notes: 1,
+  collection_containers: 2,
   collection_photo: 2,
   collection_audio: 2,
   scouting_notes_photos: 2,

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(17);
 
 select has_table(
   'public',
@@ -145,6 +145,42 @@ select results_eq(
   $$,
   array[3],
   'seeded collections identify their collector'
+);
+
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'containers'
+      and cmd in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+  $$,
+  array[4],
+  'containers has select, insert, update, and delete policies'
+);
+
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'collection_containers'
+      and cmd in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+  $$,
+  array[4],
+  'collection_containers has select, insert, update, and delete policies'
+);
+
+select results_eq(
+  $$
+    select count(*)::integer
+    from public.collection_containers cc
+    inner join public.collection c on c.id = cc.collection_id
+    inner join public.containers ct on ct.id = cc.container_id
+    where c.organisation_id <> ct.organisation_id
+  $$,
+  array[0],
+  'no collection references another organisation''s container'
 );
 
 select set_config(

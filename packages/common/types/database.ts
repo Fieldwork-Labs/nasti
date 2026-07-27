@@ -622,8 +622,6 @@ export type Database = {
       }
       collection: {
         Row: {
-          amount_quantity: number | null
-          amount_units: string | null
           code: string | null
           collected_by: string
           collected_on: string
@@ -645,8 +643,6 @@ export type Database = {
           trip_id: string | null
         }
         Insert: {
-          amount_quantity?: number | null
-          amount_units?: string | null
           code?: string | null
           collected_by: string
           collected_on?: string
@@ -668,8 +664,6 @@ export type Database = {
           trip_id?: string | null
         }
         Update: {
-          amount_quantity?: number | null
-          amount_units?: string | null
           code?: string | null
           collected_by?: string
           collected_on?: string
@@ -759,6 +753,52 @@ export type Database = {
           },
         ]
       }
+      collection_containers: {
+        Row: {
+          amount: number | null
+          collection_id: string
+          container_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          amount?: number | null
+          collection_id: string
+          container_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          amount?: number | null
+          collection_id?: string
+          container_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_containers_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collection"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_containers_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_containers_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_photo: {
         Row: {
           caption: string | null
@@ -794,6 +834,41 @@ export type Database = {
             columns: ["collection_id"]
             isOneToOne: false
             referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      containers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          organisation_id: string
+          purpose: Database["public"]["Enums"]["container_purpose"]
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          organisation_id: string
+          purpose: Database["public"]["Enums"]["container_purpose"]
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          organisation_id?: string
+          purpose?: Database["public"]["Enums"]["container_purpose"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "containers_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
         ]
@@ -3344,6 +3419,7 @@ export type Database = {
     Enums: {
       batch_quality: "ORG" | "HQ" | "LQ"
       batch_treatment_type: "sort" | "coat" | "treat" | "other"
+      container_purpose: "collection" | "storage"
       org_user_types: "Member" | "Admin"
       organisation_type: "General" | "Testing"
       person_source_type: "user" | "personnel"
@@ -3500,6 +3576,7 @@ export const Constants = {
     Enums: {
       batch_quality: ["ORG", "HQ", "LQ"],
       batch_treatment_type: ["sort", "coat", "treat", "other"],
+      container_purpose: ["collection", "storage"],
       org_user_types: ["Member", "Admin"],
       organisation_type: ["General", "Testing"],
       person_source_type: ["user", "personnel"],

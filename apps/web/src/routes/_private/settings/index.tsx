@@ -5,6 +5,7 @@ import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import {
+  Box,
   Building2,
   Leaf,
   LucideProps,
@@ -50,6 +51,13 @@ function SettingsDashboard() {
       icon: MapPin,
       href: "/settings/storage-locations",
       color: "bg-orange-500",
+    },
+    {
+      title: "Containers",
+      description: "Manage the containers used to collect and store seed",
+      icon: Box,
+      href: "/settings/containers",
+      color: "bg-amber-500",
     },
     {
       title: "Species list",

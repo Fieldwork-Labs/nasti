@@ -33,6 +33,7 @@ import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 import { formatDuration } from "@/lib/duration"
 import { useCollection } from "@/hooks/useCollection"
+import { useCollectionContainers } from "@/hooks/useContainers"
 
 const PhotosTab = ({
   photos,
@@ -158,6 +159,19 @@ export const CollectionDetailModal = ({
   )
   const formattedDuration = formatDuration(collection?.duration)
 
+  const { data: collectionContainers } = useCollectionContainers(collection?.id)
+  const containerSummary = useMemo(
+    () =>
+      [...(collectionContainers ?? [])]
+        .sort((a, b) => a.container.name.localeCompare(b.container.name))
+        .map(({ id, amount, container }) => ({
+          id,
+          label:
+            amount === null ? container.name : `${amount} × ${container.name}`,
+        })),
+    [collectionContainers],
+  )
+
   if (!collection) return null
 
   return (
@@ -265,6 +279,18 @@ export const CollectionDetailModal = ({
                   <div>
                     <div className="text-lead mb-1">Duration</div>
                     <div className="text-sm">{formattedDuration}</div>
+                  </div>
+                )}
+                {containerSummary.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">Containers</div>
+                    <div className="flex flex-wrap gap-2">
+                      {containerSummary.map(({ id, label }) => (
+                        <Badge key={id} variant="secondary">
+                          {label}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {collection.phenology_start !== null && (
