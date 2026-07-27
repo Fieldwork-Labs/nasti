@@ -157,6 +157,54 @@ export type Database = {
           },
         ]
       }
+      batch_cleaning_photo: {
+        Row: {
+          caption: string | null
+          cleaning_id: string
+          id: string
+          organisation_id: string
+          stage: string
+          uploaded_at: string
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          cleaning_id: string
+          id?: string
+          organisation_id: string
+          stage: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          cleaning_id?: string
+          id?: string
+          organisation_id?: string
+          stage?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_cleaning_photo_cleaning_id_fkey"
+            columns: ["cleaning_id"]
+            isOneToOne: false
+            referencedRelation: "batch_cleaning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_photo_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_custody: {
         Row: {
           batch_id: string

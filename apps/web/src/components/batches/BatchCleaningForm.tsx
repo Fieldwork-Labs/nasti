@@ -2,7 +2,7 @@ import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useState } from "react"
-import { Loader2, ChevronDown, Check } from "lucide-react"
+import { Loader2, ChevronDown, Check, Plus } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -20,9 +20,15 @@ import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
 
 import { useCleanBatch } from "@/hooks/useCleanBatch"
+import {
+  useUploadBatchCleaningPhotos,
+  type StagedCleaningPhoto,
+} from "@/hooks/useBatchCleaningPhotos"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import { MATERIAL_SUBTYPES } from "@nasti/common/types"
+import { MATERIAL_SUBTYPES_BY_TYPE } from "@nasti/common/types"
 import { TaxonName } from "@nasti/common"
+
+import { CleaningPhotoDropzone } from "./CleaningPhotoDropzone"
 
 // Schema for a single cleaning output
 const cleaningOutputSchema = z.object({
@@ -106,7 +112,12 @@ export const BatchCleaningForm = ({
 }: BatchCleaningFormProps) => {
   const { toast } = useToast()
   const { mutateAsync: cleanBatchMutation, isPending } = useCleanBatch()
+  const { uploadPhotosAsync, isUploading } = useUploadBatchCleaningPhotos()
   const [subtypeOpen, setSubtypeOpen] = useState(false)
+  // LQ is collapsed by default once cleaned — most cleaning runs don't produce
+  // a low quality output, so it's opt-in rather than always on screen.
+  const [showLqOutput, setShowLqOutput] = useState(false)
+  const [photos, setPhotos] = useState<StagedCleaningPhoto[]>([])
 
   const form = useForm<BatchCleaningFormData>({
     resolver: zodResolver(batchCleaningSchema),
@@ -141,8 +152,49 @@ export const BatchCleaningForm = ({
 
   const isCleaned = form.watch("is_cleaned")
   const materialType = form.watch("material_type")
+  const subtypeOptions = MATERIAL_SUBTYPES_BY_TYPE[materialType]
+
+  const beforePhotos = photos.filter((photo) => photo.stage === "before")
+  const afterPhotos = photos.filter((photo) => photo.stage === "after")
+
+  const handleMaterialTypeChange = (value: "seed" | "covering_structure") => {
+    form.setValue("material_type", value)
+    // Subtypes belong to one material type only, so the old choice can't stand
+    form.setValue("material_subtype", "")
+    // Auto-fill ORG output material type
+    form.setValue("outputs.org.material_type", value)
+  }
+
+  const handleIsCleanedChange = (checked: boolean) => {
+    form.setValue("is_cleaned", checked)
+    if (checked) {
+      // Cleaned material comes out as HQ by default — ORG describes material
+      // that was left as collected, so it no longer applies.
+      form.setValue("outputs.hq.enabled", true)
+      form.setValue("outputs.org.enabled", false)
+    } else {
+      // Only ORG is valid for uncleaned material
+      form.setValue("outputs.hq.enabled", false)
+      form.setValue("outputs.lq.enabled", false)
+      form.setValue("outputs.org.enabled", true)
+      setShowLqOutput(false)
+    }
+  }
+
+  const handleAddPhotos = (newPhotos: StagedCleaningPhoto[]) => {
+    setPhotos((current) => [...current, ...newPhotos])
+  }
+
+  const handleRemovePhoto = (photoId: string) => {
+    setPhotos((current) => {
+      const removed = current.find((photo) => photo.id === photoId)
+      if (removed) URL.revokeObjectURL(removed.previewUrl)
+      return current.filter((photo) => photo.id !== photoId)
+    })
+  }
 
   const onSubmit = async (data: BatchCleaningFormData) => {
+    let cleaningId: string
     try {
       const outputs = (
         [data.outputs.org, data.outputs.hq, data.outputs.lq] as const
@@ -154,7 +206,7 @@ export const BatchCleaningForm = ({
           weight_grams: o.weight_grams as number,
         }))
 
-      await cleanBatchMutation({
+      cleaningId = await cleanBatchMutation({
         inputBatchId: batch.id,
         materialType: data.material_type,
         materialSubtype: data.material_subtype || undefined,
@@ -163,16 +215,35 @@ export const BatchCleaningForm = ({
         cleaningNotes: data.cleaning_notes || undefined,
         outputs,
       })
-
-      toast({ description: "Successfully cleaned batch" })
-      onSuccess?.()
     } catch (error) {
       console.error("Cleaning failed:", error)
       toast({
         description: "Failed to clean batch",
         variant: "destructive",
       })
+      return
     }
+
+    // The cleaning record exists now, so the staged photos can be attached.
+    // A failure here doesn't undo the cleaning — say so rather than pretending
+    // the whole submission failed.
+    if (photos.length > 0) {
+      try {
+        await uploadPhotosAsync({ cleaningId, photos })
+      } catch (error) {
+        console.error("Cleaning photo upload failed:", error)
+        toast({
+          description: "Batch cleaned, but the photos failed to upload",
+          variant: "destructive",
+        })
+        onSuccess?.()
+        return
+      }
+    }
+
+    photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
+    toast({ description: "Successfully cleaned batch" })
+    onSuccess?.()
   }
 
   return (
@@ -221,11 +292,7 @@ export const BatchCleaningForm = ({
               <Checkbox
                 checked={materialType === "seed"}
                 onCheckedChange={(checked) => {
-                  if (checked) {
-                    form.setValue("material_type", "seed")
-                    // Auto-fill ORG output material type
-                    form.setValue("outputs.org.material_type", "seed")
-                  }
+                  if (checked) handleMaterialTypeChange("seed")
                 }}
               />
               Seed
@@ -234,13 +301,7 @@ export const BatchCleaningForm = ({
               <Checkbox
                 checked={materialType === "covering_structure"}
                 onCheckedChange={(checked) => {
-                  if (checked) {
-                    form.setValue("material_type", "covering_structure")
-                    form.setValue(
-                      "outputs.org.material_type",
-                      "covering_structure",
-                    )
-                  }
+                  if (checked) handleMaterialTypeChange("covering_structure")
                 }}
               />
               Covering structure
@@ -248,9 +309,11 @@ export const BatchCleaningForm = ({
           </div>
         </div>
 
-        {/* Material subtype dropdown */}
+        {/* Material subtype dropdown — options follow the material type */}
         <div className="space-y-2">
-          <Label>Type of seed or covering structure</Label>
+          <Label>
+            {materialType === "seed" ? "Type of seed" : "Type of structure"}
+          </Label>
           <Controller
             control={form.control}
             name="material_subtype"
@@ -274,7 +337,7 @@ export const BatchCleaningForm = ({
                     <CommandList>
                       <CommandEmpty>No type found.</CommandEmpty>
                       <CommandGroup>
-                        {MATERIAL_SUBTYPES.map((subtype) => (
+                        {subtypeOptions.map((subtype) => (
                           <CommandItem
                             key={subtype}
                             value={subtype}
@@ -322,16 +385,9 @@ export const BatchCleaningForm = ({
           <label className="flex items-center gap-2">
             <Checkbox
               checked={isCleaned}
-              onCheckedChange={(checked) => {
-                form.setValue("is_cleaned", Boolean(checked))
-                // If unchecked, disable HQ and LQ outputs
-                if (!checked) {
-                  form.setValue("outputs.hq.enabled", false)
-                  form.setValue("outputs.lq.enabled", false)
-                  // Auto-enable ORG
-                  form.setValue("outputs.org.enabled", true)
-                }
-              }}
+              onCheckedChange={(checked) =>
+                handleIsCleanedChange(Boolean(checked))
+              }
             />
             Cleaned
           </label>
@@ -342,6 +398,26 @@ export const BatchCleaningForm = ({
               placeholder="Cleaning process notes..."
               {...form.register("cleaning_notes")}
               rows={2}
+            />
+          </div>
+
+          {/* Before / after photos, staged until the cleaning record exists */}
+          <div className="grid gap-4 pt-2 md:grid-cols-2">
+            <CleaningPhotoDropzone
+              label="Photos before cleaning"
+              stage="before"
+              photos={beforePhotos}
+              onAdd={handleAddPhotos}
+              onRemove={handleRemovePhoto}
+              disabled={isPending || isUploading}
+            />
+            <CleaningPhotoDropzone
+              label="Photos after cleaning"
+              stage="after"
+              photos={afterPhotos}
+              onAdd={handleAddPhotos}
+              onRemove={handleRemovePhoto}
+              disabled={isPending || isUploading}
             />
           </div>
         </div>
@@ -361,10 +437,12 @@ export const BatchCleaningForm = ({
           <span>Weight</span>
         </div>
 
-        {(["org", "lq", "hq"] as const).map((key) => {
+        {(["org", "hq", "lq"] as const).map((key) => {
           const qualityLabel = key.toUpperCase()
           const isEnabled = form.watch(`outputs.${key}.enabled`)
           const isDisabled = !isCleaned && key !== "org"
+          // LQ only appears once it's been asked for
+          if (key === "lq" && !showLqOutput) return null
 
           return (
             <div
@@ -423,11 +501,13 @@ export const BatchCleaningForm = ({
                   </label>
                 </div>
 
-                {/* Weight */}
+                {/* Weight — grams, decimals allowed */}
                 <div className="flex items-center gap-1">
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
+                    step="any"
+                    inputMode="decimal"
                     placeholder="Weight"
                     disabled={isDisabled || !isEnabled}
                     {...form.register(`outputs.${key}.weight_grams`)}
@@ -439,6 +519,22 @@ export const BatchCleaningForm = ({
             </div>
           )
         })}
+
+        {isCleaned && !showLqOutput && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => {
+              setShowLqOutput(true)
+              form.setValue("outputs.lq.enabled", true)
+            }}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add LQ output
+          </Button>
+        )}
 
         {form.formState.errors.outputs && (
           <p className="text-sm text-red-600">
@@ -464,10 +560,12 @@ export const BatchCleaningForm = ({
         )}
         <Button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || isUploading}
           className="min-w-[120px] cursor-pointer"
         >
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {(isPending || isUploading) && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
           Submit
         </Button>
       </div>

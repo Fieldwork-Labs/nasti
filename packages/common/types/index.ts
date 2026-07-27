@@ -120,6 +120,9 @@ export type ActiveSubBatch = Omit<View<"active_sub_batches">["Row"], "id"> & {
 // Cleaning
 export type BatchCleaning = Table<"batch_cleaning">
 export type BatchCleaningOutput = Table<"batch_cleaning_output">
+export type BatchCleaningPhoto = Table<"batch_cleaning_photo"> & {
+  stage: "before" | "after"
+}
 
 export type BatchTreatType = Enums["batch_treatment_type"]
 // Keep old name as alias
@@ -128,19 +131,37 @@ export type BatchQuality = Enums["batch_quality"]
 
 // Material types for cleaning
 export type MaterialType = "seed" | "covering_structure"
-export const MATERIAL_SUBTYPES = [
-  "pod",
+
+// Subtypes are scoped to the material type they describe: a floret is a seed,
+// a pod is the structure covering one.
+export const SEED_SUBTYPES = [
   "floret",
-  "capsule",
   "achene",
+  "caryopsis",
+  "samara",
+] as const
+export const COVERING_STRUCTURE_SUBTYPES = [
+  "pod",
+  "capsule",
   "drupe",
   "berry",
   "nut",
-  "samara",
-  "caryopsis",
   "other",
 ] as const
+
+export const MATERIAL_SUBTYPES = [
+  ...SEED_SUBTYPES,
+  ...COVERING_STRUCTURE_SUBTYPES,
+] as const
 export type MaterialSubtype = (typeof MATERIAL_SUBTYPES)[number]
+
+export const MATERIAL_SUBTYPES_BY_TYPE: Record<
+  MaterialType,
+  readonly MaterialSubtype[]
+> = {
+  seed: SEED_SUBTYPES,
+  covering_structure: COVERING_STRUCTURE_SUBTYPES,
+}
 
 // Test Types
 export type Test = Table<"tests">
