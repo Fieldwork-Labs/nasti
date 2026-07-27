@@ -252,15 +252,16 @@ const SpeciesMap = ({
                 longitude={longitude}
                 key={id}
                 isHovered={collectionHovered === id}
-                popupContent={
+                popupContents={[
                   <Link
                     to={"/trips/$id"}
                     params={{ id: trip_id }}
                     className="text-primary"
+                    key={id}
                   >
                     {trip?.name} trip
-                  </Link>
-                }
+                  </Link>,
+                ]}
               />
             )
           })}
