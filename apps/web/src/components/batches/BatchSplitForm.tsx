@@ -20,13 +20,14 @@ import {
 } from "@nasti/ui/select"
 import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
-import { supabase } from "@nasti/common/supabase"
 
 import { useSubBatches, useSplitSubBatch } from "@/hooks/useSubBatches"
 import { useStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveContainers } from "@/hooks/useContainers"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 
 const NO_LOCATION = "__none__"
+const NO_CONTAINER = "__none__"
 
 const outputSchema = z.object({
   weight_grams: z.preprocess(
@@ -37,6 +38,7 @@ const outputSchema = z.object({
       .min(1, "Weight must be at least 1 gram"),
   ),
   notes: z.string().optional(),
+  container_id: z.string().optional(),
   location_id: z.string().optional(),
 })
 
@@ -65,13 +67,21 @@ export const BatchSplitForm = ({
   const { toast } = useToast()
   const { data: subBatches } = useSubBatches(parentBatch.id)
   const { data: storageLocations } = useStorageLocations()
+  const { data: storageContainers } = useActiveContainers("storage")
   const splitMutation = useSplitSubBatch()
   const selectedSubBatch = subBatches?.find((sb) => sb.id === initialSubBatchId)
 
   const form = useForm<SplitFormInput, unknown, SplitFormOutput>({
     resolver: zodResolver(splitSchema) as Resolver<SplitFormInput>,
     defaultValues: {
-      outputs: [{ weight_grams: "", notes: "", location_id: "" }],
+      outputs: [
+        {
+          weight_grams: "",
+          notes: "",
+          container_id: "",
+          location_id: "",
+        },
+      ],
     },
   })
 
@@ -89,53 +99,21 @@ export const BatchSplitForm = ({
   const remainingWeight = sourceWeight - totalSplitWeight
   const allWeightsValid = outputs.every((o) => Number(o.weight_grams) > 0)
   const isValidSplit =
-    allWeightsValid && totalSplitWeight > 0 && totalSplitWeight < sourceWeight
+    allWeightsValid && totalSplitWeight > 0 && totalSplitWeight <= sourceWeight
 
   const onSubmit = async (data: SplitFormOutput) => {
     if (!selectedSubBatch || !isValidSplit) return
 
     try {
-      const newSubBatchIds = await splitMutation.mutateAsync({
+      await splitMutation.mutateAsync({
         subBatchId: selectedSubBatch.id,
         outputs: data.outputs.map((o) => ({
           weight_grams: o.weight_grams,
           notes: o.notes || undefined,
+          container_id: o.container_id || undefined,
+          location_id: o.location_id || undefined,
         })),
       })
-
-      // Assign storage locations for outputs that selected one. Sub-batch
-      // order matches output order from fn_split_sub_batch.
-      const storageRows = data.outputs
-        .map((o, i) => ({
-          batch_id: parentBatch.id,
-          sub_batch_id: newSubBatchIds[i],
-          location_id: o.location_id,
-        }))
-        .filter(
-          (
-            r,
-          ): r is {
-            batch_id: string
-            sub_batch_id: string
-            location_id: string
-          } => Boolean(r.sub_batch_id) && Boolean(r.location_id),
-        )
-
-      if (storageRows.length > 0) {
-        const { error: storageError } = await supabase
-          .from("batch_storage")
-          .insert(storageRows)
-        if (storageError) {
-          console.error("Storage assignment failed:", storageError)
-          toast({
-            description:
-              "Sub-batches created, but assigning storage location(s) failed",
-            variant: "destructive",
-          })
-          onSuccess?.()
-          return
-        }
-      }
 
       toast({
         description:
@@ -191,9 +169,10 @@ export const BatchSplitForm = ({
       {selectedSubBatch && (
         <>
           <div className="space-y-3">
-            <div className="grid grid-cols-[1fr_1.5fr_1.5fr_auto] items-start gap-3 space-y-1">
+            <div className="grid grid-cols-[minmax(7rem,0.8fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_auto] items-start gap-3 space-y-1">
               <Label>Weight *</Label>
               <Label>Notes</Label>
+              <Label>Container</Label>
               <Label>Storage location</Label>
               <Label className="invisible">Remove</Label>
 
@@ -224,6 +203,38 @@ export const BatchSplitForm = ({
                     <Input
                       placeholder="Optional notes..."
                       {...form.register(`outputs.${index}.notes`)}
+                    />
+
+                    <Controller
+                      control={form.control}
+                      name={`outputs.${index}.container_id`}
+                      render={({ field: containerField }) => (
+                        <Select
+                          value={containerField.value || NO_CONTAINER}
+                          onValueChange={(value) =>
+                            containerField.onChange(
+                              value === NO_CONTAINER ? "" : value,
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="No container" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_CONTAINER}>
+                              No container
+                            </SelectItem>
+                            {storageContainers?.map((container) => (
+                              <SelectItem
+                                key={container.id}
+                                value={container.id}
+                              >
+                                {container.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     />
 
                     <Controller
@@ -273,7 +284,12 @@ export const BatchSplitForm = ({
               type="button"
               variant="outline"
               onClick={() =>
-                append({ weight_grams: "", notes: "", location_id: "" })
+                append({
+                  weight_grams: "",
+                  notes: "",
+                  container_id: "",
+                  location_id: "",
+                })
               }
               className="cursor-pointer"
             >
@@ -309,7 +325,7 @@ export const BatchSplitForm = ({
           </div>
 
           {/* Validation message */}
-          {totalSplitWeight >= sourceWeight && totalSplitWeight > 0 && (
+          {totalSplitWeight > sourceWeight && totalSplitWeight > 0 && (
             <p className="text-sm text-red-600">
               Total split weight must be less than the source ({sourceWeight}g)
             </p>

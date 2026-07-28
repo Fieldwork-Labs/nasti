@@ -68,6 +68,8 @@ export const useSubBatches = (batchId: string) => {
 type SplitSubBatchOutput = {
   weight_grams: number
   notes?: string
+  container_id?: string
+  location_id?: string
 }
 
 type SplitSubBatchParams = {
