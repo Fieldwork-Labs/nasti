@@ -1,18 +1,10 @@
 import { Button } from "@nasti/ui/button"
-import { useToast } from "@nasti/ui/hooks"
-import {
-  Boxes,
-  Check,
-  Loader2,
-  Merge,
-  Microscope,
-  Package,
-  Split,
-} from "lucide-react"
+import { Boxes, Merge, Microscope, Package, Split } from "lucide-react"
 import { useState } from "react"
 
+import { SubBatchMergeModal } from "@/components/batches/SubBatchMergeModal"
 import type { SubBatchWithStorage } from "@/hooks/useSubBatches"
-import { useMergeSubBatches, useSubBatches } from "@/hooks/useSubBatches"
+import { useSubBatches } from "@/hooks/useSubBatches"
 import { cn } from "@nasti/ui/utils"
 
 /**
@@ -29,11 +21,10 @@ export const SubBatchesTable = ({
   onSubBatchSplit?: (subBatchId: string) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
 }) => {
-  const { toast } = useToast()
   const { data: subBatches, isLoading } = useSubBatches(batchId)
-  const mergeMutation = useMergeSubBatches()
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([])
   const [isMerging, setIsMerging] = useState(false)
+  const [showMergeModal, setShowMergeModal] = useState(false)
 
   const toggleMergeSelect = (id: string) => {
     setSelectedForMerge((prev) =>
@@ -41,19 +32,14 @@ export const SubBatchesTable = ({
     )
   }
 
-  const handleMerge = async () => {
+  const handleMerge = () => {
     if (selectedForMerge.length < 2) return
-    try {
-      await mergeMutation.mutateAsync({ subBatchIds: selectedForMerge })
-      toast({ description: "Sub-batches merged successfully" })
-      setSelectedForMerge([])
-    } catch (error) {
-      toast({
-        description: "Failed to merge sub-batches",
-        variant: "destructive",
-      })
-    }
+    setShowMergeModal(true)
   }
+
+  const selectedSubBatches =
+    subBatches?.filter((subBatch) => selectedForMerge.includes(subBatch.id)) ??
+    []
 
   if (isLoading) {
     return (
@@ -78,16 +64,10 @@ export const SubBatchesTable = ({
                 variant="outline"
                 size="sm"
                 className="h-6 cursor-pointer text-xs"
-                disabled={
-                  selectedForMerge.length < 2 || mergeMutation.isPending
-                }
+                disabled={selectedForMerge.length < 2}
                 onClick={handleMerge}
               >
-                {mergeMutation.isPending ? (
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                ) : (
-                  <Check className="mr-1 h-3 w-3" />
-                )}
+                <Merge className="mr-1 h-3 w-3" />
                 Merge ({selectedForMerge.length})
               </Button>
               <Button
@@ -130,6 +110,18 @@ export const SubBatchesTable = ({
           />
         ))}
       </div>
+      {showMergeModal && (
+        <SubBatchMergeModal
+          isOpen
+          onClose={() => setShowMergeModal(false)}
+          onSuccess={() => {
+            setShowMergeModal(false)
+            setSelectedForMerge([])
+            setIsMerging(false)
+          }}
+          subBatches={selectedSubBatches}
+        />
+      )}
     </div>
   )
 }
@@ -172,6 +164,7 @@ const SubBatchesTableRow = ({
             type="checkbox"
             checked={selectedForMerge.includes(sb.id)}
             onChange={() => toggleMergeSelect(sb.id)}
+            onClick={(event) => event.stopPropagation()}
             className="h-3 w-3"
           />
         )}

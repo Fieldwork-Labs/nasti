@@ -114,7 +114,7 @@ export const useCleanBatch = () => {
 
 export type CleaningBaggingContainerGroup = {
   container_id: string
-  location_id: string
+  location_id?: string
   quantity: number
   weight_grams: number
 }

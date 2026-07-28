@@ -20,6 +20,8 @@ import {
 } from "@/hooks/useCleanBatch"
 import { useStorageLocations } from "@/hooks/useStorageLocations"
 
+const NO_LOCATION = "__none__"
+
 type ContainerGroupDraft = {
   key: string
   containerId: string
@@ -142,10 +144,8 @@ export const CleaningBaggingForm = ({
       for (const group of output.groups) {
         const quantity = Number(group.quantity)
         const weight = Number(group.weightGrams)
-        if (!group.containerId || !group.locationId) {
-          setError(
-            "Select a container type and storage location for every row.",
-          )
+        if (!group.containerId) {
+          setError("Select a container type for every row.")
           return
         }
         if (
@@ -180,13 +180,13 @@ export const CleaningBaggingForm = ({
           output_batch_id: output.outputBatchId,
           containers: output.groups.map((group) => ({
             container_id: group.containerId,
-            location_id: group.locationId,
+            ...(group.locationId && { location_id: group.locationId }),
             quantity: Number(group.quantity),
             weight_grams: Number(group.weightGrams),
           })),
         })),
       })
-      toast({ description: "Cleaned batches bagged and stored successfully" })
+      toast({ description: "Cleaned batches bagged successfully" })
       onSuccess?.()
     } catch (submissionError) {
       console.error("Bagging and storage failed:", submissionError)
@@ -198,12 +198,9 @@ export const CleaningBaggingForm = ({
     }
   }
 
-  const isLoading = containersLoading || locationsLoading
+  const isLoading = containersLoading
   const cannotSubmit =
-    isLoading ||
-    bagAndStore.isPending ||
-    containers.length === 0 ||
-    locations.length === 0
+    isLoading || bagAndStore.isPending || containers.length === 0
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -218,12 +215,6 @@ export const CleaningBaggingForm = ({
           continuing.
         </p>
       )}
-      {!isLoading && locations.length === 0 && (
-        <p className="text-destructive text-sm">
-          Add a storage location before continuing.
-        </p>
-      )}
-
       {outputs.map((output, outputIndex) => {
         const sourceOutput = cleaning.outputs.find(
           (candidate) => candidate.output_batch_id === output.outputBatchId,
@@ -289,17 +280,22 @@ export const CleaningBaggingForm = ({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Storage location</Label>
+                    <Label>Storage location (optional)</Label>
                     <Select
-                      value={group.locationId}
+                      value={group.locationId || NO_LOCATION}
                       onValueChange={(locationId) =>
-                        updateGroup(outputIndex, groupIndex, { locationId })
+                        updateGroup(outputIndex, groupIndex, {
+                          locationId:
+                            locationId === NO_LOCATION ? "" : locationId,
+                        })
                       }
+                      disabled={locationsLoading}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select location" />
+                        <SelectValue placeholder="No location" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={NO_LOCATION}>No location</SelectItem>
                         {locations.map((location) => (
                           <SelectItem key={location.id} value={location.id}>
                             {location.name}

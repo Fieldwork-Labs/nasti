@@ -98,14 +98,18 @@ export const useSplitSubBatch = () => {
 // Mutation: Merge sub-batches within a batch
 type MergeSubBatchesParams = {
   subBatchIds: string[]
+  containerId: string
+  locationId?: string
   notes?: string
 }
 
 export const useMergeSubBatches = () => {
   return useMutation<string, Error, MergeSubBatchesParams>({
-    mutationFn: async ({ subBatchIds, notes }) => {
+    mutationFn: async ({ subBatchIds, containerId, locationId, notes }) => {
       const { data, error } = await supabase.rpc("fn_merge_sub_batches", {
         p_sub_batch_ids: subBatchIds,
+        p_container_id: containerId,
+        ...(locationId && { p_location_id: locationId }),
         p_notes: notes,
       })
 
@@ -115,6 +119,7 @@ export const useMergeSubBatches = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subBatches"] })
       queryClient.invalidateQueries({ queryKey: ["batches"] })
+      queryClient.invalidateQueries({ queryKey: ["storageLocations"] })
     },
   })
 }

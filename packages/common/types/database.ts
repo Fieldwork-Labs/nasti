@@ -486,6 +486,20 @@ export type Database = {
             referencedRelation: "sub_batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "batch_storage_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
         ]
       }
       batch_testing_assignment: {
@@ -2007,6 +2021,13 @@ export type Database = {
             referencedRelation: "batches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sub_batches_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       batch_current_weight: {
@@ -2415,6 +2436,10 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      fn_bag_and_store_cleaning_outputs: {
+        Args: { p_bags: Json; p_cleaning_id: string }
+        Returns: string[]
+      }
       fn_clean_batch: {
         Args: {
           p_cleaning_notes?: string
@@ -2429,10 +2454,6 @@ export type Database = {
         }
         Returns: string
       }
-      fn_bag_and_store_cleaning_outputs: {
-        Args: { p_bags: Json; p_cleaning_id: string }
-        Returns: string[]
-      }
       fn_clean_sub_batch: {
         Args: {
           p_cleaning_notes?: string
@@ -2443,18 +2464,6 @@ export type Database = {
           p_material_type?: string
           p_outputs?: Json
           p_sub_batch_id: string
-          p_worker_ids?: string[]
-        }
-        Returns: string
-      }
-      fn_update_batch_cleaning: {
-        Args: {
-          p_cleaning_id: string
-          p_cleaning_notes?: string
-          p_duration?: string
-          p_material_notes?: string
-          p_material_subtype?: string
-          p_material_type?: string
           p_worker_ids?: string[]
         }
         Returns: string
@@ -2473,7 +2482,12 @@ export type Database = {
         Returns: string
       }
       fn_merge_sub_batches: {
-        Args: { p_notes?: string; p_sub_batch_ids: string[] }
+        Args: {
+          p_container_id: string
+          p_location_id?: string
+          p_notes?: string
+          p_sub_batch_ids: string[]
+        }
         Returns: string
       }
       fn_mix_batches: {
@@ -2500,6 +2514,18 @@ export type Database = {
           p_output_weight: number
           p_quality_assessment: Database["public"]["Enums"]["batch_quality"]
           p_treat: Json
+        }
+        Returns: string
+      }
+      fn_update_batch_cleaning: {
+        Args: {
+          p_cleaning_id: string
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_worker_ids?: string[]
         }
         Returns: string
       }
@@ -3539,6 +3565,7 @@ export type Database = {
     }
   }
 }
+
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]

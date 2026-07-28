@@ -9,7 +9,7 @@ run every verification command, and update the status row when finished.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
-| [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | TODO |
+| [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | DONE |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason, or
 `REJECTED` with a rationale.
@@ -93,4 +93,3 @@ The audit checked these areas and did not reopen them:
   not planned. The current product request treats catalogue rows as container
   types and individual sub-batches as the physical portions; labels or QR codes
   remain a future product option.
-
