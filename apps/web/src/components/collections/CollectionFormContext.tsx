@@ -23,6 +23,7 @@ import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
 import { stringToNumber } from "@nasti/common/utils"
 import { useCollectionContainers } from "@/hooks/useContainers"
 import { Spinner } from "@nasti/ui/spinner"
+import { collectedOnSchema, formatDateInputValue } from "./collectionDate"
 
 export const schema = z
   .object({
@@ -30,7 +31,7 @@ export const schema = z
     species_uncertain: z.boolean(),
     field_name: z.string(),
     specimen_collected: z.boolean(),
-    collected_on: z.string().transform((val) => val ?? new Date().toDateString),
+    collected_on: collectedOnSchema,
     latitude: z
       .number({
         required_error: "Latitude is required",
@@ -122,7 +123,7 @@ const useCollectionForm = ({
           latitude: undefined,
           longitude: undefined,
           specimen_collected: false,
-          collected_on: new Date().toLocaleDateString(),
+          collected_on: formatDateInputValue(new Date()),
           collected_by: user?.id,
           person_ids: [],
           description: "",
@@ -140,44 +141,51 @@ const useCollectionForm = ({
     mode: "onChange",
   })
 
-  const {
-    mutateAsync: updateCollection,
-    isPending,
-    error: updateCollectionError,
-  } = useUpdateCollection()
-
-  if (updateCollectionError) form.setError("root", updateCollectionError)
+  const { mutateAsync: updateCollection, isPending } = useUpdateCollection()
 
   const onSubmit = useCallback(
     async (data: CollectionFormData) => {
-      if (!user || !organisation?.id) throw new Error("Not logged in")
+      form.clearErrors("root")
 
-      if (!tripId && !collection?.trip_id)
-        throw new Error(
-          "tripId or collection must be supplied to CollectionForm",
-        )
+      try {
+        if (!user || !organisation?.id) throw new Error("Not logged in")
 
-      // type assertion safe because of check above
-      const trip_id = (collection ? collection.trip_id : tripId) as string
+        if (!tripId && !collection?.trip_id)
+          throw new Error(
+            "tripId or collection must be supplied to CollectionForm",
+          )
 
-      const { latitude, longitude, containers, ...rest } = data
-      const location = `POINT(${longitude} ${latitude})`
-      const newCollection: MaybeNewCollectionWithContainers = {
-        ...rest,
-        containers,
-        id: collection?.id,
-        created_by: user.id,
-        collected_by: user.id,
-        location,
-        organisation_id: organisation.id,
-        trip_id,
-      }
-      const updatedRecord = await updateCollection(newCollection)
+        // type assertion safe because of check above
+        const trip_id = (collection ? collection.trip_id : tripId) as string
 
-      if (onSuccess && updatedRecord) {
-        setCollection(updatedRecord)
-        form.reset(data)
-        onSuccess(updatedRecord)
+        const { latitude, longitude, containers, ...rest } = data
+        const location = `POINT(${longitude} ${latitude})`
+        const newCollection: MaybeNewCollectionWithContainers = {
+          ...rest,
+          containers,
+          id: collection?.id,
+          created_by: user.id,
+          collected_by: user.id,
+          location,
+          organisation_id: organisation.id,
+          trip_id,
+        }
+        const updatedRecord = await updateCollection(newCollection)
+
+        if (onSuccess && updatedRecord) {
+          setCollection(updatedRecord)
+          form.reset(data)
+          onSuccess(updatedRecord)
+        }
+      } catch (error) {
+        console.error("Collection submission failed:", error)
+        form.setError("root", {
+          type: "server",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to save collection",
+        })
       }
     },
     [user, organisation, tripId, collection, updateCollection, onSuccess, form],

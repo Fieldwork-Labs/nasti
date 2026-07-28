@@ -426,6 +426,9 @@ importers:
       vitest:
         specifier: ^3.1.4
         version: 3.1.4(@types/node@22.13.10)(jsdom@26.1.0)
+      vitest-localstorage-mock:
+        specifier: ^0.1.2
+        version: 0.1.2(vitest@3.1.4)
       wrangler:
         specifier: ^4.40.3
         version: 4.40.3(@cloudflare/workers-types@4.20251001.0)
