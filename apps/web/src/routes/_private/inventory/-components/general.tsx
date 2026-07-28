@@ -19,6 +19,7 @@ import {
 } from "@/components/inventory/modals"
 import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
 import { BatchCleaningModal } from "@/components/inventory/modals/BatchCleaningModal"
+import { CleaningBaggingModal } from "@/components/inventory/modals/CleaningBaggingModal"
 import { useAssignmentMode } from "@/hooks/useAssignmentMode"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchDelete } from "@/hooks/useBatches"
@@ -54,6 +55,9 @@ export function InventoryPageGeneral() {
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [cleaningBatch, setCleaningBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
+  const [baggingCleaningId, setBaggingCleaningId] = useState<string | null>(
+    null,
+  )
   const [subBatchStorageMove, setSubBatchStorageMove] = useState<{
     batch: BatchWithCurrentLocationAndSpecies
     subBatchId: string
@@ -430,6 +434,18 @@ export function InventoryPageGeneral() {
             isOpen={Boolean(cleaningBatch)}
             onClose={() => setCleaningBatch(null)}
             batch={cleaningBatch}
+            onSuccess={(cleaningId) => {
+              invalidateBatchesCacheByFilter()
+              setBaggingCleaningId(cleaningId)
+            }}
+          />
+        )}
+
+        {baggingCleaningId && (
+          <CleaningBaggingModal
+            isOpen={Boolean(baggingCleaningId)}
+            cleaningId={baggingCleaningId}
+            onClose={() => setBaggingCleaningId(null)}
             onSuccess={invalidateBatchesCacheByFilter}
           />
         )}

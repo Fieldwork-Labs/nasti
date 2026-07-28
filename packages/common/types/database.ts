@@ -1572,6 +1572,7 @@ export type Database = {
       sub_batches: {
         Row: {
           batch_id: string
+          container_id: string | null
           created_at: string | null
           id: string
           notes: string | null
@@ -1579,6 +1580,7 @@ export type Database = {
         }
         Insert: {
           batch_id: string
+          container_id?: string | null
           created_at?: string | null
           id?: string
           notes?: string | null
@@ -1586,6 +1588,7 @@ export type Database = {
         }
         Update: {
           batch_id?: string
+          container_id?: string | null
           created_at?: string | null
           id?: string
           notes?: string | null
@@ -1611,6 +1614,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
             referencedColumns: ["id"]
           },
         ]
@@ -1959,6 +1969,7 @@ export type Database = {
       active_sub_batches: {
         Row: {
           batch_id: string | null
+          container_id: string | null
           created_at: string | null
           current_location_id: string | null
           current_weight: number | null
@@ -2417,6 +2428,10 @@ export type Database = {
           p_worker_ids?: string[]
         }
         Returns: string
+      }
+      fn_bag_and_store_cleaning_outputs: {
+        Args: { p_bags: Json; p_cleaning_id: string }
+        Returns: string[]
       }
       fn_clean_sub_batch: {
         Args: {

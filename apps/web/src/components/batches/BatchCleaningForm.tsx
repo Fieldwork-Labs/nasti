@@ -121,7 +121,7 @@ type BatchCleaningFormData = z.infer<typeof batchCleaningSchema>
 type BatchCleaningFormProps = {
   batch: BatchWithCurrentLocationAndSpecies
   instance?: BatchCleaningWithOutputs
-  onSuccess?: () => void
+  onSuccess?: (cleaningId: string) => void
   onCancel?: () => void
   className?: string
 }
@@ -361,7 +361,7 @@ export const BatchCleaningForm = ({
             : "Batch cleaned, but the photos failed to upload",
           variant: "destructive",
         })
-        onSuccess?.()
+        onSuccess?.(cleaningId)
         return
       }
     }
@@ -372,7 +372,7 @@ export const BatchCleaningForm = ({
         ? "Successfully updated cleaning record"
         : "Successfully cleaned batch",
     })
-    onSuccess?.()
+    onSuccess?.(cleaningId)
   }
 
   return (

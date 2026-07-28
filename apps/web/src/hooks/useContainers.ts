@@ -117,6 +117,17 @@ export const useDeleteContainer = () =>
           `This container is used by ${count} collection${count === 1 ? "" : "s"}. Deactivate it instead to keep it out of new collections.`,
         )
 
+      const { count: subBatchCount, error: subBatchCountError } = await supabase
+        .from("sub_batches")
+        .select("id", { count: "exact", head: true })
+        .eq("container_id", containerId)
+
+      if (subBatchCountError) throw new Error(subBatchCountError.message)
+      if (subBatchCount && subBatchCount > 0)
+        throw new Error(
+          `This container is used by ${subBatchCount} stored sub-batch${subBatchCount === 1 ? "" : "es"}. Deactivate it instead to keep it out of new cleaning records.`,
+        )
+
       const { error } = await supabase
         .from("containers")
         .delete()

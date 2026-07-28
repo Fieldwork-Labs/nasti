@@ -4,11 +4,16 @@ import { queryClient } from "@nasti/common/utils"
 import type {
   BatchCleaning,
   BatchCleaningOutput,
+  Batch,
   MaterialType,
 } from "@nasti/common/types"
 
+export type BatchCleaningOutputWithBatch = BatchCleaningOutput & {
+  output_batch: Pick<Batch, "id" | "code" | "weight_grams">
+}
+
 export type BatchCleaningWithOutputs = BatchCleaning & {
-  outputs: BatchCleaningOutput[]
+  outputs: BatchCleaningOutputWithBatch[]
 }
 
 type CleaningOutput = {
@@ -47,7 +52,14 @@ export const useBatchCleaning = (cleaningId?: string) => {
         .select(
           `
           *,
-          outputs:batch_cleaning_output(*)
+          outputs:batch_cleaning_output(
+            *,
+            output_batch:batches!batch_cleaning_output_output_batch_id_fkey(
+              id,
+              code,
+              weight_grams
+            )
+          )
         `,
         )
         .eq("id", cleaningId)
@@ -99,6 +111,43 @@ export const useCleanBatch = () => {
     },
   })
 }
+
+export type CleaningBaggingContainerGroup = {
+  container_id: string
+  location_id: string
+  quantity: number
+  weight_grams: number
+}
+
+export type CleaningBaggingOutput = {
+  output_batch_id: string
+  containers: CleaningBaggingContainerGroup[]
+}
+
+export const useBagAndStoreCleaningOutputs = () =>
+  useMutation<
+    string[],
+    Error,
+    { cleaningId: string; outputs: CleaningBaggingOutput[] }
+  >({
+    mutationFn: async ({ cleaningId, outputs }) => {
+      const { data, error } = await supabase.rpc(
+        "fn_bag_and_store_cleaning_outputs",
+        {
+          p_cleaning_id: cleaningId,
+          p_bags: outputs,
+        },
+      )
+
+      if (error) throw new Error(error.message)
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["batches"] })
+      queryClient.invalidateQueries({ queryKey: ["subBatches"] })
+      queryClient.invalidateQueries({ queryKey: ["storageLocations"] })
+    },
+  })
 
 export const useUpdateBatchCleaning = () => {
   return useMutation<string, Error, UpdateBatchCleaningParams>({

@@ -14,7 +14,7 @@ type BatchCleaningModalProps = {
   onClose: () => void
   batch: BatchWithCurrentLocationAndSpecies
   instance?: BatchCleaningWithOutputs
-  onSuccess?: () => void
+  onSuccess?: (cleaningId: string) => void
 }
 
 export const BatchCleaningModal = ({
@@ -37,9 +37,9 @@ export const BatchCleaningModal = ({
         <BatchCleaningForm
           batch={batch}
           instance={instance}
-          onSuccess={() => {
+          onSuccess={(cleaningId) => {
             onClose()
-            onSuccess?.()
+            onSuccess?.(cleaningId)
           }}
           onCancel={onClose}
         />
