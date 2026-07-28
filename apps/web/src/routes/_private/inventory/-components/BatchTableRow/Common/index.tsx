@@ -26,6 +26,7 @@ import {
 import { useState, type ReactNode } from "react"
 
 import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
+import { BatchCleaningPhotos } from "@/components/batches/BatchCleaningPhotos"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import { useActiveBatchAssignment } from "@/hooks/useBatchAssignments"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
@@ -521,6 +522,8 @@ const BatchDetailsContent = ({
         </div>
         <div className="text-muted-foreground mt-1 text-xs">{batch.notes}</div>
       </div>
+
+      <BatchCleaningPhotos batchId={batch.id} />
     </div>
   )
 }
