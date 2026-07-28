@@ -306,48 +306,20 @@ export const useDeleteStorageLocation = () => {
 type MoveBatchToStorageParams = {
   batchId: string
   subBatchId: string
-  currentBatchStorageId?: string
-  locationId: string
+  locationId: string | null
   notes?: string
-  storedAt?: string
+  effectiveAt: string
 }
 
 export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
-    mutationFn: async ({
-      batchId,
-      subBatchId,
-      currentBatchStorageId,
-      locationId,
-      notes,
-      storedAt,
-    }) => {
-      const timestamp = new Date().toISOString()
-
-      if (currentBatchStorageId) {
-        // First, mark any current storage as moved out
-        const { error: updateError } = await supabase
-          .from("batch_storage")
-          .update({ moved_out_at: timestamp })
-          .eq("id", currentBatchStorageId)
-          .is("moved_out_at", null)
-
-        if (updateError) throw new Error(updateError.message)
-      }
-
-      // Create new storage record linked to sub-batch
-      const { data, error } = await supabase
-        .from("batch_storage")
-        .insert({
-          batch_id: batchId,
-          sub_batch_id: subBatchId,
-          location_id: locationId,
-          stored_at: storedAt || timestamp,
-          notes,
-        })
-        .select()
-        .single()
-        .overrideTypes<BatchStorage>()
+    mutationFn: async ({ subBatchId, locationId, notes, effectiveAt }) => {
+      const { data, error } = await supabase.rpc("fn_set_sub_batch_storage", {
+        p_sub_batch_id: subBatchId,
+        ...(locationId && { p_location_id: locationId }),
+        p_effective_at: effectiveAt,
+        p_notes: notes,
+      })
 
       if (error) throw new Error(error.message)
       return data
@@ -368,50 +340,8 @@ export const useMoveBatchToStorage = () => {
       queryClient.invalidateQueries({
         queryKey: ["subBatches", variables.batchId],
       })
-    },
-  })
-}
-
-// Mutation: Remove batch from storage (mark as moved out)
-type RemoveBatchFromStorageParams = {
-  batchStorageId: string
-  batchId: string // used for cache invalidation
-  notes?: string
-}
-
-export const useRemoveBatchFromStorage = () => {
-  return useMutation<BatchStorage, Error, RemoveBatchFromStorageParams>({
-    mutationFn: async ({ batchStorageId, notes }) => {
-      const { data, error } = await supabase
-        .from("batch_storage")
-        .update({
-          moved_out_at: new Date().toISOString(),
-          notes: notes || null,
-        })
-        .eq("id", batchStorageId)
-        .is("moved_out_at", null)
-        .select()
-        .single()
-        .overrideTypes<BatchStorage>()
-
-      if (error) throw new Error(error.message)
-      return data
-    },
-    onSuccess: (_, { batchId }) => {
       queryClient.invalidateQueries({
-        queryKey: ["subBatches", "currentStorage", batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "storageHistory", batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", batchId],
+        queryKey: ["storageLocations"],
       })
     },
   })

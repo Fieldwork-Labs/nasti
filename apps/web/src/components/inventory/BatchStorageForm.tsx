@@ -23,7 +23,6 @@ import { ArrowRight, Check, ChevronsUpDown, MapPin } from "lucide-react"
 
 import {
   useMoveBatchToStorage,
-  useRemoveBatchFromStorage,
   useStorageLocations,
 } from "../../hooks/useBatchStorage"
 import { useSubBatches } from "../../hooks/useSubBatches"
@@ -67,7 +66,6 @@ export const BatchStorageForm = ({
     batch.id,
   )
   const moveBatchToStorage = useMoveBatchToStorage()
-  const removeBatchFromStorage = useRemoveBatchFromStorage()
 
   const selectedSubBatch = useMemo(
     () => subBatches?.find((sb) => sb.id === selectedSubBatchId) ?? null,
@@ -111,44 +109,34 @@ export const BatchStorageForm = ({
     defaultValues,
   })
   // don't allow submit if form is not dirty
-  const isValid = baseIsValid && isDirty
-
   const selectedLocationId = watch("locationId")
   const isRemoving = selectedLocationId === "remove"
+  const isValid = baseIsValid && isDirty && Boolean(selectedLocationId)
 
   const onSubmit = useCallback(
     async (data: BatchStorageFormData) => {
       if (!selectedSubBatch) return
 
       const { locationId } = data
+      if (!locationId) return
+
       try {
-        if (locationId && locationId !== "remove") {
-          // Move to storage location
-          await moveBatchToStorage.mutateAsync({
-            batchId: batch.id,
-            subBatchId: selectedSubBatch.id,
-            currentBatchStorageId: currentStorage?.id,
-            locationId,
-            notes: data.notes || undefined,
-            storedAt: data.storedAt,
-          })
+        await moveBatchToStorage.mutateAsync({
+          batchId: batch.id,
+          subBatchId: selectedSubBatch.id,
+          locationId: locationId === "remove" ? null : locationId,
+          notes: data.notes || undefined,
+          effectiveAt: new Date(data.storedAt).toISOString(),
+        })
 
-          toast({
-            description: "Sub-batch moved to storage successfully",
-          })
-        } else if (locationId === "remove") {
-          if (!currentStorage) throw new Error("No storage location found")
-          // Remove from storage
-          await removeBatchFromStorage.mutateAsync({
-            batchStorageId: currentStorage.id,
-            batchId: batch.id,
-            notes: data.notes || undefined,
-          })
-
-          toast({
-            description: "Sub-batch removed from storage successfully",
-          })
-        }
+        toast({
+          description:
+            locationId === "remove"
+              ? "Sub-batch removed from storage successfully"
+              : currentStorage
+                ? "Sub-batch moved to storage successfully"
+                : "Sub-batch stored successfully",
+        })
 
         onSuccess?.()
       } catch (error) {
@@ -166,7 +154,6 @@ export const BatchStorageForm = ({
       selectedSubBatch,
       currentStorage,
       toast,
-      removeBatchFromStorage,
     ],
   )
 
@@ -174,8 +161,7 @@ export const BatchStorageForm = ({
     isSubmitting ||
     locationsLoading ||
     subBatchesLoading ||
-    moveBatchToStorage.isPending ||
-    removeBatchFromStorage.isPending
+    moveBatchToStorage.isPending
 
   const selectedLocation =
     !isRemoving &&
@@ -283,9 +269,9 @@ export const BatchStorageForm = ({
           )}
         </div>
 
-        {selectedLocationId && !isRemoving && (
+        {selectedLocationId && (
           <FormField
-            label="Storage Date & Time"
+            label="Effective Date & Time"
             type="datetime-local"
             {...register("storedAt")}
             error={errors.storedAt}

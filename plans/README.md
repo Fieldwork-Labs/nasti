@@ -21,8 +21,8 @@ a time without repeating the audit.
 
 | Issue | Finding | Priority | Effort | Recommended outcome |
 |---:|---|---:|---:|---|
-| 2 | Bagging cannot be resumed after its modal is dismissed, refreshed, or fails | P1 | M | Persist or reliably infer an awaiting-bagging state and expose a `Complete bagging` inventory action |
-| 3 | Moving a sub-batch between storage locations uses separate update and insert requests | P1 | S–M | Replace the client-side sequence with one locked, tenant-validated database RPC |
+| 2 | Bagging cannot be resumed after its modal is dismissed, refreshed, or fails | P1 | M | **DEFERRED:** bagging must remain optional; see [decision note](./002-optional-bagging-recovery-decisions.md) |
+| 3 | Moving a sub-batch between storage locations uses separate update and insert requests | P1 | S–M | **DONE:** one locked, tenant-validated RPC now stores, moves, or removes a sub-batch atomically |
 | 4 | Deleting an unused storage location cascades all historical storage records | P1 | S–M | Retire referenced locations instead of deleting them; change the history foreign key away from `ON DELETE CASCADE` |
 | 5 | Direct authenticated writes can associate sub-batches or storage rows with another organisation's container/location | P1 | M | Harden RLS relationship checks or revoke direct writes and require validated RPCs |
 | 6 | Inventory omits container names and container settings count only collection usage | P2 | M | Join container details into sub-batch reads and report collection and storage usage separately |

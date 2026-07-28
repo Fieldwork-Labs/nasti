@@ -2494,6 +2494,30 @@ export type Database = {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
       }
+      fn_set_sub_batch_storage: {
+        Args: {
+          p_effective_at?: string
+          p_location_id?: string
+          p_notes?: string
+          p_sub_batch_id: string
+        }
+        Returns: {
+          batch_id: string
+          created_at: string
+          id: string
+          location_id: string
+          moved_out_at: string | null
+          notes: string | null
+          stored_at: string | null
+          sub_batch_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "batch_storage"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       fn_split_batch: {
         Args: {
           p_notes?: string
