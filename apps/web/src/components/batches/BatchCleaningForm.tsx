@@ -1,7 +1,7 @@
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Loader2, ChevronDown, Check, Plus } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
@@ -18,15 +18,26 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
+import { MultiSelect, type Option } from "@nasti/ui/multi-select"
 
-import { useCleanBatch } from "@/hooks/useCleanBatch"
 import {
+  type BatchCleaningWithOutputs,
+  useCleanBatch,
+  useUpdateBatchCleaning,
+} from "@/hooks/useCleanBatch"
+import {
+  useBatchCleaningPhotos,
+  useDeleteBatchCleaningPhoto,
   useUploadBatchCleaningPhotos,
+  type BatchCleaningPhotoSignedUrl,
   type StagedCleaningPhoto,
 } from "@/hooks/useBatchCleaningPhotos"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { MATERIAL_SUBTYPES_BY_TYPE } from "@nasti/common/types"
 import { TaxonName } from "@nasti/common"
+import { usePersons } from "@/hooks/usePersons"
+import useUserStore from "@/store/userStore"
+import { DurationInput } from "@/components/collections/DurationInput"
 
 import { CleaningPhotoDropzone } from "./CleaningPhotoDropzone"
 
@@ -42,12 +53,14 @@ const cleaningOutputSchema = z.object({
 const batchCleaningSchema = z
   .object({
     // Initial material description
-    material_type: z.enum(["seed", "covering_structure"]),
+    material_type: z.enum(["seed", "covering_structure"]).optional(),
     material_subtype: z.string().optional(),
     material_notes: z.string().optional(),
     // Cleaning process
     is_cleaned: z.boolean(),
     cleaning_notes: z.string().optional(),
+    worker_ids: z.array(z.string().uuid()).default([]),
+    duration: z.string().nullable(),
     // Final material outputs
     outputs: z.object({
       org: cleaningOutputSchema,
@@ -93,76 +106,151 @@ const batchCleaningSchema = z
         })
       }
     }
+
+    if (data.is_cleaned && !data.duration) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Duration is required",
+        path: ["duration"],
+      })
+    }
   })
 
 type BatchCleaningFormData = z.infer<typeof batchCleaningSchema>
 
 type BatchCleaningFormProps = {
   batch: BatchWithCurrentLocationAndSpecies
+  instance?: BatchCleaningWithOutputs
   onSuccess?: () => void
   onCancel?: () => void
   className?: string
 }
 
+const isMaterialType = (
+  value: string | null | undefined,
+): value is "seed" | "covering_structure" =>
+  value === "seed" || value === "covering_structure"
+
 export const BatchCleaningForm = ({
   batch,
+  instance,
   onSuccess,
   onCancel,
   className,
 }: BatchCleaningFormProps) => {
   const { toast } = useToast()
-  const { mutateAsync: cleanBatchMutation, isPending } = useCleanBatch()
+  const { mutateAsync: cleanBatchMutation, isPending: isCreating } =
+    useCleanBatch()
+  const { mutateAsync: updateBatchCleaning, isPending: isUpdating } =
+    useUpdateBatchCleaning()
   const { uploadPhotosAsync, isUploading } = useUploadBatchCleaningPhotos()
+  const { data: existingPhotos = [] } = useBatchCleaningPhotos(instance?.id)
+  const { deletePhotoAsync, isDeleting } = useDeleteBatchCleaningPhoto(
+    instance?.id,
+  )
+  const { user } = useUserStore()
+  const { data: persons } = usePersons()
+  const isEditing = Boolean(instance)
+  const isPending = isCreating || isUpdating
   const [subtypeOpen, setSubtypeOpen] = useState(false)
   // LQ is collapsed by default once cleaned — most cleaning runs don't produce
   // a low quality output, so it's opt-in rather than always on screen.
-  const [showLqOutput, setShowLqOutput] = useState(false)
+  const [showLqOutput, setShowLqOutput] = useState(
+    () => instance?.outputs.some((output) => output.quality === "LQ") ?? false,
+  )
   const [photos, setPhotos] = useState<StagedCleaningPhoto[]>([])
+
+  const outputDefault = (
+    quality: "ORG" | "HQ" | "LQ",
+    enabledByDefault: boolean,
+  ) => {
+    const output = instance?.outputs.find(
+      (candidate) => candidate.quality === quality,
+    )
+
+    return {
+      enabled: output ? true : enabledByDefault,
+      quality,
+      material_type: isMaterialType(output?.material_type)
+        ? output.material_type
+        : "seed",
+      weight_grams: output?.weight_grams ?? undefined,
+    }
+  }
 
   const form = useForm<BatchCleaningFormData>({
     resolver: zodResolver(batchCleaningSchema),
     defaultValues: {
-      material_type: "seed",
-      material_subtype: "",
-      material_notes: "",
-      is_cleaned: false,
-      cleaning_notes: "",
+      material_type: isMaterialType(instance?.material_type)
+        ? instance.material_type
+        : undefined,
+      material_subtype: instance?.material_subtype ?? "",
+      material_notes: instance?.material_notes ?? "",
+      is_cleaned: instance?.is_cleaned ?? false,
+      cleaning_notes: instance?.cleaning_notes ?? "",
+      worker_ids: instance?.worker_ids ?? [],
+      duration: instance?.duration ?? null,
       outputs: {
-        org: {
-          enabled: true,
-          quality: "ORG",
-          material_type: "seed",
-          weight_grams: undefined,
-        },
-        hq: {
-          enabled: false,
-          quality: "HQ",
-          material_type: "seed",
-          weight_grams: undefined,
-        },
-        lq: {
-          enabled: false,
-          quality: "LQ",
-          material_type: "seed",
-          weight_grams: undefined,
-        },
+        org: outputDefault("ORG", !instance),
+        hq: outputDefault("HQ", false),
+        lq: outputDefault("LQ", false),
       },
     },
   })
 
   const isCleaned = form.watch("is_cleaned")
   const materialType = form.watch("material_type")
-  const subtypeOptions = MATERIAL_SUBTYPES_BY_TYPE[materialType]
+  const subtypeOptions = materialType
+    ? MATERIAL_SUBTYPES_BY_TYPE[materialType]
+    : []
+  const selectedWorkerIds = form.watch("worker_ids")
+  const workerOptions: Option[] = useMemo(
+    () =>
+      persons
+        ?.filter(
+          (person) =>
+            person.is_active || selectedWorkerIds?.includes(person.id),
+        )
+        .map((person) => ({
+          value: person.id,
+          label: person.job_role
+            ? `${person.display_name} (${person.job_role})`
+            : person.display_name,
+        })) ?? [],
+    [persons, selectedWorkerIds],
+  )
+
+  useEffect(() => {
+    if (instance || selectedWorkerIds.length || !user?.id || !persons) return
+
+    const currentPerson = persons.find(
+      (person) => person.source_type === "user" && person.user_id === user.id,
+    )
+    if (currentPerson) {
+      form.setValue("worker_ids", [currentPerson.id], {
+        shouldDirty: false,
+        shouldValidate: true,
+      })
+    }
+  }, [form, instance, persons, selectedWorkerIds.length, user?.id])
 
   const beforePhotos = photos.filter((photo) => photo.stage === "before")
   const afterPhotos = photos.filter((photo) => photo.stage === "after")
+  const existingBeforePhotos = existingPhotos.filter(
+    (photo) => photo.stage === "before",
+  )
+  const existingAfterPhotos = existingPhotos.filter(
+    (photo) => photo.stage === "after",
+  )
 
-  const handleMaterialTypeChange = (value: "seed" | "covering_structure") => {
+  const handleMaterialTypeChange = (
+    value: "seed" | "covering_structure" | undefined,
+  ) => {
     form.setValue("material_type", value)
     // Subtypes belong to one material type only, so the old choice can't stand
     form.setValue("material_subtype", "")
     // Auto-fill ORG output material type
-    form.setValue("outputs.org.material_type", value)
+    if (value && !isEditing) form.setValue("outputs.org.material_type", value)
   }
 
   const handleIsCleanedChange = (checked: boolean) => {
@@ -193,6 +281,20 @@ export const BatchCleaningForm = ({
     })
   }
 
+  const handleRemoveExistingPhoto = async (
+    photo: BatchCleaningPhotoSignedUrl,
+  ) => {
+    try {
+      await deletePhotoAsync(photo)
+    } catch (error) {
+      console.error("Cleaning photo deletion failed:", error)
+      toast({
+        description: "Failed to delete cleaning photo",
+        variant: "destructive",
+      })
+    }
+  }
+
   const onSubmit = async (data: BatchCleaningFormData) => {
     let cleaningId: string
     try {
@@ -206,19 +308,40 @@ export const BatchCleaningForm = ({
           weight_grams: o.weight_grams as number,
         }))
 
-      cleaningId = await cleanBatchMutation({
-        inputBatchId: batch.id,
+      const cleaningDetails = {
         materialType: data.material_type,
         materialSubtype: data.material_subtype || undefined,
         materialNotes: data.material_notes || undefined,
-        isCleaned: data.is_cleaned,
-        cleaningNotes: data.cleaning_notes || undefined,
-        outputs,
-      })
+        cleaningNotes:
+          data.is_cleaned && data.cleaning_notes
+            ? data.cleaning_notes
+            : undefined,
+        workerIds: data.is_cleaned ? data.worker_ids : [],
+        duration: data.is_cleaned ? (data.duration ?? undefined) : undefined,
+      }
+
+      if (instance) {
+        cleaningId = await updateBatchCleaning({
+          cleaningId: instance.id,
+          ...cleaningDetails,
+        })
+      } else {
+        cleaningId = await cleanBatchMutation({
+          inputBatchId: batch.id,
+          isCleaned: data.is_cleaned,
+          outputs,
+          ...cleaningDetails,
+        })
+      }
     } catch (error) {
-      console.error("Cleaning failed:", error)
+      console.error(
+        isEditing ? "Cleaning update failed:" : "Cleaning failed:",
+        error,
+      )
       toast({
-        description: "Failed to clean batch",
+        description: isEditing
+          ? "Failed to update cleaning record"
+          : "Failed to clean batch",
         variant: "destructive",
       })
       return
@@ -227,13 +350,15 @@ export const BatchCleaningForm = ({
     // The cleaning record exists now, so the staged photos can be attached.
     // A failure here doesn't undo the cleaning — say so rather than pretending
     // the whole submission failed.
-    if (photos.length > 0) {
+    if (data.is_cleaned && photos.length > 0) {
       try {
         await uploadPhotosAsync({ cleaningId, photos })
       } catch (error) {
         console.error("Cleaning photo upload failed:", error)
         toast({
-          description: "Batch cleaned, but the photos failed to upload",
+          description: isEditing
+            ? "Cleaning record updated, but the photos failed to upload"
+            : "Batch cleaned, but the photos failed to upload",
           variant: "destructive",
         })
         onSuccess?.()
@@ -242,7 +367,11 @@ export const BatchCleaningForm = ({
     }
 
     photos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl))
-    toast({ description: "Successfully cleaned batch" })
+    toast({
+      description: isEditing
+        ? "Successfully updated cleaning record"
+        : "Successfully cleaned batch",
+    })
     onSuccess?.()
   }
 
@@ -286,13 +415,13 @@ export const BatchCleaningForm = ({
 
         {/* Seed / Covering Structure choice */}
         <div className="space-y-2">
-          <Label>Material type *</Label>
+          <Label>Material type</Label>
           <div className="flex gap-6">
             <label className="flex items-center gap-2">
               <Checkbox
                 checked={materialType === "seed"}
                 onCheckedChange={(checked) => {
-                  if (checked) handleMaterialTypeChange("seed")
+                  handleMaterialTypeChange(checked ? "seed" : undefined)
                 }}
               />
               Seed
@@ -301,7 +430,9 @@ export const BatchCleaningForm = ({
               <Checkbox
                 checked={materialType === "covering_structure"}
                 onCheckedChange={(checked) => {
-                  if (checked) handleMaterialTypeChange("covering_structure")
+                  handleMaterialTypeChange(
+                    checked ? "covering_structure" : undefined,
+                  )
                 }}
               />
               Covering structure
@@ -310,61 +441,64 @@ export const BatchCleaningForm = ({
         </div>
 
         {/* Material subtype dropdown — options follow the material type */}
-        <div className="space-y-2">
-          <Label>
-            {materialType === "seed" ? "Type of seed" : "Type of structure"}
-          </Label>
-          <Controller
-            control={form.control}
-            name="material_subtype"
-            render={({ field }) => (
-              <Popover open={subtypeOpen} onOpenChange={setSubtypeOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between"
-                  >
-                    {field.value
-                      ? field.value.charAt(0).toUpperCase() +
-                        field.value.slice(1)
-                      : "Select type..."}
-                    <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandList>
-                      <CommandEmpty>No type found.</CommandEmpty>
-                      <CommandGroup>
-                        {subtypeOptions.map((subtype) => (
-                          <CommandItem
-                            key={subtype}
-                            value={subtype}
-                            onSelect={() => {
-                              field.onChange(subtype)
-                              setSubtypeOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                field.value === subtype
-                                  ? "opacity-100"
-                                  : "opacity-0",
-                              )}
-                            />
-                            {subtype.charAt(0).toUpperCase() + subtype.slice(1)}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            )}
-          />
-        </div>
+        {materialType && (
+          <div className="space-y-2">
+            <Label>
+              {materialType === "seed" ? "Type of seed" : "Type of structure"}
+            </Label>
+            <Controller
+              control={form.control}
+              name="material_subtype"
+              render={({ field }) => (
+                <Popover open={subtypeOpen} onOpenChange={setSubtypeOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {field.value
+                        ? field.value.charAt(0).toUpperCase() +
+                          field.value.slice(1)
+                        : "Select type..."}
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandEmpty>No type found.</CommandEmpty>
+                        <CommandGroup>
+                          {subtypeOptions.map((subtype) => (
+                            <CommandItem
+                              key={subtype}
+                              value={subtype}
+                              onSelect={() => {
+                                field.onChange(subtype)
+                                setSubtypeOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  field.value === subtype
+                                    ? "opacity-100"
+                                    : "opacity-0",
+                                )}
+                              />
+                              {subtype.charAt(0).toUpperCase() +
+                                subtype.slice(1)}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+            />
+          </div>
+        )}
 
         {/* Notes */}
         <div className="space-y-2">
@@ -385,41 +519,88 @@ export const BatchCleaningForm = ({
           <label className="flex items-center gap-2">
             <Checkbox
               checked={isCleaned}
+              disabled={isEditing}
               onCheckedChange={(checked) =>
                 handleIsCleanedChange(Boolean(checked))
               }
             />
             Cleaned
           </label>
-          <div className="space-y-2">
-            <Label htmlFor="cleaning_notes">Notes</Label>
-            <Textarea
-              id="cleaning_notes"
-              placeholder="Cleaning process notes..."
-              {...form.register("cleaning_notes")}
-              rows={2}
-            />
-          </div>
+          {isCleaned && (
+            <div className="animate-in fade-in slide-in-from-top-2 space-y-3">
+              <div className="space-y-2">
+                <Label>Workers</Label>
+                <Controller
+                  control={form.control}
+                  name="worker_ids"
+                  render={({ field }) => (
+                    <MultiSelect
+                      options={workerOptions}
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      defaultValue={field.value}
+                      placeholder="Select workers"
+                    />
+                  )}
+                />
+              </div>
+              <div>
+                <Controller
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <DurationInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      required
+                    />
+                  )}
+                />
+                {form.formState.errors.duration && (
+                  <p className="-mt-3 text-sm text-red-600">
+                    {form.formState.errors.duration.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cleaning_notes">Notes</Label>
+                <Textarea
+                  id="cleaning_notes"
+                  placeholder="Cleaning process notes..."
+                  {...form.register("cleaning_notes")}
+                  rows={2}
+                />
+              </div>
 
-          {/* Before / after photos, staged until the cleaning record exists */}
-          <div className="grid gap-4 pt-2 md:grid-cols-2">
-            <CleaningPhotoDropzone
-              label="Photos before cleaning"
-              stage="before"
-              photos={beforePhotos}
-              onAdd={handleAddPhotos}
-              onRemove={handleRemovePhoto}
-              disabled={isPending || isUploading}
-            />
-            <CleaningPhotoDropzone
-              label="Photos after cleaning"
-              stage="after"
-              photos={afterPhotos}
-              onAdd={handleAddPhotos}
-              onRemove={handleRemovePhoto}
-              disabled={isPending || isUploading}
-            />
-          </div>
+              {/* Before / after photos, staged until the cleaning record exists */}
+              <div className="grid gap-4 pt-2 md:grid-cols-2">
+                <CleaningPhotoDropzone
+                  label="Photos before cleaning"
+                  stage="before"
+                  existingPhotos={existingBeforePhotos}
+                  photos={beforePhotos}
+                  onAdd={handleAddPhotos}
+                  onRemove={handleRemovePhoto}
+                  onRemoveExisting={
+                    isEditing ? handleRemoveExistingPhoto : undefined
+                  }
+                  disabled={isPending || isUploading || isDeleting}
+                />
+                <CleaningPhotoDropzone
+                  label="Photos after cleaning"
+                  stage="after"
+                  existingPhotos={existingAfterPhotos}
+                  photos={afterPhotos}
+                  onAdd={handleAddPhotos}
+                  onRemove={handleRemovePhoto}
+                  onRemoveExisting={
+                    isEditing ? handleRemoveExistingPhoto : undefined
+                  }
+                  disabled={isPending || isUploading || isDeleting}
+                />
+              </div>
+            </div>
+          )}
         </div>
         {form.formState.errors.is_cleaned && (
           <p className="mt-1 text-sm text-red-600">
@@ -431,6 +612,12 @@ export const BatchCleaningForm = ({
       {/* ===== Section 4: Final Material (outputs) ===== */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Final material</h3>
+        {isEditing && (
+          <p className="text-muted-foreground text-xs">
+            Final material is read-only because it is linked to generated batch
+            weights and lineage.
+          </p>
+        )}
         <div className="flex justify-between text-sm">
           <span>Quality</span>
           <span>Material type</span>
@@ -440,7 +627,7 @@ export const BatchCleaningForm = ({
         {(["org", "hq", "lq"] as const).map((key) => {
           const qualityLabel = key.toUpperCase()
           const isEnabled = form.watch(`outputs.${key}.enabled`)
-          const isDisabled = !isCleaned && key !== "org"
+          const isDisabled = isEditing || (!isCleaned && key !== "org")
           // LQ only appears once it's been asked for
           if (key === "lq" && !showLqOutput) return null
 
@@ -520,7 +707,7 @@ export const BatchCleaningForm = ({
           )
         })}
 
-        {isCleaned && !showLqOutput && (
+        {!isEditing && isCleaned && !showLqOutput && (
           <Button
             type="button"
             variant="outline"
@@ -560,13 +747,13 @@ export const BatchCleaningForm = ({
         )}
         <Button
           type="submit"
-          disabled={isPending || isUploading}
+          disabled={isPending || isUploading || isDeleting}
           className="min-w-[120px] cursor-pointer"
         >
-          {(isPending || isUploading) && (
+          {(isPending || isUploading || isDeleting) && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
-          Submit
+          {isEditing ? "Save changes" : "Submit"}
         </Button>
       </div>
     </form>

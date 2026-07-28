@@ -4,6 +4,7 @@ import { Camera, X } from "lucide-react"
 import { cn } from "@nasti/ui/utils"
 
 import type {
+  BatchCleaningPhotoSignedUrl,
   CleaningPhotoStage,
   StagedCleaningPhoto,
 } from "@/hooks/useBatchCleaningPhotos"
@@ -11,9 +12,11 @@ import type {
 type CleaningPhotoDropzoneProps = {
   label: string
   stage: CleaningPhotoStage
+  existingPhotos?: BatchCleaningPhotoSignedUrl[]
   photos: StagedCleaningPhoto[]
   onAdd: (photos: StagedCleaningPhoto[]) => void
   onRemove: (photoId: string) => void
+  onRemoveExisting?: (photo: BatchCleaningPhotoSignedUrl) => void
   disabled?: boolean
 }
 
@@ -23,9 +26,11 @@ type CleaningPhotoDropzoneProps = {
 export const CleaningPhotoDropzone = ({
   label,
   stage,
+  existingPhotos = [],
   photos,
   onAdd,
   onRemove,
+  onRemoveExisting,
   disabled,
 }: CleaningPhotoDropzoneProps) => {
   const onDrop = useCallback(
@@ -76,8 +81,31 @@ export const CleaningPhotoDropzone = ({
         </div>
       </div>
 
-      {photos.length > 0 && (
+      {(existingPhotos.length > 0 || photos.length > 0) && (
         <div className="grid grid-cols-3 gap-2 lg:grid-cols-4">
+          {existingPhotos.map((photo) => (
+            <div
+              key={photo.id}
+              className="group relative aspect-square overflow-hidden rounded-md border"
+            >
+              <img
+                src={photo.signedUrl}
+                alt={photo.caption ?? `${stage} cleaning photo`}
+                className="h-full w-full object-cover"
+              />
+              {onRemoveExisting && (
+                <button
+                  type="button"
+                  aria-label={`Remove ${stage} cleaning photo`}
+                  disabled={disabled}
+                  onClick={() => onRemoveExisting(photo)}
+                  className="bg-background/80 absolute right-1 top-1 cursor-pointer rounded-full p-1 opacity-0 transition-opacity focus:opacity-100 disabled:cursor-not-allowed group-hover:opacity-100"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
           {photos.map((photo) => (
             <div
               key={photo.id}

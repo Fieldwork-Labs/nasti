@@ -83,6 +83,41 @@ export const useBatchCleaningPhotos = (cleaningId?: string) => {
   })
 }
 
+export const useDeleteBatchCleaningPhoto = (cleaningId?: string) => {
+  const deleteMutation = useMutation<
+    string,
+    Error,
+    BatchCleaningPhotoSignedUrl
+  >({
+    mutationFn: async (photo) => {
+      const { error: storageError } = await supabase.storage
+        .from(CLEANING_PHOTOS_BUCKET)
+        .remove([photo.url])
+
+      if (storageError) throw storageError
+
+      const { error: databaseError } = await supabase
+        .from("batch_cleaning_photo")
+        .delete()
+        .eq("id", photo.id)
+
+      if (databaseError) throw databaseError
+      return photo.id
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["batchCleaningPhotos", cleaningId],
+      })
+    },
+  })
+
+  return {
+    deletePhoto: deleteMutation.mutate,
+    deletePhotoAsync: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
+  }
+}
+
 /**
  * Uploads the before/after photos staged in the cleaning form. A cleaning
  * record only exists once fn_clean_batch has run, so the files are held in the

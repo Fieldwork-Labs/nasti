@@ -14,40 +14,46 @@ export type Database = {
           cleaning_notes: string | null
           created_at: string | null
           created_by: string | null
+          duration: string | null
           id: string
           input_batch_id: string | null
           input_sub_batch_id: string | null
           is_cleaned: boolean
           material_notes: string | null
           material_subtype: string | null
-          material_type: string
+          material_type: string | null
           organisation_id: string
+          worker_ids: string[]
         }
         Insert: {
           cleaning_notes?: string | null
           created_at?: string | null
           created_by?: string | null
+          duration?: string | null
           id?: string
           input_batch_id?: string | null
           input_sub_batch_id?: string | null
           is_cleaned?: boolean
           material_notes?: string | null
           material_subtype?: string | null
-          material_type: string
+          material_type?: string | null
           organisation_id: string
+          worker_ids?: string[]
         }
         Update: {
           cleaning_notes?: string | null
           created_at?: string | null
           created_by?: string | null
+          duration?: string | null
           id?: string
           input_batch_id?: string | null
           input_sub_batch_id?: string | null
           is_cleaned?: boolean
           material_notes?: string | null
           material_subtype?: string | null
-          material_type?: string
+          material_type?: string | null
           organisation_id?: string
+          worker_ids?: string[]
         }
         Relationships: [
           {
@@ -2401,24 +2407,40 @@ export type Database = {
       fn_clean_batch: {
         Args: {
           p_cleaning_notes?: string
+          p_duration?: string
           p_input_batch_id: string
           p_is_cleaned?: boolean
           p_material_notes?: string
           p_material_subtype?: string
-          p_material_type: string
+          p_material_type?: string
           p_outputs?: Json
+          p_worker_ids?: string[]
         }
         Returns: string
       }
       fn_clean_sub_batch: {
         Args: {
           p_cleaning_notes?: string
+          p_duration?: string
           p_is_cleaned?: boolean
           p_material_notes?: string
           p_material_subtype?: string
-          p_material_type: string
+          p_material_type?: string
           p_outputs?: Json
           p_sub_batch_id: string
+          p_worker_ids?: string[]
+        }
+        Returns: string
+      }
+      fn_update_batch_cleaning: {
+        Args: {
+          p_cleaning_id: string
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_worker_ids?: string[]
         }
         Returns: string
       }

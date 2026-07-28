@@ -523,7 +523,7 @@ const BatchDetailsContent = ({
         <div className="text-muted-foreground mt-1 text-xs">{batch.notes}</div>
       </div>
 
-      <BatchCleaningPhotos batchId={batch.id} />
+      <BatchCleaningPhotos batch={batch} />
     </div>
   )
 }

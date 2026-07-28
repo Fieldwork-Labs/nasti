@@ -8,13 +8,20 @@ import {
 } from "@nasti/ui/carousel"
 import { Dialog, DialogContent, DialogTitle } from "@nasti/ui/dialog"
 import { Skeleton } from "@nasti/ui/skeleton"
+import { Button } from "@nasti/ui/button"
+import { Pencil } from "lucide-react"
 
+import { BatchCleaningModal } from "@/components/inventory/modals/BatchCleaningModal"
 import {
   type BatchCleaningPhotoSignedUrl,
   type CleaningPhotoStage,
   useBatchCleaningPhotos,
 } from "@/hooks/useBatchCleaningPhotos"
-import { useBatchHistory } from "@/hooks/useBatches"
+import {
+  type BatchWithCurrentLocationAndSpecies,
+  useBatchHistory,
+} from "@/hooks/useBatches"
+import { useBatchCleaning } from "@/hooks/useCleanBatch"
 
 const stageLabels: Record<CleaningPhotoStage, string> = {
   before: "Before cleaning",
@@ -121,15 +128,23 @@ const CleaningPhotoViewer = ({
   </Dialog>
 )
 
-export const BatchCleaningPhotos = ({ batchId }: { batchId: string }) => {
+export const BatchCleaningPhotos = ({
+  batch,
+}: {
+  batch: BatchWithCurrentLocationAndSpecies
+}) => {
   const [selectedIndex, setSelectedIndex] = useState<number>()
-  const { data: history, isLoading: isHistoryLoading } =
-    useBatchHistory(batchId)
+  const [isEditing, setIsEditing] = useState(false)
+  const { data: history, isLoading: isHistoryLoading } = useBatchHistory(
+    batch.id,
+  )
   const cleaningId = getCleaningId(history)
+  const { data: cleaning, isLoading: isCleaningLoading } =
+    useBatchCleaning(cleaningId)
   const {
     data: photos = [],
     isLoading: arePhotosLoading,
-    isError,
+    isError: arePhotosError,
   } = useBatchCleaningPhotos(cleaningId)
 
   const photosByStage = useMemo(
@@ -143,57 +158,73 @@ export const BatchCleaningPhotos = ({ batchId }: { batchId: string }) => {
   if (isHistoryLoading) return null
   if (!cleaningId) return null
 
-  if (arePhotosLoading) {
-    return (
-      <div className="col-span-full space-y-2">
-        <span className="font-medium">Cleaning photos</span>
-        <div className="flex gap-2">
-          <Skeleton className="h-16 w-16" />
-          <Skeleton className="h-16 w-16" />
-        </div>
-      </div>
-    )
-  }
-
-  if (isError) {
-    return (
-      <div className="text-destructive col-span-full text-xs">
-        Cleaning photos could not be loaded.
-      </div>
-    )
-  }
-
-  if (photos.length === 0) return null
-
   return (
     <>
       <div className="col-span-full space-y-2">
-        <span className="font-medium">Cleaning photos</span>
-        <div className="flex flex-wrap gap-4">
-          {(["before", "after"] as const).map((stage) => {
-            const stagePhotos = photosByStage[stage]
-            if (stagePhotos.length === 0) return null
-
-            return (
-              <div key={stage} className="space-y-1">
-                <div className="text-muted-foreground text-xs">
-                  {stageLabels[stage]}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {stagePhotos.map((photo) => (
-                    <PhotoThumbnail
-                      key={photo.id}
-                      photo={photo}
-                      index={photos.indexOf(photo)}
-                      onOpen={setSelectedIndex}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
+        <div className="flex items-center gap-1">
+          <span className="font-medium">Cleaning record</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            title="Edit cleaning record"
+            aria-label="Edit cleaning record"
+            disabled={isCleaningLoading || !cleaning}
+            onClick={() => setIsEditing(true)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
         </div>
+
+        {arePhotosLoading && (
+          <div className="flex gap-2">
+            <Skeleton className="h-16 w-16" />
+            <Skeleton className="h-16 w-16" />
+          </div>
+        )}
+
+        {arePhotosError && (
+          <div className="text-destructive text-xs">
+            Cleaning photos could not be loaded.
+          </div>
+        )}
+
+        {!arePhotosLoading && !arePhotosError && photos.length > 0 && (
+          <div className="flex flex-wrap gap-4">
+            {(["before", "after"] as const).map((stage) => {
+              const stagePhotos = photosByStage[stage]
+              if (stagePhotos.length === 0) return null
+
+              return (
+                <div key={stage} className="space-y-1">
+                  <div className="text-muted-foreground text-xs">
+                    {stageLabels[stage]}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {stagePhotos.map((photo) => (
+                      <PhotoThumbnail
+                        key={photo.id}
+                        photo={photo}
+                        index={photos.indexOf(photo)}
+                        onOpen={setSelectedIndex}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
+
+      {isEditing && cleaning && (
+        <BatchCleaningModal
+          isOpen={isEditing}
+          onClose={() => setIsEditing(false)}
+          batch={batch}
+          instance={cleaning}
+        />
+      )}
 
       {selectedIndex !== undefined && (
         <CleaningPhotoViewer
