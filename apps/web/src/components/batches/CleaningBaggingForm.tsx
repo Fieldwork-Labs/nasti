@@ -18,7 +18,7 @@ import {
   type BatchCleaningWithOutputs,
   useBagAndStoreCleaningOutputs,
 } from "@/hooks/useCleanBatch"
-import { useStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
 
 const NO_LOCATION = "__none__"
 
@@ -73,7 +73,7 @@ export const CleaningBaggingForm = ({
   const { data: containers = [], isLoading: containersLoading } =
     useActiveContainers("storage")
   const { data: locations = [], isLoading: locationsLoading } =
-    useStorageLocations()
+    useActiveStorageLocations()
   const bagAndStore = useBagAndStoreCleaningOutputs()
   const [error, setError] = useState<string>()
   const [outputs, setOutputs] = useState<OutputDraft[]>(() =>

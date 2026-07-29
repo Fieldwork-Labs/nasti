@@ -22,8 +22,8 @@ import { cn } from "@nasti/ui/utils"
 import { ArrowRight, Check, ChevronsUpDown, MapPin } from "lucide-react"
 
 import {
+  useActiveStorageLocations,
   useMoveBatchToStorage,
-  useStorageLocations,
 } from "../../hooks/useBatchStorage"
 import { useSubBatches } from "../../hooks/useSubBatches"
 
@@ -61,7 +61,7 @@ export const BatchStorageForm = ({
   const { toast } = useToast()
 
   const { data: storageLocations, isLoading: locationsLoading } =
-    useStorageLocations()
+    useActiveStorageLocations()
   const { data: subBatches, isLoading: subBatchesLoading } = useSubBatches(
     batch.id,
   )

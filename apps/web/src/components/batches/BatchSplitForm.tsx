@@ -22,7 +22,7 @@ import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
 
 import { useSubBatches, useSplitSubBatch } from "@/hooks/useSubBatches"
-import { useStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
 import { useActiveContainers } from "@/hooks/useContainers"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 
@@ -66,7 +66,7 @@ export const BatchSplitForm = ({
 }: BatchSplitFormProps) => {
   const { toast } = useToast()
   const { data: subBatches } = useSubBatches(parentBatch.id)
-  const { data: storageLocations } = useStorageLocations()
+  const { data: storageLocations } = useActiveStorageLocations()
   const { data: storageContainers } = useActiveContainers("storage")
   const splitMutation = useSplitSubBatch()
   const selectedSubBatch = subBatches?.find((sb) => sb.id === initialSubBatchId)

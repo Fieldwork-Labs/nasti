@@ -38,11 +38,22 @@ export const useStorageLocations = () => {
       const { data, error } = await supabase
         .from("storage_locations")
         .select(`*`)
+        .order("active", { ascending: false })
+        .order("name")
 
       if (error) throw new Error(error.message)
       return data
     },
   })
+}
+
+export const useActiveStorageLocations = () => {
+  const query = useStorageLocations()
+
+  return {
+    ...query,
+    data: query.data?.filter((location) => location.active),
+  }
 }
 
 // Query: Get detailed view of a storage location
@@ -225,14 +236,16 @@ type UpdateStorageLocationParams = {
   id: string
   name?: string
   description?: string
+  active?: boolean
 }
 
 export const useUpdateStorageLocation = () => {
   return useMutation<StorageLocation, Error, UpdateStorageLocationParams>({
-    mutationFn: async ({ id, name, description }) => {
-      const updates: UpdateStorageLocationParams = { id }
+    mutationFn: async ({ id, name, description, active }) => {
+      const updates: Omit<UpdateStorageLocationParams, "id"> = {}
       if (name !== undefined) updates.name = name
       if (description !== undefined) updates.description = description
+      if (active !== undefined) updates.active = active
 
       const { data, error } = await supabase
         .from("storage_locations")
@@ -262,41 +275,33 @@ export const useUpdateStorageLocation = () => {
   })
 }
 
-// Mutation: Delete storage location
+type RemoveStorageLocationResult = {
+  locationId: string
+  action: "deleted" | "retired"
+}
+
+// Mutation: Delete a never-used location, or retire one with storage history
 export const useDeleteStorageLocation = () => {
-  return useMutation<StorageLocation, Error, string>({
+  return useMutation<RemoveStorageLocationResult, Error, string>({
     mutationFn: async (locationId) => {
-      // First check if there are any batches currently stored here
-      const { data: currentBatches } = await supabase
-        .from("current_batch_storage")
-        .select("batch_id")
-        .eq("location_id", locationId)
-
-      if (currentBatches && currentBatches.length > 0) {
-        throw new Error(
-          `Cannot delete storage location: ${currentBatches.length} batch(es) currently stored here`,
-        )
-      }
-
-      const { data, error } = await supabase
-        .from("storage_locations")
-        .delete()
-        .eq("id", locationId)
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc("fn_remove_storage_location", {
+        p_location_id: locationId,
+      })
 
       if (error) throw new Error(error.message)
-      return data as StorageLocation
+      if (data !== "deleted" && data !== "retired") {
+        throw new Error("Unexpected storage location removal result")
+      }
+
+      return { locationId, action: data }
     },
-    onSuccess: (deletedLocation) => {
-      // Remove from caches
+    onSuccess: ({ locationId }) => {
       queryClient.invalidateQueries({
         queryKey: ["storageLocations"],
       })
 
-      // Remove detail cache
       queryClient.removeQueries({
-        queryKey: ["storageLocations", "detail", deletedLocation.id],
+        queryKey: ["storageLocations", "detail", locationId],
       })
     },
   })

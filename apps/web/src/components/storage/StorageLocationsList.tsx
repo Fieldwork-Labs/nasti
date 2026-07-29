@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Plus, MapPin, Edit, Trash2, Package } from "lucide-react"
+import { Plus, MapPin, Edit, Trash2, Package, RotateCcw } from "lucide-react"
+import { Badge } from "@nasti/ui/badge"
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
 import { useToast } from "@nasti/ui/hooks"
@@ -24,6 +25,7 @@ import {
 import {
   useStorageLocations,
   useDeleteStorageLocation,
+  useUpdateStorageLocation,
 } from "../../hooks/useBatchStorage"
 import { StorageLocationForm } from "./StorageLocationForm"
 import type { StorageLocation } from "@nasti/common/types"
@@ -37,6 +39,7 @@ export const StorageLocationsList = ({
 }: StorageLocationsListProps) => {
   const { data: storageLocations, isLoading } = useStorageLocations()
   const deleteStorageLocation = useDeleteStorageLocation()
+  const updateStorageLocation = useUpdateStorageLocation()
   const { toast } = useToast()
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -45,22 +48,55 @@ export const StorageLocationsList = ({
   const [deletingLocationId, setDeletingLocationId] = useState<string | null>(
     null,
   )
+  const [reactivatingLocationId, setReactivatingLocationId] = useState<
+    string | null
+  >(null)
 
   const handleDelete = async (locationId: string) => {
+    setDeletingLocationId(locationId)
+
     try {
-      await deleteStorageLocation.mutateAsync(locationId)
+      const result = await deleteStorageLocation.mutateAsync(locationId)
       toast({
-        description: "Storage location deleted successfully",
+        description:
+          result.action === "deleted"
+            ? "Unused storage location deleted successfully"
+            : "Storage location retired; its contents and history are preserved",
       })
-      setDeletingLocationId(null)
     } catch (error) {
       toast({
         variant: "destructive",
         description:
           error instanceof Error
             ? error.message
-            : "Failed to delete storage location",
+            : "Failed to remove storage location",
       })
+    } finally {
+      setDeletingLocationId(null)
+    }
+  }
+
+  const handleReactivate = async (locationId: string) => {
+    setReactivatingLocationId(locationId)
+
+    try {
+      await updateStorageLocation.mutateAsync({
+        id: locationId,
+        active: true,
+      })
+      toast({
+        description: "Storage location reactivated successfully",
+      })
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to reactivate storage location",
+      })
+    } finally {
+      setReactivatingLocationId(null)
     }
   }
 
@@ -135,58 +171,82 @@ export const StorageLocationsList = ({
           {storageLocations.map((location) => (
             <Card
               key={location.id}
-              className="p-4 transition-shadow hover:shadow-md"
+              className={
+                location.active
+                  ? "p-4 transition-shadow hover:shadow-md"
+                  : "bg-muted/30 p-4 transition-shadow hover:shadow-md"
+              }
             >
               <div className="flex h-full flex-col">
                 <div className="mb-3 flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-blue-500" />
                     <h3 className="text-lg font-semibold">{location.name}</h3>
+                    {!location.active && (
+                      <Badge variant="secondary">Retired</Badge>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setEditingLocation(location)}
+                      aria-label={`Edit ${location.name}`}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Delete Storage Location
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete "{location.name}"?
-                            This action cannot be undone.
-                            {/* Add batch count warning if we had that data */}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(location.id)}
-                            className="bg-red-600 hover:bg-red-700"
-                            disabled={deleteStorageLocation.isPending}
+                    {location.active ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                            aria-label={`Remove ${location.name}`}
                           >
-                            {deleteStorageLocation.isPending &&
-                            deletingLocationId === location.id
-                              ? "Deleting..."
-                              : "Delete"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Remove Storage Location
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              If "{location.name}" has storage history, it will
+                              be retired and kept in history. If it has never
+                              been used, it will be permanently deleted.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(location.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                              disabled={deleteStorageLocation.isPending}
+                            >
+                              {deleteStorageLocation.isPending &&
+                              deletingLocationId === location.id
+                                ? "Removing..."
+                                : "Remove"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReactivate(location.id)}
+                        disabled={
+                          updateStorageLocation.isPending &&
+                          reactivatingLocationId === location.id
+                        }
+                        aria-label={`Reactivate ${location.name}`}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -198,7 +258,11 @@ export const StorageLocationsList = ({
 
                 <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Package className="h-4 w-4" />
-                  <span>Storage location</span>
+                  <span>
+                    {location.active
+                      ? "Storage location"
+                      : "Retired storage location"}
+                  </span>
                 </div>
 
                 <div className="text-muted-foreground mt-3 border-t pt-3 text-xs">

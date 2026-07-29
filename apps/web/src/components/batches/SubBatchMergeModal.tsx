@@ -23,7 +23,7 @@ import {
   type SubBatchWithStorage,
   useMergeSubBatches,
 } from "@/hooks/useSubBatches"
-import { useStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
 
 const NO_LOCATION = "__none__"
 
@@ -61,7 +61,7 @@ export const SubBatchMergeModal = ({
     isLoading: locationsLoading,
     isError: locationsFailed,
     error: locationsError,
-  } = useStorageLocations()
+  } = useActiveStorageLocations()
   const [containerId, setContainerId] = useState("")
   const [locationId, setLocationId] = useState("")
   const [notes, setNotes] = useState("")

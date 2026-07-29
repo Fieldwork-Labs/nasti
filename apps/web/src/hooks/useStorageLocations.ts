@@ -21,6 +21,15 @@ export const useStorageLocations = () => {
   })
 }
 
+export const useActiveStorageLocations = () => {
+  const query = useStorageLocations()
+
+  return {
+    ...query,
+    data: query.data?.filter((location) => location.active),
+  }
+}
+
 // Query: Get storage location details
 export const useStorageLocation = (locationId: string) => {
   return useQuery({
@@ -97,14 +106,15 @@ type UpdateStorageLocationParams = {
   id: string
   name?: string
   description?: string
+  active?: boolean
 }
 
 export const useUpdateStorageLocation = () => {
   return useMutation<StorageLocation, Error, UpdateStorageLocationParams>({
-    mutationFn: async ({ id, name, description }) => {
+    mutationFn: async ({ id, name, description, active }) => {
       const { data, error } = await supabase
         .from("storage_locations")
-        .update({ name, description })
+        .update({ name, description, active })
         .eq("id", id)
         .select()
         .single()

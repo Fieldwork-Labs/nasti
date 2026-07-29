@@ -1553,6 +1553,7 @@ export type Database = {
       }
       storage_locations: {
         Row: {
+          active: boolean
           created_at: string | null
           description: string | null
           id: string
@@ -1560,6 +1561,7 @@ export type Database = {
           organisation_id: string
         }
         Insert: {
+          active?: boolean
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1567,6 +1569,7 @@ export type Database = {
           organisation_id: string
         }
         Update: {
+          active?: boolean
           created_at?: string | null
           description?: string | null
           id?: string
@@ -2492,6 +2495,10 @@ export type Database = {
       }
       fn_mix_batches: {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
+        Returns: string
+      }
+      fn_remove_storage_location: {
+        Args: { p_location_id: string }
         Returns: string
       }
       fn_set_sub_batch_storage: {
