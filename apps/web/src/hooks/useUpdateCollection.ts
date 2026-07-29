@@ -86,7 +86,7 @@ export const useUpdateCollection = () => {
       queryClient.invalidateQueries({
         queryKey: ["collections", "containers", updatedItem.id],
       })
-      queryClient.invalidateQueries({ queryKey: ["containers", "usage"] })
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
 
       // Update the individual item cache
       queryClient.setQueryData(
@@ -138,6 +138,8 @@ export const useDeleteCollection = () => {
   return useMutation<Collection, unknown, string>({
     mutationFn: (id) => deleteCollection(id),
     onSuccess: (deletedObject) => {
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
+
       // Get all existing queries for trip Collections
       const tripQueries = queryClient.getQueriesData({
         queryKey: ["collections", "byTrip", deletedObject.trip_id],

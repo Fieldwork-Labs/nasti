@@ -1,10 +1,20 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { queryClient } from "@nasti/common/utils"
-import type { ActiveSubBatch, StorageLocation } from "@nasti/common/types"
+import type {
+  ActiveSubBatch,
+  Container,
+  StorageLocation,
+} from "@nasti/common/types"
 import { useMemo } from "react"
 
-export type SubBatchWithStorage = ActiveSubBatch & {
+type SubBatchContainer = Pick<Container, "id" | "name" | "purpose" | "active">
+
+type ActiveSubBatchWithContainer = ActiveSubBatch & {
+  container: SubBatchContainer | null
+}
+
+export type SubBatchWithStorage = ActiveSubBatchWithContainer & {
   current_storage?: {
     id: string
     location_id: string
@@ -21,10 +31,12 @@ export const useSubBatches = (batchId: string) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("active_sub_batches")
-        .select("*")
+        .select(
+          "*, container:containers!sub_batches_container_id_fkey(id, name, purpose, active)",
+        )
         .eq("batch_id", batchId)
         .order("created_at", { ascending: true })
-        .overrideTypes<ActiveSubBatch[]>()
+        .overrideTypes<ActiveSubBatchWithContainer[], { merge: false }>()
 
       if (error) throw new Error(error.message)
       return data
@@ -91,6 +103,7 @@ export const useSplitSubBatch = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subBatches"] })
       queryClient.invalidateQueries({ queryKey: ["batches"] })
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
     },
   })
 }
@@ -120,6 +133,7 @@ export const useMergeSubBatches = () => {
       queryClient.invalidateQueries({ queryKey: ["subBatches"] })
       queryClient.invalidateQueries({ queryKey: ["batches"] })
       queryClient.invalidateQueries({ queryKey: ["storageLocations"] })
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
     },
   })
 }

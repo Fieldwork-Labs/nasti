@@ -1,5 +1,5 @@
 import { Button } from "@nasti/ui/button"
-import { Boxes, Merge, Microscope, Package, Split } from "lucide-react"
+import { Box, Boxes, Merge, Microscope, Package, Split } from "lucide-react"
 import { useState } from "react"
 
 import { SubBatchMergeModal } from "@/components/batches/SubBatchMergeModal"
@@ -169,6 +169,12 @@ const SubBatchesTableRow = ({
           />
         )}
         <span className="font-mono font-medium">{sb.current_weight}g</span>
+        {sb.container && (
+          <span className="text-muted-foreground flex items-center gap-1">
+            <Box className="h-3 w-3" />
+            {sb.container.name}
+          </span>
+        )}
         {sb.current_storage?.location && (
           <span className="text-muted-foreground flex items-center gap-1">
             <Package className="h-3 w-3" />

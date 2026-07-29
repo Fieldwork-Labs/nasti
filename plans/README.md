@@ -25,8 +25,8 @@ a time without repeating the audit.
 | 3 | Moving a sub-batch between storage locations uses separate update and insert requests | P1 | S–M | **DONE:** one locked, tenant-validated RPC now stores, moves, or removes a sub-batch atomically |
 | 4 | Deleting an unused storage location cascades all historical storage records | P1 | S–M | **DONE:** unused locations are deleted atomically; referenced locations are retired, remain visible in history/current storage, and can be reactivated |
 | 5 | Direct authenticated writes can associate sub-batches or storage rows with another organisation's container/location | P1 | M | **DONE:** custody-aware database triggers now reject cross-organisation, inactive, and wrong-purpose container/location relationships on direct inserts and updates |
-| 6 | Inventory omits container names and container settings count only collection usage | P2 | M | Join container details into sub-batch reads and report collection and storage usage separately |
-| 7 | A used container can have its purpose changed retroactively | P2 | S–M | Make purpose immutable after first use or require replacement plus deactivation |
+| 6 | Inventory omits container names and container settings count only collection usage | P2 | M | **DONE:** inventory joins and displays container names; Settings reports complete collection and storage sub-batch usage separately |
+| 7 | A used container can have its purpose changed retroactively | P2 | S–M | **DONE:** purpose is immutable from creation; containers can still be renamed, activated, deactivated, or replaced |
 | 8 | Cleaning, bagging, split, merge, and storage RPCs lack behavioral integration coverage | P1 | M | Add pgTAP tests for weight conservation, tenancy, retry behavior, and history preservation |
 | 9 | Cleaning photo upload/delete sequences can leave orphaned objects or broken metadata | P2 | M | Add compensating cleanup and retry-safe upload/delete behavior |
 

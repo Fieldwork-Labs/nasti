@@ -17,6 +17,32 @@ const setListData = (updater: (containers: Container[]) => Container[]) =>
     sortContainers(updater(oldData ?? [])),
   )
 
+export type ContainerUsage = {
+  collectionCount: number
+  storageSubBatchCount: number
+  totalCount: number
+}
+
+export type ContainerUsageById = Record<string, ContainerUsage>
+
+const fetchContainerUsage = async (): Promise<ContainerUsageById> => {
+  const { data, error } = await supabase.rpc("fn_get_container_usage")
+
+  if (error) throw new Error(error.message)
+
+  return data.reduce<ContainerUsageById>((usage, row) => {
+    const collectionCount = Number(row.collection_count)
+    const storageSubBatchCount = Number(row.storage_sub_batch_count)
+
+    usage[row.container_id] = {
+      collectionCount,
+      storageSubBatchCount,
+      totalCount: collectionCount + storageSubBatchCount,
+    }
+    return usage
+  }, {})
+}
+
 // Query: every container belonging to the user's organisation
 export const useContainers = () =>
   useQuery({
@@ -104,29 +130,20 @@ export const useUpdateContainer = () =>
 export const useDeleteContainer = () =>
   useMutation<string, Error, string>({
     mutationFn: async (containerId) => {
-      // collection_containers has ON DELETE RESTRICT, so check first to give a
-      // useful message instead of a foreign key violation.
-      const { count, error: countError } = await supabase
-        .from("collection_containers")
-        .select("id", { count: "exact", head: true })
-        .eq("container_id", containerId)
+      const containerUsage = (await fetchContainerUsage())[containerId]
 
-      if (countError) throw new Error(countError.message)
-      if (count && count > 0)
+      if (containerUsage?.totalCount) {
+        const usageParts = [
+          containerUsage.collectionCount > 0 &&
+            `${containerUsage.collectionCount} collection${containerUsage.collectionCount === 1 ? "" : "s"}`,
+          containerUsage.storageSubBatchCount > 0 &&
+            `${containerUsage.storageSubBatchCount} storage sub-batch${containerUsage.storageSubBatchCount === 1 ? "" : "es"}`,
+        ].filter(Boolean)
+
         throw new Error(
-          `This container is used by ${count} collection${count === 1 ? "" : "s"}. Deactivate it instead to keep it out of new collections.`,
+          `This container is used by ${usageParts.join(" and ")}. Deactivate it instead to preserve those records.`,
         )
-
-      const { count: subBatchCount, error: subBatchCountError } = await supabase
-        .from("sub_batches")
-        .select("id", { count: "exact", head: true })
-        .eq("container_id", containerId)
-
-      if (subBatchCountError) throw new Error(subBatchCountError.message)
-      if (subBatchCount && subBatchCount > 0)
-        throw new Error(
-          `This container is used by ${subBatchCount} stored sub-batch${subBatchCount === 1 ? "" : "es"}. Deactivate it instead to keep it out of new cleaning records.`,
-        )
+      }
 
       const { error } = await supabase
         .from("containers")
@@ -140,6 +157,7 @@ export const useDeleteContainer = () =>
       setListData((containers) =>
         containers.filter((container) => container.id !== deletedId),
       )
+      queryClient.invalidateQueries({ queryKey: ["containers", "usage"] })
     },
   })
 
@@ -160,20 +178,9 @@ export const useCollectionContainers = (collectionId?: string) =>
     },
   })
 
-// Query: how many collections reference each container, for the settings list
+// Query: complete collection and storage usage for every organisation container
 export const useContainerUsage = () =>
   useQuery({
     queryKey: ["containers", "usage"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("collection_containers")
-        .select("container_id")
-
-      if (error) throw new Error(error.message)
-
-      return data.reduce<Record<string, number>>((counts, row) => {
-        counts[row.container_id] = (counts[row.container_id] ?? 0) + 1
-        return counts
-      }, {})
-    },
+    queryFn: fetchContainerUsage,
   })

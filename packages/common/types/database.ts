@@ -2480,6 +2480,14 @@ export type Database = {
         }
         Returns: string
       }
+      fn_get_container_usage: {
+        Args: never
+        Returns: {
+          collection_count: number
+          container_id: string
+          storage_sub_batch_count: number
+        }[]
+      }
       fn_merge_batches: {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string

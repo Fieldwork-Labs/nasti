@@ -90,7 +90,11 @@ export const ContainerForm = ({
           }
 
           onSuccess?.(
-            await updateContainer.mutateAsync({ id: instance.id, ...data }),
+            await updateContainer.mutateAsync({
+              id: instance.id,
+              name: data.name,
+              active: data.active,
+            }),
           )
         } else {
           onSuccess?.(await createContainer.mutateAsync(data))
@@ -133,7 +137,7 @@ export const ContainerForm = ({
             <Select
               onValueChange={field.onChange}
               value={field.value}
-              disabled={isLoading}
+              disabled={isLoading || Boolean(instance)}
             >
               <SelectTrigger
                 id="purpose"
@@ -158,6 +162,12 @@ export const ContainerForm = ({
           <div className="flex h-4 justify-end text-xs text-orange-800">
             {errors.purpose.message}
           </div>
+        )}
+        {instance && (
+          <p className="text-muted-foreground text-sm">
+            Purpose cannot be changed after creation. Deactivate or delete this
+            container and create a replacement if its role has changed.
+          </p>
         )}
       </div>
 

@@ -146,6 +146,7 @@ export const useBagAndStoreCleaningOutputs = () =>
       queryClient.invalidateQueries({ queryKey: ["batches"] })
       queryClient.invalidateQueries({ queryKey: ["subBatches"] })
       queryClient.invalidateQueries({ queryKey: ["storageLocations"] })
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
     },
   })
 

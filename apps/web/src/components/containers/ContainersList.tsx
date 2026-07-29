@@ -48,7 +48,7 @@ type ContainersListProps = {
 
 export const ContainersList = ({ className }: ContainersListProps) => {
   const { data: containers, isLoading } = useContainers()
-  const { data: usage } = useContainerUsage()
+  const { data: usage, isLoading: usageLoading } = useContainerUsage()
   const updateContainer = useUpdateContainer()
   const deleteContainer = useDeleteContainer()
   const { toast } = useToast()
@@ -170,7 +170,19 @@ export const ContainersList = ({ className }: ContainersListProps) => {
               ) : (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {group.map((container) => {
-                    const usageCount = usage?.[container.id] ?? 0
+                    const containerUsage = usage?.[container.id] ?? {
+                      collectionCount: 0,
+                      storageSubBatchCount: 0,
+                      totalCount: 0,
+                    }
+                    const usageParts = [
+                      containerUsage.collectionCount > 0 &&
+                        `${containerUsage.collectionCount} collection${containerUsage.collectionCount === 1 ? "" : "s"}`,
+                      containerUsage.storageSubBatchCount > 0 &&
+                        `${containerUsage.storageSubBatchCount} storage sub-batch${containerUsage.storageSubBatchCount === 1 ? "" : "es"}`,
+                    ].filter(Boolean)
+                    const usageDescription = usageParts.join(" and ")
+
                     return (
                       <Card key={container.id} className="p-4">
                         <div className="flex h-full flex-col gap-3">
@@ -207,9 +219,11 @@ export const ContainersList = ({ className }: ContainersListProps) => {
                                       Delete Container
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      {usageCount > 0
-                                        ? `"${container.name}" is used by ${usageCount} collection${usageCount === 1 ? "" : "s"} and cannot be deleted. Make it inactive instead to keep it out of new collections.`
-                                        : `Are you sure you want to delete "${container.name}"? This action cannot be undone.`}
+                                      {usageLoading
+                                        ? `Checking whether "${container.name}" has existing usage…`
+                                        : containerUsage.totalCount > 0
+                                          ? `"${container.name}" is used by ${usageDescription} and cannot be deleted. Make it inactive instead to preserve those records.`
+                                          : `Are you sure you want to delete "${container.name}"? This action cannot be undone.`}
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -220,7 +234,8 @@ export const ContainersList = ({ className }: ContainersListProps) => {
                                       onClick={() => handleDelete(container)}
                                       className="bg-red-600 hover:bg-red-700"
                                       disabled={
-                                        usageCount > 0 ||
+                                        usageLoading ||
+                                        containerUsage.totalCount > 0 ||
                                         deleteContainer.isPending
                                       }
                                     >
@@ -238,17 +253,31 @@ export const ContainersList = ({ className }: ContainersListProps) => {
                             >
                               {container.active ? "Active" : "Inactive"}
                             </Badge>
-                            {usageCount > 0 && (
+                            {containerUsage.collectionCount > 0 && (
                               <span className="text-muted-foreground text-xs">
-                                Used by {usageCount} collection
-                                {usageCount === 1 ? "" : "s"}
+                                {containerUsage.collectionCount} collection
+                                {containerUsage.collectionCount === 1
+                                  ? ""
+                                  : "s"}
+                              </span>
+                            )}
+                            {containerUsage.storageSubBatchCount > 0 && (
+                              <span className="text-muted-foreground text-xs">
+                                {containerUsage.storageSubBatchCount} storage
+                                sub-batch
+                                {containerUsage.storageSubBatchCount === 1
+                                  ? ""
+                                  : "es"}
                               </span>
                             )}
                           </div>
 
                           <div className="mt-auto flex items-center justify-between border-t pt-3">
                             <span className="text-muted-foreground text-sm">
-                              Available for new collections
+                              Available for new{" "}
+                              {container.purpose === "collection"
+                                ? "collections"
+                                : "storage records"}
                             </span>
                             <Switch
                               checked={container.active}
