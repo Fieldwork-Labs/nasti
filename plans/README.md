@@ -1,15 +1,18 @@
-# Cleaning and Container Storage Plans
+# Implementation Plans
 
-Generated from a focused cleaning, bagging, container, and storage audit on
-2026-07-28. Execute plans in the order below unless their dependency notes say
-otherwise. Each executor must read its plan fully, honor its STOP conditions,
-run every verification command, and update the status row when finished.
+Maintained from focused NASTI audits. The initial cleaning, bagging, container,
+and storage audit was recorded on 2026-07-28; the testing-organisation and batch
+assignment audit was added on 2026-07-29. Execute plans in the order below
+unless their dependency notes say otherwise. Each executor must read its plan
+fully, honor its STOP conditions, run every verification command, and update
+the status row when finished.
 
 ## Execution order and status
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
 | [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | DONE |
+| [003](./003-complete-testing-organisation-assignments.md) | Complete and secure testing-organisation assignments | P1 | L | — | TODO |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason, or
 `REJECTED` with a rationale.
@@ -32,6 +35,9 @@ a time without repeating the audit.
 
 ## Dependency notes
 
+- Plan 003 is independent of the completed merge plan, but its custody-transfer
+  implementation must preserve the storage-tenancy invariants introduced by
+  `20260729000001_storage_relationship_tenancy.sql`.
 - Issue 8 should be implemented alongside or immediately before issues 1–5.
   Plan 001 includes the merge-specific database tests needed to make issue 1
   safe; issue 8 remains broader processing-workflow coverage.
@@ -44,6 +50,9 @@ a time without repeating the audit.
 
 ## Evidence index
 
+- Testing assignment/custody, RLS, treatment privilege, status-dashboard, and
+  permission-filter evidence is consolidated in
+  [Plan 003](./003-complete-testing-organisation-assignments.md).
 - Arbitrary sub-batch merging currently keeps the first selected sub-batch and
   deletes the rest:
   `supabase/migrations/20260728000001_numeric_weights.sql:875-949` and
