@@ -206,7 +206,7 @@ export const CleaningBaggingForm = ({
     <form onSubmit={handleSubmit} className="space-y-5">
       <p className="text-muted-foreground text-sm">
         Record how each cleaning output is divided into physical containers.
-        Each container will be tracked as a separate sub-batch.
+        Each container will be tracked as a separate bag.
       </p>
 
       {!isLoading && containers.length === 0 && (

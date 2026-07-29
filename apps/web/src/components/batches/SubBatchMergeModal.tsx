@@ -147,13 +147,13 @@ export const SubBatchMergeModal = ({
         notes: notes.trim() || undefined,
       })
       toast({
-        description: `${subBatches.length} sub-batches merged successfully`,
+        description: `${subBatches.length} bags merged successfully`,
       })
       onSuccess?.()
       onClose()
     } catch (error) {
       setSubmissionError(
-        error instanceof Error ? error.message : "Failed to merge sub-batches.",
+        error instanceof Error ? error.message : "Failed to merge bags.",
       )
     }
   }
@@ -169,14 +169,14 @@ export const SubBatchMergeModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Merge className="h-5 w-5" />
-            Merge sub-batches
+            Merge bags
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <p className="text-muted-foreground text-sm">
-            Combine {subBatches.length} selected sub-batches (
-            {formatWeight(totalWeight)} g) into one new stored sub-batch.
+            Combine {subBatches.length} selected bags (
+            {formatWeight(totalWeight)} g) into one new stored bag.
           </p>
 
           {containersFailed && (
@@ -271,7 +271,7 @@ export const SubBatchMergeModal = ({
               {mergeSubBatches.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              Merge sub-batches
+              Merge bags
             </Button>
           </div>
         </form>

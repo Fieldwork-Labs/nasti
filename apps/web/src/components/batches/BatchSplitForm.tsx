@@ -118,14 +118,14 @@ export const BatchSplitForm = ({
       toast({
         description:
           data.outputs.length === 1
-            ? "Sub-batch split successfully"
-            : `Sub-batch split into ${data.outputs.length} new sub-batches`,
+            ? "Bag split successfully"
+            : `Bag split into ${data.outputs.length} new bags`,
       })
       onSuccess?.()
     } catch (error) {
       console.error("Split failed:", error)
       toast({
-        description: "Failed to split sub-batch",
+        description: "Failed to split bag",
         variant: "destructive",
       })
     }
@@ -142,7 +142,7 @@ export const BatchSplitForm = ({
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-blue-600" />
             <h3 className="text-lg font-semibold">
-              Split Sub Batch {parentBatch.code}
+              Split Bag {parentBatch.code}
             </h3>
           </div>
           <div className="flex items-center justify-between">
@@ -355,9 +355,7 @@ export const BatchSplitForm = ({
           {splitMutation.isPending && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
-          {fields.length === 1
-            ? "Split Sub-batch"
-            : `Create ${fields.length} Sub-batches`}
+          {fields.length === 1 ? "Split Bag" : `Create ${fields.length} Bags`}
         </Button>
       </div>
     </form>

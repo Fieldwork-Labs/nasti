@@ -132,10 +132,10 @@ export const BatchStorageForm = ({
         toast({
           description:
             locationId === "remove"
-              ? "Sub-batch removed from storage successfully"
+              ? "Bag removed from storage successfully"
               : currentStorage
-                ? "Sub-batch moved to storage successfully"
-                : "Sub-batch stored successfully",
+                ? "Bag moved to storage successfully"
+                : "Bag stored successfully",
         })
 
         onSuccess?.()
@@ -175,7 +175,7 @@ export const BatchStorageForm = ({
       <div className="space-y-4">
         <div className="flex flex-col gap-2">
           <div className="text-muted-foreground text-sm">
-            Sub batch {selectedSubBatch?.weight_grams}g -{" "}
+            Bag {selectedSubBatch?.weight_grams}g -{" "}
             {currentStorage?.location.name ?? "Not stored"}
           </div>
 

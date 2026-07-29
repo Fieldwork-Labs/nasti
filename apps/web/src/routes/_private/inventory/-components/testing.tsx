@@ -147,7 +147,7 @@ export function InventoryPageTesting() {
                           Status
                         </th>
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
-                          Sub Batches
+                          Bags
                         </th>
                         <th className="px-4 py-3 text-right font-semibold">
                           Weight (g)

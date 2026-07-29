@@ -262,7 +262,7 @@ export const QualityTestForm = ({
   const onSubmit = async (data: QualityTestFormData) => {
     if (!isEditing && !effectiveSubBatchId) {
       toast({
-        description: "Please select a sub-batch",
+        description: "Please select a bag",
         variant: "destructive",
       })
       return
@@ -319,11 +319,11 @@ export const QualityTestForm = ({
         {/* Sub-batch selection (only for new tests, when multiple sub-batches exist) */}
         {!isEditing && (
           <div className="space-y-2">
-            <Label>Sub-batch (seed source) *</Label>
+            <Label>Bag (seed source) *</Label>
             {subBatchesLoading ? (
               <div className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading sub-batches...
+                Loading bags...
               </div>
             ) : subBatches && subBatches.length > 1 ? (
               <Select
@@ -331,12 +331,12 @@ export const QualityTestForm = ({
                 onValueChange={setSelectedSubBatchId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select sub-batch" />
+                  <SelectValue placeholder="Select bag" />
                 </SelectTrigger>
                 <SelectContent>
                   {subBatches.map((sb, index) => (
                     <SelectItem key={sb.id} value={sb.id}>
-                      Sub-batch {index + 1} ({sb.current_weight}g)
+                      Bag {index + 1} ({sb.current_weight}g)
                       {sb.notes ? ` — ${sb.notes}` : ""}
                     </SelectItem>
                   ))}
@@ -349,7 +349,7 @@ export const QualityTestForm = ({
               </p>
             ) : (
               <p className="text-sm text-red-600">
-                No sub-batches found for this batch
+                No bags found for this batch
               </p>
             )}
           </div>

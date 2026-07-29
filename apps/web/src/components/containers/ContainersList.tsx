@@ -179,7 +179,7 @@ export const ContainersList = ({ className }: ContainersListProps) => {
                       containerUsage.collectionCount > 0 &&
                         `${containerUsage.collectionCount} collection${containerUsage.collectionCount === 1 ? "" : "s"}`,
                       containerUsage.storageSubBatchCount > 0 &&
-                        `${containerUsage.storageSubBatchCount} storage sub-batch${containerUsage.storageSubBatchCount === 1 ? "" : "es"}`,
+                        `${containerUsage.storageSubBatchCount} storage bag${containerUsage.storageSubBatchCount === 1 ? "" : "s"}`,
                     ].filter(Boolean)
                     const usageDescription = usageParts.join(" and ")
 
@@ -264,10 +264,10 @@ export const ContainersList = ({ className }: ContainersListProps) => {
                             {containerUsage.storageSubBatchCount > 0 && (
                               <span className="text-muted-foreground text-xs">
                                 {containerUsage.storageSubBatchCount} storage
-                                sub-batch
+                                bag
                                 {containerUsage.storageSubBatchCount === 1
                                   ? ""
-                                  : "es"}
+                                  : "s"}
                               </span>
                             )}
                           </div>

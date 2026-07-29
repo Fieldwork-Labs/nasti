@@ -54,9 +54,7 @@ export const SubBatchesTable = ({
   return (
     <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">
-          Sub-batches ({subBatches.length})
-        </span>
+        <span className="text-sm font-medium">Bags ({subBatches.length})</span>
         <div className="flex gap-1">
           {isMerging && (
             <>

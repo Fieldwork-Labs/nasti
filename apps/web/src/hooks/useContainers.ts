@@ -137,7 +137,7 @@ export const useDeleteContainer = () =>
           containerUsage.collectionCount > 0 &&
             `${containerUsage.collectionCount} collection${containerUsage.collectionCount === 1 ? "" : "s"}`,
           containerUsage.storageSubBatchCount > 0 &&
-            `${containerUsage.storageSubBatchCount} storage sub-batch${containerUsage.storageSubBatchCount === 1 ? "" : "es"}`,
+            `${containerUsage.storageSubBatchCount} storage bag${containerUsage.storageSubBatchCount === 1 ? "" : "s"}`,
         ].filter(Boolean)
 
         throw new Error(
