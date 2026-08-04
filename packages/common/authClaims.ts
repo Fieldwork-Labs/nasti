@@ -1,12 +1,16 @@
 import type { Session } from "@supabase/supabase-js"
-import type { Role } from "./types"
+import type { OrgPermission, Role } from "./types"
 
 // Shape of the claims the custom_access_token_hook writes into the JWT.
-// See supabase/migrations/20260608121845_custom_access_token_hook.sql.
+// See supabase/migrations/20260608121845_custom_access_token_hook.sql and
+// supabase/migrations/20260803000000_member_permissions.sql.
 export type SeedScoutAppMetadata = {
   org_id?: string
   org_name?: string
   role?: Role
+  // Absent on tokens issued before member permissions shipped; the database
+  // falls back to org_user in that case, and the claim appears on refresh.
+  permissions?: OrgPermission[]
 }
 
 type JwtPayload = {

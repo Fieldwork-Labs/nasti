@@ -20,6 +20,13 @@ import { Route as AuthResetPasswordConfirmImport } from "./routes/auth/reset-pas
 import { Route as AuthResetPasswordImport } from "./routes/auth/reset-password"
 import { Route as AuthLoginImport } from "./routes/auth/login"
 import { Route as AuthConfirmSignupImport } from "./routes/auth/confirm-signup"
+import { Route as PrivateTripsImport } from "./routes/_private/trips"
+import { Route as PrivateSpeciesImport } from "./routes/_private/species"
+import { Route as PrivateSettingsImport } from "./routes/_private/settings"
+import { Route as PrivatePeopleImport } from "./routes/_private/people"
+import { Route as PrivateNoAccessImport } from "./routes/_private/no-access"
+import { Route as PrivateInvitationsImport } from "./routes/_private/invitations"
+import { Route as PrivateInventoryImport } from "./routes/_private/inventory"
 import { Route as PrivateTripsIndexImport } from "./routes/_private/trips/index"
 import { Route as PrivateSpeciesIndexImport } from "./routes/_private/species/index"
 import { Route as PrivateSettingsIndexImport } from "./routes/_private/settings/index"
@@ -90,92 +97,134 @@ const AuthConfirmSignupRoute = AuthConfirmSignupImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
-  id: "/trips/",
-  path: "/trips/",
+const PrivateTripsRoute = PrivateTripsImport.update({
+  id: "/trips",
+  path: "/trips",
   getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateSpeciesRoute = PrivateSpeciesImport.update({
+  id: "/species",
+  path: "/species",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateSettingsRoute = PrivateSettingsImport.update({
+  id: "/settings",
+  path: "/settings",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivatePeopleRoute = PrivatePeopleImport.update({
+  id: "/people",
+  path: "/people",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateNoAccessRoute = PrivateNoAccessImport.update({
+  id: "/no-access",
+  path: "/no-access",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateInvitationsRoute = PrivateInvitationsImport.update({
+  id: "/invitations",
+  path: "/invitations",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateInventoryRoute = PrivateInventoryImport.update({
+  id: "/inventory",
+  path: "/inventory",
+  getParentRoute: () => PrivateRoute,
+} as any)
+
+const PrivateTripsIndexRoute = PrivateTripsIndexImport.update({
+  id: "/",
+  path: "/",
+  getParentRoute: () => PrivateTripsRoute,
 } as any)
 
 const PrivateSpeciesIndexRoute = PrivateSpeciesIndexImport.update({
-  id: "/species/",
-  path: "/species/",
-  getParentRoute: () => PrivateRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => PrivateSpeciesRoute,
 } as any)
 
 const PrivateSettingsIndexRoute = PrivateSettingsIndexImport.update({
-  id: "/settings/",
-  path: "/settings/",
-  getParentRoute: () => PrivateRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => PrivateSettingsRoute,
 } as any)
 
 const PrivatePeopleIndexRoute = PrivatePeopleIndexImport.update({
-  id: "/people/",
-  path: "/people/",
-  getParentRoute: () => PrivateRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => PrivatePeopleRoute,
 } as any)
 
 const PrivateInvitationsIndexRoute = PrivateInvitationsIndexImport.update({
-  id: "/invitations/",
-  path: "/invitations/",
-  getParentRoute: () => PrivateRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => PrivateInvitationsRoute,
 } as any)
 
 const PrivateInventoryIndexRoute = PrivateInventoryIndexImport.update({
-  id: "/inventory/",
-  path: "/inventory/",
-  getParentRoute: () => PrivateRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => PrivateInventoryRoute,
 } as any)
 
 const PrivateSettingsTestingOrgsRoute = PrivateSettingsTestingOrgsImport.update(
   {
-    id: "/settings/testing-orgs",
-    path: "/settings/testing-orgs",
-    getParentRoute: () => PrivateRoute,
+    id: "/testing-orgs",
+    path: "/testing-orgs",
+    getParentRoute: () => PrivateSettingsRoute,
   } as any,
 )
 
 const PrivateSettingsStorageLocationsRoute =
   PrivateSettingsStorageLocationsImport.update({
-    id: "/settings/storage-locations",
-    path: "/settings/storage-locations",
-    getParentRoute: () => PrivateRoute,
+    id: "/storage-locations",
+    path: "/storage-locations",
+    getParentRoute: () => PrivateSettingsRoute,
   } as any)
 
 const PrivateSettingsOrganisationDetailsRoute =
   PrivateSettingsOrganisationDetailsImport.update({
-    id: "/settings/organisation-details",
-    path: "/settings/organisation-details",
-    getParentRoute: () => PrivateRoute,
+    id: "/organisation-details",
+    path: "/organisation-details",
+    getParentRoute: () => PrivateSettingsRoute,
   } as any)
 
 const PrivateSettingsContainersRoute = PrivateSettingsContainersImport.update({
-  id: "/settings/containers",
-  path: "/settings/containers",
-  getParentRoute: () => PrivateRoute,
+  id: "/containers",
+  path: "/containers",
+  getParentRoute: () => PrivateSettingsRoute,
 } as any)
 
 const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
-  id: "/invitations/new",
-  path: "/invitations/new",
-  getParentRoute: () => PrivateRoute,
+  id: "/new",
+  path: "/new",
+  getParentRoute: () => PrivateInvitationsRoute,
 } as any)
 
 const PrivateTripsIdIndexRoute = PrivateTripsIdIndexImport.update({
-  id: "/trips/$id/",
-  path: "/trips/$id/",
-  getParentRoute: () => PrivateRoute,
+  id: "/$id/",
+  path: "/$id/",
+  getParentRoute: () => PrivateTripsRoute,
 } as any)
 
 const PrivateSpeciesIdIndexRoute = PrivateSpeciesIdIndexImport.update({
-  id: "/species/$id/",
-  path: "/species/$id/",
-  getParentRoute: () => PrivateRoute,
+  id: "/$id/",
+  path: "/$id/",
+  getParentRoute: () => PrivateSpeciesRoute,
 } as any)
 
 const PrivateTripsIdEditRoute = PrivateTripsIdEditImport.update({
-  id: "/trips/$id/edit",
-  path: "/trips/$id/edit",
-  getParentRoute: () => PrivateRoute,
+  id: "/$id/edit",
+  path: "/$id/edit",
+  getParentRoute: () => PrivateTripsRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -195,6 +244,55 @@ declare module "@tanstack/react-router" {
       fullPath: ""
       preLoaderRoute: typeof PrivateImport
       parentRoute: typeof rootRoute
+    }
+    "/_private/inventory": {
+      id: "/_private/inventory"
+      path: "/inventory"
+      fullPath: "/inventory"
+      preLoaderRoute: typeof PrivateInventoryImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/invitations": {
+      id: "/_private/invitations"
+      path: "/invitations"
+      fullPath: "/invitations"
+      preLoaderRoute: typeof PrivateInvitationsImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/no-access": {
+      id: "/_private/no-access"
+      path: "/no-access"
+      fullPath: "/no-access"
+      preLoaderRoute: typeof PrivateNoAccessImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/people": {
+      id: "/_private/people"
+      path: "/people"
+      fullPath: "/people"
+      preLoaderRoute: typeof PrivatePeopleImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/settings": {
+      id: "/_private/settings"
+      path: "/settings"
+      fullPath: "/settings"
+      preLoaderRoute: typeof PrivateSettingsImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/species": {
+      id: "/_private/species"
+      path: "/species"
+      fullPath: "/species"
+      preLoaderRoute: typeof PrivateSpeciesImport
+      parentRoute: typeof PrivateImport
+    }
+    "/_private/trips": {
+      id: "/_private/trips"
+      path: "/trips"
+      fullPath: "/trips"
+      preLoaderRoute: typeof PrivateTripsImport
+      parentRoute: typeof PrivateImport
     }
     "/auth/confirm-signup": {
       id: "/auth/confirm-signup"
@@ -247,140 +345,212 @@ declare module "@tanstack/react-router" {
     }
     "/_private/invitations/new": {
       id: "/_private/invitations/new"
-      path: "/invitations/new"
+      path: "/new"
       fullPath: "/invitations/new"
       preLoaderRoute: typeof PrivateInvitationsNewImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateInvitationsImport
     }
     "/_private/settings/containers": {
       id: "/_private/settings/containers"
-      path: "/settings/containers"
+      path: "/containers"
       fullPath: "/settings/containers"
       preLoaderRoute: typeof PrivateSettingsContainersImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSettingsImport
     }
     "/_private/settings/organisation-details": {
       id: "/_private/settings/organisation-details"
-      path: "/settings/organisation-details"
+      path: "/organisation-details"
       fullPath: "/settings/organisation-details"
       preLoaderRoute: typeof PrivateSettingsOrganisationDetailsImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSettingsImport
     }
     "/_private/settings/storage-locations": {
       id: "/_private/settings/storage-locations"
-      path: "/settings/storage-locations"
+      path: "/storage-locations"
       fullPath: "/settings/storage-locations"
       preLoaderRoute: typeof PrivateSettingsStorageLocationsImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSettingsImport
     }
     "/_private/settings/testing-orgs": {
       id: "/_private/settings/testing-orgs"
-      path: "/settings/testing-orgs"
+      path: "/testing-orgs"
       fullPath: "/settings/testing-orgs"
       preLoaderRoute: typeof PrivateSettingsTestingOrgsImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSettingsImport
     }
     "/_private/inventory/": {
       id: "/_private/inventory/"
-      path: "/inventory"
-      fullPath: "/inventory"
+      path: "/"
+      fullPath: "/inventory/"
       preLoaderRoute: typeof PrivateInventoryIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateInventoryImport
     }
     "/_private/invitations/": {
       id: "/_private/invitations/"
-      path: "/invitations"
-      fullPath: "/invitations"
+      path: "/"
+      fullPath: "/invitations/"
       preLoaderRoute: typeof PrivateInvitationsIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateInvitationsImport
     }
     "/_private/people/": {
       id: "/_private/people/"
-      path: "/people"
-      fullPath: "/people"
+      path: "/"
+      fullPath: "/people/"
       preLoaderRoute: typeof PrivatePeopleIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivatePeopleImport
     }
     "/_private/settings/": {
       id: "/_private/settings/"
-      path: "/settings"
-      fullPath: "/settings"
+      path: "/"
+      fullPath: "/settings/"
       preLoaderRoute: typeof PrivateSettingsIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSettingsImport
     }
     "/_private/species/": {
       id: "/_private/species/"
-      path: "/species"
-      fullPath: "/species"
+      path: "/"
+      fullPath: "/species/"
       preLoaderRoute: typeof PrivateSpeciesIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSpeciesImport
     }
     "/_private/trips/": {
       id: "/_private/trips/"
-      path: "/trips"
-      fullPath: "/trips"
+      path: "/"
+      fullPath: "/trips/"
       preLoaderRoute: typeof PrivateTripsIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateTripsImport
     }
     "/_private/trips/$id/edit": {
       id: "/_private/trips/$id/edit"
-      path: "/trips/$id/edit"
+      path: "/$id/edit"
       fullPath: "/trips/$id/edit"
       preLoaderRoute: typeof PrivateTripsIdEditImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateTripsImport
     }
     "/_private/species/$id/": {
       id: "/_private/species/$id/"
-      path: "/species/$id"
+      path: "/$id"
       fullPath: "/species/$id"
       preLoaderRoute: typeof PrivateSpeciesIdIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateSpeciesImport
     }
     "/_private/trips/$id/": {
       id: "/_private/trips/$id/"
-      path: "/trips/$id"
+      path: "/$id"
       fullPath: "/trips/$id"
       preLoaderRoute: typeof PrivateTripsIdIndexImport
-      parentRoute: typeof PrivateImport
+      parentRoute: typeof PrivateTripsImport
     }
   }
 }
 
 // Create and export the route tree
 
-interface PrivateRouteChildren {
+interface PrivateInventoryRouteChildren {
+  PrivateInventoryIndexRoute: typeof PrivateInventoryIndexRoute
+}
+
+const PrivateInventoryRouteChildren: PrivateInventoryRouteChildren = {
+  PrivateInventoryIndexRoute: PrivateInventoryIndexRoute,
+}
+
+const PrivateInventoryRouteWithChildren =
+  PrivateInventoryRoute._addFileChildren(PrivateInventoryRouteChildren)
+
+interface PrivateInvitationsRouteChildren {
   PrivateInvitationsNewRoute: typeof PrivateInvitationsNewRoute
+  PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
+}
+
+const PrivateInvitationsRouteChildren: PrivateInvitationsRouteChildren = {
+  PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
+  PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
+}
+
+const PrivateInvitationsRouteWithChildren =
+  PrivateInvitationsRoute._addFileChildren(PrivateInvitationsRouteChildren)
+
+interface PrivatePeopleRouteChildren {
+  PrivatePeopleIndexRoute: typeof PrivatePeopleIndexRoute
+}
+
+const PrivatePeopleRouteChildren: PrivatePeopleRouteChildren = {
+  PrivatePeopleIndexRoute: PrivatePeopleIndexRoute,
+}
+
+const PrivatePeopleRouteWithChildren = PrivatePeopleRoute._addFileChildren(
+  PrivatePeopleRouteChildren,
+)
+
+interface PrivateSettingsRouteChildren {
   PrivateSettingsContainersRoute: typeof PrivateSettingsContainersRoute
   PrivateSettingsOrganisationDetailsRoute: typeof PrivateSettingsOrganisationDetailsRoute
   PrivateSettingsStorageLocationsRoute: typeof PrivateSettingsStorageLocationsRoute
   PrivateSettingsTestingOrgsRoute: typeof PrivateSettingsTestingOrgsRoute
-  PrivateInventoryIndexRoute: typeof PrivateInventoryIndexRoute
-  PrivateInvitationsIndexRoute: typeof PrivateInvitationsIndexRoute
-  PrivatePeopleIndexRoute: typeof PrivatePeopleIndexRoute
   PrivateSettingsIndexRoute: typeof PrivateSettingsIndexRoute
-  PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
-  PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
-  PrivateTripsIdEditRoute: typeof PrivateTripsIdEditRoute
-  PrivateSpeciesIdIndexRoute: typeof PrivateSpeciesIdIndexRoute
-  PrivateTripsIdIndexRoute: typeof PrivateTripsIdIndexRoute
 }
 
-const PrivateRouteChildren: PrivateRouteChildren = {
-  PrivateInvitationsNewRoute: PrivateInvitationsNewRoute,
+const PrivateSettingsRouteChildren: PrivateSettingsRouteChildren = {
   PrivateSettingsContainersRoute: PrivateSettingsContainersRoute,
   PrivateSettingsOrganisationDetailsRoute:
     PrivateSettingsOrganisationDetailsRoute,
   PrivateSettingsStorageLocationsRoute: PrivateSettingsStorageLocationsRoute,
   PrivateSettingsTestingOrgsRoute: PrivateSettingsTestingOrgsRoute,
-  PrivateInventoryIndexRoute: PrivateInventoryIndexRoute,
-  PrivateInvitationsIndexRoute: PrivateInvitationsIndexRoute,
-  PrivatePeopleIndexRoute: PrivatePeopleIndexRoute,
   PrivateSettingsIndexRoute: PrivateSettingsIndexRoute,
+}
+
+const PrivateSettingsRouteWithChildren = PrivateSettingsRoute._addFileChildren(
+  PrivateSettingsRouteChildren,
+)
+
+interface PrivateSpeciesRouteChildren {
+  PrivateSpeciesIndexRoute: typeof PrivateSpeciesIndexRoute
+  PrivateSpeciesIdIndexRoute: typeof PrivateSpeciesIdIndexRoute
+}
+
+const PrivateSpeciesRouteChildren: PrivateSpeciesRouteChildren = {
   PrivateSpeciesIndexRoute: PrivateSpeciesIndexRoute,
+  PrivateSpeciesIdIndexRoute: PrivateSpeciesIdIndexRoute,
+}
+
+const PrivateSpeciesRouteWithChildren = PrivateSpeciesRoute._addFileChildren(
+  PrivateSpeciesRouteChildren,
+)
+
+interface PrivateTripsRouteChildren {
+  PrivateTripsIndexRoute: typeof PrivateTripsIndexRoute
+  PrivateTripsIdEditRoute: typeof PrivateTripsIdEditRoute
+  PrivateTripsIdIndexRoute: typeof PrivateTripsIdIndexRoute
+}
+
+const PrivateTripsRouteChildren: PrivateTripsRouteChildren = {
   PrivateTripsIndexRoute: PrivateTripsIndexRoute,
   PrivateTripsIdEditRoute: PrivateTripsIdEditRoute,
-  PrivateSpeciesIdIndexRoute: PrivateSpeciesIdIndexRoute,
   PrivateTripsIdIndexRoute: PrivateTripsIdIndexRoute,
+}
+
+const PrivateTripsRouteWithChildren = PrivateTripsRoute._addFileChildren(
+  PrivateTripsRouteChildren,
+)
+
+interface PrivateRouteChildren {
+  PrivateInventoryRoute: typeof PrivateInventoryRouteWithChildren
+  PrivateInvitationsRoute: typeof PrivateInvitationsRouteWithChildren
+  PrivateNoAccessRoute: typeof PrivateNoAccessRoute
+  PrivatePeopleRoute: typeof PrivatePeopleRouteWithChildren
+  PrivateSettingsRoute: typeof PrivateSettingsRouteWithChildren
+  PrivateSpeciesRoute: typeof PrivateSpeciesRouteWithChildren
+  PrivateTripsRoute: typeof PrivateTripsRouteWithChildren
+}
+
+const PrivateRouteChildren: PrivateRouteChildren = {
+  PrivateInventoryRoute: PrivateInventoryRouteWithChildren,
+  PrivateInvitationsRoute: PrivateInvitationsRouteWithChildren,
+  PrivateNoAccessRoute: PrivateNoAccessRoute,
+  PrivatePeopleRoute: PrivatePeopleRouteWithChildren,
+  PrivateSettingsRoute: PrivateSettingsRouteWithChildren,
+  PrivateSpeciesRoute: PrivateSpeciesRouteWithChildren,
+  PrivateTripsRoute: PrivateTripsRouteWithChildren,
 }
 
 const PrivateRouteWithChildren =
@@ -389,6 +559,13 @@ const PrivateRouteWithChildren =
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
+  "/inventory": typeof PrivateInventoryRouteWithChildren
+  "/invitations": typeof PrivateInvitationsRouteWithChildren
+  "/no-access": typeof PrivateNoAccessRoute
+  "/people": typeof PrivatePeopleRouteWithChildren
+  "/settings": typeof PrivateSettingsRouteWithChildren
+  "/species": typeof PrivateSpeciesRouteWithChildren
+  "/trips": typeof PrivateTripsRouteWithChildren
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -401,12 +578,12 @@ export interface FileRoutesByFullPath {
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
-  "/inventory": typeof PrivateInventoryIndexRoute
-  "/invitations": typeof PrivateInvitationsIndexRoute
-  "/people": typeof PrivatePeopleIndexRoute
-  "/settings": typeof PrivateSettingsIndexRoute
-  "/species": typeof PrivateSpeciesIndexRoute
-  "/trips": typeof PrivateTripsIndexRoute
+  "/inventory/": typeof PrivateInventoryIndexRoute
+  "/invitations/": typeof PrivateInvitationsIndexRoute
+  "/people/": typeof PrivatePeopleIndexRoute
+  "/settings/": typeof PrivateSettingsIndexRoute
+  "/species/": typeof PrivateSpeciesIndexRoute
+  "/trips/": typeof PrivateTripsIndexRoute
   "/trips/$id/edit": typeof PrivateTripsIdEditRoute
   "/species/$id": typeof PrivateSpeciesIdIndexRoute
   "/trips/$id": typeof PrivateTripsIdIndexRoute
@@ -415,6 +592,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   "/": typeof IndexRoute
   "": typeof PrivateRouteWithChildren
+  "/no-access": typeof PrivateNoAccessRoute
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -442,6 +620,13 @@ export interface FileRoutesById {
   __root__: typeof rootRoute
   "/": typeof IndexRoute
   "/_private": typeof PrivateRouteWithChildren
+  "/_private/inventory": typeof PrivateInventoryRouteWithChildren
+  "/_private/invitations": typeof PrivateInvitationsRouteWithChildren
+  "/_private/no-access": typeof PrivateNoAccessRoute
+  "/_private/people": typeof PrivatePeopleRouteWithChildren
+  "/_private/settings": typeof PrivateSettingsRouteWithChildren
+  "/_private/species": typeof PrivateSpeciesRouteWithChildren
+  "/_private/trips": typeof PrivateTripsRouteWithChildren
   "/auth/confirm-signup": typeof AuthConfirmSignupRoute
   "/auth/login": typeof AuthLoginRoute
   "/auth/reset-password": typeof AuthResetPasswordRoute
@@ -470,6 +655,13 @@ export interface FileRouteTypes {
   fullPaths:
     | "/"
     | ""
+    | "/inventory"
+    | "/invitations"
+    | "/no-access"
+    | "/people"
+    | "/settings"
+    | "/species"
+    | "/trips"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -482,12 +674,12 @@ export interface FileRouteTypes {
     | "/settings/organisation-details"
     | "/settings/storage-locations"
     | "/settings/testing-orgs"
-    | "/inventory"
-    | "/invitations"
-    | "/people"
-    | "/settings"
-    | "/species"
-    | "/trips"
+    | "/inventory/"
+    | "/invitations/"
+    | "/people/"
+    | "/settings/"
+    | "/species/"
+    | "/trips/"
     | "/trips/$id/edit"
     | "/species/$id"
     | "/trips/$id"
@@ -495,6 +687,7 @@ export interface FileRouteTypes {
   to:
     | "/"
     | ""
+    | "/no-access"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -520,6 +713,13 @@ export interface FileRouteTypes {
     | "__root__"
     | "/"
     | "/_private"
+    | "/_private/inventory"
+    | "/_private/invitations"
+    | "/_private/no-access"
+    | "/_private/people"
+    | "/_private/settings"
+    | "/_private/species"
+    | "/_private/trips"
     | "/auth/confirm-signup"
     | "/auth/login"
     | "/auth/reset-password"
@@ -595,19 +795,66 @@ export const routeTree = rootRoute
     "/_private": {
       "filePath": "_private.tsx",
       "children": [
+        "/_private/inventory",
+        "/_private/invitations",
+        "/_private/no-access",
+        "/_private/people",
+        "/_private/settings",
+        "/_private/species",
+        "/_private/trips"
+      ]
+    },
+    "/_private/inventory": {
+      "filePath": "_private/inventory.tsx",
+      "parent": "/_private",
+      "children": [
+        "/_private/inventory/"
+      ]
+    },
+    "/_private/invitations": {
+      "filePath": "_private/invitations.tsx",
+      "parent": "/_private",
+      "children": [
         "/_private/invitations/new",
+        "/_private/invitations/"
+      ]
+    },
+    "/_private/no-access": {
+      "filePath": "_private/no-access.tsx",
+      "parent": "/_private"
+    },
+    "/_private/people": {
+      "filePath": "_private/people.tsx",
+      "parent": "/_private",
+      "children": [
+        "/_private/people/"
+      ]
+    },
+    "/_private/settings": {
+      "filePath": "_private/settings.tsx",
+      "parent": "/_private",
+      "children": [
         "/_private/settings/containers",
         "/_private/settings/organisation-details",
         "/_private/settings/storage-locations",
         "/_private/settings/testing-orgs",
-        "/_private/inventory/",
-        "/_private/invitations/",
-        "/_private/people/",
-        "/_private/settings/",
+        "/_private/settings/"
+      ]
+    },
+    "/_private/species": {
+      "filePath": "_private/species.tsx",
+      "parent": "/_private",
+      "children": [
         "/_private/species/",
+        "/_private/species/$id/"
+      ]
+    },
+    "/_private/trips": {
+      "filePath": "_private/trips.tsx",
+      "parent": "/_private",
+      "children": [
         "/_private/trips/",
         "/_private/trips/$id/edit",
-        "/_private/species/$id/",
         "/_private/trips/$id/"
       ]
     },
@@ -634,59 +881,59 @@ export const routeTree = rootRoute
     },
     "/_private/invitations/new": {
       "filePath": "_private/invitations/new.tsx",
-      "parent": "/_private"
+      "parent": "/_private/invitations"
     },
     "/_private/settings/containers": {
       "filePath": "_private/settings/containers.tsx",
-      "parent": "/_private"
+      "parent": "/_private/settings"
     },
     "/_private/settings/organisation-details": {
       "filePath": "_private/settings/organisation-details.tsx",
-      "parent": "/_private"
+      "parent": "/_private/settings"
     },
     "/_private/settings/storage-locations": {
       "filePath": "_private/settings/storage-locations.tsx",
-      "parent": "/_private"
+      "parent": "/_private/settings"
     },
     "/_private/settings/testing-orgs": {
       "filePath": "_private/settings/testing-orgs.tsx",
-      "parent": "/_private"
+      "parent": "/_private/settings"
     },
     "/_private/inventory/": {
       "filePath": "_private/inventory/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/inventory"
     },
     "/_private/invitations/": {
       "filePath": "_private/invitations/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/invitations"
     },
     "/_private/people/": {
       "filePath": "_private/people/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/people"
     },
     "/_private/settings/": {
       "filePath": "_private/settings/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/settings"
     },
     "/_private/species/": {
       "filePath": "_private/species/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/species"
     },
     "/_private/trips/": {
       "filePath": "_private/trips/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/trips"
     },
     "/_private/trips/$id/edit": {
       "filePath": "_private/trips/$id/edit.tsx",
-      "parent": "/_private"
+      "parent": "/_private/trips"
     },
     "/_private/species/$id/": {
       "filePath": "_private/species/$id/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/species"
     },
     "/_private/trips/$id/": {
       "filePath": "_private/trips/$id/index.tsx",
-      "parent": "/_private"
+      "parent": "/_private/trips"
     }
   }
 }

@@ -29,7 +29,6 @@ const corsHeaders = {
 // Define the request handler
 Deno.serve((r) =>
   AuthMiddleware(r, async (req) => {
-    console.log("Got into thething")
     try {
       if (req.method === "OPTIONS") {
         return new Response(null, {
@@ -45,7 +44,7 @@ Deno.serve((r) =>
         })
       }
       // Parse the JSON body
-      const { email, name, role } = await req.json()
+      const { email, name, role, permissions } = await req.json()
 
       if (!email || !name) {
         return new Response("Missing email or name", {
@@ -60,6 +59,25 @@ Deno.serve((r) =>
           headers: corsHeaders,
         })
       }
+
+      const validPermissions = ["collections", "inventory"]
+      if (
+        permissions !== undefined &&
+        (!Array.isArray(permissions) ||
+          permissions.some(
+            (p: unknown) => !validPermissions.includes(p as string),
+          ))
+      ) {
+        return new Response(
+          "Invalid permissions. Must be an array of 'collections' or 'inventory'",
+          { status: 400, headers: corsHeaders },
+        )
+      }
+
+      // Admins reach every area through their role, so permissions are only
+      // meaningful on member invitations.
+      const invitationPermissions =
+        role === "Admin" ? [] : [...new Set((permissions ?? []) as string[])]
 
       // Initialize Supabase client with service role key
       const supabase = createClient(
@@ -160,6 +178,7 @@ Deno.serve((r) =>
         accepted_at: null,
         organisation_name: orgUser.organisation.name,
         role: role || "Member",
+        permissions: invitationPermissions,
       }
       // Insert the invitation into the database
       const { error: insertError } = await supabase

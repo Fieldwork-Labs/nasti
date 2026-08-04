@@ -988,6 +988,7 @@ export type Database = {
           name: string | null
           organisation_id: string
           organisation_name: string | null
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           token: string
         }
@@ -1001,6 +1002,7 @@ export type Database = {
           name?: string | null
           organisation_id: string
           organisation_name?: string | null
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role?: Database["public"]["Enums"]["org_user_types"]
           token?: string
         }
@@ -1014,6 +1016,7 @@ export type Database = {
           name?: string | null
           organisation_id?: string
           organisation_name?: string | null
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role?: Database["public"]["Enums"]["org_user_types"]
           token?: string
         }
@@ -1033,6 +1036,7 @@ export type Database = {
           is_active: boolean
           joined_at: string | null
           organisation_id: string
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           user_id: string
         }
@@ -1041,6 +1045,7 @@ export type Database = {
           is_active?: boolean
           joined_at?: string | null
           organisation_id: string
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           user_id: string
         }
@@ -1049,6 +1054,7 @@ export type Database = {
           is_active?: boolean
           joined_at?: string | null
           organisation_id?: string
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role?: Database["public"]["Enums"]["org_user_types"]
           user_id?: string
         }
@@ -2714,6 +2720,7 @@ export type Database = {
           name: string | null
           organisation_id: string
           organisation_name: string | null
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           token: string
         }
@@ -2745,6 +2752,7 @@ export type Database = {
           joined_at: string
           name: string
           organisation_id: string
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
         }[]
       }
@@ -2951,6 +2959,13 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      set_org_user_permissions: {
+        Args: {
+          p_permissions: Database["public"]["Enums"]["org_permission"][]
+          p_user_id: string
+        }
+        Returns: Database["public"]["Enums"]["org_permission"][]
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -3570,6 +3585,7 @@ export type Database = {
       batch_quality: "ORG" | "HQ" | "LQ"
       batch_treatment_type: "sort" | "coat" | "treat" | "other"
       container_purpose: "collection" | "storage"
+      org_permission: "collections" | "inventory"
       org_user_types: "Member" | "Admin"
       organisation_type: "General" | "Testing"
       person_source_type: "user" | "personnel"
@@ -3728,6 +3744,7 @@ export const Constants = {
       batch_quality: ["ORG", "HQ", "LQ"],
       batch_treatment_type: ["sort", "coat", "treat", "other"],
       container_purpose: ["collection", "storage"],
+      org_permission: ["collections", "inventory"],
       org_user_types: ["Member", "Admin"],
       organisation_type: ["General", "Testing"],
       person_source_type: ["user", "personnel"],

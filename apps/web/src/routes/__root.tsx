@@ -12,6 +12,7 @@ import {
   DropdownMenuLabel,
 } from "@nasti/ui/dropdown-menu"
 import { Session } from "@supabase/supabase-js"
+import type { OrgPermission, Role } from "@nasti/common/types"
 import { QueryClientProvider } from "@tanstack/react-query"
 import {
   createRootRouteWithContext,
@@ -105,7 +106,9 @@ const UserMenu = () => {
 }
 
 const RootComponent = () => {
-  const { getSession, session, organisation } = useUserStore()
+  const { getSession, session, organisation, hasPermission } = useUserStore()
+  const canSeeCollections = hasPermission("collections")
+  const canSeeInventory = hasPermission("inventory")
 
   useEffect(() => {
     // Listen for auth state changes
@@ -135,14 +138,16 @@ const RootComponent = () => {
                 </Link>
                 {session && (
                   <>
-                    {organisation?.type === "General" && (
+                    {organisation?.type === "General" && canSeeCollections && (
                       <Link to="/trips" className="text-lead">
                         Trips
                       </Link>
                     )}
-                    <Link to="/inventory" className="text-lead">
-                      Inventory
-                    </Link>
+                    {canSeeInventory && (
+                      <Link to="/inventory" className="text-lead">
+                        Inventory
+                      </Link>
+                    )}
                   </>
                 )}
               </div>
@@ -184,6 +189,8 @@ export const Route = createRootRouteWithContext<{
   getSession: () => Promise<Session | null>
   getUser: () => Promise<AuthDetails | null>
   orgId: string | null
+  role: Role | null
+  permissions: OrgPermission[]
 }>()({
   component: RootComponent,
 })

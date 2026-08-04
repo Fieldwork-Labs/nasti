@@ -33,7 +33,7 @@ import {
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Map, Marker } from "react-map-gl"
-import { SpeciesListItem } from "../../species"
+import { SpeciesListItem } from "@/components/species/SpeciesListItem"
 
 import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { DataItemMapMarker } from "@/components/common/DataItemMapMarker"

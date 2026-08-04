@@ -1,4 +1,3 @@
-import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { useIncomingLinkRequests } from "@/hooks/useTestingOrgs"
 import useUserStore from "@/store/userStore"
 import { Button } from "@nasti/ui/button"
@@ -32,7 +31,6 @@ export const Route = createFileRoute("/_private/settings/")({
 })
 
 function SettingsDashboard() {
-  useAdminOnly()
   const { organisation } = useUserStore()
 
   const isTestingOrg = organisation?.type === "Testing"

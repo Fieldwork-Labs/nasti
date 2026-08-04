@@ -7,13 +7,18 @@ import {
 import { supabase } from "@nasti/common/supabase"
 import { isAuthRetryableFetchError, type Session } from "@supabase/supabase-js"
 import { getAppMeta } from "@nasti/common/authClaims"
-import { ROLE, type Role } from "@nasti/common/types"
+import { ROLE, type OrgPermission, type Role } from "@nasti/common/types"
+import {
+  hasOrgPermission,
+  parseOrgPermissions,
+} from "@nasti/common/permissions"
 
 type Claims = {
   organisation: { id: string; name: string }
   orgId: string
   role: Role | null
   isAdmin: boolean
+  permissions: OrgPermission[]
 } | null
 
 type AuthState = {
@@ -42,6 +47,7 @@ const deriveFromClaims = (session: Session | null): Claims => {
     orgId: meta.org_id,
     role: meta.role ?? null,
     isAdmin: meta.role === ROLE.ADMIN,
+    permissions: parseOrgPermissions(meta.permissions),
   }
 }
 
@@ -118,10 +124,18 @@ export const useAuth = () => {
     staleTime: 60 * 60 * 1000, // 1 hour
   })
 
+  const role = authState.claims?.role ?? null
+  const permissions = authState.claims?.permissions ?? []
+
   return {
     session: authState.session,
     user: authState.user,
-    role: authState.claims?.role ?? null,
+    role,
+    permissions,
+    // Sessions issued before member permissions shipped carry no permissions
+    // claim; the database applies the same fallback until the token refreshes.
+    hasPermission: (permission: OrgPermission) =>
+      hasOrgPermission(role, permissions, permission),
     organisation: authState.claims?.organisation ?? null,
     getSession: () => supabase.auth.getSession(),
     login,

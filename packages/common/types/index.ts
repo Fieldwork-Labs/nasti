@@ -83,6 +83,20 @@ export enum ROLE {
   MEMBER = "Member",
 }
 
+// Areas of the app a Member can be granted. Admins hold all of them
+// implicitly, so their stored permissions array is always empty — never read
+// it directly, go through hasOrgPermission in @nasti/common/permissions.
+export type OrgPermission = Enums["org_permission"]
+export const ORG_PERMISSIONS = ["collections", "inventory"] as const
+export const ORG_PERMISSION_LABELS: Record<OrgPermission, string> = {
+  collections: "Collections",
+  inventory: "Inventory",
+}
+export const ORG_PERMISSION_DESCRIPTIONS: Record<OrgPermission, string> = {
+  collections: "Record and edit seed collections and scouting notes",
+  inventory: "Manage storage, cleaning and testing",
+}
+
 export type Batch = Table<"batches">
 export type ActiveBatch = Omit<
   Database["public"]["Views"]["active_batches"]["Row"],
