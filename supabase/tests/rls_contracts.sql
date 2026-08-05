@@ -16,6 +16,7 @@ select results_eq(
     from pg_policies
     where schemaname = 'public'
       and tablename = 'batch_storage'
+      and permissive = 'PERMISSIVE'
       and cmd in ('SELECT', 'INSERT', 'UPDATE')
   $$,
   array[3],
@@ -136,14 +137,20 @@ select results_eq(
   'seed creates the user person projection'
 );
 
-select results_eq(
-  $$
-    select count(*)::integer
+-- Asserted as an invariant rather than a row count: the seed grows, and a
+-- hard-coded count goes stale every time a collection is added to it.
+select ok(
+  (
+    select count(*)
     from public.collection
     where organisation_id = '02aba5b9-6c46-406d-831a-4f51851599f2'
-      and cardinality(person_ids) = 1
-  $$,
-  array[3],
+  ) > 0
+  and not exists (
+    select 1
+    from public.collection
+    where organisation_id = '02aba5b9-6c46-406d-831a-4f51851599f2'
+      and coalesce(cardinality(person_ids), 0) = 0
+  ),
   'seeded collections identify their collector'
 );
 
@@ -153,6 +160,7 @@ select results_eq(
     from pg_policies
     where schemaname = 'public'
       and tablename = 'containers'
+      and permissive = 'PERMISSIVE'
       and cmd in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
   $$,
   array[4],
@@ -165,6 +173,7 @@ select results_eq(
     from pg_policies
     where schemaname = 'public'
       and tablename = 'collection_containers'
+      and permissive = 'PERMISSIVE'
       and cmd in ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
   $$,
   array[4],

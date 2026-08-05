@@ -4,7 +4,9 @@ import useUserStore from "@/store/userStore"
 import type {
   Organisation,
   OrganisationLinkWithName,
+  OrganisationLinkWithGeneralName,
   OrganisationLinkRequestWithName,
+  OrganisationLinkRequestWithGeneralName,
 } from "@nasti/common/types"
 
 // Fetch all testing organisations
@@ -186,7 +188,7 @@ export const useCancelLinkRequest = () => {
 export const useIncomingLinkRequests = () => {
   const { organisation } = useUserStore()
 
-  return useQuery<OrganisationLinkRequestWithName[]>({
+  return useQuery<OrganisationLinkRequestWithGeneralName[]>({
     queryKey: ["incoming-link-requests", organisation?.id],
     queryFn: async () => {
       if (!organisation?.id) throw new Error("No organisation found")
@@ -196,8 +198,7 @@ export const useIncomingLinkRequests = () => {
         .select(
           `
           *,
-          general_org:organisation!general_org_id(name),
-          testing_org:organisation!testing_org_id(name)
+          general_org:organisation!general_org_id(name)
         `,
         )
         .eq("testing_org_id", organisation.id)
@@ -205,11 +206,11 @@ export const useIncomingLinkRequests = () => {
 
       if (error) throw new Error(error.message)
 
-      // Flatten the nested general_org data
+      // The counterparty here is the General organisation making the request.
       return data.map((request) => ({
         ...request,
-        testing_org_name: request.general_org?.name || "",
-      }))
+        general_org_name: request.general_org?.name || "",
+      })) as OrganisationLinkRequestWithGeneralName[]
     },
     enabled: Boolean(organisation?.id),
   })
@@ -219,7 +220,7 @@ export const useIncomingLinkRequests = () => {
 export const useTestingOrgAcceptedLinks = () => {
   const { organisation } = useUserStore()
 
-  return useQuery<OrganisationLinkWithName[]>({
+  return useQuery<OrganisationLinkWithGeneralName[]>({
     queryKey: ["testing-org-accepted-links", organisation?.id],
     queryFn: async () => {
       if (!organisation?.id) throw new Error("No organisation found")
@@ -229,9 +230,7 @@ export const useTestingOrgAcceptedLinks = () => {
         .select(
           `
           *,
-          general_org:organisation!general_org_id(name),
-          testing_org:organisation!testing_org_id(name)
-
+          general_org:organisation!general_org_id(name)
         `,
         )
         .eq("testing_org_id", organisation.id)
@@ -239,11 +238,11 @@ export const useTestingOrgAcceptedLinks = () => {
 
       if (error) throw new Error(error.message)
 
-      // Flatten the nested general_org data - use general_org_name for consistency
+      // The counterparty here is the General organisation sending the work.
       return data.map((link) => ({
         ...link,
-        testing_org_name: link.general_org?.name || "",
-      }))
+        general_org_name: link.general_org?.name || "",
+      })) as OrganisationLinkWithGeneralName[]
     },
     enabled: Boolean(organisation?.id),
   })

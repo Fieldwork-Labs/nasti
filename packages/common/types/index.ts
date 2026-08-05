@@ -232,11 +232,30 @@ export type OrganisationLink = Table<"organisation_link">
 export type OrganisationLinkRequest = Table<"organisation_link_request">
 export type BatchTestingAssignment = Table<"batch_testing_assignment">
 
-// Extended types with joined data
+// Extended types with joined data.
+//
+// A link has two sides and each side cares about the other one, so the
+// counterparty gets an explicitly named field. Overloading a single
+// `testing_org_name` with "whichever organisation you are not" is how the
+// Testing screens ended up displaying their own name back to themselves.
 export type OrganisationLinkWithName = OrganisationLink & {
   testing_org: { name: string }
+  testing_org_name: string
 }
 
 export type OrganisationLinkRequestWithName = OrganisationLinkRequest & {
   testing_org: { name: string }
+  testing_org_name: string
 }
+
+/** The same link as seen by the Testing organisation receiving the work. */
+export type OrganisationLinkWithGeneralName = OrganisationLink & {
+  general_org: { name: string }
+  general_org_name: string
+}
+
+export type OrganisationLinkRequestWithGeneralName =
+  OrganisationLinkRequest & {
+    general_org: { name: string }
+    general_org_name: string
+  }

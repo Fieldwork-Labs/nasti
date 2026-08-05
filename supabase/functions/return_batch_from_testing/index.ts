@@ -1,5 +1,12 @@
 // Edge Function: Return Batch from Testing
-// Testing organisation returns a batch/sample to the original owner
+// Testing organisation returns a batch/sample to the original owner.
+//
+// A transport wrapper only. fn_return_batch_from_testing owns the rules —
+// Admin role, ownership of the assignment, not-already-returned, retained
+// subsample validation, and custody handback for a full batch — and performs
+// the custody write and the assignment update in one transaction. Previously
+// this function updated the assignment without ever writing custody, so a
+// returned full batch stayed, on paper, with the Testing organisation.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -7,10 +14,22 @@ import { AuthMiddleware } from "../_shared/jwt/default.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "Content-Type, Authorization, X-Client-Info, Apikey",
   "Access-Control-Max-Age": "86400",
+}
+
+// The database raises these deliberately; anything else is a bug and must not
+// be echoed back to the caller.
+const STATUS_BY_PG_CODE: Record<string, number> = {
+  "28000": 401, // authentication required
+  "42501": 403, // not authorised
+  P0002: 404, // referenced row not found
+  "55000": 409, // state conflict, e.g. already returned
+  "23505": 409, // unique violation
+  "22023": 400, // invalid parameter
+  "22P02": 400, // malformed input syntax, e.g. a bad uuid
 }
 
 const returnErrorResponse = (message: string, status: number) => {
@@ -22,7 +41,6 @@ const returnErrorResponse = (message: string, status: number) => {
 
 Deno.serve((r) =>
   AuthMiddleware(r, async (req) => {
-    // Handle CORS preflight requests
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -30,8 +48,11 @@ Deno.serve((r) =>
       })
     }
 
+    if (req.method !== "POST") {
+      return returnErrorResponse("Method not allowed", 405)
+    }
+
     try {
-      // Create Supabase client with user's auth
       const authHeader = req.headers.get("Authorization")
       if (!authHeader) {
         return returnErrorResponse("Missing authorization", 401)
@@ -47,144 +68,81 @@ Deno.serve((r) =>
         },
       )
 
-      // Get current user
-      const {
-        data: { user },
-        error: userError,
-      } = await supabaseClient.auth.getUser()
-
-      if (userError || !user) {
-        return returnErrorResponse("Unauthorized", 401)
+      let body: {
+        assignment_id?: string
+        subsample_weight_grams?: number | null
+        subsample_storage_location_id?: string | null
       }
 
-      // Get request body
+      try {
+        body = await req.json()
+      } catch {
+        return returnErrorResponse("Request body must be valid JSON", 400)
+      }
+
       const {
         assignment_id,
         subsample_weight_grams,
         subsample_storage_location_id,
-      } = await req.json()
+      } = body
 
-      // Validate inputs
-      if (!assignment_id) {
+      if (!assignment_id || typeof assignment_id !== "string") {
         return returnErrorResponse("Missing required field: assignment_id", 400)
       }
 
-      // If subsample weight provided, storage location is required
-      if (subsample_weight_grams && !subsample_storage_location_id) {
-        return returnErrorResponse(
-          "subsample_storage_location_id is required when storing a subsample",
-          400,
-        )
-      }
+      const weight =
+        subsample_weight_grams === undefined ? null : subsample_weight_grams
+      const locationId =
+        subsample_storage_location_id === undefined
+          ? null
+          : subsample_storage_location_id
 
-      // Get user's organisation and verify admin role
-      const { data: orgMembership } = await supabaseClient
-        .from("org_user")
-        .select("organisation_id, role")
-        .eq("user_id", user.id)
-        .single()
-
-      if (!orgMembership) {
-        return returnErrorResponse(
-          "User is not a member of any organisation",
-          403,
-        )
-      }
-
-      if (orgMembership.role !== "Admin") {
-        return returnErrorResponse(
-          "Only admins can return batches from testing",
-          403,
-        )
-      }
-
-      const userOrgId = orgMembership.organisation_id
-
-      // Get the assignment
-      const { data: assignment, error: fetchError } = await supabaseClient
-        .from("batch_testing_assignment")
-        .select("*")
-        .eq("id", assignment_id)
-        .single()
-
-      if (fetchError || !assignment) {
-        return returnErrorResponse("Assignment not found", 404)
-      }
-
-      // Verify user's org is the testing org for this assignment
-      if (assignment.assigned_to_org_id !== userOrgId) {
-        return returnErrorResponse(
-          "This assignment does not belong to your organisation",
-          403,
-        )
-      }
-
-      // Check if already returned
-      if (assignment.returned_at) {
-        return returnErrorResponse("Assignment already returned", 400)
-      }
-
-      // Validate storage location belongs to testing org (if provided)
-      if (subsample_storage_location_id) {
-        const { data: location, error: locationError } = await supabaseClient
-          .from("storage_locations")
-          .select("organisation_id")
-          .eq("id", subsample_storage_location_id)
-          .single()
-
-        if (locationError || !location) {
-          return returnErrorResponse("Storage location not found", 404)
-        }
-
-        if (location.organisation_id !== userOrgId) {
+      if (weight !== null) {
+        if (typeof weight !== "number" || !Number.isFinite(weight) || weight <= 0) {
           return returnErrorResponse(
-            "Storage location does not belong to your organisation",
-            403,
+            "subsample_weight_grams must be a number greater than 0",
+            400,
           )
         }
       }
 
-      // Update assignment with return info
-      const updateData: {
-        returned_at: string
-        completed_at?: string
-        subsample_weight_grams?: number
-        subsample_storage_location_id?: string
-      } = {
-        returned_at: new Date().toISOString(),
-      }
-
-      if (subsample_weight_grams) {
-        updateData.subsample_weight_grams = subsample_weight_grams
-      }
-
-      if (subsample_storage_location_id) {
-        updateData.subsample_storage_location_id = subsample_storage_location_id
-      }
-
-      if (!assignment.completed_at) {
-        updateData.completed_at = new Date().toISOString()
-      }
-
-      const { data: updatedAssignment, error: updateError } =
-        await supabaseClient
-          .from("batch_testing_assignment")
-          .update(updateData)
-          .eq("id", assignment_id)
-          .select()
-          .single()
-
-      if (updateError) {
+      if (locationId !== null && typeof locationId !== "string") {
         return returnErrorResponse(
-          `Failed to update assignment: ${updateError.message}`,
-          500,
+          "subsample_storage_location_id must be a string",
+          400,
         )
+      }
+
+      // Retained subsample metadata is meaningless without both halves.
+      if ((weight === null) !== (locationId === null)) {
+        return returnErrorResponse(
+          "subsample_weight_grams and subsample_storage_location_id must be provided together",
+          400,
+        )
+      }
+
+      const { data, error } = await supabaseClient.rpc(
+        "fn_return_batch_from_testing",
+        {
+          p_assignment_id: assignment_id,
+          p_subsample_weight_grams: weight,
+          p_subsample_storage_location_id: locationId,
+        },
+      )
+
+      if (error) {
+        const status = STATUS_BY_PG_CODE[error.code ?? ""]
+        if (!status) {
+          console.error("fn_return_batch_from_testing failed", error)
+          return returnErrorResponse("Internal server error", 500)
+        }
+        return returnErrorResponse(error.message, status)
       }
 
       return new Response(
         JSON.stringify({
           message: "Batch returned successfully",
-          assignment: updatedAssignment,
+          assignment: data,
         }),
         {
           status: 200,
@@ -192,10 +150,8 @@ Deno.serve((r) =>
         },
       )
     } catch (error) {
-      return returnErrorResponse(
-        `Internal server error: ${(error as Error).message}`,
-        500,
-      )
+      console.error("return_batch_from_testing failed", error)
+      return returnErrorResponse("Internal server error", 500)
     }
   }),
 )

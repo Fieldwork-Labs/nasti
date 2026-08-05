@@ -27,6 +27,10 @@ import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 
 import { useAssignBatchesForTesting } from "@/hooks/useAssignBatchesForTesting"
+import {
+  linkSupportsAssignmentTypes,
+  type AssignmentType,
+} from "@/lib/testingAssignments"
 import { cn } from "@nasti/ui/utils"
 
 const assignBatchesSchema = z.object({
@@ -182,23 +186,50 @@ export const AssignBatchesForTestingModal = ({
     form.setValue("sample_weights", sampleWeights)
   }, [form, sampleWeights])
 
-  const assignmentTypes = Object.values(form.watch("sample_weights")).map(
-    (sampleWeight) => sampleWeight.assignment_type,
-  )
   const selectedTestingOrgId = form.watch("testing_org_id")
 
-  const hasSamples = assignmentTypes.some(
-    (assignmentType) => assignmentType === "sample",
+  // form.watch returns a fresh object every render, so reduce the selection to
+  // a stable key and derive the distinct types from that.
+  const assignmentTypeKey = Object.values(form.watch("sample_weights"))
+    .map((sampleWeight) => sampleWeight.assignment_type)
+    .sort()
+    .join(",")
+
+  const assignmentTypes = useMemo(
+    () =>
+      assignmentTypeKey
+        ? (Array.from(
+            new Set(assignmentTypeKey.split(",")),
+          ) as AssignmentType[])
+        : [],
+    [assignmentTypeKey],
   )
-  const hasFullBatches = assignmentTypes.some(
-    (assignmentType) => assignmentType === "full_batch",
+
+  // A link must satisfy every assignment type in the selection: can_test for
+  // samples, can_process for full batches, both for a mixed selection.
+  const availableOrgs = useMemo(
+    () =>
+      organisationLinks?.filter((link) =>
+        linkSupportsAssignmentTypes(link, assignmentTypes),
+      ),
+    [organisationLinks, assignmentTypes],
   )
-  // Filter organisations based on assignment type
-  const availableOrgs = organisationLinks?.filter((link) => {
-    if (link.can_process && link.can_test) return true
-    else if (link.can_process) return hasSamples
-    else if (link.can_test) return hasFullBatches
-  })
+
+  // Switching a batch between sample and full batch can invalidate an
+  // organisation the user already picked. Clear it rather than submitting
+  // something the database will reject.
+  useEffect(() => {
+    const selected = form.getValues("testing_org_id")
+    if (!selected || !availableOrgs) return
+
+    const stillValid = availableOrgs.some(
+      (link) => link.testing_org_id === selected,
+    )
+
+    if (!stillValid) {
+      form.setValue("testing_org_id", "")
+    }
+  }, [availableOrgs, form])
 
   // Calculate total weight
   const totalWeight = selectedBatches.reduce(

@@ -103,7 +103,7 @@ export const TestingOrgLinks = () => {
                       <Building2 className="h-6 w-6 text-green-500" />
                       <div>
                         <h3 className="font-semibold">
-                          {link.testing_org.name}
+                          {link.general_org_name}
                         </h3>
                         <div className="mt-1 flex gap-2">
                           {link.can_test && (
@@ -165,7 +165,7 @@ export const TestingOrgLinks = () => {
                       <Building2 className="mt-1 h-6 w-6 text-blue-500" />
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold">
-                          {request.testing_org.name}
+                          {request.general_org_name}
                         </h3>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {request.can_test && (

@@ -297,6 +297,12 @@ export const useCreateQualityTest = () => {
         queryKey: ["subBatches", newTest.batch_id],
       })
 
+      // The test completes the assignment in the same transaction, so both
+      // testing lists have to be refetched.
+      queryClient.invalidateQueries({
+        queryKey: ["assignments", "byStatus"],
+      })
+
       // find the batch in the filter queries
       const batchFilterQueries = queryClient.getQueriesData<ActiveBatch[]>({
         queryKey: ["batches", "byFilter"],

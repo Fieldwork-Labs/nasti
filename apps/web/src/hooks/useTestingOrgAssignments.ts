@@ -85,40 +85,12 @@ export const useCompletedAssignments = () => {
   return useAssignmentsByStatus({ status: "complete" })
 }
 
-// Mark assignment as completed
-export const useCompleteAssignment = () => {
-  const { organisation } = useUserStore()
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (assignmentId: string) => {
-      const { error, data } = await supabase.functions.invoke(
-        "complete_testing_assignment",
-        {
-          body: { assignment_id: assignmentId },
-        },
-      )
-
-      if (error) {
-        throw new Error(error.message || "Failed to complete assignment")
-      }
-
-      return data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["testing-assignments", "pending", organisation?.id],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ["testing-assignments", "completed", organisation?.id],
-      })
-    },
-  })
-}
+// An assignment is completed by fn_create_quality_test, in the same
+// transaction as the test that completes it. There is no separate client
+// action, and no complete_testing_assignment edge function.
 
 // Return batch/sample to owner
 export const useReturnBatchFromTesting = () => {
-  const { organisation } = useUserStore()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -149,9 +121,9 @@ export const useReturnBatchFromTesting = () => {
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["testing-assignments", "completed", organisation?.id],
-      })
+      queryClient.invalidateQueries({ queryKey: ["assignments", "byStatus"] })
+      queryClient.invalidateQueries({ queryKey: ["batches"] })
+      queryClient.invalidateQueries({ queryKey: ["subBatches"] })
     },
   })
 }
