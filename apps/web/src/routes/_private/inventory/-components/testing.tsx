@@ -1,6 +1,5 @@
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
-import { useToast } from "@nasti/ui/hooks"
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
 import { motion } from "motion/react"
 import { useState } from "react"
@@ -11,7 +10,6 @@ import { BatchTableRow } from "./BatchTableRow/Testing"
 import { BatchStorageModal } from "@/components/inventory/modals"
 import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
-import { useBatchDelete } from "@/hooks/useBatches"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
 
 // Define search schema for URL parameters
@@ -26,8 +24,6 @@ export const inventorySearchSchemaTesting = z.object({
 })
 
 export function InventoryPageTesting() {
-  const { toast } = useToast()
-
   // Local state for modals
   const [subBatchStorageMove, setSubBatchStorageMove] = useState<{
     batch: BatchWithCurrentLocationAndSpecies
@@ -40,21 +36,13 @@ export function InventoryPageTesting() {
   const {
     data: batches = [],
     isLoading,
+    error,
+    assignmentsByBatchId,
     invalidateBatchesCacheByFilter,
     handleSort,
     sortField,
     sortDirection,
   } = useBatchFiltersContext()
-
-  const { mutateAsync: deleteBatch } = useBatchDelete()
-
-  const handleDelete = async (_batchId: string) => {
-    const deleted = await deleteBatch(_batchId)
-    if (deleted)
-      toast({
-        description: "Batch successfully deleted",
-      })
-  }
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -88,32 +76,36 @@ export function InventoryPageTesting() {
         {/* Results Summary */}
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-sm">
-            Showing {batches.length} of {batches.length} batches
+            {isLoading || error
+              ? null
+              : `Showing ${batches.length} assignment${batches.length === 1 ? "" : "s"}`}
           </p>
         </div>
 
         {/* Table */}
         <Card className="overflow-hidden">
           {isLoading && <div className="h-20 w-full animate-pulse space-y-4" />}
-          {!isLoading && (
+          {/* A failed query is not an empty inventory, and must not read as one. */}
+          {!isLoading && error && (
+            <div className="p-8 text-center">
+              <h3 className="mb-2 text-lg font-semibold">
+                Could not load assignments
+              </h3>
+              <p className="text-muted-foreground">
+                {error.message ??
+                  "Something went wrong fetching your assignments."}
+              </p>
+            </div>
+          )}
+          {!isLoading && !error && (
             <>
               {batches.length === 0 ? (
                 <div className="p-8 text-center">
                   <div className="text-muted-foreground">
-                    {batches.length === 0 ? (
-                      <div>
-                        <h3 className="mb-2 text-lg font-semibold">
-                          No Batches Found
-                        </h3>
-                      </div>
-                    ) : (
-                      <div>
-                        <h3 className="mb-2 text-lg font-semibold">
-                          No Matching Batches
-                        </h3>
-                        <p>Try adjusting your filters to see more results.</p>
-                      </div>
-                    )}
+                    <h3 className="mb-2 text-lg font-semibold">
+                      No Assignments Found
+                    </h3>
+                    <p>Batches assigned to you for testing will appear here.</p>
                   </div>
                 </div>
               ) : (
@@ -144,7 +136,7 @@ export function InventoryPageTesting() {
                           </Button>
                         </th>
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
-                          Status
+                          Assignment
                         </th>
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Bags
@@ -159,7 +151,7 @@ export function InventoryPageTesting() {
                             onClick={() => handleSort("created_at")}
                             className="font-semibold"
                           >
-                            Created
+                            Assigned
                             {getSortIcon("created_at")}
                           </Button>
                         </th>
@@ -173,7 +165,7 @@ export function InventoryPageTesting() {
                         <BatchTableRow
                           key={batch.id}
                           batch={batch}
-                          onDelete={handleDelete}
+                          assignment={assignmentsByBatchId.get(batch.id)}
                           onSubBatchStorageMove={(batch, subBatchId) =>
                             setSubBatchStorageMove({ batch, subBatchId })
                           }

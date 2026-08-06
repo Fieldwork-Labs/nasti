@@ -1,8 +1,14 @@
 import {
   useBatchesByFilter,
   invalidateBatchesByFilterCache,
+  type BatchWithCurrentLocationAndSpecies,
 } from "@/hooks/useBatches"
+import { useAssignedBatchesByFilter } from "@/hooks/useTestingOrgAssignments"
+import type { BatchAssignmentWithOrg } from "@/hooks/useBatchAssignments"
+import type { InventoryStatusFilter } from "@/lib/testingAssignments"
 import { BatchStatus } from "@/components/inventory/BatchInventoryFilters"
+import useUserStore from "@/store/userStore"
+import { queryClient } from "@nasti/common/utils"
 import { getRouteApi } from "@tanstack/react-router"
 import {
   createContext,
@@ -16,9 +22,15 @@ export type SortField = "created_at" | "species_id" | "organisation_id"
 type SortDirection = "asc" | "desc"
 
 interface BatchFiltersContextValue {
-  data: ReturnType<typeof useBatchesByFilter>["data"]
-  isLoading: ReturnType<typeof useBatchesByFilter>["isLoading"]
-  error: ReturnType<typeof useBatchesByFilter>["error"]
+  data: BatchWithCurrentLocationAndSpecies[] | undefined
+  /**
+   * Empty for General organisations. For Testing organisations it holds the
+   * assignment each visible batch arrived through, so rows can render its
+   * metadata and gate their actions without a query per row.
+   */
+  assignmentsByBatchId: Map<string, BatchAssignmentWithOrg>
+  isLoading: boolean
+  error: Error | null
   handleSort: (field: SortField) => void
   sortDirection: SortDirection
   sortField: SortField
@@ -91,7 +103,46 @@ export const BatchFiltersProvider = ({
     [filters, sortField, sortDirection],
   )
 
-  const batchData = useBatchesByFilter(batchFilter)
+  // General organisations browse their own inventory; Testing organisations
+  // see exactly what has been assigned to them and not returned. Only one of
+  // the two queries runs.
+  const { organisation } = useUserStore()
+  const isTestingOrg = organisation?.type === "Testing"
+
+  const assignmentFilter = useMemo(
+    () => ({
+      // The route validates a union of both pages' search schemas, so a
+      // General status can reach this page through a hand-edited URL. Anything
+      // that is not an assignment status means "no status filter".
+      status:
+        filters.status === "pending" || filters.status === "completed"
+          ? filters.status
+          : ("any" as InventoryStatusFilter),
+      speciesId: filters.speciesId || undefined,
+      locationId: filters.locationId || undefined,
+      search: filters.search ?? "",
+      sort: sortField,
+      order: sortDirection,
+    }),
+    [filters, sortField, sortDirection],
+  )
+
+  const generalBatches = useBatchesByFilter(batchFilter, {
+    enabled: !isTestingOrg,
+  })
+  const assignedBatches = useAssignedBatchesByFilter(assignmentFilter, {
+    enabled: isTestingOrg,
+  })
+
+  const batchData = isTestingOrg ? assignedBatches : generalBatches
+
+  const assignmentsByBatchId = useMemo(() => {
+    if (!isTestingOrg) return new Map<string, BatchAssignmentWithOrg>()
+
+    return new Map(
+      (assignedBatches.data ?? []).map((batch) => [batch.id, batch.assignment]),
+    )
+  }, [isTestingOrg, assignedBatches.data])
 
   // Update URL search parameters
   const updateSearchParams = useCallback(
@@ -106,8 +157,15 @@ export const BatchFiltersProvider = ({
     [searchParams, navigate],
   )
 
+  // Assignment, batch, bag and test data all move together after a processing,
+  // testing or return action, so refresh the lot rather than guessing which
+  // key the change landed in.
   const invalidateBatchesCacheByFilter = useCallback(() => {
     invalidateBatchesByFilterCache(batchFilter)
+    queryClient.invalidateQueries({ queryKey: ["assignments", "byStatus"] })
+    queryClient.invalidateQueries({ queryKey: ["batches"] })
+    queryClient.invalidateQueries({ queryKey: ["subBatches"] })
+    queryClient.invalidateQueries({ queryKey: ["batch-assignment"] })
   }, [batchFilter])
 
   // Handle sorting
@@ -155,7 +213,10 @@ export const BatchFiltersProvider = ({
 
   const value = useMemo(
     () => ({
-      ...batchData,
+      data: batchData.data,
+      isLoading: batchData.isLoading,
+      error: batchData.error,
+      assignmentsByBatchId,
       handleSort,
       sortDirection,
       sortField,
@@ -164,7 +225,10 @@ export const BatchFiltersProvider = ({
       invalidateBatchesCacheByFilter,
     }),
     [
-      batchData,
+      batchData.data,
+      batchData.isLoading,
+      batchData.error,
+      assignmentsByBatchId,
       handleSort,
       sortDirection,
       sortField,

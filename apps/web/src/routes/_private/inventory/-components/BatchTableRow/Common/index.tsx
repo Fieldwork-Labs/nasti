@@ -653,6 +653,14 @@ interface BatchTableRowContainerProps {
   className?: string
   rowClassName?: string
   statusBadge?: ReactNode
+  /**
+   * Testing organisations hold a batch through an assignment, so these two
+   * columns say something different for them — what was sent and when it was
+   * assigned, rather than the batch's own processing state and creation date.
+   * Left undefined, both fall back to the General inventory rendering.
+   */
+  statusCell?: ReactNode
+  dateCell?: ReactNode
   actionButtons: ReactNode
   detailLoading: boolean
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
@@ -671,6 +679,8 @@ export const BatchTableRowContainer = ({
   className,
   rowClassName,
   statusBadge,
+  statusCell,
+  dateCell,
   actionButtons,
   detailLoading,
   onEdit,
@@ -701,7 +711,7 @@ export const BatchTableRowContainer = ({
       </td>
 
       <td className="px-4 py-3">
-        <BatchStatusField batch={batch} />
+        {statusCell ?? <BatchStatusField batch={batch} />}
       </td>
 
       <td className="px-4 py-3">
@@ -713,7 +723,7 @@ export const BatchTableRowContainer = ({
       </td>
 
       <td className="px-4 py-3">
-        <CreatedDateCell batch={batch} />
+        {dateCell ?? <CreatedDateCell batch={batch} />}
       </td>
 
       <td className="px-4 py-3">

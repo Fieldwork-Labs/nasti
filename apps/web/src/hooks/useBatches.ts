@@ -88,9 +88,18 @@ export type BatchWithCurrentLocationAndSpecies = BatchWithStatus & {
   } | null
 }
 
-export const useBatchesByFilter = (batchFilter: BatchFilter) => {
+/**
+ * The General inventory query. Testing organisations do not use this — their
+ * inventory is driven by assignments, see useAssignedBatchesByFilter — so the
+ * route disables it rather than running both.
+ */
+export const useBatchesByFilter = (
+  batchFilter: BatchFilter,
+  { enabled = true }: { enabled?: boolean } = {},
+) => {
   return useQuery({
     queryKey: ["batches", "byFilter", batchFilter],
+    enabled,
     queryFn: async () => {
       let q = supabase.from("active_batches").select(`*,
           collection:collection_id(

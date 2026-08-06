@@ -1,145 +1,77 @@
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@nasti/ui/tooltip"
-import { FlaskConical, Microscope, Undo2 } from "lucide-react"
+import { FlaskConical, Undo2 } from "lucide-react"
 import { useState } from "react"
 
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import { ReturnBatchModal } from "@/components/tests/ReturnBatchModal"
 import { BatchAssignmentWithOrg } from "@/hooks/useBatchAssignments"
-import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import { getAssignmentActions } from "@/lib/testingAssignments"
 import { Badge } from "@nasti/ui/badge"
 import { cn } from "@nasti/ui/utils"
-import {
-  BatchDeleteButton,
-  BatchTableRowContainer,
-  GeneralOrgAssignmentBadge,
-  useBatchRowData,
-  type BaseBatchTableRowProps,
-} from "./Common"
+import { useBatchDetail } from "@/hooks/useBatches"
+import { BatchTableRowContainer, type BaseBatchTableRowProps } from "./Common"
 
 // =============================================================================
 // Types
 // =============================================================================
 
-type BatchTableRowTestingProps = BaseBatchTableRowProps
-
-// =============================================================================
-// Action Button Components
-// =============================================================================
-
-interface TestingOrgActionsProps {
-  assignment?: BatchAssignmentWithOrg | null
-  onReturn: () => void
+type BatchTableRowTestingProps = BaseBatchTableRowProps & {
+  assignment?: BatchAssignmentWithOrg
 }
 
-interface ActionsProps extends TestingOrgActionsProps {
-  batch: BatchWithCurrentLocationAndSpecies
-  canDelete: boolean
-  onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onDelete?: (batchId: string) => void
-  onOpenQualityTest?: () => void
-}
-
-const Actions = ({
-  batch,
-  canDelete,
-  onProcess,
-  onDelete,
-  onOpenQualityTest,
-  onReturn,
-}: ActionsProps) => (
-  <>
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => onProcess?.(batch)}
-      title="Process"
-    >
-      <FlaskConical className="h-4 w-4" />
-    </Button>
-
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onOpenQualityTest}
-      title="Quality Test"
-    >
-      <Microscope className="h-4 w-4" />
-    </Button>
-
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={onReturn}
-      title="Return to Owner"
-    >
-      <Undo2 className="mr-1 h-4 w-4" />
-    </Button>
-
-    <BatchDeleteButton
-      batchId={batch.id}
-      canDelete={canDelete}
-      onDelete={onDelete}
-    />
-  </>
-)
+// =============================================================================
+// Cells
+// =============================================================================
 
 /**
- * Badge showing assignment status for testing orgs (batch received)
+ * What was sent, by whom, and how much of it.
  */
-export const TestingOrgAssignmentBadge = ({
+const AssignmentCell = ({
   assignment,
 }: {
   assignment: BatchAssignmentWithOrg
 }) => {
-  if (!assignment) return null
-  console.log({ assignment })
+  const isSample = assignment.assignment_type === "sample"
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger>
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs",
-              assignment.completed_at
-                ? "border-green-500 bg-green-50 text-green-700"
-                : "border-orange-500 bg-orange-50 text-orange-700",
-            )}
-          >
-            {assignment.assignment_type === "sample"
-              ? "Test Sample"
-              : "Full Batch"}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>
-            {assignment.assignment_type === "sample"
-              ? `${assignment.sample_weight_grams}g sample from `
-              : "Full batch from "}
-            {assignment.assigned_by_org?.name}
-          </p>
-          <p className="text-muted-foreground text-xs">
-            Assigned: {new Date(assignment.assigned_at).toLocaleDateString()}
-          </p>
-          {assignment.completed_at && (
-            <p className="text-muted-foreground text-xs">
-              Completed:{" "}
-              {new Date(assignment.completed_at).toLocaleDateString()}
-            </p>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="flex flex-col gap-1">
+      <Badge
+        variant="outline"
+        className={cn(
+          "w-fit text-xs",
+          assignment.completed_at
+            ? "border-green-500 bg-green-50 text-green-700"
+            : "border-orange-500 bg-orange-50 text-orange-700",
+        )}
+      >
+        {isSample ? "Test Sample" : "Full Batch"}
+        {assignment.completed_at ? " · Tested" : " · Awaiting test"}
+      </Badge>
+      <span className="text-muted-foreground text-xs">
+        {isSample && assignment.sample_weight_grams
+          ? `${assignment.sample_weight_grams}g from `
+          : "From "}
+        {assignment.assigned_by_org?.name ?? "unknown organisation"}
+      </span>
+    </div>
   )
 }
+
+const AssignmentDatesCell = ({
+  assignment,
+}: {
+  assignment: BatchAssignmentWithOrg
+}) => (
+  <div className="flex flex-col text-sm">
+    <span>{new Date(assignment.assigned_at).toLocaleDateString()}</span>
+    {assignment.completed_at && (
+      <span className="text-muted-foreground text-xs">
+        Tested {new Date(assignment.completed_at).toLocaleDateString()}
+      </span>
+    )}
+  </div>
+)
 
 // =============================================================================
 // Main Component
@@ -147,7 +79,7 @@ export const TestingOrgAssignmentBadge = ({
 
 export const BatchTableRow = ({
   batch,
-  onDelete,
+  assignment,
   onProcess,
   className,
 }: BatchTableRowTestingProps) => {
@@ -157,43 +89,19 @@ export const BatchTableRow = ({
     string | false
   >(false)
 
-  const handleSubBatchQualityTest = (subBatchId: string) => {
-    setQualityTestModalSubBatchId(subBatchId)
-  }
-
   const { isOpen: isReturnModalOpen, setIsOpen: setIsReturnModalOpen } =
     useOpenClose()
 
-  const { canDelete, activeAssignment, detailLoading } = useBatchRowData(
-    batch.id,
-  )
+  // Only the detail query is needed here: the assignment arrives as a prop, and
+  // a Testing organisation never deletes, so the delete-eligibility query that
+  // useBatchRowData bundles would be wasted work on every row.
+  const { isLoading: detailLoading } = useBatchDetail(batch.id)
 
-  // Determine which action buttons to show
-  const renderActionButtons = () => {
-    return (
-      <Actions
-        batch={batch}
-        assignment={activeAssignment}
-        canDelete={canDelete}
-        onProcess={onProcess}
-        onDelete={onDelete}
-        onReturn={() => setIsReturnModalOpen(true)}
-      />
-    )
-  }
-
-  // Determine status badge based on org type
-  const getStatusBadge = () => {
-    if (activeAssignment) {
-      return <TestingOrgAssignmentBadge assignment={activeAssignment} />
-    }
-
-    if (activeAssignment) {
-      return <GeneralOrgAssignmentBadge assignment={activeAssignment} />
-    }
-
-    return null
-  }
+  // Without an assignment there is nothing for a Testing organisation to act
+  // on; the row is read-only rather than half-enabled.
+  const actions = assignment
+    ? getAssignmentActions(assignment)
+    : { canTest: false, canProcess: false, canReturn: false, canDelete: false }
 
   return (
     <>
@@ -202,9 +110,43 @@ export const BatchTableRow = ({
         isExpanded={isExpanded}
         onToggleExpand={() => setIsExpanded(!isExpanded)}
         className={className}
-        onSubBatchQualityTest={handleSubBatchQualityTest}
-        statusBadge={getStatusBadge()}
-        actionButtons={renderActionButtons()}
+        // A quality test is recorded against a bag, so it is offered from the
+        // expanded bag list rather than as a row-level button with nothing
+        // selected.
+        onSubBatchQualityTest={setQualityTestModalSubBatchId}
+        statusCell={
+          assignment ? <AssignmentCell assignment={assignment} /> : undefined
+        }
+        dateCell={
+          assignment ? (
+            <AssignmentDatesCell assignment={assignment} />
+          ) : undefined
+        }
+        actionButtons={
+          <>
+            {actions.canProcess && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onProcess?.(batch)}
+                title="Process"
+              >
+                <FlaskConical className="h-4 w-4" />
+              </Button>
+            )}
+
+            {actions.canReturn && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsReturnModalOpen(true)}
+                title="Return to Owner"
+              >
+                <Undo2 className="mr-1 h-4 w-4" />
+              </Button>
+            )}
+          </>
+        }
         detailLoading={detailLoading}
       />
 
@@ -216,11 +158,14 @@ export const BatchTableRow = ({
           subBatchId={qualityTestModalSubBatchId}
         />
       )}
-      <ReturnBatchModal
-        isOpen={isReturnModalOpen}
-        onClose={() => setIsReturnModalOpen(false)}
-        batchId={batch.id}
-      />
+
+      {assignment && (
+        <ReturnBatchModal
+          isOpen={isReturnModalOpen}
+          onClose={() => setIsReturnModalOpen(false)}
+          assignment={assignment}
+        />
+      )}
     </>
   )
 }

@@ -1,6 +1,6 @@
+import type { BatchAssignmentWithOrg } from "@/hooks/useBatchAssignments"
 import { useReturnBatchFromTesting } from "@/hooks/useTestingOrgAssignments"
 import { useBatchFiltersContext } from "@/routes/_private/inventory/-components/BatchFiltersContext"
-import { useBatchRowData } from "@/routes/_private/inventory/-components/BatchTableRow/Common"
 import { Button } from "@nasti/ui/button"
 import {
   Dialog,
@@ -13,32 +13,36 @@ import { useToast } from "@nasti/ui/hooks"
 type ReturnBatchModalProps = {
   isOpen: boolean
   onClose: () => void
-  batchId: string
+  /**
+   * Passed in rather than looked up: the inventory already fetched it, and a
+   * per-row query here would re-fetch it once per open row.
+   */
+  assignment: BatchAssignmentWithOrg
 }
 
 export const ReturnBatchModal = ({
   isOpen,
   onClose,
-  batchId,
+  assignment,
 }: ReturnBatchModalProps) => {
   const { invalidateBatchesCacheByFilter } = useBatchFiltersContext()
-  const { activeAssignment } = useBatchRowData(batchId)
   const { toast } = useToast()
 
   // Testing org assignment actions
   const returnBatch = useReturnBatchFromTesting()
 
   const handleReturnBatch = async () => {
-    if (!activeAssignment) return
     try {
-      await returnBatch.mutateAsync({ assignmentId: activeAssignment.id })
+      await returnBatch.mutateAsync({ assignmentId: assignment.id })
       toast({
-        description: `Batch returned to ${activeAssignment.assigned_by_org?.name ?? "owner"}`,
+        description: `Batch returned to ${assignment.assigned_by_org?.name ?? "owner"}`,
       })
       invalidateBatchesCacheByFilter()
-    } catch {
+      onClose()
+    } catch (error) {
       toast({
-        description: "Failed to return batch",
+        description:
+          error instanceof Error ? error.message : "Failed to return batch",
         variant: "destructive",
       })
     }
