@@ -61,8 +61,11 @@ BEGIN
     RAISE EXCEPTION 'Sub-batch not found';
   END IF;
 
-  IF NOT public.is_current_custodian(auth.uid(), v_batch_id) THEN
-    RAISE EXCEPTION 'Permission denied: not current custodian of batch';
+  -- Storage is a statement about where a physical bag is, so only whoever
+  -- holds it may make one. The owner of the parent batch must not be able to
+  -- shelve or move a bag that is currently in a Testing organisation's hands.
+  IF NOT public.is_current_bag_custodian(auth.uid(), p_sub_batch_id) THEN
+    RAISE EXCEPTION 'Permission denied: not the current holder of this bag';
   END IF;
 
   SELECT sbcw.current_weight

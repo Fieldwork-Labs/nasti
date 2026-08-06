@@ -8,10 +8,75 @@ CREATE TABLE sub_batches (
   weight_grams INTEGER NOT NULL CHECK (weight_grams > 0),
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
+  -- Who physically holds this bag. A batch is not the physical unit: a Testing
+  -- organisation receives one bag while the owner keeps its siblings, so the
+  -- answer has to be recorded per bag rather than inferred from the parent or
+  -- from assignment state. Filled in by the BEFORE INSERT trigger below when
+  -- the writer does not supply it.
+  held_by_org_id UUID NOT NULL REFERENCES organisation(id),
   UNIQUE (id, batch_id)
 );
 
 CREATE INDEX idx_sub_batches_batch_id ON sub_batches(batch_id);
+CREATE INDEX sub_batches_held_by_org_id_idx ON public.sub_batches (held_by_org_id);
+
+COMMENT ON COLUMN public.sub_batches.held_by_org_id IS
+  'Organisation currently holding this bag. Moved only by the reviewed SECURITY DEFINER RPCs; never inferred from assignment state.';
+
+-- Every bag-creating path predates per-bag custody — cleaning, bagging,
+-- mixing, splitting, merging and the seed file all insert without naming the
+-- column. Defaulting here rather than in each of them keeps one answer to "who
+-- holds a new bag": whoever owns the parent batch, unless the caller says
+-- otherwise.
+CREATE OR REPLACE FUNCTION public.fn_default_sub_batch_holder()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF NEW.held_by_org_id IS NULL THEN
+    SELECT b.organisation_id
+    INTO NEW.held_by_org_id
+    FROM public.batches b
+    WHERE b.id = NEW.batch_id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.fn_default_sub_batch_holder() FROM PUBLIC;
+
+COMMENT ON FUNCTION public.fn_default_sub_batch_holder() IS
+  'Defaults sub_batches.held_by_org_id to the parent batch owner so existing bag-creating paths need no edit.';
+
+-- The name matters: BEFORE ROW triggers fire in name order, and
+-- sub_batches_storage_container_relationship (20260729000001) validates the
+-- container against held_by_org_id, so this has to have run first.
+CREATE TRIGGER sub_batches_default_held_by
+BEFORE INSERT ON public.sub_batches
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_default_sub_batch_holder();
+
+-- ENABLE ALWAYS, not the default ENABLE ORIGIN: seed.sql opens with
+-- `SET session_replication_role = replica`, which silences ordinary user
+-- triggers. Without this the seed's sub_batches rows would fail the NOT NULL
+-- and every reset would need the column spelled out by hand. Nothing replays
+-- writes into this database, so firing in replica mode costs nothing.
+ALTER TABLE public.sub_batches
+  ENABLE ALWAYS TRIGGER sub_batches_default_held_by;
+
+-- Custody is not a field a client may edit; it moves only through the reviewed
+-- SECURITY DEFINER RPCs, which run as the table owner and are unaffected by
+-- this. A bare column-level REVOKE would be a no-op — Supabase grants
+-- authenticated table-level UPDATE, and PostgreSQL does not allow a
+-- column-level REVOKE to carve a hole in a table-level grant — so the table
+-- privilege is withdrawn and re-granted column by column instead. Later
+-- migrations that add a column must re-grant it (see 20260728000003).
+REVOKE UPDATE ON public.sub_batches FROM authenticated;
+GRANT UPDATE (id, batch_id, weight_grams, notes, created_at)
+  ON public.sub_batches TO authenticated;
 
 ALTER TABLE sub_batches ENABLE ROW LEVEL SECURITY;
 
@@ -648,7 +713,7 @@ BEGIN
       FROM batch_testing_assignment bta
       WHERE bta.batch_id = p_batch_id
         AND bta.assigned_to_org_id = v_user_organisation_id
-        AND bta.returned_at IS NULL
+        AND bta.closed_at IS NULL
     )
   ) THEN
     RAISE EXCEPTION 'Not authorised to test this batch';

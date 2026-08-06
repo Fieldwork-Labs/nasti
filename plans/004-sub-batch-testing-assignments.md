@@ -7,8 +7,8 @@
 > update the status row in plans/README.md unless a reviewer told you to
 > maintain the index.
 >
-> **Step 1 is unblocked and may begin now.** Steps 2-9 are blocked until the
-> custody-versus-ownership decision below is recorded, because they encode it.
+> **Step 1 is DONE** (commit 1abb177). The custody-versus-ownership decision is
+> recorded below, so Steps 2-9 are unblocked.
 
 Drift check (run first):
 
@@ -80,23 +80,39 @@ These were settled on 2026-08-06 and override the original plan text.
 6. **Nothing is deployed and there is no production data.** Migrations are
    edited **in place** rather than appended. The executor does not run `supabase
    db reset`, `supabase db push`, `psql`, or `pnpm gen-types` — see
-   "Verification protocol". Local development databases may contain rows, so the
-   catch-up script must still backfill; see Step 9.
+   "Verification protocol".
+
+   As of Step 1 the user applies changes by running `supabase db reset` against
+   an adjusted `seed.sql`, not by applying a catch-up script. Migrations must
+   therefore be correct **from scratch**; there is no incremental path to keep
+   working and no backfill to write. New columns may be declared `NOT NULL`
+   outright.
 7. **An assignment closes on one of two outcomes.** A bag that comes back is
    `returned`; a bag entirely consumed in testing is `consumed` and is not
    returnable, because there is nothing to return. `returned_at` is therefore
    renamed `closed_at` and paired with an `outcome` column. Active means
    `closed_at IS NULL`.
 
-Deferred to stakeholder discussion on 2026-08-07, recorded so they are not
-silently re-decided:
+8. **A retained bag belongs to the Testing organisation.** Decided 2026-08-06:
+   the originating General organisation has no visibility over the portion a
+   Testing organisation retains. So `held_by_org_id` carries **ownership**
+   semantics for a bag split off on the Testing side, not merely custody.
 
-- Whether `held_by_org_id` is custody or ownership. **Custody** is implemented
-  here and is what the access model below encodes. Ownership would instead hide
-  a Testing organisation's retained bag from General entirely, changing the
-  "Bag retained by Testing" column of that table and the pgTAP assertions that
-  cover it.
-- Whether treatments removal goes further than dropping the RPCs.
+   Concretely, a bag is readable by the caller when either:
+
+   - the caller's organisation is its `held_by_org_id`; or
+   - an assignment row exists for that exact `sub_batch_id` whose
+     `assigned_by_org_id` is the caller's organisation — this is how a General
+     organisation keeps sight of a bag while it is out at a lab.
+
+   A retained bag satisfies neither test for General: it is held by Testing and
+   has no assignment of its own. It is therefore invisible to General, which is
+   the intended outcome.
+
+Still deferred, recorded so it is not silently re-decided:
+
+- Whether treatments removal goes further than dropping the RPCs. Step 1 took
+  the minimal path; the `treatments` table and its views remain.
 
 Follow-up, explicitly not in this plan: there is no way to reverse a weight
 adjustment, so correcting a mis-recorded test consumption means hand-inserting a
@@ -105,21 +121,23 @@ compensating row. A manual weight-correction path is its own piece of work.
 ## Access model
 
 This table is the contract the RLS work in Steps 3 and 5 must satisfy, and the
-one the pgTAP suite asserts. It encodes **custody** semantics; if the
-stakeholder decision flips to ownership, the "Retained bag" column changes to
-hidden for both General rows and this table must be updated before Step 2.
+one the pgTAP suite asserts. It encodes decision 8: a bag retained by a Testing
+organisation is **theirs**, and General cannot see it.
 
 Reading `Y` = row is selectable, `—` = not selectable.
 
 | Reader | Assigned bag | Sibling bags | Retained bag (Testing split, after return) | Parent batch metadata | Tests on assigned bag | Container of assigned bag | General's storage locations | Closed assignment row |
 |---|---|---|---|---|---|---|---|---|
-| General, owner org | Y | Y | Y (marked held by Testing) | Y | Y | Y | Y | Y |
+| General, owner org | Y | Y | — | Y | Y | Y | Y | Y |
 | Testing, assigned org, while active | Y | — | Y (theirs) | Y | Y | Y | — | Y |
 | Testing, after close | — | — | Y (theirs) | — | — | — | — | Y |
 | Any other organisation | — | — | — | — | — | — | — | — |
 
 Notes:
 
+- A General organisation sees the assigned bag while it is out because an
+  assignment row names it as the sender, not because it owns the parent batch.
+  A parent-batch-only predicate would leak the retained bag and is wrong here.
 - Admin versus Member changes what a user may **do**, not what they may see.
   Read visibility is per organisation and gated by the existing `org_permission`
   system from `20260803000000_member_permissions.sql` and the user's untracked
@@ -242,10 +260,13 @@ hold. All are in supabase/migrations/20260723000005_rls_perf_rewrite.sql:
 
 The executor does **not** touch the database. For each step:
 
-1. Make the in-place migration edits.
-2. Append the equivalent forward SQL to the catch-up script (Step 9).
-3. Report to the user, who applies the script locally and runs `pnpm test:db`
-   and `pnpm gen-types`, then reports results back.
+1. Make the in-place migration edits, correct from a fresh reset.
+2. Report to the user, who runs `supabase db reset`, `pnpm test:db` and
+   `pnpm gen-types`, then reports results back.
+
+There is no catch-up script: the user resets from migrations plus `seed.sql`.
+If a change requires a `seed.sql` adjustment, say so explicitly in the report —
+that is the one thing a reset cannot infer.
 
 | Purpose | Command | Who runs it |
 |---|---|---|
@@ -274,7 +295,6 @@ In scope:
 - Assignment/testing hooks and `apps/web/src/lib/testingAssignments.ts`.
 - Deleting dead treatment and assignment-modal UI, and whatever minimal edits
   are needed elsewhere to make typecheck, lint, tests, and build pass.
-- A hand-written catch-up SQL script, printed in chat.
 - plans/README.md status row.
 
 Out of scope:
@@ -696,42 +716,23 @@ Weights and privileges:
 - no direct assignment-table mutation;
 - new RPCs are not executable by PUBLIC or anon.
 
-### Step 9: Catch-up script and handoff
+### Step 9: Handoff
 
-Because the migrations were edited in place, the user's local database still
-holds the old objects. Produce a single forward SQL script that brings a local
-database applied at 73c40f8 up to the rewritten migrations. It must be explicit
-about what it drops and in what order:
+The user applies everything with `supabase db reset` against an adjusted
+`seed.sql`, so there is no catch-up script to write. Instead:
 
-1. **Policies** — `treatments_all`, `tests_insert`, and every policy replaced in
-   Steps 3 and 5, dropped before the predicates they call.
-2. **Functions** — `fn_treat_batch` in **both** its numeric and older overloads
-   plus `fn_process_batch`; `fn_assign_batches_for_testing(uuid, jsonb)`;
-   `fn_return_batch_from_testing(uuid, numeric, uuid)`;
-   `has_active_testing_assignment(uuid)`. Drop by full signature — a bare
-   `DROP FUNCTION` on an overloaded name fails.
-3. **Views** — `batch_current_weight`, `active_batches`, `active_sub_batches`,
-   dropped and recreated in dependency order, since `active_sub_batches` reads
-   `sub_batch_current_weight`.
-4. **Columns, indexes, constraints** — the assignment table reshape, the
-   active-per-batch unique index, and the new `held_by_org_id` column.
-
-State a hard precondition and act on it rather than assuming an empty database:
-
-- `held_by_org_id` is `NOT NULL`, so add it nullable, backfill it from
-  `batches.organisation_id` via the parent, then set `NOT NULL`.
-- `batch_testing_assignment.sub_batch_id` is `NOT NULL` with no sensible
-  backfill for a batch that has several bags. Have the script `RAISE EXCEPTION`
-  if any assignment row exists whose batch does not resolve to exactly one bag,
-  naming the rows. Never pick a bag arbitrarily.
-- Migrate `returned_at` to `closed_at`, setting `outcome = 'returned'` for rows
-  that already have a timestamp.
-
-Print the script in the chat rather than committing it as a migration. Then ask
-the user to run `pnpm test:db` and `pnpm gen-types`, and to confirm with a fresh
-`supabase db reset` before any deploy — both paths must leave exactly one
-bag-based RPC contract, no executable batch-only assignment path, and no
-orphaned columns or indexes. Update the plans/README.md status row.
+1. State plainly which migrations were edited and what each change does, so the
+   reset can be reviewed rather than merely run.
+2. Call out any `seed.sql` adjustment the new schema requires — a reset cannot
+   infer one, and it is the only manual step left. `sub_batches` gaining a
+   `NOT NULL held_by_org_id` is the likely candidate, though the BEFORE INSERT
+   trigger should cover seed rows that omit it.
+3. Ask the user to run `supabase db reset`, `pnpm test:db` and `pnpm gen-types`,
+   and report back.
+4. Confirm afterwards that a fresh reset leaves exactly one bag-based RPC
+   contract, no executable batch-only assignment path, and no orphaned columns
+   or indexes.
+5. Update the plans/README.md status row.
 
 ## Done criteria
 
@@ -749,8 +750,11 @@ orphaned columns or indexes. Update the plans/README.md status row.
 - [ ] Cleaning, merging and deletion are rejected while a bag is assigned.
 - [ ] A test cannot consume more than the bag holds; zeroing a bag closes the
       assignment as `consumed`; a consumed assignment cannot be returned.
-- [ ] `has_active_testing_assignment` and `returned_at` have no call sites
-      outside generated types.
+- [ ] `has_active_testing_assignment` has no call sites at all.
+- [ ] No live code path reads `returned_at`. The name survives only in
+      `20251114000005` (where the column is created), in the rename at the top
+      of `20260804000001`, and inside three policies that are dropped before the
+      rename runs — see "Implementation notes" below.
 - [ ] Direct `treatments` writes are rejected.
 - [ ] Testing sees the container name of the bag it holds and no
       `storage_locations` row.
@@ -773,10 +777,8 @@ orphaned columns or indexes. Update the plans/README.md status row.
 
 Stop and report if:
 
-- Steps 2-9 are reached before the custody-versus-ownership decision is
-  recorded in this plan.
-- The stakeholder discussion changes that decision, or asks for treatments
-  removal beyond dropping the RPCs.
+- The stakeholder discussion reopens the retained-bag ownership decision, or
+  asks for treatments removal beyond dropping the RPCs.
 - Removing `fn_treat_batch` or the link capability columns breaks a view,
   policy, or publication not listed in this plan.
 - Making the weight views caller-relative breaks PowerSync or a non-authenticated
@@ -787,8 +789,6 @@ Stop and report if:
   the caller does not hold.
 - A consuming operation cannot be made bag-grained without changing a signature
   the generated types or web client depend on.
-- The catch-up script finds assignment rows whose batch does not resolve to
-  exactly one bag.
 - Generated types expose a different signature after `pnpm gen-types`; never
   hand-edit database.ts.
 - Any verification command fails twice after a reasonable correction.
@@ -816,6 +816,67 @@ Stop and report if:
   follow-up.
 - Review the unrelated permissions changes independently; this plan does not
   modify them.
+
+## Implementation notes from execution
+
+Discovered while implementing Steps 2-5; recorded because they contradict
+instructions given earlier in this plan.
+
+**The `returned_at` → `closed_at` rename cannot happen in `20251114000005`.**
+Four policies created between that migration and `20260804000001` name
+`bta.returned_at` in their `USING` clauses, and a policy expression is
+name-resolved at `CREATE POLICY` time —
+`20251114000006_testing_org_rls.sql:311`,
+`20251120000001_update_batch_rls_for_testing_orgs.sql:27,57`, and
+`20251120000002_update_species_rls_for_testing_orgs.sql:26`. The column keeps
+its original name where it is created and is renamed at the top of
+`20260804000001`. This is safe because all four of those policies are dropped in
+`20260723000005_rls_perf_rewrite.sql`, which runs before the rename; none
+survives to reference either name.
+
+**A column-level `REVOKE UPDATE (held_by_org_id)` does not work.** PostgreSQL
+will not let a column-level revoke carve a hole in a table-level grant, and
+Supabase grants `authenticated` table-level UPDATE by default. The lockdown is
+`REVOKE UPDATE ON public.sub_batches FROM authenticated` followed by an explicit
+`GRANT UPDATE (…)` naming every other column. **Any column added to
+`sub_batches` in future must be added to that grant or it becomes silently
+read-only.**
+
+**`sub_batches_insert` cannot gate on `is_current_bag_custodian`.** An INSERT
+`WITH CHECK` runs before the row exists, so a predicate that looks the bag up by
+`id` finds nothing and denies every insert. It gates on
+`held_by_org_id = get_user_organisation_id()` instead, which works because the
+`BEFORE INSERT` trigger has already populated the column. `sub_batches_update`
+carries the same `WITH CHECK`, which is what actually stops a holder handing a
+bag to another organisation.
+
+**`can_read_sub_batch` is `LANGUAGE plpgsql`, deliberately.** It reads
+`batch_testing_assignment.sub_batch_id`, a column added in a later migration. A
+`LANGUAGE sql` body is name-resolved at creation and would fail the reset;
+plpgsql resolves at call time. Nothing evaluates an RLS predicate in between,
+because migrations run as the table owner.
+
+**The live `fn_clean_sub_batch` is in `20260728000002`, not `20260728000001`.**
+The definition this plan cited at `20260728000001:483` is dropped and replaced by
+a nine-argument version at `20260728000002_batch_cleaning_workers_duration.sql:211`.
+Both copies now carry the bag-custody gate and the active-assignment rejection.
+
+**The seeded assignment row in `supabase/seed.sql` was rewritten** to name the
+50g bag `efe5355a-…` — the bag the seeded quality test was already recorded
+against — and to carry `outcome = 'returned'`. `sub_batches` seed rows need no
+`held_by_org_id`: the default trigger is declared `ENABLE ALWAYS` so it still
+fires under `session_replication_role = replica`.
+
+**Return closes the bag's storage row.** Assignment takes a bag off the sender's
+shelf; return does the same on the Testing side, through
+`fn_set_sub_batch_storage(bag, NULL, …)` while Testing still holds the bag and
+so still passes that RPC's custody gate. Without it a returned bag points at a
+storage location its new holder cannot resolve.
+
+**`fn_return_bag_from_testing` no longer back-fills `completed_at`.** The old
+function set `completed_at = COALESCE(completed_at, now())` on return, which
+made an untested returned bag claim a test that never happened. `completed_at`
+means "first test recorded" and nothing else.
 
 ## Reviewer findings: resolution
 

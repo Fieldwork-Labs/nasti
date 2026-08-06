@@ -40,6 +40,16 @@ ALTER TABLE batch_cleaning_output
 -- ============================================================================
 -- 3. Recreate the views, unchanged apart from the widened columns
 -- ============================================================================
+-- Displayed batch weight is custody-relative: only bags in the viewer's own
+-- custody count. The same parent batch therefore reports different current
+-- weights to the General organisation that owns it and to a Testing
+-- organisation holding one of its bags, and that is the intent — each side is
+-- told how much seed it actually has.
+--
+-- NULL still means "origin batch, weight not yet known", so the no-bags case is
+-- tested explicitly. Without that, a batch whose every bag is held elsewhere
+-- would also sum to NULL and be read as unknown-but-active rather than as zero
+-- for this viewer.
 CREATE VIEW batch_current_weight AS
 SELECT
   b.id,
@@ -49,6 +59,10 @@ SELECT
       SELECT 1 FROM batch_merges bm
       WHERE bm.source_batch_id = b.id
     ) THEN 0::numeric
+    WHEN NOT EXISTS (
+      SELECT 1 FROM sub_batches sb
+      WHERE sb.batch_id = b.id
+    ) THEN NULL::numeric
     ELSE COALESCE(
       (SELECT SUM(
         sb.weight_grams + COALESCE(
@@ -59,8 +73,9 @@ SELECT
         )
       )
       FROM sub_batches sb
-      WHERE sb.batch_id = b.id),
-      NULL
+      WHERE sb.batch_id = b.id
+        AND sb.held_by_org_id = (SELECT public.get_user_organisation_id())),
+      0::numeric
     )
   END AS current_weight
 FROM batches b;
@@ -275,6 +290,9 @@ WHERE NOT EXISTS (
 
 ALTER VIEW active_batches SET (security_invoker = true);
 
+-- "Active" is inventory the viewer can act on, so it too is custody-relative: a
+-- bag out at a lab is not part of the owner's working stock, and the siblings
+-- it left behind are not part of the lab's.
 CREATE VIEW active_sub_batches AS
 SELECT
   sb.*,
@@ -291,6 +309,7 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) cbs ON true
 WHERE (sbcw.current_weight > 0 OR sbcw.current_weight IS NULL)
+  AND sb.held_by_org_id = (SELECT public.get_user_organisation_id())
   AND NOT EXISTS (
     SELECT 1 FROM batch_merges bm WHERE bm.source_batch_id = sb.batch_id
   )
@@ -479,9 +498,24 @@ BEGIN
     RAISE EXCEPTION 'Sub-batch not found';
   END IF;
 
-  -- Validate caller is current custodian
-  IF NOT is_current_custodian(auth.uid(), v_batch_id) THEN
-    RAISE EXCEPTION 'Permission denied: not current custodian of batch';
+  -- Cleaning consumes the bag entirely, so the gate is bag custody, not batch
+  -- ownership: the owner of the parent batch has no business cleaning a bag
+  -- that is currently in someone else's hands.
+  IF NOT is_current_bag_custodian(auth.uid(), p_sub_batch_id) THEN
+    RAISE EXCEPTION 'Permission denied: not the current holder of this bag';
+  END IF;
+
+  -- Reject rather than resolve. An open assignment is a physical fact about
+  -- seed a Testing organisation is holding; consuming the bag would leave that
+  -- assignment pointing at material that no longer exists. The software must
+  -- not close it unilaterally, and must not move it to a successor bag.
+  IF EXISTS (
+    SELECT 1
+    FROM batch_testing_assignment bta
+    WHERE bta.sub_batch_id = p_sub_batch_id
+      AND bta.closed_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot clean a bag with an active testing assignment';
   END IF;
 
   -- Calculate effective weight of sub-batch
@@ -648,7 +682,7 @@ BEGIN
       FROM batch_testing_assignment bta
       WHERE bta.batch_id = p_batch_id
         AND bta.assigned_to_org_id = v_user_organisation_id
-        AND bta.returned_at IS NULL
+        AND bta.closed_at IS NULL
     )
   ) THEN
     RAISE EXCEPTION 'Not authorised to test this batch';
@@ -714,6 +748,30 @@ BEGIN
   v_org := assert_same_custodian(p_source_batch_ids);
   IF NOT is_org_member(auth.uid(), v_org) THEN
     RAISE EXCEPTION 'Permission denied: not a member of the custodian organisation';
+  END IF;
+
+  -- Mixing zeroes every source batch, so it has to answer for every bag in
+  -- them. Reject rather than resolve: a bag held by another organisation is
+  -- physically elsewhere, and an open assignment is a commitment about seed in
+  -- someone else's hands. Neither may be consumed here, and an assignment must
+  -- never be auto-closed or moved to the mixed batch.
+  IF EXISTS (
+    SELECT 1
+    FROM sub_batches sb
+    WHERE sb.batch_id = ANY (p_source_batch_ids)
+      AND sb.held_by_org_id IS DISTINCT FROM v_org
+  ) THEN
+    RAISE EXCEPTION 'Cannot mix a batch whose bags are held by another organisation';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM batch_testing_assignment bta
+    JOIN sub_batches sb ON sb.id = bta.sub_batch_id
+    WHERE sb.batch_id = ANY (p_source_batch_ids)
+      AND bta.closed_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot mix a batch with an active testing assignment';
   END IF;
 
   -- Validate all batches have the same species
@@ -973,6 +1031,32 @@ BEGIN
   v_org := assert_same_custodian(p_source_batch_ids);
   IF NOT is_org_member(auth.uid(), v_org) THEN
     RAISE EXCEPTION 'Permission denied: not a member of the custodian organisation';
+  END IF;
+
+  -- A whole-batch merge zeroes every source batch, so it has to answer for
+  -- every bag in them. Reject rather than resolve: a bag held by another
+  -- organisation is physically elsewhere, and an open assignment is a
+  -- commitment about seed in someone else's hands. Neither may be consumed
+  -- here, and an assignment must never be auto-closed or moved to the merged
+  -- batch — if a future workflow needs that, it must do it in this same
+  -- transaction and never leave an assignment pointing at deleted material.
+  IF EXISTS (
+    SELECT 1
+    FROM sub_batches sb
+    WHERE sb.batch_id = ANY (p_source_batch_ids)
+      AND sb.held_by_org_id IS DISTINCT FROM v_org
+  ) THEN
+    RAISE EXCEPTION 'Cannot merge a batch whose bags are held by another organisation';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM batch_testing_assignment bta
+    JOIN sub_batches sb ON sb.id = bta.sub_batch_id
+    WHERE sb.batch_id = ANY (p_source_batch_ids)
+      AND bta.closed_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot merge a batch with an active testing assignment';
   END IF;
 
   -- Validate that all batches share the same collection_id

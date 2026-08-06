@@ -13,6 +13,8 @@ CREATE OR REPLACE FUNCTION public.fn_merge_sub_batches(
 DECLARE
   v_batch_id UUID;
   v_batch_count INTEGER;
+  v_holder_count INTEGER;
+  v_held_by_org_id UUID;
   v_source_count INTEGER;
   v_organisation_id UUID;
   v_total_weight NUMERIC;
@@ -56,13 +58,39 @@ BEGIN
     RAISE EXCEPTION 'All sub-batches must belong to the same batch';
   END IF;
 
-  SELECT sb.batch_id
-  INTO v_batch_id
+  -- Custody is per bag, so two bags of one batch can sit in different hands.
+  -- Pouring them together would be a physical impossibility and would quietly
+  -- move seed between organisations.
+  SELECT count(DISTINCT sb.held_by_org_id)
+  INTO v_holder_count
+  FROM public.sub_batches sb
+  WHERE sb.id = ANY (p_sub_batch_ids);
+
+  IF v_holder_count != 1 THEN
+    RAISE EXCEPTION 'All sub-batches must be held by the same organisation';
+  END IF;
+
+  SELECT sb.batch_id, sb.held_by_org_id
+  INTO v_batch_id, v_held_by_org_id
   FROM public.sub_batches sb
   WHERE sb.id = p_sub_batch_ids[1];
 
-  IF NOT public.is_current_custodian(auth.uid(), v_batch_id) THEN
-    RAISE EXCEPTION 'Permission denied: not current custodian of batch';
+  -- One check covers them all: the sources share a holder, established above.
+  IF NOT public.is_current_bag_custodian(auth.uid(), p_sub_batch_ids[1]) THEN
+    RAISE EXCEPTION 'Permission denied: not the current holder of these bags';
+  END IF;
+
+  -- Reject rather than resolve. Merging zeroes each source, so an open
+  -- assignment would be left pointing at material that no longer exists. The
+  -- assignment describes seed in someone else's hands and must not be closed
+  -- unilaterally or transferred to the destination bag.
+  IF EXISTS (
+    SELECT 1
+    FROM public.batch_testing_assignment bta
+    WHERE bta.sub_batch_id = ANY (p_sub_batch_ids)
+      AND bta.closed_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot merge a bag with an active testing assignment';
   END IF;
 
   v_organisation_id := public.get_user_organisation_id();
@@ -103,18 +131,23 @@ BEGIN
     RAISE EXCEPTION 'Every source sub-batch must have a positive current weight';
   END IF;
 
+  -- The destination inherits the sources' holder, which the gate above proved
+  -- is the caller's organisation. The BEFORE INSERT default would hand it to
+  -- the batch owner instead.
   INSERT INTO public.sub_batches (
     id,
     batch_id,
     container_id,
     weight_grams,
-    notes
+    notes,
+    held_by_org_id
   ) VALUES (
     v_new_sub_batch_id,
     v_batch_id,
     p_container_id,
     v_total_weight,
-    NULLIF(btrim(p_notes), '')
+    NULLIF(btrim(p_notes), ''),
+    v_held_by_org_id
   );
 
   INSERT INTO public.batch_weight_adjustments (

@@ -1,36 +1,30 @@
 -- ============================================================================
 -- STORAGE RELATIONSHIP TENANCY
 -- ============================================================================
--- RLS establishes who may write a batch, but it does not by itself guarantee
--- that catalogue references belong to the batch's current custodian. Enforce
--- that invariant for direct writes as well as RPC-managed workflows.
+-- RLS establishes who may write a bag, but it does not by itself guarantee
+-- that catalogue references belong to whoever holds it. Enforce that invariant
+-- for direct writes as well as RPC-managed workflows.
+--
+-- Both validators key on the bag's holder rather than the parent batch's
+-- custodian. That is what lets a Testing organisation put a bag it has been
+-- sent into its own container and its own storage location without gaining any
+-- sight of the owner's catalogue — and it is what stops the owner referencing
+-- its own containers on a bag it no longer holds.
 
 CREATE OR REPLACE FUNCTION public.validate_sub_batch_storage_container()
 RETURNS TRIGGER AS $$
-DECLARE
-  v_custodian_organisation_id UUID;
 BEGIN
   IF NEW.container_id IS NULL THEN
     RETURN NEW;
   END IF;
 
-  SELECT custody.organisation_id
-  INTO v_custodian_organisation_id
-  FROM public.batch_custody custody
-  WHERE custody.batch_id = NEW.batch_id
-  ORDER BY custody.received_at DESC, custody.id DESC
-  LIMIT 1;
-
-  IF v_custodian_organisation_id IS NULL THEN
-    RAISE EXCEPTION 'Batch has no current custodian organisation'
-      USING ERRCODE = '23514';
-  END IF;
-
+  -- held_by_org_id is NOT NULL and is filled by sub_batches_default_held_by,
+  -- which sorts before this trigger and so has already run.
   IF NOT EXISTS (
     SELECT 1
     FROM public.containers container
     WHERE container.id = NEW.container_id
-      AND container.organisation_id = v_custodian_organisation_id
+      AND container.organisation_id = NEW.held_by_org_id
       AND container.purpose = 'storage'
       AND container.active
   ) THEN
@@ -57,24 +51,22 @@ FOR EACH ROW
 EXECUTE FUNCTION public.validate_sub_batch_storage_container();
 
 COMMENT ON FUNCTION public.validate_sub_batch_storage_container() IS
-  'Requires a sub-batch container to be an active storage container owned by the batch current custodian.';
+  'Requires a sub-batch container to be an active storage container owned by the organisation holding the bag.';
 
 CREATE OR REPLACE FUNCTION public.validate_active_storage_location()
 RETURNS TRIGGER AS $$
 DECLARE
-  v_custodian_organisation_id UUID;
+  v_holder_organisation_id UUID;
   v_location_organisation_id UUID;
   v_location_active BOOLEAN;
 BEGIN
-  SELECT custody.organisation_id
-  INTO v_custodian_organisation_id
-  FROM public.batch_custody custody
-  WHERE custody.batch_id = NEW.batch_id
-  ORDER BY custody.received_at DESC, custody.id DESC
-  LIMIT 1;
+  SELECT sb.held_by_org_id
+  INTO v_holder_organisation_id
+  FROM public.sub_batches sb
+  WHERE sb.id = NEW.sub_batch_id;
 
-  IF v_custodian_organisation_id IS NULL THEN
-    RAISE EXCEPTION 'Batch has no current custodian organisation'
+  IF v_holder_organisation_id IS NULL THEN
+    RAISE EXCEPTION 'Storage row does not reference an existing bag'
       USING ERRCODE = '23514';
   END IF;
 
@@ -89,7 +81,7 @@ BEGIN
   END IF;
 
   IF v_location_organisation_id IS DISTINCT FROM
-    v_custodian_organisation_id THEN
+    v_holder_organisation_id THEN
     RAISE EXCEPTION 'Storage location belongs to another organisation'
       USING ERRCODE = '23514';
   END IF;
@@ -105,11 +97,13 @@ REVOKE ALL ON FUNCTION public.validate_active_storage_location()
 DROP TRIGGER IF EXISTS batch_storage_active_location
 ON public.batch_storage;
 
+-- sub_batch_id joins the watched columns now that the bag, not the batch, is
+-- what decides whose locations are valid.
 CREATE TRIGGER batch_storage_active_location
-BEFORE INSERT OR UPDATE OF location_id, batch_id
+BEFORE INSERT OR UPDATE OF location_id, batch_id, sub_batch_id
 ON public.batch_storage
 FOR EACH ROW
 EXECUTE FUNCTION public.validate_active_storage_location();
 
 COMMENT ON FUNCTION public.validate_active_storage_location() IS
-  'Requires storage rows to reference an active location owned by the batch current custodian.';
+  'Requires storage rows to reference an active location owned by the organisation holding the bag.';

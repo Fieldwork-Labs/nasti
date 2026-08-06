@@ -10,6 +10,7 @@ CREATE OR REPLACE FUNCTION public.fn_split_sub_batch(
 ) RETURNS UUID[] AS $$
 DECLARE
   v_batch_id UUID;
+  v_held_by_org_id UUID;
   v_organisation_id UUID;
   v_current_weight NUMERIC;
   v_total_split_weight NUMERIC;
@@ -22,8 +23,8 @@ DECLARE
   v_new_ids UUID[] := ARRAY[]::UUID[];
 BEGIN
   -- Lock the source so simultaneous splits cannot allocate the same weight.
-  SELECT sb.batch_id
-  INTO v_batch_id
+  SELECT sb.batch_id, sb.held_by_org_id
+  INTO v_batch_id, v_held_by_org_id
   FROM public.sub_batches sb
   WHERE sb.id = p_sub_batch_id
   FOR UPDATE;
@@ -37,8 +38,12 @@ BEGIN
   FROM public.sub_batch_current_weight sbcw
   WHERE sbcw.id = p_sub_batch_id;
 
-  IF NOT public.is_current_custodian(auth.uid(), v_batch_id) THEN
-    RAISE EXCEPTION 'Permission denied: not current custodian of batch';
+  -- Splitting takes weight out of this bag, so the gate is who holds the bag,
+  -- not who owns the parent batch. It is also what lets a Testing organisation
+  -- retain a subsample of an assigned bag, and what stops the owner carving up
+  -- a bag it has already sent away.
+  IF NOT public.is_current_bag_custodian(auth.uid(), p_sub_batch_id) THEN
+    RAISE EXCEPTION 'Permission denied: not the current holder of this bag';
   END IF;
 
   v_organisation_id := public.get_user_organisation_id();
@@ -122,16 +127,22 @@ BEGIN
     v_container_id := NULLIF(v_output->>'container_id', '')::UUID;
     v_location_id := NULLIF(v_output->>'location_id', '')::UUID;
 
+    -- A child stays with whoever held the material it came from, which the
+    -- gate above has already proved is the caller's organisation. Leaving it
+    -- to the BEFORE INSERT default would silently hand a Testing
+    -- organisation's split back to the batch owner.
     INSERT INTO public.sub_batches (
       batch_id,
       container_id,
       weight_grams,
-      notes
+      notes,
+      held_by_org_id
     ) VALUES (
       v_batch_id,
       v_container_id,
       v_out_weight,
-      v_out_notes
+      v_out_notes,
+      v_held_by_org_id
     )
     RETURNING id INTO v_new_id;
 

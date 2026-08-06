@@ -271,8 +271,12 @@ INSERT INTO "public"."batch_storage" ("id", "batch_id", "location_id", "stored_a
 -- Data for Name: batch_testing_assignment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."batch_testing_assignment" ("id", "batch_id", "assigned_to_org_id", "assigned_by_org_id", "assignment_type", "sample_weight_grams", "subsample_weight_grams", "subsample_storage_location_id", "assigned_at", "completed_at", "returned_at") VALUES
-	('c49869fd-adaf-4811-87d1-52ec900a8059', 'adedaba3-ffe6-460e-babd-2439793fe8f9', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', '02aba5b9-6c46-406d-831a-4f51851599f2', 'sample', 113, NULL, NULL, '2026-08-06 04:46:49.651367+00', '2026-08-06 04:47:17.406406+00', '2026-08-06 04:47:17.406406+00');
+-- An assignment is now one bag, not one batch. This row is the 50g bag split
+-- off CHAUNC-CO.SWA.26-1-HQ-1 and sent as a sample — the same bag the seeded
+-- quality test above was recorded against. It is closed, so it needs an
+-- outcome to satisfy the closed_at/outcome coupling constraint.
+INSERT INTO "public"."batch_testing_assignment" ("id", "batch_id", "sub_batch_id", "assigned_to_org_id", "assigned_by_org_id", "assigned_at", "completed_at", "closed_at", "outcome") VALUES
+	('c49869fd-adaf-4811-87d1-52ec900a8059', 'adedaba3-ffe6-460e-babd-2439793fe8f9', 'efe5355a-37b1-4581-8c6d-36f979afe128', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', '02aba5b9-6c46-406d-831a-4f51851599f2', '2026-08-06 04:46:49.651367+00', '2026-08-06 04:47:17.406406+00', '2026-08-06 04:47:17.406406+00', 'returned');
 
 
 --

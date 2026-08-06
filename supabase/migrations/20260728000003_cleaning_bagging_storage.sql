@@ -15,8 +15,16 @@ CREATE INDEX sub_batches_container_id_idx
 COMMENT ON COLUMN public.sub_batches.container_id IS
   'The physical storage container holding this sub-batch, when recorded.';
 
+-- 20260723000001 withdrew table-level UPDATE on sub_batches to keep
+-- held_by_org_id out of client hands, so every column added afterwards has to
+-- be granted back explicitly or it becomes read-only by accident.
+GRANT UPDATE (container_id) ON public.sub_batches TO authenticated;
+
 -- sb.* in the existing view was expanded when the view was created, so append
 -- the new column explicitly without changing the existing column order.
+-- held_by_org_id sits where sb.* put it, between created_at and the computed
+-- weights: CREATE OR REPLACE VIEW may only append columns, never rename or
+-- reorder the ones already there.
 CREATE OR REPLACE VIEW public.active_sub_batches AS
 SELECT
   sb.id,
@@ -24,6 +32,7 @@ SELECT
   sb.weight_grams,
   sb.notes,
   sb.created_at,
+  sb.held_by_org_id,
   sbcw.original_weight,
   sbcw.current_weight,
   cbs.location_id AS current_location_id,
@@ -38,6 +47,9 @@ LEFT JOIN LATERAL (
   LIMIT 1
 ) cbs ON true
 WHERE (sbcw.current_weight > 0 OR sbcw.current_weight IS NULL)
+  -- Custody-relative, as in 20260728000001: a bag out at a lab is not part of
+  -- the owner's working stock, and its siblings are not part of the lab's.
+  AND sb.held_by_org_id = (SELECT public.get_user_organisation_id())
   AND NOT EXISTS (
     SELECT 1
     FROM public.batch_merges bm

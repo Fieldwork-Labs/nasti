@@ -254,8 +254,24 @@ BEGIN
     RAISE EXCEPTION 'Sub-batch not found';
   END IF;
 
-  IF NOT is_current_custodian(auth.uid(), v_batch_id) THEN
-    RAISE EXCEPTION 'Permission denied: not current custodian of batch';
+  -- Cleaning consumes the bag entirely, so the gate is bag custody, not batch
+  -- ownership: the owner of the parent batch has no business cleaning a bag
+  -- that is currently in someone else's hands.
+  IF NOT is_current_bag_custodian(auth.uid(), p_sub_batch_id) THEN
+    RAISE EXCEPTION 'Permission denied: not the current holder of this bag';
+  END IF;
+
+  -- Reject rather than resolve. An open assignment is a physical fact about
+  -- seed a Testing organisation is holding; consuming the bag would leave that
+  -- assignment pointing at material that no longer exists. The software must
+  -- not close it unilaterally, and must not move it to a successor bag.
+  IF EXISTS (
+    SELECT 1
+    FROM batch_testing_assignment bta
+    WHERE bta.sub_batch_id = p_sub_batch_id
+      AND bta.closed_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Cannot clean a bag with an active testing assignment';
   END IF;
 
   v_effective_weight := v_sub_batch_weight + COALESCE(

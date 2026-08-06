@@ -20,7 +20,20 @@
 -- These boolean-only predicates need an unfiltered custody history to answer
 -- correctly, so they bypass RLS in a tightly scoped function and reject calls
 -- made on behalf of any user other than the authenticated caller.
+--
+-- Custody moved to the bag (sub_batches.held_by_org_id, 20260723000001), so the
+-- predicates below split into two grains. The batch-grained one answers "does
+-- the caller's organisation own this batch"; the bag-grained ones answer "may
+-- the caller read, or act on, this exact bag". A batch-only predicate leaks
+-- siblings on read and hands the owner power over a Testing-held bag on write,
+-- so anything that touches bag-level material uses the bag-grained pair.
 
+-- Retained under its old name, and no longer reading batch_custody at all.
+-- With treatments and full-batch assignment gone, every surviving write to
+-- batch_custody is "a batch was just created", so the latest custody row never
+-- diverges from batches.organisation_id and this predicate provably means
+-- "batch owner". Renaming it would bury the bag-custody change under forty
+-- call sites; that is a follow-up, recorded in the plan's maintenance notes.
 CREATE OR REPLACE FUNCTION public.is_current_custodian(
   p_user_id uuid,
   p_batch_id uuid
@@ -35,18 +48,139 @@ AS $$
     $1 = (SELECT auth.uid())
     AND EXISTS (
       SELECT 1
-      FROM public.org_user ou
-      WHERE ou.user_id = $1
+      FROM public.batches b
+      INNER JOIN public.org_user ou
+        ON ou.organisation_id = b.organisation_id
+      WHERE b.id = $2
+        AND ou.user_id = $1
         AND ou.is_active = true
-        AND ou.organisation_id = (
-          SELECT bc.organisation_id
-          FROM public.batch_custody bc
-          WHERE bc.batch_id = $2
-          ORDER BY bc.received_at DESC, bc.id DESC
-          LIMIT 1
-        )
     )
 $$;
+
+COMMENT ON FUNCTION public.is_current_custodian(uuid, uuid) IS
+  'Batch owner check. The name is retained for its ~40 call sites; batch_custody is no longer consulted. Bag-level questions use is_current_bag_custodian.';
+
+-- The write/act gate. Everything that mutates, consumes or moves a bag asks
+-- this and nothing else: it is true for a General organisation working its own
+-- bag and for a Testing organisation working one it has been sent, and false
+-- for the owner of a batch whose bag is currently in someone else's hands.
+CREATE OR REPLACE FUNCTION public.is_current_bag_custodian(
+  p_user_id uuid,
+  p_sub_batch_id uuid
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT
+    $1 = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1
+      FROM public.sub_batches sb
+      INNER JOIN public.org_user ou
+        ON ou.organisation_id = sb.held_by_org_id
+      WHERE sb.id = $2
+        AND ou.user_id = $1
+        AND ou.is_active = true
+    )
+$$;
+
+COMMENT ON FUNCTION public.is_current_bag_custodian(uuid, uuid) IS
+  'True when the caller is an active member of the organisation holding this bag. The single write/act gate for bag-level operations.';
+
+-- The read gate, and the reason a Testing organisation's retained bag is
+-- invisible to the General organisation it came from: that bag is held by
+-- Testing and has no assignment naming General as its sender, so neither arm
+-- below matches.
+--
+-- Deliberately plpgsql rather than sql. A LANGUAGE sql body is name-resolved
+-- when the function is created, and batch_testing_assignment.sub_batch_id is
+-- not in place until 20260804000001, which runs after this migration. A plpgsql
+-- body resolves at call time, by which point the column exists — and nothing
+-- evaluates an RLS predicate between the two migrations, because migrations run
+-- as the table owner.
+CREATE OR REPLACE FUNCTION public.can_read_sub_batch(p_sub_batch_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.sub_batches sb
+    INNER JOIN public.org_user ou
+      ON ou.organisation_id = sb.held_by_org_id
+    WHERE sb.id = p_sub_batch_id
+      AND ou.user_id = (SELECT auth.uid())
+      AND ou.is_active = true
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM public.batch_testing_assignment bta
+    INNER JOIN public.org_user ou
+      ON ou.organisation_id = bta.assigned_by_org_id
+    WHERE bta.sub_batch_id = p_sub_batch_id
+      AND ou.user_id = (SELECT auth.uid())
+      AND ou.is_active = true
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION public.can_read_sub_batch(uuid) IS
+  'Bag read boundary: the organisation holding the bag, or the organisation that sent it for testing. Open or closed assignments both count, so a sender keeps its history.';
+
+-- Replaces has_active_testing_assignment(uuid). Holding a bag, not being named
+-- on an open assignment row, is what earns a Testing organisation sight of the
+-- parent batch and its collection and species.
+CREATE OR REPLACE FUNCTION public.holds_any_bag_of_batch(p_batch_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.sub_batches sb
+    INNER JOIN public.org_user ou
+      ON ou.organisation_id = sb.held_by_org_id
+    WHERE sb.batch_id = p_batch_id
+      AND ou.user_id = (SELECT auth.uid())
+      AND ou.is_active = true
+  )
+$$;
+
+COMMENT ON FUNCTION public.holds_any_bag_of_batch(uuid) IS
+  'True when the caller''s organisation holds at least one bag of the batch.';
+
+-- Not caller-relative: it answers whether any of the batch's seed has left the
+-- owner's hands at all. Deleting a batch cascades through its bags — and,
+-- from 20260804000001, through the assignments naming them — so the delete
+-- policy needs an unfiltered answer. Asking through RLS would not give one: a
+-- bag a Testing organisation split off and kept is invisible to the owner, and
+-- is exactly the row that must block the delete.
+CREATE OR REPLACE FUNCTION public.batch_has_externally_held_bags(p_batch_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.sub_batches sb
+    INNER JOIN public.batches b ON b.id = sb.batch_id
+    WHERE sb.batch_id = p_batch_id
+      AND sb.held_by_org_id IS DISTINCT FROM b.organisation_id
+  )
+$$;
+
+COMMENT ON FUNCTION public.batch_has_externally_held_bags(uuid) IS
+  'True when any bag of the batch is held by an organisation other than the batch owner. Blocks destructive whole-batch operations.';
 
 CREATE OR REPLACE FUNCTION public.is_batch_custodian_or_past(
   auth_uid uuid,
@@ -75,10 +209,34 @@ REVOKE ALL PRIVILEGES
   ON FUNCTION public.is_current_custodian(uuid, uuid)
   FROM PUBLIC, anon;
 REVOKE ALL PRIVILEGES
+  ON FUNCTION public.is_current_bag_custodian(uuid, uuid)
+  FROM PUBLIC, anon;
+REVOKE ALL PRIVILEGES
+  ON FUNCTION public.can_read_sub_batch(uuid)
+  FROM PUBLIC, anon;
+REVOKE ALL PRIVILEGES
+  ON FUNCTION public.holds_any_bag_of_batch(uuid)
+  FROM PUBLIC, anon;
+REVOKE ALL PRIVILEGES
+  ON FUNCTION public.batch_has_externally_held_bags(uuid)
+  FROM PUBLIC, anon;
+REVOKE ALL PRIVILEGES
   ON FUNCTION public.is_batch_custodian_or_past(uuid, uuid)
   FROM PUBLIC, anon;
 GRANT EXECUTE
   ON FUNCTION public.is_current_custodian(uuid, uuid)
+  TO authenticated;
+GRANT EXECUTE
+  ON FUNCTION public.is_current_bag_custodian(uuid, uuid)
+  TO authenticated;
+GRANT EXECUTE
+  ON FUNCTION public.can_read_sub_batch(uuid)
+  TO authenticated;
+GRANT EXECUTE
+  ON FUNCTION public.holds_any_bag_of_batch(uuid)
+  TO authenticated;
+GRANT EXECUTE
+  ON FUNCTION public.batch_has_externally_held_bags(uuid)
   TO authenticated;
 GRANT EXECUTE
   ON FUNCTION public.is_batch_custodian_or_past(uuid, uuid)
@@ -94,18 +252,19 @@ DROP POLICY IF EXISTS "Allow authenticated users to update their own collections
 DROP POLICY IF EXISTS "Allow authenticated users to delete their own collections or admin to delete any that belong to the organisation" ON public.collection;
 DROP POLICY IF EXISTS "collection_select_policy" ON public.collection;
 
+-- The second arm used to read the assignment table directly for an unreturned
+-- row. Holding a bag is now the fact that grants sight of what the seed is, so
+-- it asks that instead — and it has to, because returned_at no longer exists.
+-- 20260804000001 restates this policy; the two must not diverge.
 CREATE POLICY collection_select ON public.collection
   FOR SELECT TO authenticated
   USING (
     organisation_id = (SELECT public.get_user_organisation_id())
     OR EXISTS (
       SELECT 1
-      FROM public.batch_testing_assignment bta
-      INNER JOIN public.batches b ON b.id = bta.batch_id
-      INNER JOIN public.org_user ou ON ou.organisation_id = bta.assigned_to_org_id
+      FROM public.batches b
       WHERE b.collection_id = collection.id
-        AND bta.returned_at IS NULL
-        AND ou.user_id = (SELECT auth.uid())
+        AND public.holds_any_bag_of_batch(b.id)
     )
   );
 
@@ -295,9 +454,17 @@ CREATE POLICY batches_update ON public.batches
   FOR UPDATE TO authenticated
   USING (public.is_current_custodian((SELECT auth.uid()), id));
 
+-- Deleting a batch cascades through its bags and, from 20260804000001, through
+-- the assignments that name them. An assignment is a physical fact about seed
+-- in someone else's hands, so the rule is rejection: while any bag of the batch
+-- is held by another organisation, the batch cannot be deleted at all. Nothing
+-- here auto-closes an assignment or moves it to a successor.
 CREATE POLICY batches_delete ON public.batches
   FOR DELETE TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), id));
+  USING (
+    public.is_current_custodian((SELECT auth.uid()), id)
+    AND NOT public.batch_has_externally_held_bags(id)
+  );
 
 -- ============================================================================
 -- batch_custody
@@ -381,18 +548,21 @@ DROP POLICY IF EXISTS custodian_can_view_batch_storage ON public.batch_storage;
 DROP POLICY IF EXISTS custodian_can_insert_batch_storage ON public.batch_storage;
 DROP POLICY IF EXISTS custodian_can_update_batch_storage ON public.batch_storage;
 
+-- Storage describes where a bag physically is, so it follows the bag and not
+-- the parent batch. Keying on batch_id would let an owner shelve or move a bag
+-- a Testing organisation is holding.
 CREATE POLICY batch_storage_select ON public.batch_storage
   FOR SELECT TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  USING (public.can_read_sub_batch(sub_batch_id));
 
 CREATE POLICY batch_storage_insert ON public.batch_storage
   FOR INSERT TO authenticated
-  WITH CHECK (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  WITH CHECK (public.is_current_bag_custodian((SELECT auth.uid()), sub_batch_id));
 
 CREATE POLICY batch_storage_update ON public.batch_storage
   FOR UPDATE TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), batch_id))
-  WITH CHECK (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  USING (public.is_current_bag_custodian((SELECT auth.uid()), sub_batch_id))
+  WITH CHECK (public.is_current_bag_custodian((SELECT auth.uid()), sub_batch_id));
 
 -- ============================================================================
 -- organisation
@@ -571,21 +741,12 @@ CREATE POLICY tests_select ON public.tests
     )
   );
 
-CREATE POLICY tests_insert ON public.tests
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.current_batch_custody cbc
-      WHERE cbc.batch_id = tests.batch_id
-        AND cbc.organisation_id = (SELECT public.get_user_organisation_id())
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.batch_testing_assignment bta
-      WHERE bta.batch_id = tests.batch_id
-        AND bta.returned_at IS NULL
-        AND bta.assigned_to_org_id = (SELECT public.get_user_organisation_id())
-    )
-  );
+-- No INSERT policy, deliberately. The old one authorised any sub-batch in a
+-- batch with an active assignment, which is the sibling leak in write form: a
+-- Testing organisation could record a test against a bag it had never been
+-- sent. fn_create_quality_test is SECURITY DEFINER and is the only intended
+-- writer. If a direct path is ever needed it must be scoped to
+-- is_current_bag_custodian on tests.sub_batch_id, never to the parent batch.
 
 CREATE POLICY tests_update ON public.tests
   FOR UPDATE TO authenticated
@@ -777,21 +938,35 @@ DROP POLICY IF EXISTS sub_batches_insert_policy ON public.sub_batches;
 DROP POLICY IF EXISTS sub_batches_update_policy ON public.sub_batches;
 DROP POLICY IF EXISTS sub_batches_delete_policy ON public.sub_batches;
 
+-- Every one of these is keyed on the bag, not the parent. The batch-grained
+-- version showed a Testing organisation every sibling bag of the batch its one
+-- bag came from, and let the owner mutate or delete a bag it no longer held.
+-- Reads use can_read_sub_batch so the sender keeps sight of a bag while it is
+-- out at a lab; writes use the stricter holder-only gate.
 CREATE POLICY sub_batches_select ON public.sub_batches
   FOR SELECT TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  USING (public.can_read_sub_batch(id));
 
+-- The INSERT and UPDATE checks read held_by_org_id off the candidate row
+-- rather than calling is_current_bag_custodian(…, id): a WITH CHECK runs
+-- before the row is visible to a lookup by id, so the predicate would see
+-- nothing and deny every insert. The BEFORE INSERT trigger from 20260723000001
+-- has already defaulted the column by this point, so the check is meaningful.
 CREATE POLICY sub_batches_insert ON public.sub_batches
   FOR INSERT TO authenticated
-  WITH CHECK (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  WITH CHECK (held_by_org_id = (SELECT public.get_user_organisation_id()));
 
+-- USING gates on who holds the bag now; WITH CHECK stops a holder handing it
+-- to another organisation. Between them and the column-level UPDATE revoke,
+-- custody cannot move except through the reviewed RPCs.
 CREATE POLICY sub_batches_update ON public.sub_batches
   FOR UPDATE TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  USING (public.is_current_bag_custodian((SELECT auth.uid()), id))
+  WITH CHECK (held_by_org_id = (SELECT public.get_user_organisation_id()));
 
 CREATE POLICY sub_batches_delete ON public.sub_batches
   FOR DELETE TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), batch_id));
+  USING (public.is_current_bag_custodian((SELECT auth.uid()), id));
 
 -- ============================================================================
 -- batch_weight_adjustments
@@ -799,21 +974,20 @@ CREATE POLICY sub_batches_delete ON public.sub_batches
 DROP POLICY IF EXISTS custodian_can_view_adjustments ON public.batch_weight_adjustments;
 DROP POLICY IF EXISTS custodian_can_insert_adjustments ON public.batch_weight_adjustments;
 
+-- The read side is load-bearing for correctness, not only for access:
+-- sub_batch_current_weight is security_invoker, so an organisation that cannot
+-- read a bag's adjustments reads its *original* weight where the UI and the
+-- quality-test form both expect its current one. A Testing organisation must
+-- therefore be able to see the adjustments on the bag it holds.
 CREATE POLICY batch_weight_adjustments_select ON public.batch_weight_adjustments
   FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.sub_batches sb
-    WHERE sb.id = batch_weight_adjustments.sub_batch_id
-      AND public.is_current_custodian((SELECT auth.uid()), sb.batch_id)
-  ));
+  USING (public.can_read_sub_batch(sub_batch_id));
 
+-- Writing an adjustment is consuming seed. Only the holder may do it —
+-- otherwise the owner of the parent batch could zero a bag sitting in a lab.
 CREATE POLICY batch_weight_adjustments_insert ON public.batch_weight_adjustments
   FOR INSERT TO authenticated
-  WITH CHECK (EXISTS (
-    SELECT 1 FROM public.sub_batches sb
-    WHERE sb.id = batch_weight_adjustments.sub_batch_id
-      AND public.is_current_custodian((SELECT auth.uid()), sb.batch_id)
-  ));
+  WITH CHECK (public.is_current_bag_custodian((SELECT auth.uid()), sub_batch_id));
 
 -- ============================================================================
 -- batch_cleaning / batch_cleaning_output
