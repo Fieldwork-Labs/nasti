@@ -381,6 +381,7 @@ export const BatchTableRow = ({
         actionButtons={renderActionButtons()}
         onEdit={onEdit}
         detailLoading={detailLoading}
+        assignedBagIds={new Set(activeAssignments.keys())}
         onSubBatchQualityTest={handleSubBatchQualityTest}
         onSubBatchSplit={handleSubBatchSplit}
         onSubBatchStorageMove={

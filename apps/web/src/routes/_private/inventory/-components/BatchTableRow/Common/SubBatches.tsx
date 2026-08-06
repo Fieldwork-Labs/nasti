@@ -1,10 +1,19 @@
 import { Button } from "@nasti/ui/button"
-import { Box, Boxes, Merge, Microscope, Package, Split } from "lucide-react"
+import {
+  Box,
+  Boxes,
+  Merge,
+  Microscope,
+  Package,
+  ShoppingBasket,
+  Split,
+} from "lucide-react"
 import { useState } from "react"
 
 import { SubBatchMergeModal } from "@/components/batches/SubBatchMergeModal"
 import type { SubBatchWithStorage } from "@/hooks/useSubBatches"
 import { useSubBatches } from "@/hooks/useSubBatches"
+import useBagBasketStore from "@/store/bagBasketStore"
 import { cn } from "@nasti/ui/utils"
 
 /**
@@ -12,16 +21,23 @@ import { cn } from "@nasti/ui/utils"
  */
 export const SubBatchesTable = ({
   batchId,
+  batchCode,
+  assignedBagIds,
   onStorageMove,
   onSubBatchSplit,
   onSubBatchQualityTest,
 }: {
   batchId: string
+  /** Carried into the basket so it can label a bag without another query. */
+  batchCode?: string | null
+  /** Bags already out at a laboratory; they cannot be picked again. */
+  assignedBagIds?: Set<string>
   onStorageMove?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
 }) => {
   const { data: subBatches, isLoading } = useSubBatches(batchId)
+  const isSelecting = useBagBasketStore((state) => state.isSelecting)
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([])
   const [isMerging, setIsMerging] = useState(false)
   const [showMergeModal, setShowMergeModal] = useState(false)
@@ -99,7 +115,11 @@ export const SubBatchesTable = ({
           <SubBatchesTableRow
             key={sb.id}
             sb={sb}
+            batchId={batchId}
+            batchCode={batchCode ?? null}
             isMerging={isMerging}
+            isSelecting={isSelecting}
+            isAlreadyAssigned={Boolean(assignedBagIds?.has(sb.id))}
             selectedForMerge={selectedForMerge}
             toggleMergeSelect={toggleMergeSelect}
             onSubBatchQualityTest={onSubBatchQualityTest}
@@ -126,7 +146,11 @@ export const SubBatchesTable = ({
 
 type SubBatchesTableRowProps = {
   sb: SubBatchWithStorage
+  batchId: string
+  batchCode: string | null
   isMerging: boolean
+  isSelecting: boolean
+  isAlreadyAssigned: boolean
   selectedForMerge: string[]
   toggleMergeSelect: (id: string) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
@@ -136,13 +160,34 @@ type SubBatchesTableRowProps = {
 
 const SubBatchesTableRow = ({
   sb,
+  batchId,
+  batchCode,
   isMerging,
+  isSelecting,
+  isAlreadyAssigned,
   selectedForMerge,
   toggleMergeSelect,
   onSubBatchQualityTest,
   onSubBatchSplit,
   onStorageMove,
 }: SubBatchesTableRowProps) => {
+  const toggleBag = useBagBasketStore((state) => state.toggleBag)
+  const isInBasket = useBagBasketStore((state) => state.bags.has(sb.id))
+
+  // A bag already out at a laboratory cannot be sent again, and one with no
+  // seed left has nothing to send.
+  const isSelectable =
+    isSelecting && !isAlreadyAssigned && (sb.current_weight ?? 0) > 0
+
+  const addToBasket = () =>
+    toggleBag({
+      subBatchId: sb.id,
+      batchId,
+      batchCode,
+      containerName: sb.container?.name ?? null,
+      weightGrams: Number(sb.current_weight ?? 0),
+    })
+
   return (
     <div
       key={sb.id}
@@ -151,9 +196,13 @@ const SubBatchesTableRow = ({
         isMerging && "hover:bg-muted/50 cursor-pointer",
         selectedForMerge.includes(sb.id) &&
           "bg-primary/10 border-primary border",
+        isSelectable && "hover:bg-muted/50 cursor-pointer",
+        isInBasket && "bg-primary/10 border-primary border",
+        isSelecting && !isSelectable && "opacity-50",
       )}
       onClick={() => {
         if (isMerging) toggleMergeSelect(sb.id)
+        else if (isSelectable) addToBasket()
       }}
     >
       <div className="flex items-center gap-3">
@@ -162,6 +211,16 @@ const SubBatchesTableRow = ({
             type="checkbox"
             checked={selectedForMerge.includes(sb.id)}
             onChange={() => toggleMergeSelect(sb.id)}
+            onClick={(event) => event.stopPropagation()}
+            className="h-3 w-3"
+          />
+        )}
+        {isSelecting && !isMerging && (
+          <input
+            type="checkbox"
+            checked={isInBasket}
+            disabled={!isSelectable}
+            onChange={addToBasket}
             onClick={(event) => event.stopPropagation()}
             className="h-3 w-3"
           />
@@ -180,8 +239,14 @@ const SubBatchesTableRow = ({
           </span>
         )}
         {sb.notes && <span className="text-muted-foreground">{sb.notes}</span>}
+        {isSelecting && isAlreadyAssigned && (
+          <span className="text-muted-foreground flex items-center gap-1">
+            <ShoppingBasket className="h-3 w-3" />
+            Already out for testing
+          </span>
+        )}
       </div>
-      {!isMerging && (
+      {!isMerging && !isSelecting && (
         <div>
           {onSubBatchQualityTest && (
             <Button

@@ -38,6 +38,7 @@ import { Route as PrivateSettingsStorageLocationsImport } from "./routes/_privat
 import { Route as PrivateSettingsOrganisationDetailsImport } from "./routes/_private/settings/organisation-details"
 import { Route as PrivateSettingsContainersImport } from "./routes/_private/settings/containers"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
+import { Route as PrivateInventorySendForTestingImport } from "./routes/_private/inventory/send-for-testing"
 import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
 import { Route as PrivateSpeciesIdIndexImport } from "./routes/_private/species/$id/index"
 import { Route as PrivateTripsIdEditImport } from "./routes/_private/trips/$id/edit"
@@ -209,6 +210,13 @@ const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
   getParentRoute: () => PrivateInvitationsRoute,
 } as any)
 
+const PrivateInventorySendForTestingRoute =
+  PrivateInventorySendForTestingImport.update({
+    id: "/send-for-testing",
+    path: "/send-for-testing",
+    getParentRoute: () => PrivateInventoryRoute,
+  } as any)
+
 const PrivateTripsIdIndexRoute = PrivateTripsIdIndexImport.update({
   id: "/$id/",
   path: "/$id/",
@@ -343,6 +351,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof InvitationsAcceptImport
       parentRoute: typeof rootRoute
     }
+    "/_private/inventory/send-for-testing": {
+      id: "/_private/inventory/send-for-testing"
+      path: "/send-for-testing"
+      fullPath: "/inventory/send-for-testing"
+      preLoaderRoute: typeof PrivateInventorySendForTestingImport
+      parentRoute: typeof PrivateInventoryImport
+    }
     "/_private/invitations/new": {
       id: "/_private/invitations/new"
       path: "/new"
@@ -447,10 +462,12 @@ declare module "@tanstack/react-router" {
 // Create and export the route tree
 
 interface PrivateInventoryRouteChildren {
+  PrivateInventorySendForTestingRoute: typeof PrivateInventorySendForTestingRoute
   PrivateInventoryIndexRoute: typeof PrivateInventoryIndexRoute
 }
 
 const PrivateInventoryRouteChildren: PrivateInventoryRouteChildren = {
+  PrivateInventorySendForTestingRoute: PrivateInventorySendForTestingRoute,
   PrivateInventoryIndexRoute: PrivateInventoryIndexRoute,
 }
 
@@ -573,6 +590,7 @@ export interface FileRoutesByFullPath {
   "/auth/reset-password-request": typeof AuthResetPasswordRequestRoute
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
+  "/inventory/send-for-testing": typeof PrivateInventorySendForTestingRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/settings/containers": typeof PrivateSettingsContainersRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
@@ -600,6 +618,7 @@ export interface FileRoutesByTo {
   "/auth/reset-password-request": typeof AuthResetPasswordRequestRoute
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
+  "/inventory/send-for-testing": typeof PrivateInventorySendForTestingRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/settings/containers": typeof PrivateSettingsContainersRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
@@ -634,6 +653,7 @@ export interface FileRoutesById {
   "/auth/reset-password-request": typeof AuthResetPasswordRequestRoute
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
+  "/_private/inventory/send-for-testing": typeof PrivateInventorySendForTestingRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
   "/_private/settings/containers": typeof PrivateSettingsContainersRoute
   "/_private/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
@@ -669,6 +689,7 @@ export interface FileRouteTypes {
     | "/auth/reset-password-request"
     | "/auth/set-password"
     | "/invitations/accept"
+    | "/inventory/send-for-testing"
     | "/invitations/new"
     | "/settings/containers"
     | "/settings/organisation-details"
@@ -695,6 +716,7 @@ export interface FileRouteTypes {
     | "/auth/reset-password-request"
     | "/auth/set-password"
     | "/invitations/accept"
+    | "/inventory/send-for-testing"
     | "/invitations/new"
     | "/settings/containers"
     | "/settings/organisation-details"
@@ -727,6 +749,7 @@ export interface FileRouteTypes {
     | "/auth/reset-password-request"
     | "/auth/set-password"
     | "/invitations/accept"
+    | "/_private/inventory/send-for-testing"
     | "/_private/invitations/new"
     | "/_private/settings/containers"
     | "/_private/settings/organisation-details"
@@ -808,6 +831,7 @@ export const routeTree = rootRoute
       "filePath": "_private/inventory.tsx",
       "parent": "/_private",
       "children": [
+        "/_private/inventory/send-for-testing",
         "/_private/inventory/"
       ]
     },
@@ -878,6 +902,10 @@ export const routeTree = rootRoute
     },
     "/invitations/accept": {
       "filePath": "invitations.accept.tsx"
+    },
+    "/_private/inventory/send-for-testing": {
+      "filePath": "_private/inventory/send-for-testing.tsx",
+      "parent": "/_private/inventory"
     },
     "/_private/invitations/new": {
       "filePath": "_private/invitations/new.tsx",

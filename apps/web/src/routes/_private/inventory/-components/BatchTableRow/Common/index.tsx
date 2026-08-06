@@ -415,6 +415,8 @@ export const useBatchRowData = (batchId: string) => {
 interface BatchExpandedDetailsProps {
   batch: BatchType
   detailLoading: boolean
+  /** Bags of this batch already out at a laboratory. */
+  assignedBagIds?: Set<string>
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSubBatchStorageMove?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
@@ -427,6 +429,7 @@ interface BatchExpandedDetailsProps {
 export const BatchExpandedDetails = ({
   batch,
   detailLoading,
+  assignedBagIds,
   onEdit,
   onSubBatchStorageMove,
   onSubBatchSplit,
@@ -446,6 +449,8 @@ export const BatchExpandedDetails = ({
       )}
       <SubBatchesTable
         batchId={batch.id}
+        batchCode={batch.code}
+        assignedBagIds={assignedBagIds}
         onStorageMove={onSubBatchStorageMove}
         onSubBatchSplit={onSubBatchSplit}
         onSubBatchQualityTest={onSubBatchQualityTest}
@@ -690,6 +695,8 @@ interface BatchTableRowContainerProps {
   dateCell?: ReactNode
   actionButtons: ReactNode
   detailLoading: boolean
+  /** Bags of this batch already out at a laboratory. */
+  assignedBagIds?: Set<string>
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
@@ -710,6 +717,7 @@ export const BatchTableRowContainer = ({
   dateCell,
   actionButtons,
   detailLoading,
+  assignedBagIds,
   onEdit,
   onSubBatchSplit,
   onSubBatchQualityTest,
@@ -771,6 +779,7 @@ export const BatchTableRowContainer = ({
           <BatchExpandedDetails
             batch={batch}
             detailLoading={detailLoading}
+            assignedBagIds={assignedBagIds}
             onEdit={onEdit}
             onSubBatchStorageMove={onSubBatchStorageMove}
             onSubBatchSplit={onSubBatchSplit}

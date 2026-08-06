@@ -1,11 +1,12 @@
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
 import { useToast } from "@nasti/ui/hooks"
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
+import { ArrowDown, ArrowUp, ArrowUpDown, ShoppingBasket } from "lucide-react"
 import { motion } from "motion/react"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
 
+import { BagBasket } from "@/components/inventory/BagBasket"
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "./BatchTableRow/General"
 import {
@@ -21,6 +22,8 @@ import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchDelete } from "@/hooks/useBatches"
 
 import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
+import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
+import useBagBasketStore from "@/store/bagBasketStore"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
 import { CompleteCombineButton } from "@/components/inventory/CompleteCombineButton"
 
@@ -55,6 +58,13 @@ export function InventoryPageGeneral() {
     batch: BatchWithCurrentLocationAndSpecies
     subBatchId: string
   } | null>(null)
+
+  // Selection mode: picking bags into the basket to send for testing.
+  const isSelecting = useBagBasketStore((state) => state.isSelecting)
+  const enterSelection = useBagBasketStore((state) => state.enterSelection)
+
+  const { data: organisationLinks } = useOrganisationLinks()
+  const hasTestingOrgLinks = Boolean(organisationLinks?.length)
 
   // Merge mode state
   const [mergeState, setMergeState] = useState<{
@@ -204,6 +214,7 @@ export function InventoryPageGeneral() {
 
   return (
     <div className="container mx-auto p-6">
+      <BagBasket />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -213,6 +224,12 @@ export function InventoryPageGeneral() {
               Manage and track your seed batches
             </p>
           </div>
+          {hasTestingOrgLinks && !isSelecting && (
+            <Button onClick={enterSelection}>
+              <ShoppingBasket className="mr-2 h-4 w-4" />
+              Send bags for testing
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
