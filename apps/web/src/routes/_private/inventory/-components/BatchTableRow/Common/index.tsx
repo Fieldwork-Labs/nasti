@@ -59,7 +59,6 @@ export type BatchType = BatchWithCurrentLocationAndSpecies
 
 export interface BaseBatchTableRowProps {
   batch: BatchType
-  onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
   onSubBatchStorageMove?: (
     batch: BatchWithCurrentLocationAndSpecies,

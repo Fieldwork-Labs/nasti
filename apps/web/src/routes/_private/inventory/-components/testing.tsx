@@ -8,7 +8,6 @@ import { z } from "zod"
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "./BatchTableRow/Testing"
 import { BatchStorageModal } from "@/components/inventory/modals"
-import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
 
@@ -30,15 +29,11 @@ export function InventoryPageTesting() {
     subBatchId: string
   } | null>(null)
 
-  const [processingBatch, setPocessingBatch] =
-    useState<BatchWithCurrentLocationAndSpecies | null>(null)
-
   const {
     data: batches = [],
     isLoading,
     error,
     assignmentsByBatchId,
-    invalidateBatchesCacheByFilter,
     handleSort,
     sortField,
     sortDirection,
@@ -169,7 +164,6 @@ export function InventoryPageTesting() {
                           onSubBatchStorageMove={(batch, subBatchId) =>
                             setSubBatchStorageMove({ batch, subBatchId })
                           }
-                          onProcess={setPocessingBatch}
                         />
                       ))}
                     </tbody>
@@ -188,15 +182,6 @@ export function InventoryPageTesting() {
             onClose={() => setSubBatchStorageMove(null)}
             batch={subBatchStorageMove.batch}
             subBatchId={subBatchStorageMove.subBatchId}
-          />
-        )}
-
-        {processingBatch && (
-          <BatchProcessingModal
-            isOpen={Boolean(processingBatch)}
-            onClose={() => setPocessingBatch(null)}
-            batch={processingBatch}
-            onSuccess={invalidateBatchesCacheByFilter}
           />
         )}
       </div>

@@ -227,18 +227,6 @@ export const TestingOrgsManagement = () => {
                         <h3 className="font-semibold">
                           {link.testing_org.name}
                         </h3>
-                        <div className="mt-1 flex gap-2">
-                          {link.can_test && (
-                            <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                              Can Test
-                            </span>
-                          )}
-                          {link.can_process && (
-                            <span className="rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                              Can Process
-                            </span>
-                          )}
-                        </div>
                         <p className="text-muted-foreground mt-1 text-xs">
                           Linked{" "}
                           {new Date(link.created_at).toLocaleDateString()}
@@ -318,18 +306,6 @@ export const TestingOrgsManagement = () => {
                           <h3 className="font-semibold">
                             {request.testing_org.name}
                           </h3>
-                          <div className="mt-1 flex gap-2">
-                            {request.can_test && (
-                              <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-                                Can Test
-                              </span>
-                            )}
-                            {request.can_process && (
-                              <span className="rounded bg-purple-100 px-2 py-0.5 text-xs text-purple-700">
-                                Can Process
-                              </span>
-                            )}
-                          </div>
                           <p className="text-muted-foreground mt-1 text-xs">
                             Requested{" "}
                             {new Date(request.created_at).toLocaleDateString()}

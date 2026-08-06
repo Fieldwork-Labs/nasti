@@ -137,8 +137,6 @@ Deno.serve((req) =>
         .insert({
           general_org_id: linkRequest.general_org_id,
           testing_org_id: linkRequest.testing_org_id,
-          can_process: linkRequest.can_process,
-          can_test: linkRequest.can_test,
           created_by: user.id,
         })
         .select()

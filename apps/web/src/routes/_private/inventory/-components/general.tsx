@@ -8,22 +8,17 @@ import { z } from "zod"
 
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { BatchTableRow } from "./BatchTableRow/General"
-import { CompleteAssignmentButton } from "@/components/inventory/CompleteAssignmentButton"
 import {
-  AssignBatchesForTestingModal,
   BatchEditModal,
   BatchMergeModal,
   BatchMixModal,
   BatchSplitModal,
   BatchStorageModal,
 } from "@/components/inventory/modals"
-import { BatchProcessingModal } from "@/components/inventory/modals/BatchProcessingModal"
 import { BatchCleaningModal } from "@/components/inventory/modals/BatchCleaningModal"
 import { CleaningBaggingModal } from "@/components/inventory/modals/CleaningBaggingModal"
-import { useAssignmentMode } from "@/hooks/useAssignmentMode"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useBatchDelete } from "@/hooks/useBatches"
-import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
 
 import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
@@ -51,8 +46,6 @@ export function InventoryPageGeneral() {
   const [splittingBatch, setSplittingBatch] = useState<
     [BatchWithCurrentLocationAndSpecies, string | undefined] | null
   >(null)
-  const [processingBatch, setPocessingBatch] =
-    useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [cleaningBatch, setCleaningBatch] =
     useState<BatchWithCurrentLocationAndSpecies | null>(null)
   const [baggingCleaningId, setBaggingCleaningId] = useState<string | null>(
@@ -79,12 +72,6 @@ export function InventoryPageGeneral() {
   } | null>(null)
   const [showCombineModal, setShowCombineModal] = useState(false)
 
-  // Check org type and linked testing organisations
-  const { data: organisationLinks } = useOrganisationLinks()
-  const hasTestingOrgLinks = Boolean(
-    organisationLinks && organisationLinks.length > 0,
-  )
-
   // Fetch batches using the unified hook
   const {
     data: batches = [],
@@ -100,17 +87,6 @@ export function InventoryPageGeneral() {
         combineState.selectedBatchIds.includes(batch.id),
       )
     : []
-
-  // Assignment mode hook (only for General orgs)
-  const {
-    assignmentState,
-    showAssignmentModal,
-    selectedBatchesForAssignment,
-    handleAssignForTesting,
-    handleCompleteAssignment,
-    handleCloseAssignmentModal,
-    getAssignmentModeForBatch,
-  } = useAssignmentMode(batches)
 
   const { mutateAsync: deleteBatch } = useBatchDelete()
 
@@ -353,18 +329,11 @@ export function InventoryPageGeneral() {
                           onDelete={handleDelete}
                           onSplit={handleSplit}
                           onClean={setCleaningBatch}
-                          onProcess={setPocessingBatch}
                           onMix={handleCombine}
                           onSubBatchStorageMove={(batch, subBatchId) =>
                             setSubBatchStorageMove({ batch, subBatchId })
                           }
-                          onAssignForTesting={
-                            hasTestingOrgLinks
-                              ? handleAssignForTesting
-                              : undefined
-                          }
                           combineMode={getCombineModeForBatch(batch)}
-                          assignmentMode={getAssignmentModeForBatch(batch)}
                         />
                       ))}
                     </tbody>
@@ -380,14 +349,6 @@ export function InventoryPageGeneral() {
           <CompleteCombineButton
             selectedCount={combineState.selectedBatchIds.length}
             onCompleteCombine={handleCompleteCombine}
-          />
-        )}
-
-        {/* Complete Assignment Button */}
-        {assignmentState && assignmentState.selectedBatchIds.length > 0 && (
-          <CompleteAssignmentButton
-            selectedCount={assignmentState.selectedBatchIds.length}
-            onCompleteAssignment={handleCompleteAssignment}
           />
         )}
 
@@ -416,15 +377,6 @@ export function InventoryPageGeneral() {
             onClose={() => setSplittingBatch(null)}
             batch={splittingBatch[0]}
             subBatchId={splittingBatch[1]}
-            onSuccess={invalidateBatchesCacheByFilter}
-          />
-        )}
-
-        {processingBatch && (
-          <BatchProcessingModal
-            isOpen={Boolean(processingBatch)}
-            onClose={() => setPocessingBatch(null)}
-            batch={processingBatch}
             onSuccess={invalidateBatchesCacheByFilter}
           />
         )}
@@ -473,17 +425,6 @@ export function InventoryPageGeneral() {
             onSuccess={invalidateBatchesCacheByFilter}
           />
         )}
-
-        {showAssignmentModal &&
-          assignmentState &&
-          selectedBatchesForAssignment.length > 0 && (
-            <AssignBatchesForTestingModal
-              isOpen={showAssignmentModal}
-              onClose={handleCloseAssignmentModal}
-              selectedBatches={selectedBatchesForAssignment}
-              onSuccess={invalidateBatchesCacheByFilter}
-            />
-          )}
       </div>
     </div>
   )

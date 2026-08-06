@@ -34,12 +34,16 @@ export const InvitationForm = () => {
     mode: "all",
     defaultValues: { role: ROLE.MEMBER, permissions: ["collections"] },
   })
-  const { session } = useUserStore()
+  const { session, organisation } = useUserStore()
   const navigate = useNavigate()
 
   const role = watch("role")
   const permissions = watch("permissions")
   const isMember = role === ROLE.MEMBER
+  // A testing organisation only does lab work, so its members always hold
+  // inventory access and there is nothing to choose. The database enforces
+  // this regardless of what is sent.
+  const isTestingOrg = organisation?.type === "Testing"
 
   const togglePermission = useCallback(
     (permission: OrgPermission, checked: boolean) => {
@@ -69,8 +73,15 @@ export const InvitationForm = () => {
             name,
             role,
             // Admins reach every area through their role, so the server
-            // stores an empty set for them either way.
-            permissions: role === ROLE.MEMBER ? permissions : [],
+            // stores an empty set for them either way. Testing organisation
+            // members always get inventory; the database normalises this too,
+            // but sending the truth keeps the invitation record honest.
+            permissions:
+              role !== ROLE.MEMBER
+                ? []
+                : isTestingOrg
+                  ? (["inventory"] satisfies OrgPermission[])
+                  : permissions,
           }),
         },
       )
@@ -87,7 +98,7 @@ export const InvitationForm = () => {
         navigate({ to: "/invitations" })
       }
     },
-    [session?.access_token, toast, navigate],
+    [session?.access_token, toast, navigate, isTestingOrg],
   )
 
   return (
@@ -130,7 +141,12 @@ export const InvitationForm = () => {
           </span>
         )}
       </div>
-      {isMember && (
+      {isMember && isTestingOrg && (
+        <p className="text-muted-foreground pt-1 text-sm">
+          Members of a testing organisation have inventory access.
+        </p>
+      )}
+      {isMember && !isTestingOrg && (
         <div className="flex flex-col gap-2 pt-1">
           <span className="text-sm font-medium">Access</span>
           {ORG_PERMISSIONS.map((permission) => (

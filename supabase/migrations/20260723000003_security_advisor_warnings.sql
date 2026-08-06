@@ -14,7 +14,6 @@ DECLARE
   sigs text[] := ARRAY[
     'public.generate_species_abbreviation(text)',
     'public.fn_clean_batch(uuid, text, text, text, boolean, text, jsonb)',
-    'public.fn_treat_batch(uuid, integer, jsonb, public.batch_quality, integer, text)',
     'public.current_custodian_org_id(uuid)',
     'public.fn_create_quality_test(uuid, uuid, jsonb, uuid)',
     'public.fn_merge_sub_batches(uuid[], text)',
@@ -79,7 +78,6 @@ DECLARE
     'public.fn_mix_batches(uuid[], text)',
     'public.fn_split_batch(uuid, integer, text)',
     'public.fn_split_sub_batch(uuid, jsonb)',
-    'public.fn_treat_batch(uuid, integer, jsonb, public.batch_quality, integer, text)',
     'public.get_organisation_users()',
     'public.get_user_organisation_id()'
   ];

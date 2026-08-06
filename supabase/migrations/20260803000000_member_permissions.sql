@@ -22,7 +22,7 @@
 --
 --   2. Statement-level BEFORE triggers on the same tables. Every inventory
 --      mutation of consequence goes through a SECURITY DEFINER RPC
---      (fn_clean_batch, fn_split_batch, fn_treat_batch, …) which bypasses RLS
+--      (fn_clean_batch, fn_split_batch, fn_split_sub_batch, …) which bypasses RLS
 --      entirely, so the policies alone would not hold. Triggers fire on the
 --      table regardless of the calling function's security context, and
 --      auth.jwt() is still readable inside a SECURITY DEFINER body.

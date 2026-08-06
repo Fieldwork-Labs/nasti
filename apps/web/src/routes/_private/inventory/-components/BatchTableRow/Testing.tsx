@@ -1,6 +1,6 @@
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
-import { FlaskConical, Undo2 } from "lucide-react"
+import { Undo2 } from "lucide-react"
 import { useState } from "react"
 
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
@@ -80,7 +80,6 @@ const AssignmentDatesCell = ({
 export const BatchTableRow = ({
   batch,
   assignment,
-  onProcess,
   className,
 }: BatchTableRowTestingProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -101,7 +100,7 @@ export const BatchTableRow = ({
   // on; the row is read-only rather than half-enabled.
   const actions = assignment
     ? getAssignmentActions(assignment)
-    : { canTest: false, canProcess: false, canReturn: false, canDelete: false }
+    : { canTest: false, canReturn: false, canDelete: false }
 
   return (
     <>
@@ -124,17 +123,6 @@ export const BatchTableRow = ({
         }
         actionButtons={
           <>
-            {actions.canProcess && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onProcess?.(batch)}
-                title="Process"
-              >
-                <FlaskConical className="h-4 w-4" />
-              </Button>
-            )}
-
             {actions.canReturn && (
               <Button
                 variant="ghost"

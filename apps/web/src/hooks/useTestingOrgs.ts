@@ -96,15 +96,7 @@ export const useCreateLinkRequest = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({
-      testing_org_id,
-      can_test,
-      can_process,
-    }: {
-      testing_org_id: string
-      can_test: boolean
-      can_process: boolean
-    }) => {
+    mutationFn: async ({ testing_org_id }: { testing_org_id: string }) => {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create_link_request`,
         {
@@ -113,11 +105,7 @@ export const useCreateLinkRequest = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({
-            testing_org_id,
-            can_test,
-            can_process,
-          }),
+          body: JSON.stringify({ testing_org_id }),
         },
       )
 

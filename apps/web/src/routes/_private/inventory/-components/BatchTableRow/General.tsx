@@ -8,7 +8,6 @@ import {
 import { cn } from "@nasti/ui/utils"
 import {
   Combine,
-  FlaskConical,
   Minus,
   Plus,
   SendIcon,
@@ -175,7 +174,6 @@ interface NormalModeActionsProps {
   canDelete: boolean
   hasActiveAssignment: boolean
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onProcess?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
@@ -189,7 +187,6 @@ const NormalModeActions = ({
   mergeDisabled,
   canDelete,
   hasActiveAssignment,
-  onProcess,
   onClean,
   onMix,
   onAssignForTesting,
@@ -206,18 +203,6 @@ const NormalModeActions = ({
         title="Clean"
       >
         <BrushCleaning className="h-4 w-4" />
-      </Button>
-    )}
-
-    {onProcess && (
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={mergeDisabled}
-        onClick={() => onProcess(batch)}
-        title="Treat"
-      >
-        <FlaskConical className="h-4 w-4" />
       </Button>
     )}
 

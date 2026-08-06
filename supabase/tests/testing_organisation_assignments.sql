@@ -2,30 +2,31 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(64);
+select plan(53);
 
 -- ============================================================================
 -- Fixtures
 -- ============================================================================
--- One General owner, four Testing organisations covering every link capability
--- combination plus an unlinked one, and eight batches so that each state
--- transition gets a batch of its own and assertions never interfere.
+-- One General owner, three linked Testing organisations and one unlinked one,
+-- and eight batches so that each state transition gets a batch of its own and
+-- assertions never interfere. Links no longer carry capability flags, so the
+-- three linked organisations differ only by identity.
 
 insert into auth.users (instance_id, id, aud, role, email)
 values
   ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'assign-general-admin@test.invalid'),
   ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'assign-general-member@test.invalid'),
-  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'assign-testing-both@test.invalid'),
-  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'assign-testing-test-only@test.invalid'),
-  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', 'assign-testing-process-only@test.invalid'),
+  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'assign-testing-linked-a@test.invalid'),
+  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'assign-testing-linked-b@test.invalid'),
+  ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', 'assign-testing-linked-c@test.invalid'),
   ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', 'assign-testing-unlinked@test.invalid');
 
 insert into public.organisation (id, name, owner_id, type)
 values
   ('c1000000-0000-0000-0000-000000000001', 'Assignment General owner', 'c0000000-0000-0000-0000-000000000001', 'General'),
-  ('c1000000-0000-0000-0000-000000000002', 'Assignment Testing both', 'c0000000-0000-0000-0000-000000000003', 'Testing'),
-  ('c1000000-0000-0000-0000-000000000003', 'Assignment Testing test only', 'c0000000-0000-0000-0000-000000000004', 'Testing'),
-  ('c1000000-0000-0000-0000-000000000004', 'Assignment Testing process only', 'c0000000-0000-0000-0000-000000000005', 'Testing'),
+  ('c1000000-0000-0000-0000-000000000002', 'Assignment Testing linked A', 'c0000000-0000-0000-0000-000000000003', 'Testing'),
+  ('c1000000-0000-0000-0000-000000000003', 'Assignment Testing linked B', 'c0000000-0000-0000-0000-000000000004', 'Testing'),
+  ('c1000000-0000-0000-0000-000000000004', 'Assignment Testing linked C', 'c0000000-0000-0000-0000-000000000005', 'Testing'),
   ('c1000000-0000-0000-0000-000000000005', 'Assignment Testing unlinked', 'c0000000-0000-0000-0000-000000000006', 'Testing');
 
 insert into public.org_user (organisation_id, user_id, role, is_active, permissions)
@@ -37,14 +38,16 @@ values
   ('c1000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000005', 'Admin', true, '{}'),
   ('c1000000-0000-0000-0000-000000000005', 'c0000000-0000-0000-0000-000000000006', 'Admin', true, '{}');
 
--- can_test → sample, can_process → full_batch.
+-- An accepted link is the whole permission; the capability flags are gone.
+-- Organisations 3 and 4 remain as ordinary linked Testing organisations so the
+-- batch fixtures below keep their existing numbering.
 insert into public.organisation_link (
-  general_org_id, testing_org_id, can_test, can_process, created_by
+  general_org_id, testing_org_id, created_by
 )
 values
-  ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', true, true, 'c0000000-0000-0000-0000-000000000001'),
-  ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', true, false, 'c0000000-0000-0000-0000-000000000001'),
-  ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000004', false, true, 'c0000000-0000-0000-0000-000000000001');
+  ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001'),
+  ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000001'),
+  ('c1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000001');
 
 insert into public.species (id, name, organisation_id)
 values ('c5000000-0000-0000-0000-000000000001', 'Assignment fixture species', 'c1000000-0000-0000-0000-000000000001');
@@ -109,35 +112,18 @@ values
 -- 1. Function privileges
 -- ============================================================================
 
+-- Treating is no longer a supported workflow. The function must be gone
+-- entirely rather than merely unreachable, so that no privilege drift can
+-- bring it back.
 select results_eq(
   $$
     select count(*)::integer
-    from information_schema.routine_privileges
+    from information_schema.routines
     where specific_schema = 'public'
       and routine_name = 'fn_treat_batch'
-      and grantee in ('PUBLIC', 'anon')
-      and privilege_type = 'EXECUTE'
   $$,
   array[0],
-  'neither PUBLIC nor anon can execute fn_treat_batch'
-);
-
-select ok(
-  not has_function_privilege(
-    'anon',
-    'public.fn_treat_batch(uuid,numeric,jsonb,public.batch_quality,numeric,text)',
-    'EXECUTE'
-  ),
-  'anon has no effective execute privilege on numeric fn_treat_batch'
-);
-
-select ok(
-  has_function_privilege(
-    'authenticated',
-    'public.fn_treat_batch(uuid,numeric,jsonb,public.batch_quality,numeric,text)',
-    'EXECUTE'
-  ),
-  'authenticated retains execute privilege on numeric fn_treat_batch'
+  'fn_treat_batch no longer exists in any overload'
 );
 
 select has_function(
@@ -269,43 +255,6 @@ select throws_ok(
 select throws_ok(
   $$
     select public.fn_assign_batches_for_testing(
-      'c1000000-0000-0000-0000-000000000004',
-      '[{"batch_id":"c2000000-0000-0000-0000-000000000006","assignment_type":"sample","sample_weight_grams":50}]'::jsonb
-    )
-  $$,
-  '42501',
-  null,
-  'a can_process-only link cannot receive a sample assignment'
-);
-
-select throws_ok(
-  $$
-    select public.fn_assign_batches_for_testing(
-      'c1000000-0000-0000-0000-000000000003',
-      '[{"batch_id":"c2000000-0000-0000-0000-000000000006","assignment_type":"full_batch"}]'::jsonb
-    )
-  $$,
-  '42501',
-  null,
-  'a can_test-only link cannot receive a full-batch assignment'
-);
-
-select throws_ok(
-  $$
-    select public.fn_assign_batches_for_testing(
-      'c1000000-0000-0000-0000-000000000003',
-      '[{"batch_id":"c2000000-0000-0000-0000-000000000006","assignment_type":"sample","sample_weight_grams":50},
-        {"batch_id":"c2000000-0000-0000-0000-000000000007","assignment_type":"full_batch"}]'::jsonb
-    )
-  $$,
-  '42501',
-  null,
-  'a mixed request requires every capability, not just one'
-);
-
-select throws_ok(
-  $$
-    select public.fn_assign_batches_for_testing(
       'c1000000-0000-0000-0000-000000000002',
       '[]'::jsonb
     )
@@ -341,7 +290,7 @@ select is(
 );
 
 -- ============================================================================
--- 4. A mixed request from a fully capable link succeeds
+-- 4. A multi-item request over an accepted link succeeds
 -- ============================================================================
 
 select lives_ok(
@@ -352,7 +301,7 @@ select lives_ok(
         {"batch_id":"c2000000-0000-0000-0000-000000000007","assignment_type":"full_batch"}]'::jsonb
     )
   $$,
-  'a link holding both capabilities accepts a mixed request'
+  'an accepted link accepts a request covering several batches'
 );
 
 select is(
@@ -664,7 +613,7 @@ values (
 set local role authenticated;
 
 -- ============================================================================
--- 8. An active sample assignment reads and tests, but does not process
+-- 8. An active sample assignment reads and tests
 -- ============================================================================
 
 select set_config(
@@ -701,22 +650,6 @@ select is(
   ),
   1::bigint,
   'an active assignment grants collection SELECT to the Testing organisation'
-);
-
-select throws_ok(
-  $$
-    select public.fn_treat_batch(
-      'c2000000-0000-0000-0000-000000000002',
-      900,
-      '["sort"]'::jsonb,
-      'HQ'::public.batch_quality,
-      null,
-      'sample assignment must not permit treating'
-    )
-  $$,
-  '42501',
-  null,
-  'a sample assignment does not permit treating the batch'
 );
 
 select lives_ok(
@@ -775,74 +708,7 @@ select is(
 );
 
 -- ============================================================================
--- 9. Treatment under an active full-batch assignment
--- ============================================================================
-
-select lives_ok(
-  $$
-    select public.fn_treat_batch(
-      'c2000000-0000-0000-0000-000000000001',
-      900,
-      '["sort"]'::jsonb,
-      'HQ'::public.batch_quality,
-      null,
-      'treated under full-batch custody'
-    )
-  $$,
-  'the current custodian may treat a batch held under a full-batch assignment'
-);
-
-select is(
-  (
-    select b.organisation_id
-    from public.treatments t
-    inner join public.batches b on b.id = t.output_batch_id
-    where t.input_batch_id = 'c2000000-0000-0000-0000-000000000001'
-  ),
-  'c1000000-0000-0000-0000-000000000001'::uuid,
-  'the treatment output keeps the General organisation as owner'
-);
-
-select is(
-  (
-    select cbc.organisation_id
-    from public.treatments t
-    inner join public.current_batch_custody cbc on cbc.batch_id = t.output_batch_id
-    where t.input_batch_id = 'c2000000-0000-0000-0000-000000000001'
-  ),
-  'c1000000-0000-0000-0000-000000000002'::uuid,
-  'the treatment output stays in the custody of the Testing organisation'
-);
-
-select is(
-  (
-    select count(*)
-    from public.batch_testing_assignment
-    where assigned_to_org_id = 'c1000000-0000-0000-0000-000000000002'
-      and returned_at is null
-      and batch_id in (
-        select t.output_batch_id
-        from public.treatments t
-        where t.input_batch_id = 'c2000000-0000-0000-0000-000000000001'
-      )
-  ),
-  1::bigint,
-  'exactly one active assignment follows the treatment output'
-);
-
-select is(
-  (
-    select count(*)
-    from public.batch_testing_assignment
-    where batch_id = 'c2000000-0000-0000-0000-000000000001'
-      and returned_at is null
-  ),
-  0::bigint,
-  'the assignment moves to the successor rather than being duplicated'
-);
-
--- ============================================================================
--- 10. Returning an assignment
+-- 9. Returning an assignment
 -- ============================================================================
 
 -- Full batch: custody returns to the assigning General organisation.
@@ -854,11 +720,7 @@ select lives_ok(
         from public.batch_testing_assignment
         where assigned_to_org_id = 'c1000000-0000-0000-0000-000000000002'
           and returned_at is null
-          and batch_id in (
-            select t.output_batch_id
-            from public.treatments t
-            where t.input_batch_id = 'c2000000-0000-0000-0000-000000000001'
-          )
+          and batch_id = 'c2000000-0000-0000-0000-000000000001'
       ),
       null,
       null
@@ -872,9 +734,8 @@ reset role;
 select is(
   (
     select cbc.organisation_id
-    from public.treatments t
-    inner join public.current_batch_custody cbc on cbc.batch_id = t.output_batch_id
-    where t.input_batch_id = 'c2000000-0000-0000-0000-000000000001'
+    from public.current_batch_custody cbc
+    where cbc.batch_id = 'c2000000-0000-0000-0000-000000000001'
   ),
   'c1000000-0000-0000-0000-000000000001'::uuid,
   'returning a full batch restores custody to the assigning organisation'
@@ -967,7 +828,7 @@ select throws_ok(
 );
 
 -- ============================================================================
--- 11. A returned assignment grants nothing
+-- 10. A returned assignment grants nothing
 -- ============================================================================
 
 select is(
@@ -1006,11 +867,7 @@ select is(
   (
     select count(*)
     from public.batches
-    where id in (
-      select t.output_batch_id
-      from public.treatments t
-      where t.input_batch_id = 'c2000000-0000-0000-0000-000000000001'
-    )
+    where id = 'c2000000-0000-0000-0000-000000000001'
   ),
   0::bigint,
   'past custody alone does not keep a returned batch readable'

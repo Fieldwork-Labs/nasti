@@ -5,8 +5,6 @@ CREATE TABLE "public"."organisation_link_request" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "general_org_id" "uuid" NOT NULL,
     "testing_org_id" "uuid" NOT NULL,
-    "can_process" boolean DEFAULT false NOT NULL,
-    "can_test" boolean DEFAULT false NOT NULL,
     "created_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "accepted_by" "uuid",
@@ -25,8 +23,6 @@ CREATE INDEX "idx_organisation_link_request_accepted_at" ON "public"."organisati
 
 -- Add comments for documentation
 COMMENT ON TABLE "public"."organisation_link_request" IS 'Pending link requests between General and Testing organisations';
-COMMENT ON COLUMN "public"."organisation_link_request"."can_process" IS 'Requested permission for testing org to receive batches for processing';
-COMMENT ON COLUMN "public"."organisation_link_request"."can_test" IS 'Requested permission for testing org to receive batches for testing';
 
 -- Set table owner
 ALTER TABLE "public"."organisation_link_request" OWNER TO "postgres";

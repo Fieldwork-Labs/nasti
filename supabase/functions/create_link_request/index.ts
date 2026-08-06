@@ -54,25 +54,12 @@ Deno.serve((r) =>
       }
 
       // Get request body
-      const { testing_org_id, can_test, can_process } = await req.json()
+      const { testing_org_id } = await req.json()
 
       // Validate inputs
       if (!testing_org_id) {
         return new Response(
           JSON.stringify({ error: "Missing required field: testing_org_id" }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        )
-      }
-
-      if (!can_test && !can_process) {
-        return new Response(
-          JSON.stringify({
-            error:
-              "At least one permission (can_test or can_process) is required",
-          }),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -199,8 +186,6 @@ Deno.serve((r) =>
         .insert({
           general_org_id: orgUser.organisation_id,
           testing_org_id,
-          can_test,
-          can_process,
           created_by: userData.user.id,
         })
         .select()
@@ -232,19 +217,12 @@ Deno.serve((r) =>
         const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY")
 
         if (mailgunDomain && mailgunApiKey) {
-          const permissions: string[] = []
-          if (can_test) permissions.push("Test Samples")
-          if (can_process) permissions.push("Process Batches")
-
           const emailBody = `
           <html>
             <body>
               <h2>New Link Request</h2>
               <p><strong>${org.name}</strong> has requested to link with your testing organisation.</p>
-              <p><strong>Requested Permissions:</strong></p>
-              <ul>
-                ${permissions.map((p) => `<li>${p}</li>`).join("")}
-              </ul>
+              <p>Accepting lets them send you bags of seed for testing.</p>
               <p>Please log in to NASTI to accept or reject this request.</p>
               <p><a href="${Deno.env.get("FRONTEND_URL")}/settings/testing-orgs">View Link Request</a></p>
               <p>Regards,<br/>NASTI Team</p>

@@ -362,12 +362,17 @@ CREATE POLICY batch_merges_delete ON public.batch_merges
 -- ============================================================================
 -- treatments
 -- ============================================================================
+-- Treating is no longer a supported workflow, so this table is historical: it
+-- keeps resolving for batch_lineage, batch_history and quality_test_statistics,
+-- and no new rows are ever written. Read access only — fn_treat_batch is gone,
+-- and without this a FOR ALL policy would leave any authenticated user able to
+-- fabricate lineage by inserting directly.
 DROP POLICY IF EXISTS custodian_can_access_treatments ON public.treatments;
+DROP POLICY IF EXISTS treatments_all ON public.treatments;
 
-CREATE POLICY treatments_all ON public.treatments
-  FOR ALL TO authenticated
-  USING (public.is_current_custodian((SELECT auth.uid()), input_batch_id))
-  WITH CHECK (public.is_current_custodian((SELECT auth.uid()), input_batch_id));
+CREATE POLICY treatments_select ON public.treatments
+  FOR SELECT TO authenticated
+  USING (public.is_current_custodian((SELECT auth.uid()), input_batch_id));
 
 -- ============================================================================
 -- batch_storage

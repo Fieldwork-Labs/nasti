@@ -13,6 +13,7 @@ the status row when finished.
 |---|---|---:|---:|---|---|
 | [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | DONE |
 | [003](./003-complete-testing-organisation-assignments.md) | Complete and secure testing-organisation assignments | P1 | L | — | DONE — `feat/new-inventory` |
+| [004](./004-sub-batch-testing-assignments.md) | Make testing assignments bag-based | P1 | L | 003 | TODO |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason, or
 `REJECTED` with a rationale.
@@ -61,6 +62,16 @@ a time without repeating the audit.
 - Plan 003 is independent of the completed merge plan, but its custody-transfer
   implementation must preserve the storage-tenancy invariants introduced by
   `20260729000001_storage_relationship_tenancy.sql`.
+- Plan 004 builds on Plan 003's secured assignment/RLS contract, but changes the
+  physical assignment unit from a parent batch to one `sub_batch`/bag, and moves
+  custody onto the bag as `sub_batches.held_by_org_id`. Nothing is deployed and
+  there is no legacy data, so it edits the existing migrations in place rather
+  than appending new ones.
+- Plan 004 removes treatments rather than making them bag-scoped: Testing
+  organisations only test. `fn_treat_batch` goes; the `treatments` table and the
+  views that join it stay and go empty, pending a stakeholder decision.
+- Plan 004 is backend-first. The assignment UI is being redesigned separately,
+  so the plan deletes the old modal instead of porting it.
 - Issue 8 should be implemented alongside or immediately before issues 1–5.
   Plan 001 includes the merge-specific database tests needed to make issue 1
   safe; issue 8 remains broader processing-workflow coverage.

@@ -1,6 +1,4 @@
-import { useState } from "react"
 import { Button } from "@nasti/ui/button"
-import { Checkbox } from "@nasti/ui/checkbox"
 import { useCreateLinkRequest } from "@/hooks/useTestingOrgs"
 import { useToast } from "@nasti/ui/hooks"
 import type { Organisation } from "@nasti/common/types"
@@ -18,24 +16,10 @@ export const LinkRequestModal = ({
 }: LinkRequestModalProps) => {
   const { toast } = useToast()
   const createRequest = useCreateLinkRequest()
-  const [canTest, setCanTest] = useState(false)
-  const [canProcess, setCanProcess] = useState(false)
-  const [error, setError] = useState<string>()
 
   const handleSubmit = async () => {
-    setError(undefined)
-
-    if (!canTest && !canProcess) {
-      setError("Please select at least one permission")
-      return
-    }
-
     try {
-      await createRequest.mutateAsync({
-        testing_org_id: testingOrg.id,
-        can_test: canTest,
-        can_process: canProcess,
-      })
+      await createRequest.mutateAsync({ testing_org_id: testingOrg.id })
       onSuccess()
     } catch (err) {
       toast({
@@ -48,55 +32,15 @@ export const LinkRequestModal = ({
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="space-y-2">
         <p className="text-muted-foreground text-sm">
-          Select the permissions you want to grant to {testingOrg.name}:
+          Request a link with {testingOrg.name}.
+        </p>
+        <p className="text-muted-foreground text-sm">
+          Once they accept, you can send them bags of seed for testing. Each bag
+          stays in their custody until it is returned or used up.
         </p>
       </div>
-
-      <div className="space-y-3">
-        <div className="flex items-start space-x-3 rounded-lg border p-4">
-          <Checkbox
-            id="can_test"
-            checked={canTest}
-            onCheckedChange={(checked) => setCanTest(Boolean(checked))}
-          />
-          <div className="grid gap-1.5 leading-none">
-            <label
-              htmlFor="can_test"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Can Test Samples
-            </label>
-            <p className="text-muted-foreground text-sm">
-              Allow this organisation to receive sample batches for testing. The
-              main batch remains with you.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-start space-x-3 rounded-lg border p-4">
-          <Checkbox
-            id="can_process"
-            checked={canProcess}
-            onCheckedChange={(checked) => setCanProcess(Boolean(checked))}
-          />
-          <div className="grid gap-1.5 leading-none">
-            <label
-              htmlFor="can_process"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Can Process Batches
-            </label>
-            <p className="text-muted-foreground text-sm">
-              Allow this organisation to receive full batches for testing and
-              processing. Custody transfers to them temporarily.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex justify-end gap-2">
         <Button

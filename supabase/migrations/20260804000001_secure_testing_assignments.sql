@@ -8,16 +8,18 @@
 --
 -- This lands as one migration because it has no useful intermediate state. Each
 -- part below closes a hole the others leave open — RPCs without the policy
--- changes still allow direct table writes; hardened policies without the
--- secured fn_treat_batch still let anon consume a batch by UUID. Applied as one
--- transaction, the fix is all-or-nothing.
+-- changes still allow direct table writes. Applied as one transaction, the fix
+-- is all-or-nothing.
 --
 -- Sections:
 --
 --   1. Atomic assignment and return RPCs, and the one-active-assignment index.
 --   2. Batch, related-data and custody access rules.
---   3. fn_treat_batch: authorisation, custody, and assignment propagation.
---   4. fn_create_quality_test: completing the assignment with the first test.
+--   3. fn_create_quality_test: completing the assignment with the first test.
+--
+-- A fourth section originally secured fn_treat_batch. Treating is no longer a
+-- supported workflow — Testing organisations only test — so the function is
+-- gone entirely; see 20251016000005 and 20260728000001.
 --
 -- Exception codes are a contract with the edge wrappers and are used
 -- consistently throughout:
@@ -72,8 +74,6 @@ DECLARE
   v_user_id uuid := (SELECT auth.uid());
   v_caller_org_id uuid;
   v_caller_role public.org_user_types;
-  v_can_test boolean;
-  v_can_process boolean;
   v_has_sample boolean := false;
   v_has_full boolean := false;
   v_batch_ids uuid[] := '{}'::uuid[];
@@ -177,24 +177,16 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  SELECT ol.can_test, ol.can_process
-    INTO v_can_test, v_can_process
-  FROM public.organisation_link ol
-  WHERE ol.general_org_id = v_caller_org_id
-    AND ol.testing_org_id = p_testing_org_id;
-
-  IF NOT FOUND THEN
+  -- An accepted link is the whole permission check. The link used to carry
+  -- can_test and can_process flags, but with treating gone every assignment is
+  -- the same thing, so there is nothing left for them to discriminate.
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.organisation_link ol
+    WHERE ol.general_org_id = v_caller_org_id
+      AND ol.testing_org_id = p_testing_org_id
+  ) THEN
     RAISE EXCEPTION 'Your organisation is not linked to that Testing organisation'
-      USING ERRCODE = '42501';
-  END IF;
-
-  IF v_has_sample AND NOT v_can_test THEN
-    RAISE EXCEPTION 'The link with that Testing organisation does not permit sample testing'
-      USING ERRCODE = '42501';
-  END IF;
-
-  IF v_has_full AND NOT v_can_process THEN
-    RAISE EXCEPTION 'The link with that Testing organisation does not permit full batch processing'
       USING ERRCODE = '42501';
   END IF;
 
@@ -702,294 +694,7 @@ CREATE POLICY tests_select ON public.tests
 
 
 -- ############################################################################
--- 3. TREATMENT
--- ############################################################################
-
--- Secure fn_treat_batch and make treatment carry the assignment forward.
---
--- The numeric-signature fn_treat_batch introduced in 20260728000001 is
--- SECURITY DEFINER, and the migration granted EXECUTE to authenticated without
--- revoking the default PUBLIC grant that every new function receives. The
--- effective result on the local database is that anon can execute it. It also
--- never looked at auth.uid(): anyone holding a batch UUID could consume that
--- batch and mint a successor, entirely outside RLS.
---
--- Two further defects are fixed here:
---
---   * output custody was given to batches.organisation_id, the owner. When a
---     Testing organisation treated a batch it was holding, the successor
---     appeared in the owner's custody and vanished from the hands actually
---     holding the seed.
---   * an active assignment was COPIED to the output while the input's
---     assignment stayed open, leaving two active assignments for one physical
---     lot of seed. The assignment now moves.
---
--- The parameter signature is unchanged so that the web client and generated
--- types keep working.
-
-CREATE OR REPLACE FUNCTION public.fn_treat_batch(
-  p_input_batch_id UUID,
-  p_output_weight NUMERIC,
-  p_treat JSONB,
-  p_quality_assessment public.batch_quality,
-  p_origin_batch_weight NUMERIC DEFAULT NULL,
-  p_notes TEXT DEFAULT NULL
-)
-RETURNS UUID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-DECLARE
-  v_user_id UUID := (SELECT auth.uid());
-  v_caller_org_id UUID;
-  v_output_batch_id UUID;
-  v_collection_id UUID;
-  v_batch_code TEXT;
-  v_collection_code TEXT;
-  v_increment INTEGER;
-  v_organisation_id UUID;
-  v_input_weight NUMERIC;
-  v_custodian_org_id UUID;
-  v_assignment public.batch_testing_assignment;
-  v_sub_batch RECORD;
-  v_received_at timestamptz := clock_timestamp();
-BEGIN
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication required'
-      USING ERRCODE = '28000';
-  END IF;
-
-  SELECT ou.organisation_id
-    INTO v_caller_org_id
-  FROM public.org_user ou
-  WHERE ou.user_id = v_user_id
-    AND ou.is_active = true
-  ORDER BY ou.joined_at ASC
-  LIMIT 1;
-
-  IF v_caller_org_id IS NULL THEN
-    RAISE EXCEPTION 'Active organisation membership required'
-      USING ERRCODE = '42501';
-  END IF;
-
-  -- ----------------------------------------------------------------
-  -- Lock the input batch and its assignment before deciding anything
-  -- ----------------------------------------------------------------
-  SELECT b.collection_id, b.organisation_id, b.weight_grams
-    INTO v_collection_id, v_organisation_id, v_input_weight
-  FROM public.batches b
-  WHERE b.id = p_input_batch_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Input batch not found'
-      USING ERRCODE = 'P0002';
-  END IF;
-
-  SELECT * INTO v_assignment
-  FROM public.batch_testing_assignment bta
-  WHERE bta.batch_id = p_input_batch_id
-    AND bta.returned_at IS NULL
-  FOR UPDATE;
-
-  -- A sample is seed on loan for testing, not custody of the batch.
-  IF FOUND
-     AND v_assignment.assignment_type = 'sample'
-     AND v_assignment.assigned_to_org_id = v_caller_org_id THEN
-    RAISE EXCEPTION 'A sample assignment does not permit treating the batch'
-      USING ERRCODE = '42501';
-  END IF;
-
-  SELECT bc.organisation_id
-    INTO v_custodian_org_id
-  FROM public.batch_custody bc
-  WHERE bc.batch_id = p_input_batch_id
-  ORDER BY bc.received_at DESC, bc.id DESC
-  LIMIT 1;
-
-  IF v_custodian_org_id IS DISTINCT FROM v_caller_org_id THEN
-    RAISE EXCEPTION 'Only the current custodian may treat this batch'
-      USING ERRCODE = '42501';
-  END IF;
-
-  -- ----------------------------------------------------------------
-  -- Validate the request
-  -- ----------------------------------------------------------------
-  IF v_collection_id IS NULL THEN
-    RAISE EXCEPTION 'Input batch has no collection'
-      USING ERRCODE = 'P0002';
-  END IF;
-
-  IF p_output_weight IS NULL OR p_output_weight <= 0 THEN
-    RAISE EXCEPTION 'Output weight must be greater than zero'
-      USING ERRCODE = '22023';
-  END IF;
-
-  IF jsonb_typeof(p_treat) IS DISTINCT FROM 'array'
-     OR jsonb_array_length(p_treat) = 0 THEN
-    RAISE EXCEPTION 'At least one treatment must be recorded'
-      USING ERRCODE = '22023';
-  END IF;
-
-  -- A batch with no recorded weight is an origin batch: the caller states the
-  -- weight now, and it becomes the input weight.
-  IF v_input_weight IS NULL THEN
-    IF p_origin_batch_weight IS NULL THEN
-      RAISE EXCEPTION 'origin_batch_weight must be provided when treating a batch with NULL weight'
-        USING ERRCODE = '22023';
-    END IF;
-
-    IF p_origin_batch_weight <= 0 THEN
-      RAISE EXCEPTION 'Origin batch weight must be greater than zero'
-        USING ERRCODE = '22023';
-    END IF;
-
-    UPDATE public.batches
-    SET weight_grams = p_origin_batch_weight
-    WHERE id = p_input_batch_id;
-
-    v_input_weight := p_origin_batch_weight;
-  ELSIF v_input_weight <= 0 THEN
-    RAISE EXCEPTION 'Input batch weight must be greater than zero'
-      USING ERRCODE = '22023';
-  END IF;
-
-  SELECT c.code INTO v_collection_code
-  FROM public.collection c
-  WHERE c.id = v_collection_id;
-
-  IF v_collection_code IS NULL THEN
-    RAISE EXCEPTION 'Collection not found or has no code'
-      USING ERRCODE = 'P0002';
-  END IF;
-
-  -- ----------------------------------------------------------------
-  -- Create the successor
-  -- ----------------------------------------------------------------
-  SELECT COALESCE(MAX(
-    CASE
-      WHEN b.code ~ ('^' || v_collection_code || '-' || p_quality_assessment::text || '-[0-9]+$')
-      THEN CAST(SUBSTRING(b.code FROM '[0-9]+$') AS INTEGER)
-      ELSE 0
-    END
-  ), 0) + 1
-  INTO v_increment
-  FROM public.batches b
-  WHERE b.collection_id = v_collection_id;
-
-  v_batch_code := v_collection_code || '-' || p_quality_assessment::text || '-' || v_increment::text;
-
-  -- Ownership follows the input batch, never the custodian: a Testing
-  -- organisation treating seed on someone else's behalf does not acquire it.
-  INSERT INTO public.batches (
-    collection_id,
-    code,
-    weight_grams,
-    notes,
-    organisation_id
-  ) VALUES (
-    v_collection_id,
-    v_batch_code,
-    p_output_weight,
-    p_notes,
-    v_organisation_id
-  )
-  RETURNING id INTO v_output_batch_id;
-
-  -- Custody follows the hands the seed is actually in.
-  INSERT INTO public.batch_custody (
-    batch_id,
-    organisation_id,
-    previous_organisation_id,
-    transferred_by,
-    received_at,
-    notes
-  ) VALUES (
-    v_output_batch_id,
-    v_custodian_org_id,
-    NULL,
-    v_user_id,
-    v_received_at,
-    'Batch created via treating'
-  );
-
-  INSERT INTO public.treatments (
-    input_batch_id,
-    output_batch_id,
-    treat,
-    quality_assessment,
-    notes,
-    created_by,
-    organisation_id
-  ) VALUES (
-    p_input_batch_id,
-    v_output_batch_id,
-    p_treat,
-    p_quality_assessment,
-    p_notes,
-    v_user_id,
-    v_organisation_id
-  );
-
-  INSERT INTO public.sub_batches (batch_id, weight_grams, notes)
-  VALUES (v_output_batch_id, p_output_weight, 'Initial sub-batch from treating');
-
-  -- Consume the input batch's bags.
-  FOR v_sub_batch IN
-    SELECT sb.id, sb.weight_grams + COALESCE(
-      (
-        SELECT SUM(wa.weight_grams)
-        FROM public.batch_weight_adjustments wa
-        WHERE wa.sub_batch_id = sb.id
-      ),
-      0
-    ) AS effective_weight
-    FROM public.sub_batches sb
-    WHERE sb.batch_id = p_input_batch_id
-  LOOP
-    IF v_sub_batch.effective_weight > 0 THEN
-      INSERT INTO public.batch_weight_adjustments (
-        sub_batch_id,
-        weight_grams,
-        reason,
-        created_by
-      ) VALUES (
-        v_sub_batch.id,
-        -v_sub_batch.effective_weight,
-        'Batch treated (' || p_treat::text || '). Output weight: ' || p_output_weight || 'g.',
-        v_user_id
-      );
-    END IF;
-  END LOOP;
-
-  -- ----------------------------------------------------------------
-  -- The assignment follows the seed rather than being duplicated
-  -- ----------------------------------------------------------------
-  IF v_assignment.id IS NOT NULL
-     AND v_assignment.assignment_type = 'full_batch' THEN
-    UPDATE public.batch_testing_assignment
-    SET batch_id = v_output_batch_id
-    WHERE id = v_assignment.id;
-  END IF;
-
-  RETURN v_output_batch_id;
-END;
-$$;
-
-COMMENT ON FUNCTION public.fn_treat_batch(uuid, numeric, jsonb, public.batch_quality, numeric, text) IS
-  'Treats a batch held by the caller into a successor batch. Ownership is preserved, custody follows the current custodian, and an active full-batch testing assignment moves to the successor.';
-
-REVOKE ALL PRIVILEGES
-  ON FUNCTION public.fn_treat_batch(uuid, numeric, jsonb, public.batch_quality, numeric, text)
-  FROM PUBLIC, anon;
-GRANT EXECUTE
-  ON FUNCTION public.fn_treat_batch(uuid, numeric, jsonb, public.batch_quality, numeric, text)
-  TO authenticated;
-
-
--- ############################################################################
--- 4. QUALITY TEST COMPLETION
+-- 3. QUALITY TEST COMPLETION
 -- ############################################################################
 
 -- Recording the first quality test completes the testing assignment.
