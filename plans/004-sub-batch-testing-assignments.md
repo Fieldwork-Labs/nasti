@@ -130,7 +130,8 @@ Reading `Y` = row is selectable, `—` = not selectable.
 |---|---|---|---|---|---|---|---|---|
 | General, owner org | Y | Y | — | Y | Y | Y | Y | Y |
 | Testing, assigned org, while active | Y | — | Y (theirs) | Y | Y | Y | — | Y |
-| Testing, after close | — | — | Y (theirs) | — | — | — | — | Y |
+| Testing, after close, holding a retained bag | — | — | Y (theirs) | **Y** | — | — | — | Y |
+| Testing, after close, holding nothing | — | — | n/a | — | — | — | — | Y |
 | Any other organisation | — | — | — | — | — | — | — | — |
 
 Notes:
@@ -138,6 +139,18 @@ Notes:
 - A General organisation sees the assigned bag while it is out because an
   assignment row names it as the sender, not because it owns the parent batch.
   A parent-batch-only predicate would leak the retained bag and is wrong here.
+- **Parent-batch visibility follows the bag, not the assignment.** A Testing
+  organisation that retained a bag keeps seeing that bag's parent batch after
+  the assignment closes, because the retained bag sits under the same parent and
+  `holds_any_bag_of_batch` is still true. That is correct rather than a leak:
+  parent metadata — species, collection — is what makes a retained bag
+  intelligible to whoever is holding the seed. Visibility ends when Testing
+  holds nothing of that batch. An earlier version of this table said parent
+  metadata went dark on close; it only does so when nothing was retained.
+- Tests a Testing organisation performed stay visible to it permanently, via the
+  performing-organisation arm of `tests_select`. That is Plan 003 behaviour and
+  is deliberate: a laboratory keeps its own results. The "Tests" column above
+  refers to tests performed by *others* on the assigned bag.
 - Admin versus Member changes what a user may **do**, not what they may see.
   Read visibility is per organisation and gated by the existing `org_permission`
   system from `20260803000000_member_permissions.sql` and the user's untracked
