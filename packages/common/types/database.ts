@@ -2391,6 +2391,7 @@ export type Database = {
         Args: { p_batch_ids: string[] }
         Returns: string
       }
+      auth_org_permissions: { Args: never; Returns: string[] }
       auth_org_role: { Args: never; Returns: string }
       batch_weight_info: {
         Args: { batch_row: Database["public"]["Tables"]["batches"]["Row"] }
@@ -2405,6 +2406,7 @@ export type Database = {
         Args: { input_values: number[] }
         Returns: number
       }
+      can_read_batch: { Args: { p_batch_id: string }; Returns: boolean }
       current_custodian_org_id: {
         Args: { p_batch_id: string }
         Returns: string
@@ -2445,6 +2447,28 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      fn_assign_batches_for_testing: {
+        Args: { p_assignments: Json; p_testing_org_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          assignment_type: string
+          batch_id: string
+          completed_at: string | null
+          id: string
+          returned_at: string | null
+          sample_weight_grams: number | null
+          subsample_storage_location_id: string | null
+          subsample_weight_grams: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "batch_testing_assignment"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       fn_bag_and_store_cleaning_outputs: {
         Args: { p_bags: Json; p_cleaning_id: string }
         Returns: string[]
@@ -2514,6 +2538,32 @@ export type Database = {
       fn_remove_storage_location: {
         Args: { p_location_id: string }
         Returns: string
+      }
+      fn_return_batch_from_testing: {
+        Args: {
+          p_assignment_id: string
+          p_subsample_storage_location_id?: string
+          p_subsample_weight_grams?: number
+        }
+        Returns: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          assignment_type: string
+          batch_id: string
+          completed_at: string | null
+          id: string
+          returned_at: string | null
+          sample_weight_grams: number | null
+          subsample_storage_location_id: string | null
+          subsample_weight_grams: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "batch_testing_assignment"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       fn_set_sub_batch_storage: {
         Args: {
@@ -2775,6 +2825,11 @@ export type Database = {
       }
       get_user_organisation_id: { Args: never; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
+      has_active_testing_assignment: {
+        Args: { p_batch_id: string }
+        Returns: boolean
+      }
+      has_org_permission: { Args: { p_permission: string }; Returns: boolean }
       http: {
         Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
@@ -2904,6 +2959,7 @@ export type Database = {
         Args: { auth_uid: string; batch_id: string }
         Returns: boolean
       }
+      is_batch_owner: { Args: { p_batch_id: string }; Returns: boolean }
       is_current_custodian: {
         Args: { p_batch_id: string; p_user_id: string }
         Returns: boolean

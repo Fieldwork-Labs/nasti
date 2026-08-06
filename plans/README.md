@@ -12,10 +12,33 @@ the status row when finished.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---:|---:|---|---|
 | [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | DONE |
-| [003](./003-complete-testing-organisation-assignments.md) | Complete and secure testing-organisation assignments | P1 | L | — | TODO |
+| [003](./003-complete-testing-organisation-assignments.md) | Complete and secure testing-organisation assignments | P1 | L | — | DONE — `feat/new-inventory` |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason, or
 `REJECTED` with a rationale.
+
+### Plan 003 completion notes
+
+Every Done criterion in Plan 003 is satisfied. All database work landed in a
+single migration,
+`supabase/migrations/20260804000001_secure_testing_assignments.sql`, and
+`pnpm test:db` passes 174 assertions across 8 files against it.
+
+The migration was verified in both directions: applied fresh onto the
+pre-migration schema inside a rolled-back transaction while the whole pgTAP
+suite ran against it, and then again on top of itself once applied for real,
+confirming it is safe to re-apply. Its dependencies — the `batch_quality` and
+`org_permission` enums, `batch_testing_assignment`, `batch_custody`,
+`organisation_link`, `storage_locations` — are all created by earlier
+migrations, and its two `CREATE OR REPLACE FUNCTION` statements match the
+signatures left by `20260728000001`.
+
+Note for whoever next runs `supabase db reset`: this migration and
+`20260803000000_member_permissions.sql` were both applied out of band, so
+`supabase_migrations.schema_migrations` tops out at `20260729000002` and a reset
+will replay them. A reset also exercises Supabase's own bootstrap, including the
+`powersync_role` prerequisite that has broken resets on this project before.
+That is a pre-existing condition, unrelated to this plan.
 
 ## Audit backlog
 
