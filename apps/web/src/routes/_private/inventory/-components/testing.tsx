@@ -2,13 +2,10 @@ import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
 import { motion } from "motion/react"
-import { useState } from "react"
 import { z } from "zod"
 
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
-import { BatchTableRow } from "./BatchTableRow/Testing"
-import { BatchStorageModal } from "@/components/inventory/modals"
-import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import { BagTableRow } from "./BatchTableRow/Testing"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
 
 // Define search schema for URL parameters
@@ -23,17 +20,10 @@ export const inventorySearchSchemaTesting = z.object({
 })
 
 export function InventoryPageTesting() {
-  // Local state for modals
-  const [subBatchStorageMove, setSubBatchStorageMove] = useState<{
-    batch: BatchWithCurrentLocationAndSpecies
-    subBatchId: string
-  } | null>(null)
-
   const {
-    data: batches = [],
+    assignedBags,
     isLoading,
     error,
-    assignmentsByBatchId,
     handleSort,
     sortField,
     sortDirection,
@@ -58,7 +48,7 @@ export function InventoryPageTesting() {
           <div>
             <h1 className="text-3xl font-bold">{"Testing Assignments"}</h1>
             <p className="text-muted-foreground">
-              Manage batches assigned for testing and quality assurance
+              Bags sent to you for testing and quality assurance
             </p>
           </div>
         </div>
@@ -73,7 +63,7 @@ export function InventoryPageTesting() {
           <p className="text-muted-foreground text-sm">
             {isLoading || error
               ? null
-              : `Showing ${batches.length} assignment${batches.length === 1 ? "" : "s"}`}
+              : `Showing ${assignedBags.length} bag${assignedBags.length === 1 ? "" : "s"}`}
           </p>
         </div>
 
@@ -94,13 +84,13 @@ export function InventoryPageTesting() {
           )}
           {!isLoading && !error && (
             <>
-              {batches.length === 0 ? (
+              {assignedBags.length === 0 ? (
                 <div className="p-8 text-center">
                   <div className="text-muted-foreground">
                     <h3 className="mb-2 text-lg font-semibold">
-                      No Assignments Found
+                      No bags to test
                     </h3>
-                    <p>Batches assigned to you for testing will appear here.</p>
+                    <p>Bags sent to you for testing will appear here.</p>
                   </div>
                 </div>
               ) : (
@@ -134,7 +124,7 @@ export function InventoryPageTesting() {
                           Assignment
                         </th>
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
-                          Bags
+                          Bag
                         </th>
                         <th className="px-4 py-3 text-right font-semibold">
                           Weight (g)
@@ -156,15 +146,8 @@ export function InventoryPageTesting() {
                       </tr>
                     </thead>
                     <tbody>
-                      {batches.map((batch) => (
-                        <BatchTableRow
-                          key={batch.id}
-                          batch={batch}
-                          assignment={assignmentsByBatchId.get(batch.id)}
-                          onSubBatchStorageMove={(batch, subBatchId) =>
-                            setSubBatchStorageMove({ batch, subBatchId })
-                          }
-                        />
+                      {assignedBags.map((bag) => (
+                        <BagTableRow key={bag.assignment.id} bag={bag} />
                       ))}
                     </tbody>
                   </motion.table>
@@ -173,17 +156,6 @@ export function InventoryPageTesting() {
             </>
           )}
         </Card>
-
-        {/* Modals */}
-
-        {subBatchStorageMove && (
-          <BatchStorageModal
-            isOpen={Boolean(subBatchStorageMove)}
-            onClose={() => setSubBatchStorageMove(null)}
-            batch={subBatchStorageMove.batch}
-            subBatchId={subBatchStorageMove.subBatchId}
-          />
-        )}
       </div>
     </div>
   )

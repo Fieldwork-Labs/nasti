@@ -107,7 +107,7 @@ const AssignmentModeActions = ({
         variant="outline"
         className="border-blue-500 bg-blue-50 text-xs text-blue-700"
       >
-        Already Assigned
+        Bags out
       </Badge>
     )
   }
@@ -241,8 +241,8 @@ const NormalModeActions = ({
               onClick={() => onAssignForTesting(batch)}
               title={
                 hasActiveAssignment
-                  ? "Batch already assigned"
-                  : "Assign for Testing"
+                  ? "Some bags are already out for testing"
+                  : "Send bags for testing"
               }
             >
               <SendIcon className="h-4 w-4" />
@@ -250,7 +250,7 @@ const NormalModeActions = ({
           </TooltipTrigger>
           {hasActiveAssignment && (
             <TooltipContent>
-              Batch already has an active assignment
+              Some bags of this batch are already out for testing
             </TooltipContent>
           )}
         </Tooltip>
@@ -288,7 +288,7 @@ export const BatchTableRow = ({
     string | false
   >(false)
 
-  const { canDelete, activeAssignment, detailLoading } = useBatchRowData(
+  const { canDelete, activeAssignments, detailLoading } = useBatchRowData(
     batch.id,
   )
 
@@ -300,7 +300,9 @@ export const BatchTableRow = ({
   }, [combineMode?.isActive, assignmentMode?.isActive])
 
   const mergeDisabled = Boolean(combineMode && !combineMode.canCombine)
-  const hasActiveAssignment = Boolean(activeAssignment)
+  // "Some of this batch is out at a laboratory" — no longer "the batch is out",
+  // since bags leave individually and siblings stay put.
+  const hasActiveAssignment = activeAssignments.size > 0
 
   // Determine row styling based on mode
   const rowClassName = cn(
@@ -355,8 +357,8 @@ export const BatchTableRow = ({
   }
 
   // Determine status badge
-  const statusBadge = activeAssignment ? (
-    <GeneralOrgAssignmentBadge assignment={activeAssignment} />
+  const statusBadge = hasActiveAssignment ? (
+    <GeneralOrgAssignmentBadge assignments={[...activeAssignments.values()]} />
   ) : null
 
   const handleSubBatchSplit = (subBatchId: string) => {

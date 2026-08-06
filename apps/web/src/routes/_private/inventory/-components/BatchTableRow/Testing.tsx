@@ -1,23 +1,22 @@
 import { Button } from "@nasti/ui/button"
 import { useOpenClose } from "@nasti/ui/hooks"
-import { Undo2 } from "lucide-react"
+import { FlaskConical, Undo2 } from "lucide-react"
 import { useState } from "react"
 
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import { ReturnBatchModal } from "@/components/tests/ReturnBatchModal"
-import { BatchAssignmentWithOrg } from "@/hooks/useBatchAssignments"
+import type { AssignedBag } from "@/hooks/useTestingOrgAssignments"
 import { getAssignmentActions } from "@/lib/testingAssignments"
 import { Badge } from "@nasti/ui/badge"
 import { cn } from "@nasti/ui/utils"
-import { useBatchDetail } from "@/hooks/useBatches"
-import { BatchTableRowContainer, type BaseBatchTableRowProps } from "./Common"
 
 // =============================================================================
 // Types
 // =============================================================================
 
-type BatchTableRowTestingProps = BaseBatchTableRowProps & {
-  assignment?: BatchAssignmentWithOrg
+type BagTableRowTestingProps = {
+  bag: AssignedBag
+  className?: string
 }
 
 // =============================================================================
@@ -25,49 +24,50 @@ type BatchTableRowTestingProps = BaseBatchTableRowProps & {
 // =============================================================================
 
 /**
- * What was sent, by whom, and how much of it.
+ * Who sent it, and whether it has been tested yet.
+ *
+ * There is no sample-versus-full-batch distinction to draw any more: a sample
+ * is a bag that was split off before being sent, so by the time it arrives here
+ * it is simply a bag.
  */
-const AssignmentCell = ({
-  assignment,
-}: {
-  assignment: BatchAssignmentWithOrg
-}) => {
-  const isSample = assignment.assignment_type === "sample"
+const AssignmentCell = ({ bag }: { bag: AssignedBag }) => (
+  <div className="flex flex-col gap-1">
+    <Badge
+      variant="outline"
+      className={cn(
+        "w-fit text-xs",
+        bag.assignment.completed_at
+          ? "border-green-500 bg-green-50 text-green-700"
+          : "border-orange-500 bg-orange-50 text-orange-700",
+      )}
+    >
+      {bag.assignment.completed_at ? "Tested" : "Awaiting test"}
+    </Badge>
+    <span className="text-muted-foreground text-xs">
+      From {bag.assignment.assigned_by_org?.name ?? "unknown organisation"}
+    </span>
+  </div>
+)
 
-  return (
-    <div className="flex flex-col gap-1">
-      <Badge
-        variant="outline"
-        className={cn(
-          "w-fit text-xs",
-          assignment.completed_at
-            ? "border-green-500 bg-green-50 text-green-700"
-            : "border-orange-500 bg-orange-50 text-orange-700",
-        )}
-      >
-        {isSample ? "Test Sample" : "Full Batch"}
-        {assignment.completed_at ? " · Tested" : " · Awaiting test"}
-      </Badge>
-      <span className="text-muted-foreground text-xs">
-        {isSample && assignment.sample_weight_grams
-          ? `${assignment.sample_weight_grams}g from `
-          : "From "}
-        {assignment.assigned_by_org?.name ?? "unknown organisation"}
-      </span>
-    </div>
-  )
-}
-
-const AssignmentDatesCell = ({
-  assignment,
-}: {
-  assignment: BatchAssignmentWithOrg
-}) => (
+/**
+ * The bag itself. The container is named because the seed arrived in it; the
+ * sender's storage location is deliberately not shown, and is not readable.
+ */
+const BagCell = ({ bag }: { bag: AssignedBag }) => (
   <div className="flex flex-col text-sm">
-    <span>{new Date(assignment.assigned_at).toLocaleDateString()}</span>
-    {assignment.completed_at && (
+    <span>{bag.containerName ?? "Unlabelled container"}</span>
+    <span className="text-muted-foreground font-mono text-xs">
+      {bag.subBatchId.slice(0, 8)}
+    </span>
+  </div>
+)
+
+const AssignmentDatesCell = ({ bag }: { bag: AssignedBag }) => (
+  <div className="flex flex-col text-sm">
+    <span>{new Date(bag.assignment.assigned_at).toLocaleDateString()}</span>
+    {bag.assignment.completed_at && (
       <span className="text-muted-foreground text-xs">
-        Tested {new Date(assignment.completed_at).toLocaleDateString()}
+        Tested {new Date(bag.assignment.completed_at).toLocaleDateString()}
       </span>
     )}
   </div>
@@ -77,83 +77,95 @@ const AssignmentDatesCell = ({
 // Main Component
 // =============================================================================
 
-export const BatchTableRow = ({
-  batch,
-  assignment,
-  className,
-}: BatchTableRowTestingProps) => {
-  const [isExpanded, setIsExpanded] = useState(false)
-
-  const [qualityTestModalSubBatchId, setQualityTestModalSubBatchId] = useState<
-    string | false
-  >(false)
+/**
+ * One row per assigned bag.
+ *
+ * Deliberately not built on BatchTableRowContainer: that renders a parent batch
+ * and expands into its bag list, which is the wrong unit here and would invite
+ * a Testing organisation to reason about siblings it cannot see. The bag is the
+ * whole row.
+ */
+export const BagTableRow = ({ bag, className }: BagTableRowTestingProps) => {
+  const [isQualityTestOpen, setIsQualityTestOpen] = useState(false)
 
   const { isOpen: isReturnModalOpen, setIsOpen: setIsReturnModalOpen } =
     useOpenClose()
 
-  // Only the detail query is needed here: the assignment arrives as a prop, and
-  // a Testing organisation never deletes, so the delete-eligibility query that
-  // useBatchRowData bundles would be wasted work on every row.
-  const { isLoading: detailLoading } = useBatchDetail(batch.id)
+  // A bag consumed to zero keeps its row until the assignment is closed, but
+  // there is nothing left to test.
+  const hasSeedLeft = (bag.weights.current_weight ?? 0) > 0
 
-  // Without an assignment there is nothing for a Testing organisation to act
-  // on; the row is read-only rather than half-enabled.
-  const actions = assignment
-    ? getAssignmentActions(assignment)
-    : { canTest: false, canReturn: false, canDelete: false }
+  const actions = getAssignmentActions(bag.assignment, {
+    hasVisibleSubBatch: hasSeedLeft,
+  })
 
   return (
     <>
-      <BatchTableRowContainer
-        batch={batch}
-        isExpanded={isExpanded}
-        onToggleExpand={() => setIsExpanded(!isExpanded)}
-        className={className}
-        // A quality test is recorded against a bag, so it is offered from the
-        // expanded bag list rather than as a row-level button with nothing
-        // selected.
-        onSubBatchQualityTest={setQualityTestModalSubBatchId}
-        statusCell={
-          assignment ? <AssignmentCell assignment={assignment} /> : undefined
-        }
-        dateCell={
-          assignment ? (
-            <AssignmentDatesCell assignment={assignment} />
-          ) : undefined
-        }
-        actionButtons={
-          <>
+      <tr className={cn("hover:bg-muted/50 border-b", className)}>
+        <td className="px-4 py-3 font-mono text-sm">
+          {bag.parent.code ?? "—"}
+        </td>
+        <td className="px-4 py-3 text-sm">
+          <div className="flex flex-col">
+            <span>{bag.parent.species_name ?? "Unknown species"}</span>
+            <span className="text-muted-foreground text-xs">
+              {bag.parent.collection_code ?? ""}
+            </span>
+          </div>
+        </td>
+        <td className="px-4 py-3">
+          <AssignmentCell bag={bag} />
+        </td>
+        <td className="px-4 py-3">
+          <BagCell bag={bag} />
+        </td>
+        <td className="px-4 py-3 text-right tabular-nums">
+          {bag.weights.current_weight ?? 0}
+        </td>
+        <td className="px-4 py-3">
+          <AssignmentDatesCell bag={bag} />
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1">
+            {actions.canTest && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsQualityTestOpen(true)}
+                title="Record quality test"
+              >
+                <FlaskConical className="h-4 w-4" />
+              </Button>
+            )}
+
             {actions.canReturn && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsReturnModalOpen(true)}
-                title="Return to Owner"
+                title="Return to owner"
               >
-                <Undo2 className="mr-1 h-4 w-4" />
+                <Undo2 className="h-4 w-4" />
               </Button>
             )}
-          </>
-        }
-        detailLoading={detailLoading}
-      />
+          </div>
+        </td>
+      </tr>
 
-      {qualityTestModalSubBatchId && (
+      {isQualityTestOpen && (
         <QualityTestModal
-          isOpen={Boolean(qualityTestModalSubBatchId)}
-          onClose={() => setQualityTestModalSubBatchId(false)}
-          batchId={batch.id}
-          subBatchId={qualityTestModalSubBatchId}
+          isOpen={isQualityTestOpen}
+          onClose={() => setIsQualityTestOpen(false)}
+          batchId={bag.parent.id}
+          subBatchId={bag.subBatchId}
         />
       )}
 
-      {assignment && (
-        <ReturnBatchModal
-          isOpen={isReturnModalOpen}
-          onClose={() => setIsReturnModalOpen(false)}
-          assignment={assignment}
-        />
-      )}
+      <ReturnBatchModal
+        isOpen={isReturnModalOpen}
+        onClose={() => setIsReturnModalOpen(false)}
+        bag={bag}
+      />
     </>
   )
 }

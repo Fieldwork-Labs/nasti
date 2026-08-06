@@ -28,7 +28,10 @@ import { useState, type ReactNode } from "react"
 import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { BatchCleaningPhotos } from "@/components/batches/BatchCleaningPhotos"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
-import { useActiveBatchAssignment } from "@/hooks/useBatchAssignments"
+import {
+  useActiveAssignmentsForBatch,
+  type BatchAssignmentWithOrg,
+} from "@/hooks/useBatchAssignments"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import {
   useBatchDetail,
@@ -392,13 +395,16 @@ export const useBatchRowData = (batchId: string) => {
   const { data: batchDetail, isLoading: detailLoading } =
     useBatchDetail(batchId)
   const { data: canDeleteData } = useCanDeleteBatch(batchId)
-  const { data: activeAssignment } = useActiveBatchAssignment(batchId)
+  // Several bags of one batch can be out at different laboratories at once, so
+  // this is a set rather than a single row. Asking for one would silently show
+  // whichever the database happened to return first.
+  const { data: activeAssignments } = useActiveAssignmentsForBatch(batchId)
 
   return {
     batchDetail,
     detailLoading,
     canDelete: canDeleteData?.canDelete ?? true,
-    activeAssignment,
+    activeAssignments: activeAssignments ?? new Map(),
   }
 }
 
@@ -605,41 +611,63 @@ export const BatchCodeCell = ({
 // =============================================================================
 
 interface AssignmentBadgeProps {
-  assignment: NonNullable<ReturnType<typeof useActiveBatchAssignment>["data"]>
+  assignments: BatchAssignmentWithOrg[]
 }
 
 /**
- * Badge showing assignment status for general orgs (batch sent out)
+ * How much of this batch is currently out at a laboratory.
+ *
+ * Counted in bags, because that is the unit that leaves: a batch can have
+ * several out at once, at different organisations. There is no sample-versus-
+ * full-batch wording any more — a sample is a bag that was split off first.
  */
 export const GeneralOrgAssignmentBadge = ({
-  assignment,
-}: AssignmentBadgeProps) => (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger>
-        <Badge
-          variant="outline"
-          className="border-blue-500 bg-blue-50 text-xs text-blue-700"
-        >
-          {assignment.assignment_type === "sample"
-            ? "Sample Out"
-            : "Processing"}
-        </Badge>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>
-          {assignment.assignment_type === "sample"
-            ? `${assignment.sample_weight_grams}g sample sent to `
-            : "Full batch sent to "}
-          {assignment.assigned_to_org?.name}
-        </p>
-        <p className="text-muted-foreground text-xs">
-          Assigned: {new Date(assignment.assigned_at).toLocaleDateString()}
-        </p>
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-)
+  assignments,
+}: AssignmentBadgeProps) => {
+  if (assignments.length === 0) return null
+
+  const organisations = [
+    ...new Set(
+      assignments.map(
+        (a) => a.assigned_to_org?.name ?? "an unknown laboratory",
+      ),
+    ),
+  ]
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <Badge
+            variant="outline"
+            className="border-blue-500 bg-blue-50 text-xs text-blue-700"
+          >
+            {assignments.length === 1
+              ? "1 bag out"
+              : `${assignments.length} bags out`}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>
+            {assignments.length === 1
+              ? "1 bag is"
+              : `${assignments.length} bags are`}{" "}
+            with {organisations.join(", ")}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Sent:{" "}
+            {new Date(
+              assignments
+                .map((a) => a.assigned_at)
+                .sort()
+                .at(-1) as string,
+            ).toLocaleDateString()}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 // =============================================================================
 // Row Container Component

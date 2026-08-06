@@ -90,7 +90,7 @@ export type BatchWithCurrentLocationAndSpecies = BatchWithStatus & {
 
 /**
  * The General inventory query. Testing organisations do not use this — their
- * inventory is driven by assignments, see useAssignedBatchesByFilter — so the
+ * inventory is driven by assignments, see useAssignedBagsByFilter — so the
  * route disables it rather than running both.
  */
 export const useBatchesByFilter = (

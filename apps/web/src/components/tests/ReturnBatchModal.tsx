@@ -1,5 +1,5 @@
-import type { BatchAssignmentWithOrg } from "@/hooks/useBatchAssignments"
-import { useReturnBatchFromTesting } from "@/hooks/useTestingOrgAssignments"
+import type { AssignedBag } from "@/hooks/useTestingOrgAssignments"
+import { useReturnBagFromTesting } from "@/hooks/useTestingOrgAssignments"
 import { useBatchFiltersContext } from "@/routes/_private/inventory/-components/BatchFiltersContext"
 import { Button } from "@nasti/ui/button"
 import {
@@ -10,39 +10,39 @@ import {
 } from "@nasti/ui/dialog"
 import { useToast } from "@nasti/ui/hooks"
 
-type ReturnBatchModalProps = {
+type ReturnBagModalProps = {
   isOpen: boolean
   onClose: () => void
   /**
    * Passed in rather than looked up: the inventory already fetched it, and a
    * per-row query here would re-fetch it once per open row.
    */
-  assignment: BatchAssignmentWithOrg
+  bag: AssignedBag
 }
 
 export const ReturnBatchModal = ({
   isOpen,
   onClose,
-  assignment,
-}: ReturnBatchModalProps) => {
+  bag,
+}: ReturnBagModalProps) => {
   const { invalidateBatchesCacheByFilter } = useBatchFiltersContext()
   const { toast } = useToast()
 
-  // Testing org assignment actions
-  const returnBatch = useReturnBatchFromTesting()
+  const returnBag = useReturnBagFromTesting()
 
-  const handleReturnBatch = async () => {
+  const ownerName = bag.assignment.assigned_by_org?.name ?? "the owner"
+  const remainingWeight = bag.weights.current_weight ?? 0
+
+  const handleReturnBag = async () => {
     try {
-      await returnBatch.mutateAsync({ assignmentId: assignment.id })
-      toast({
-        description: `Batch returned to ${assignment.assigned_by_org?.name ?? "owner"}`,
-      })
+      await returnBag.mutateAsync({ assignmentId: bag.assignment.id })
+      toast({ description: `Bag returned to ${ownerName}` })
       invalidateBatchesCacheByFilter()
       onClose()
     } catch (error) {
       toast({
         description:
-          error instanceof Error ? error.message : "Failed to return batch",
+          error instanceof Error ? error.message : "Failed to return bag",
         variant: "destructive",
       })
     }
@@ -52,11 +52,33 @@ export const ReturnBatchModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Return Batch</DialogTitle>
+          <DialogTitle>Return bag</DialogTitle>
         </DialogHeader>
-        Please confirm you would like to return the batch to the original owner.
+
+        <div className="flex flex-col gap-3 text-sm">
+          <p>
+            Return this bag to <span className="font-medium">{ownerName}</span>?
+          </p>
+
+          <dl className="bg-muted/50 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded p-3">
+            <dt className="text-muted-foreground">Batch</dt>
+            <dd className="font-mono">{bag.parent.code ?? "—"}</dd>
+
+            <dt className="text-muted-foreground">Container</dt>
+            <dd>{bag.containerName ?? "Unlabelled"}</dd>
+
+            <dt className="text-muted-foreground">Remaining</dt>
+            <dd className="tabular-nums">{remainingWeight}g</dd>
+          </dl>
+
+          <p className="text-muted-foreground">
+            The whole bag goes back. To keep some of the seed, split it first —
+            what you split off stays with your organisation.
+          </p>
+        </div>
+
         <div className="flex w-full justify-end gap-2">
           <Button
             type="button"
@@ -66,8 +88,12 @@ export const ReturnBatchModal = ({
           >
             Cancel
           </Button>
-          <Button className="cursor-pointer" onClick={handleReturnBatch}>
-            Return Batch
+          <Button
+            className="cursor-pointer"
+            onClick={handleReturnBag}
+            disabled={returnBag.isPending}
+          >
+            {returnBag.isPending ? "Returning…" : "Return bag"}
           </Button>
         </div>
       </DialogContent>

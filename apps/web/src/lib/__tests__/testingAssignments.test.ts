@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   getAssignmentActions,
+  getAssignmentOutcome,
   getAssignmentStatus,
   isAssignmentActive,
   matchesInventoryStatus,
@@ -12,9 +13,21 @@ const assignment = (
   overrides: Partial<AssignmentState> = {},
 ): AssignmentState => ({
   completed_at: null,
-  returned_at: null,
+  closed_at: null,
+  outcome: null,
   ...overrides,
 })
+
+/** Closing always sets both halves; the database constrains them together. */
+const closed = (
+  outcome: "returned" | "consumed",
+  overrides: Partial<AssignmentState> = {},
+): AssignmentState =>
+  assignment({
+    closed_at: "2026-08-02T00:00:00Z",
+    outcome,
+    ...overrides,
+  })
 
 describe("getAssignmentStatus", () => {
   it("is pending while neither completed nor returned", () => {
@@ -27,38 +40,57 @@ describe("getAssignmentStatus", () => {
     ).toBe("completed")
   })
 
-  it("is returned once returned, whether or not it was completed", () => {
-    expect(
-      getAssignmentStatus(assignment({ returned_at: "2026-08-02T00:00:00Z" })),
-    ).toBe("returned")
+  it("is closed once closed, whether or not it was completed", () => {
+    expect(getAssignmentStatus(closed("returned"))).toBe("closed")
 
     expect(
       getAssignmentStatus(
-        assignment({
-          completed_at: "2026-08-01T00:00:00Z",
-          returned_at: "2026-08-02T00:00:00Z",
-        }),
+        closed("returned", { completed_at: "2026-08-01T00:00:00Z" }),
       ),
-    ).toBe("returned")
+    ).toBe("closed")
   })
 
-  it("treats anything not returned as active", () => {
+  it("is closed for a consumed bag as much as a returned one", () => {
+    expect(
+      getAssignmentStatus(
+        closed("consumed", { completed_at: "2026-08-01T00:00:00Z" }),
+      ),
+    ).toBe("closed")
+  })
+
+  it("treats anything not closed as active", () => {
     expect(isAssignmentActive(assignment())).toBe(true)
     expect(
       isAssignmentActive(assignment({ completed_at: "2026-08-01T00:00:00Z" })),
     ).toBe(true)
-    expect(
-      isAssignmentActive(assignment({ returned_at: "2026-08-02T00:00:00Z" })),
-    ).toBe(false)
+    expect(isAssignmentActive(closed("returned"))).toBe(false)
+    expect(isAssignmentActive(closed("consumed"))).toBe(false)
+  })
+})
+
+describe("getAssignmentOutcome", () => {
+  it("is null while the assignment is open", () => {
+    expect(getAssignmentOutcome(assignment())).toBe(null)
+  })
+
+  it("reports how a closed assignment ended", () => {
+    expect(getAssignmentOutcome(closed("returned"))).toBe("returned")
+    expect(getAssignmentOutcome(closed("consumed"))).toBe("consumed")
+  })
+
+  it("rejects an outcome the database would not have written", () => {
+    expect(getAssignmentOutcome(assignment({ outcome: "nonsense" }))).toBe(null)
   })
 })
 
 describe("matchesInventoryStatus", () => {
   const pending = assignment()
   const completed = assignment({ completed_at: "2026-08-01T00:00:00Z" })
-  const returned = assignment({
+  const returned = closed("returned", {
     completed_at: "2026-08-01T00:00:00Z",
-    returned_at: "2026-08-02T00:00:00Z",
+  })
+  const consumed = closed("consumed", {
+    completed_at: "2026-08-01T00:00:00Z",
   })
 
   it("puts incomplete active assignments in the pending list only", () => {
@@ -73,10 +105,12 @@ describe("matchesInventoryStatus", () => {
     expect(matchesInventoryStatus(completed, "any")).toBe(true)
   })
 
-  it("excludes returned assignments from every list", () => {
-    expect(matchesInventoryStatus(returned, "pending")).toBe(false)
-    expect(matchesInventoryStatus(returned, "completed")).toBe(false)
-    expect(matchesInventoryStatus(returned, "any")).toBe(false)
+  it("excludes closed assignments from every list, however they closed", () => {
+    for (const closedAssignment of [returned, consumed]) {
+      expect(matchesInventoryStatus(closedAssignment, "pending")).toBe(false)
+      expect(matchesInventoryStatus(closedAssignment, "completed")).toBe(false)
+      expect(matchesInventoryStatus(closedAssignment, "any")).toBe(false)
+    }
   })
 })
 
@@ -110,20 +144,19 @@ describe("getAssignmentActions", () => {
     ).toBe(true)
   })
 
-  it("leaves a returned assignment with no actions at all", () => {
-    const actions = getAssignmentActions(
-      assignment({
-        completed_at: "2026-08-01T00:00:00Z",
-        returned_at: "2026-08-02T00:00:00Z",
-      }),
-      { hasVisibleSubBatch: true },
-    )
+  it("leaves a closed assignment with no actions at all", () => {
+    for (const outcome of ["returned", "consumed"] as const) {
+      const actions = getAssignmentActions(
+        closed(outcome, { completed_at: "2026-08-01T00:00:00Z" }),
+        { hasVisibleSubBatch: true },
+      )
 
-    expect(actions).toEqual({
-      canTest: false,
-      canReturn: false,
-      canDelete: false,
-    })
+      expect(actions).toEqual({
+        canTest: false,
+        canReturn: false,
+        canDelete: false,
+      })
+    }
   })
 
   it("never offers delete to a Testing organisation", () => {

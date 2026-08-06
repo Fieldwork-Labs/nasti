@@ -3,8 +3,10 @@ import {
   invalidateBatchesByFilterCache,
   type BatchWithCurrentLocationAndSpecies,
 } from "@/hooks/useBatches"
-import { useAssignedBatchesByFilter } from "@/hooks/useTestingOrgAssignments"
-import type { BatchAssignmentWithOrg } from "@/hooks/useBatchAssignments"
+import {
+  useAssignedBagsByFilter,
+  type AssignedBag,
+} from "@/hooks/useTestingOrgAssignments"
 import type { InventoryStatusFilter } from "@/lib/testingAssignments"
 import { BatchStatus } from "@/components/inventory/BatchInventoryFilters"
 import useUserStore from "@/store/userStore"
@@ -24,11 +26,12 @@ type SortDirection = "asc" | "desc"
 interface BatchFiltersContextValue {
   data: BatchWithCurrentLocationAndSpecies[] | undefined
   /**
-   * Empty for General organisations. For Testing organisations it holds the
-   * assignment each visible batch arrived through, so rows can render its
-   * metadata and gate their actions without a query per row.
+   * Empty for General organisations. For Testing organisations it is the whole
+   * list: one entry per open assignment, so two bags of one parent batch are
+   * two rows. Keyed by nothing — a Map by batch id would silently drop the
+   * second of them.
    */
-  assignmentsByBatchId: Map<string, BatchAssignmentWithOrg>
+  assignedBags: AssignedBag[]
   isLoading: boolean
   error: Error | null
   handleSort: (field: SortField) => void
@@ -130,19 +133,14 @@ export const BatchFiltersProvider = ({
   const generalBatches = useBatchesByFilter(batchFilter, {
     enabled: !isTestingOrg,
   })
-  const assignedBatches = useAssignedBatchesByFilter(assignmentFilter, {
+  const assignedBags = useAssignedBagsByFilter(assignmentFilter, {
     enabled: isTestingOrg,
   })
 
-  const batchData = isTestingOrg ? assignedBatches : generalBatches
-
-  const assignmentsByBatchId = useMemo(() => {
-    if (!isTestingOrg) return new Map<string, BatchAssignmentWithOrg>()
-
-    return new Map(
-      (assignedBatches.data ?? []).map((batch) => [batch.id, batch.assignment]),
-    )
-  }, [isTestingOrg, assignedBatches.data])
+  // The two organisation types no longer look at the same thing: General sees
+  // batches, Testing sees the bags it was sent. Only the loading and error
+  // state is shared.
+  const activeQuery = isTestingOrg ? assignedBags : generalBatches
 
   // Update URL search parameters
   const updateSearchParams = useCallback(
@@ -213,10 +211,10 @@ export const BatchFiltersProvider = ({
 
   const value = useMemo(
     () => ({
-      data: batchData.data,
-      isLoading: batchData.isLoading,
-      error: batchData.error,
-      assignmentsByBatchId,
+      data: isTestingOrg ? undefined : generalBatches.data,
+      assignedBags: assignedBags.data ?? [],
+      isLoading: activeQuery.isLoading,
+      error: activeQuery.error,
       handleSort,
       sortDirection,
       sortField,
@@ -225,10 +223,11 @@ export const BatchFiltersProvider = ({
       invalidateBatchesCacheByFilter,
     }),
     [
-      batchData.data,
-      batchData.isLoading,
-      batchData.error,
-      assignmentsByBatchId,
+      isTestingOrg,
+      generalBatches.data,
+      assignedBags.data,
+      activeQuery.isLoading,
+      activeQuery.error,
       handleSort,
       sortDirection,
       sortField,

@@ -507,40 +507,34 @@ export type Database = {
           assigned_at: string
           assigned_by_org_id: string
           assigned_to_org_id: string
-          assignment_type: string
           batch_id: string
+          closed_at: string | null
           completed_at: string | null
           id: string
-          returned_at: string | null
-          sample_weight_grams: number | null
-          subsample_storage_location_id: string | null
-          subsample_weight_grams: number | null
+          outcome: string | null
+          sub_batch_id: string
         }
         Insert: {
           assigned_at?: string
           assigned_by_org_id: string
           assigned_to_org_id: string
-          assignment_type: string
           batch_id: string
+          closed_at?: string | null
           completed_at?: string | null
           id?: string
-          returned_at?: string | null
-          sample_weight_grams?: number | null
-          subsample_storage_location_id?: string | null
-          subsample_weight_grams?: number | null
+          outcome?: string | null
+          sub_batch_id: string
         }
         Update: {
           assigned_at?: string
           assigned_by_org_id?: string
           assigned_to_org_id?: string
-          assignment_type?: string
           batch_id?: string
+          closed_at?: string | null
           completed_at?: string | null
           id?: string
-          returned_at?: string | null
-          sample_weight_grams?: number | null
-          subsample_storage_location_id?: string | null
-          subsample_weight_grams?: number | null
+          outcome?: string | null
+          sub_batch_id?: string
         }
         Relationships: [
           {
@@ -579,11 +573,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "batch_testing_assignment_subsample_location_fkey"
-            columns: ["subsample_storage_location_id"]
+            foreignKeyName: "batch_testing_assignment_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
             isOneToOne: false
-            referencedRelation: "storage_locations"
-            referencedColumns: ["id"]
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id", "batch_id"]
           },
         ]
       }
@@ -1106,8 +1107,6 @@ export type Database = {
       }
       organisation_link: {
         Row: {
-          can_process: boolean
-          can_test: boolean
           created_at: string
           created_by: string
           general_org_id: string
@@ -1115,8 +1114,6 @@ export type Database = {
           testing_org_id: string
         }
         Insert: {
-          can_process?: boolean
-          can_test?: boolean
           created_at?: string
           created_by: string
           general_org_id: string
@@ -1124,8 +1121,6 @@ export type Database = {
           testing_org_id: string
         }
         Update: {
-          can_process?: boolean
-          can_test?: boolean
           created_at?: string
           created_by?: string
           general_org_id?: string
@@ -1153,8 +1148,6 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
-          can_process: boolean
-          can_test: boolean
           created_at: string
           created_by: string
           general_org_id: string
@@ -1164,8 +1157,6 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
-          can_process?: boolean
-          can_test?: boolean
           created_at?: string
           created_by: string
           general_org_id: string
@@ -1175,8 +1166,6 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
-          can_process?: boolean
-          can_test?: boolean
           created_at?: string
           created_by?: string
           general_org_id?: string
@@ -1597,6 +1586,7 @@ export type Database = {
           batch_id: string
           container_id: string | null
           created_at: string | null
+          held_by_org_id: string
           id: string
           notes: string | null
           weight_grams: number
@@ -1605,6 +1595,7 @@ export type Database = {
           batch_id: string
           container_id?: string | null
           created_at?: string | null
+          held_by_org_id: string
           id?: string
           notes?: string | null
           weight_grams: number
@@ -1613,6 +1604,7 @@ export type Database = {
           batch_id?: string
           container_id?: string | null
           created_at?: string | null
+          held_by_org_id?: string
           id?: string
           notes?: string | null
           weight_grams?: number
@@ -1644,6 +1636,13 @@ export type Database = {
             columns: ["container_id"]
             isOneToOne: false
             referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_held_by_org_id_fkey"
+            columns: ["held_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
         ]
@@ -1996,6 +1995,7 @@ export type Database = {
           created_at: string | null
           current_location_id: string | null
           current_weight: number | null
+          held_by_org_id: string | null
           id: string | null
           notes: string | null
           original_weight: number | null
@@ -2035,6 +2035,13 @@ export type Database = {
             columns: ["container_id"]
             isOneToOne: false
             referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_held_by_org_id_fkey"
+            columns: ["held_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
         ]
@@ -2393,6 +2400,10 @@ export type Database = {
       }
       auth_org_permissions: { Args: never; Returns: string[] }
       auth_org_role: { Args: never; Returns: string }
+      batch_has_externally_held_bags: {
+        Args: { p_batch_id: string }
+        Returns: boolean
+      }
       batch_weight_info: {
         Args: { batch_row: Database["public"]["Tables"]["batches"]["Row"] }
         Returns: Json
@@ -2407,6 +2418,7 @@ export type Database = {
         Returns: number
       }
       can_read_batch: { Args: { p_batch_id: string }; Returns: boolean }
+      can_read_sub_batch: { Args: { p_sub_batch_id: string }; Returns: boolean }
       current_custodian_org_id: {
         Args: { p_batch_id: string }
         Returns: string
@@ -2447,20 +2459,18 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
-      fn_assign_batches_for_testing: {
-        Args: { p_assignments: Json; p_testing_org_id: string }
+      fn_assign_bags_for_testing: {
+        Args: { p_bags: Json; p_testing_org_id: string }
         Returns: {
           assigned_at: string
           assigned_by_org_id: string
           assigned_to_org_id: string
-          assignment_type: string
           batch_id: string
+          closed_at: string | null
           completed_at: string | null
           id: string
-          returned_at: string | null
-          sample_weight_grams: number | null
-          subsample_storage_location_id: string | null
-          subsample_weight_grams: number | null
+          outcome: string | null
+          sub_batch_id: string
         }[]
         SetofOptions: {
           from: "*"
@@ -2539,24 +2549,18 @@ export type Database = {
         Args: { p_location_id: string }
         Returns: string
       }
-      fn_return_batch_from_testing: {
-        Args: {
-          p_assignment_id: string
-          p_subsample_storage_location_id?: string
-          p_subsample_weight_grams?: number
-        }
+      fn_return_bag_from_testing: {
+        Args: { p_assignment_id: string }
         Returns: {
           assigned_at: string
           assigned_by_org_id: string
           assigned_to_org_id: string
-          assignment_type: string
           batch_id: string
+          closed_at: string | null
           completed_at: string | null
           id: string
-          returned_at: string | null
-          sample_weight_grams: number | null
-          subsample_storage_location_id: string | null
-          subsample_weight_grams: number | null
+          outcome: string | null
+          sub_batch_id: string
         }
         SetofOptions: {
           from: "*"
@@ -2600,17 +2604,6 @@ export type Database = {
       fn_split_sub_batch: {
         Args: { p_outputs: Json; p_sub_batch_id: string }
         Returns: string[]
-      }
-      fn_treat_batch: {
-        Args: {
-          p_input_batch_id: string
-          p_notes?: string
-          p_origin_batch_weight?: number
-          p_output_weight: number
-          p_quality_assessment: Database["public"]["Enums"]["batch_quality"]
-          p_treat: Json
-        }
-        Returns: string
       }
       fn_update_batch_cleaning: {
         Args: {
@@ -2825,11 +2818,8 @@ export type Database = {
       }
       get_user_organisation_id: { Args: never; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
-      has_active_testing_assignment: {
-        Args: { p_batch_id: string }
-        Returns: boolean
-      }
       has_org_permission: { Args: { p_permission: string }; Returns: boolean }
+      holds_any_bag_of_batch: { Args: { p_batch_id: string }; Returns: boolean }
       http: {
         Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
@@ -2960,6 +2950,10 @@ export type Database = {
         Returns: boolean
       }
       is_batch_owner: { Args: { p_batch_id: string }; Returns: boolean }
+      is_current_bag_custodian: {
+        Args: { p_sub_batch_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_current_custodian: {
         Args: { p_batch_id: string; p_user_id: string }
         Returns: boolean
