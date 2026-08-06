@@ -8,10 +8,11 @@ import {
   ShoppingBasket,
   Split,
 } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { SubBatchMergeModal } from "@/components/batches/SubBatchMergeModal"
 import type { SubBatchWithStorage } from "@/hooks/useSubBatches"
+import useBagFlightStore from "@/components/inventory/bagFlight"
 import { useSubBatches } from "@/hooks/useSubBatches"
 import useBagBasketStore from "@/store/bagBasketStore"
 import { cn } from "@nasti/ui/utils"
@@ -173,13 +174,25 @@ const SubBatchesTableRow = ({
 }: SubBatchesTableRowProps) => {
   const toggleBag = useBagBasketStore((state) => state.toggleBag)
   const isInBasket = useBagBasketStore((state) => state.bags.has(sb.id))
+  const launchFlight = useBagFlightStore((state) => state.launch)
+  const rowRef = useRef<HTMLDivElement>(null)
 
   // A bag already out at a laboratory cannot be sent again, and one with no
   // seed left has nothing to send.
   const isSelectable =
     isSelecting && !isAlreadyAssigned && (sb.current_weight ?? 0) > 0
 
-  const addToBasket = () =>
+  const addToBasket = () => {
+    // Only the add flies. Removing already has an obvious signal — the row
+    // deselects and the chip leaves the basket — and animating both directions
+    // would make repeated picking noisy.
+    if (!isInBasket && rowRef.current) {
+      launchFlight(
+        rowRef.current.getBoundingClientRect(),
+        `${sb.current_weight ?? 0}g`,
+      )
+    }
+
     toggleBag({
       subBatchId: sb.id,
       batchId,
@@ -187,16 +200,21 @@ const SubBatchesTableRow = ({
       containerName: sb.container?.name ?? null,
       weightGrams: Number(sb.current_weight ?? 0),
     })
+  }
 
   return (
     <div
       key={sb.id}
+      ref={rowRef}
       className={cn(
         "flex items-center justify-between rounded px-2 py-1 text-xs",
+        // A CSS transition rather than a keyframe: selection is reversible, and
+        // this has to be interruptible when someone picks and unpicks quickly.
+        "transition-[background-color,border-color,opacity,scale] duration-150 ease-out",
         isMerging && "hover:bg-muted/50 cursor-pointer",
         selectedForMerge.includes(sb.id) &&
           "bg-primary/10 border-primary border",
-        isSelectable && "hover:bg-muted/50 cursor-pointer",
+        isSelectable && "hover:bg-muted/50 cursor-pointer active:scale-[0.96]",
         isInBasket && "bg-primary/10 border-primary border",
         isSelecting && !isSelectable && "opacity-50",
       )}
