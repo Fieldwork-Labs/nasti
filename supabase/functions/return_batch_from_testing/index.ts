@@ -1,12 +1,16 @@
-// Edge Function: Return Batch from Testing
-// Testing organisation returns a batch/sample to the original owner.
+// Edge Function: Return Bag from Testing
+// Testing organisation hands a bag back to the organisation that sent it.
 //
-// A transport wrapper only. fn_return_batch_from_testing owns the rules —
-// Admin role, ownership of the assignment, not-already-returned, retained
-// subsample validation, and custody handback for a full batch — and performs
-// the custody write and the assignment update in one transaction. Previously
-// this function updated the assignment without ever writing custody, so a
-// returned full batch stayed, on paper, with the Testing organisation.
+// A transport wrapper only. fn_return_bag_from_testing owns the rules — Admin
+// role, ownership of the assignment, not already closed, not consumed — and
+// closes the assignment, takes the bag off the laboratory's shelf and moves
+// custody back in one transaction.
+//
+// There are no retained-subsample parameters any more. A laboratory that wants
+// to keep part of the seed splits the bag first, through the ordinary split RPC;
+// the child is theirs and needs no assignment of its own. Return is now a single
+// identifier, and the deployed path keeps its old name so existing clients keep
+// resolving.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -70,8 +74,6 @@ Deno.serve((r) =>
 
       let body: {
         assignment_id?: string
-        subsample_weight_grams?: number | null
-        subsample_storage_location_id?: string | null
       }
 
       try {
@@ -80,60 +82,23 @@ Deno.serve((r) =>
         return returnErrorResponse("Request body must be valid JSON", 400)
       }
 
-      const {
-        assignment_id,
-        subsample_weight_grams,
-        subsample_storage_location_id,
-      } = body
+      const { assignment_id } = body
 
       if (!assignment_id || typeof assignment_id !== "string") {
         return returnErrorResponse("Missing required field: assignment_id", 400)
       }
 
-      const weight =
-        subsample_weight_grams === undefined ? null : subsample_weight_grams
-      const locationId =
-        subsample_storage_location_id === undefined
-          ? null
-          : subsample_storage_location_id
-
-      if (weight !== null) {
-        if (typeof weight !== "number" || !Number.isFinite(weight) || weight <= 0) {
-          return returnErrorResponse(
-            "subsample_weight_grams must be a number greater than 0",
-            400,
-          )
-        }
-      }
-
-      if (locationId !== null && typeof locationId !== "string") {
-        return returnErrorResponse(
-          "subsample_storage_location_id must be a string",
-          400,
-        )
-      }
-
-      // Retained subsample metadata is meaningless without both halves.
-      if ((weight === null) !== (locationId === null)) {
-        return returnErrorResponse(
-          "subsample_weight_grams and subsample_storage_location_id must be provided together",
-          400,
-        )
-      }
-
       const { data, error } = await supabaseClient.rpc(
-        "fn_return_batch_from_testing",
+        "fn_return_bag_from_testing",
         {
           p_assignment_id: assignment_id,
-          p_subsample_weight_grams: weight,
-          p_subsample_storage_location_id: locationId,
         },
       )
 
       if (error) {
         const status = STATUS_BY_PG_CODE[error.code ?? ""]
         if (!status) {
-          console.error("fn_return_batch_from_testing failed", error)
+          console.error("fn_return_bag_from_testing failed", error)
           return returnErrorResponse("Internal server error", 500)
         }
         return returnErrorResponse(error.message, status)
@@ -141,7 +106,7 @@ Deno.serve((r) =>
 
       return new Response(
         JSON.stringify({
-          message: "Batch returned successfully",
+          message: "Bag returned successfully",
           assignment: data,
         }),
         {
@@ -150,7 +115,7 @@ Deno.serve((r) =>
         },
       )
     } catch (error) {
-      console.error("return_batch_from_testing failed", error)
+      console.error("return_bag_from_testing failed", error)
       return returnErrorResponse("Internal server error", 500)
     }
   }),

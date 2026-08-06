@@ -1,13 +1,20 @@
-// Edge Function: Assign Batches for Testing
-// General organisation assigns one or more batches to a linked Testing organisation.
+// Edge Function: Assign Bags for Testing
+// General organisation sends one or more bags to a linked Testing organisation.
+//
+// The unit is a bag, not a batch: several bags of one parent batch can be out at
+// different laboratories at once. Sending a sample is the same operation with a
+// weight — the database splits that weight off the named bag and assigns the
+// child, because a sample is not a distinct kind of thing, just a smaller bag.
 //
 // This is a transport wrapper, not a place where authorisation happens. Every
-// rule — Admin role, link capabilities, ownership, custody, sample weights,
-// one-active-assignment — lives in fn_assign_batches_for_testing, which applies
-// them and writes the assignment and custody rows in a single transaction. The
-// previous version made those checks here across several separate queries, so a
-// batch could be assigned twice by two requests that both passed their checks
-// before either wrote.
+// rule — Admin role, the organisation link, bag custody, sample weights,
+// one-active-assignment-per-bag — lives in fn_assign_bags_for_testing, which
+// applies them and writes in a single transaction. An earlier version made those
+// checks here across several separate queries, so a bag could be assigned twice
+// by two requests that both passed their checks before either wrote.
+//
+// The deployed path keeps its old name so existing clients keep resolving; the
+// payload it accepts does not.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -21,10 +28,12 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 }
 
-interface AssignmentRequest {
-  batch_id: string
+interface BagAssignmentRequest {
+  sub_batch_id: string
+  // Omitted to send the whole bag; present to split that weight off it first.
   sample_weight_grams?: number
-  assignment_type: "sample" | "full_batch"
+  // The container the seed is physically mailed in.
+  container_id?: string
 }
 
 // The database raises these deliberately; anything else is a bug and must not
@@ -34,7 +43,7 @@ const STATUS_BY_PG_CODE: Record<string, number> = {
   "42501": 403, // not authorised
   P0002: 404, // referenced row not found
   "55000": 409, // state conflict
-  "23505": 409, // unique violation (one active assignment per batch)
+  "23505": 409, // unique violation (one active assignment per bag)
   "22023": 400, // invalid parameter
   "22P02": 400, // malformed input syntax, e.g. a bad uuid
 }
@@ -77,7 +86,7 @@ Deno.serve((r) =>
 
       let body: {
         testing_org_id?: string
-        batch_assignments?: AssignmentRequest[]
+        sub_batch_assignments?: BagAssignmentRequest[]
       }
 
       try {
@@ -86,61 +95,71 @@ Deno.serve((r) =>
         return returnErrorResponse("Request body must be valid JSON", 400)
       }
 
-      const { testing_org_id, batch_assignments: batchAssignments } = body
+      const { testing_org_id, sub_batch_assignments: bagAssignments } = body
 
       if (!testing_org_id || typeof testing_org_id !== "string") {
         return returnErrorResponse("Missing required field: testing_org_id", 400)
       }
 
       if (
-        !batchAssignments ||
-        !Array.isArray(batchAssignments) ||
-        batchAssignments.length === 0
+        !bagAssignments ||
+        !Array.isArray(bagAssignments) ||
+        bagAssignments.length === 0
       ) {
         return returnErrorResponse(
-          "batch_assignments must be a non-empty array",
+          "sub_batch_assignments must be a non-empty array",
           400,
         )
       }
 
-      for (const assignment of batchAssignments) {
-        if (!assignment?.batch_id || typeof assignment.batch_id !== "string") {
+      // Shape only. Whether the bag exists, is held by the caller, and has
+      // enough seed left is the database's to answer, and answering it here
+      // would just be a second opinion that can go stale between the two.
+      for (const assignment of bagAssignments) {
+        if (
+          !assignment?.sub_batch_id ||
+          typeof assignment.sub_batch_id !== "string"
+        ) {
           return returnErrorResponse(
-            "Each assignment requires a batch_id",
+            "Each assignment requires a sub_batch_id",
             400,
           )
         }
 
-        if (!["sample", "full_batch"].includes(assignment.assignment_type)) {
-          return returnErrorResponse(
-            "assignment_type must be either 'sample' or 'full_batch'",
-            400,
-          )
-        }
-
-        if (assignment.assignment_type === "sample") {
+        if (assignment.sample_weight_grams !== undefined) {
           const weight = assignment.sample_weight_grams
-          if (typeof weight !== "number" || !Number.isFinite(weight) || weight <= 0) {
+          if (
+            typeof weight !== "number" ||
+            !Number.isFinite(weight) ||
+            weight <= 0
+          ) {
             return returnErrorResponse(
-              "sample_weight_grams is required and must be > 0 for sample type assignments",
+              "sample_weight_grams must be a number greater than 0 when present",
               400,
             )
           }
         }
+
+        if (
+          assignment.container_id !== undefined &&
+          typeof assignment.container_id !== "string"
+        ) {
+          return returnErrorResponse("container_id must be a string", 400)
+        }
       }
 
       const { data, error } = await supabaseClient.rpc(
-        "fn_assign_batches_for_testing",
+        "fn_assign_bags_for_testing",
         {
           p_testing_org_id: testing_org_id,
-          p_assignments: batchAssignments,
+          p_bags: bagAssignments,
         },
       )
 
       if (error) {
         const status = STATUS_BY_PG_CODE[error.code ?? ""]
         if (!status) {
-          console.error("fn_assign_batches_for_testing failed", error)
+          console.error("fn_assign_bags_for_testing failed", error)
           return returnErrorResponse("Internal server error", 500)
         }
         return returnErrorResponse(error.message, status)
@@ -150,7 +169,7 @@ Deno.serve((r) =>
 
       return new Response(
         JSON.stringify({
-          message: `Successfully assigned ${assignments.length} batch(es) for testing`,
+          message: `Successfully sent ${assignments.length} bag(s) for testing`,
           assignments,
         }),
         {
@@ -159,7 +178,7 @@ Deno.serve((r) =>
         },
       )
     } catch (error) {
-      console.error("assign_batches_for_testing failed", error)
+      console.error("assign_bags_for_testing failed", error)
       return returnErrorResponse("Internal server error", 500)
     }
   }),
