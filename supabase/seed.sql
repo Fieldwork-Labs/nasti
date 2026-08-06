@@ -29,7 +29,7 @@ SET row_security = off;
 --
 
 INSERT INTO "auth"."users" ("instance_id", "id", "aud", "role", "email", "encrypted_password", "email_confirmed_at", "invited_at", "confirmation_token", "confirmation_sent_at", "recovery_token", "recovery_sent_at", "email_change_token_new", "email_change", "email_change_sent_at", "last_sign_in_at", "raw_app_meta_data", "raw_user_meta_data", "is_super_admin", "created_at", "updated_at", "phone", "phone_confirmed_at", "phone_change", "phone_change_token", "phone_change_sent_at", "email_change_token_current", "email_change_confirm_status", "banned_until", "reauthentication_token", "reauthentication_sent_at", "is_sso_user", "deleted_at", "is_anonymous") VALUES
-	('00000000-0000-0000-0000-000000000000', 'e18b3927-87a9-4dcc-8d59-148461504a02', 'authenticated', 'authenticated', 'chid@test.com', '$2a$10$.a23q31I.z5itRlBfPnfU.3ID9jyHESc8ZJ2rPoz5Olz.U99rw3A6', '2025-09-29 08:41:05.849984+00', '2025-09-29 08:39:40.031407+00', '', NULL, '', NULL, '', '', NULL, '2025-09-29 08:41:05.851674+00', '{"provider": "email", "providers": ["email"]}', '{"name": "Chid Gilovitz"}', NULL, '2025-09-29 08:39:39.934336+00', '2025-09-30 00:35:19.857348+00', NULL, NULL, '', '', NULL, '', 0, NULL, '', NULL, false, NULL, false);
+	('00000000-0000-0000-0000-000000000000', 'e18b3927-87a9-4dcc-8d59-148461504a02', 'authenticated', 'authenticated', 'chid@test.com', '$2a$10$.a23q31I.z5itRlBfPnfU.3ID9jyHESc8ZJ2rPoz5Olz.U99rw3A6', '2025-09-29 08:41:05.849984+00', '2025-09-29 08:39:40.031407+00', '', NULL, '', NULL, '', '', NULL, '2025-10-20 08:30:17.417131+00', '{"provider": "email", "providers": ["email"]}', '{"name": "Chid Gilovitz"}', NULL, '2025-09-29 08:39:39.934336+00', '2025-10-21 01:07:53.692784+00', NULL, NULL, '', '', NULL, '', 0, NULL, '', NULL, false, NULL, false);
 
 
 --
@@ -73,10 +73,33 @@ INSERT INTO "public"."trip" ("id", "organisation_id", "name", "metadata", "start
 -- Data for Name: collection; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."collection" ("id", "species_id", "species_uncertain", "field_name", "specimen_collected", "organisation_id", "location", "created_by", "created_at", "trip_id", "description", "amount_description", "plants_sampled_estimate", "code") VALUES
-	('50d59d29-0eed-4f79-acd6-2a62c995bc45', 'd2b02f1c-905e-46d0-a3e0-4b253d2a1349', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000508D976E12635E40D50968226CA83FC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:47:18.690457+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', "1 bag", 10, 'CHAUNC-CO.COO.25'),
-	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '9c5d25d7-a230-4591-8861-7e9d3a590f04', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E61000006DE7FBA9F1A25D4085EB51B81E1540C0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:40:55.681459+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', "1 bucket", 230, 'ALOSPGER (R.Davis 3487)-CO.MAL.25'),
-	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000051C967762A95C40CA08D12760CB3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:39:18.702834+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '-28.794435967000744, 114.64663495692373', "1 bucket", 10, 'DIPGER-CO.GES.25');
+INSERT INTO "public"."person" ("id", "organisation_id", "source_type", "user_id", "display_name", "email", "is_active", "created_at", "updated_at") VALUES
+	('b52fb44d-8cab-4e52-9962-80fc41de6804', '02aba5b9-6c46-406d-831a-4f51851599f2', 'user', 'e18b3927-87a9-4dcc-8d59-148461504a02', 'Chid Gilovitz', 'chid@test.com', true, '2025-09-29 08:40:26.888428+00', '2025-09-29 08:40:26.888428+00');
+
+INSERT INTO "public"."collection" ("id", "species_id", "species_uncertain", "field_name", "specimen_collected", "organisation_id", "location", "created_by", "created_at", "trip_id", "description", "code", "collected_on", "collected_by", "person_ids") VALUES
+	('50d59d29-0eed-4f79-acd6-2a62c995bc45', 'd2b02f1c-905e-46d0-a3e0-4b253d2a1349', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000508D976E12635E40D50968226CA83FC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:47:18.690457+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', 'CHAUNC-CO.COO.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[]),
+	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '9c5d25d7-a230-4591-8861-7e9d3a590f04', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E61000006DE7FBA9F1A25D4085EB51B81E1540C0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:40:55.681459+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', 'ALOSPGER (R.Davis 3487)-CO.MAL.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[]),
+	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000051C967762A95C40CA08D12760CB3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:39:18.702834+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '-28.794435967000744, 114.64663495692373', 'DIPGER-CO.GES.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[]);
+
+
+--
+-- Data for Name: containers; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."containers" ("id", "organisation_id", "name", "purpose", "active") VALUES
+	('4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1001', '02aba5b9-6c46-406d-831a-4f51851599f2', 'Bag', 'collection', true),
+	('4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', '02aba5b9-6c46-406d-831a-4f51851599f2', 'Large bucket', 'collection', true),
+	('4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1003', '02aba5b9-6c46-406d-831a-4f51851599f2', 'Paper envelope', 'storage', true);
+
+
+--
+-- Data for Name: collection_containers; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."collection_containers" ("collection_id", "container_id", "amount") VALUES
+	('50d59d29-0eed-4f79-acd6-2a62c995bc45', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1001', 1),
+	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 1),
+	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 2);
 
 
 --
@@ -195,3 +218,7 @@ SELECT pg_catalog.setval('"supabase_functions"."hooks_id_seq"', 1, false);
 --
 
 RESET ALL;
+
+
+-- automatically run the load ibra regions function
+SELECT load_ibra7_regions_paginated();

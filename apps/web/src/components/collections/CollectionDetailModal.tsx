@@ -3,8 +3,7 @@ import { Modal } from "@nasti/ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parseWkbPoint } from "@nasti/common/utils"
-import { Collection } from "@nasti/common/types"
-import { SpeciesListItem } from "@/routes/_private/species"
+import { SpeciesListItem } from "@/components/species/SpeciesListItem"
 import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
 import { Button } from "@nasti/ui/button"
@@ -33,6 +32,8 @@ import {
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 import { formatDuration } from "@/lib/duration"
+import { useCollection } from "@/hooks/useCollection"
+import { useCollectionContainers } from "@/hooks/useContainers"
 
 const PhotosTab = ({
   photos,
@@ -91,16 +92,17 @@ const EditButtons = ({
 )
 
 export const CollectionDetailModal = ({
-  collection,
+  id,
   open,
   onClose,
 }: {
-  collection?: Collection
+  id: string
   open: boolean
   onClose: () => void
 }) => {
   const { isAdmin } = useUserStore()
   const { pathname } = useLocation()
+  const { data: collection } = useCollection(id)
   // Parse location coordinates
   const coordinates = useMemo(() => {
     if (!collection?.location) return null
@@ -156,6 +158,19 @@ export const CollectionDetailModal = ({
     collection?.person_ids?.includes(person.id),
   )
   const formattedDuration = formatDuration(collection?.duration)
+
+  const { data: collectionContainers } = useCollectionContainers(collection?.id)
+  const containerSummary = useMemo(
+    () =>
+      [...(collectionContainers ?? [])]
+        .sort((a, b) => a.container.name.localeCompare(b.container.name))
+        .map(({ id, amount, container }) => ({
+          id,
+          label:
+            amount === null ? container.name : `${amount} × ${container.name}`,
+        })),
+    [collectionContainers],
+  )
 
   if (!collection) return null
 
@@ -264,6 +279,18 @@ export const CollectionDetailModal = ({
                   <div>
                     <div className="text-lead mb-1">Duration</div>
                     <div className="text-sm">{formattedDuration}</div>
+                  </div>
+                )}
+                {containerSummary.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">Containers</div>
+                    <div className="flex flex-wrap gap-2">
+                      {containerSummary.map(({ id, label }) => (
+                        <Badge key={id} variant="secondary">
+                          {label}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {collection.phenology_start !== null && (

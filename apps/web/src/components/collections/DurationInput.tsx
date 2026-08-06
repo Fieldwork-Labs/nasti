@@ -9,6 +9,7 @@ import { durationToTimeValue, timeValueToDuration } from "@/lib/duration"
 type DurationInputProps = {
   value: string | null
   onChange: (value: string | null) => void
+  required?: boolean
 }
 
 type DurationSegment = "hours" | "minutes"
@@ -32,7 +33,11 @@ const parseDurationParts = (value: string | null) => {
   }
 }
 
-export function DurationInput({ value, onChange }: DurationInputProps) {
+export function DurationInput({
+  value,
+  onChange,
+  required = false,
+}: DurationInputProps) {
   const { hours, minutes } = parseDurationParts(value)
   const [draft, setDraft] = useState<DurationDraft>({})
 
@@ -73,41 +78,49 @@ export function DurationInput({ value, onChange }: DurationInputProps) {
     <div className="form-group flex w-full flex-col gap-2">
       <div className="grid w-full items-center gap-1.5">
         <Label id="duration-label" htmlFor="duration-hours">
-          Duration
+          Duration{required && " *"}
         </Label>
-        <div className="flex items-center gap-2">
+        <div className="flex items-end gap-2">
           <div
-            className="flex flex-1 items-center gap-2"
+            className="flex flex-1 items-end gap-2"
             role="group"
             aria-labelledby="duration-label"
             aria-label="Duration in hours and minutes"
           >
-            <Input
-              id="duration-hours"
-              aria-label="Duration hours"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={draft.hours ?? toTwoDigits(hours)}
-              className="text-center"
-              onFocus={() => beginEdit("hours")}
-              onBlur={() => endEdit("hours")}
-              onChange={(event) =>
-                handleSegmentChange("hours", event.currentTarget.value)
-              }
-            />
-            <span className="text-muted-foreground">:</span>
-            <Input
-              aria-label="Duration minutes"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={draft.minutes ?? toTwoDigits(minutes)}
-              className="text-center"
-              onFocus={() => beginEdit("minutes")}
-              onBlur={() => endEdit("minutes")}
-              onChange={(event) =>
-                handleSegmentChange("minutes", event.currentTarget.value)
-              }
-            />
+            <div className="flex flex-1 flex-col gap-1">
+              <span className="text-muted-foreground text-xs">Hours</span>
+              <Input
+                id="duration-hours"
+                aria-label="Duration hours"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-required={required}
+                value={draft.hours ?? toTwoDigits(hours)}
+                className="text-center"
+                onFocus={() => beginEdit("hours")}
+                onBlur={() => endEdit("hours")}
+                onChange={(event) =>
+                  handleSegmentChange("hours", event.currentTarget.value)
+                }
+              />
+            </div>
+            <span className="text-muted-foreground pb-2">:</span>
+            <div className="flex flex-1 flex-col gap-1">
+              <span className="text-muted-foreground text-xs">Minutes</span>
+              <Input
+                aria-label="Duration minutes"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-required={required}
+                value={draft.minutes ?? toTwoDigits(minutes)}
+                className="text-center"
+                onFocus={() => beginEdit("minutes")}
+                onBlur={() => endEdit("minutes")}
+                onChange={(event) =>
+                  handleSegmentChange("minutes", event.currentTarget.value)
+                }
+              />
+            </div>
           </div>
           <Button
             type="button"

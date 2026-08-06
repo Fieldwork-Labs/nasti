@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@nasti/ui/select"
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
+import { CollectionContainersInput } from "./CollectionContainersInput"
 
 import { usePeople } from "@/hooks/usePeople"
 import { usePersons } from "@/hooks/usePersons"
@@ -286,24 +287,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         {...register("description")}
         error={errors.description}
       />
-      <div className="flex w-full gap-2">
-        <FormField
-          label="Amount Quantity"
-          step="any"
-          autoComplete="off"
-          {...register("amount_quantity")}
-          error={errors.amount_quantity}
-          className="w-full"
-        />
-        <FormField
-          label="Amount Units"
-          step="any"
-          autoComplete="off"
-          {...register("amount_units")}
-          error={errors.amount_units}
-          className="w-full"
-        />
-      </div>
+      <CollectionContainersInput form={form} />
 
       <Controller
         control={control}

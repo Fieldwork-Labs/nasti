@@ -15,11 +15,15 @@ import useUserStore from "@/store/userStore"
 
 import { parseWkbPoint } from "@nasti/common/utils"
 import {
-  MaybeNewCollection,
+  CollectionContainerInput,
+  MaybeNewCollectionWithContainers,
   useUpdateCollection,
 } from "../../hooks/useUpdateCollection"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
 import { stringToNumber } from "@nasti/common/utils"
+import { useCollectionContainers } from "@/hooks/useContainers"
+import { Spinner } from "@nasti/ui/spinner"
+import { collectedOnSchema, formatDateInputValue } from "./collectionDate"
 
 export const schema = z
   .object({
@@ -27,7 +31,7 @@ export const schema = z
     species_uncertain: z.boolean(),
     field_name: z.string(),
     specimen_collected: z.boolean(),
-    collected_on: z.string().transform((val) => val ?? new Date().toDateString),
+    collected_on: collectedOnSchema,
     latitude: z
       .number({
         required_error: "Latitude is required",
@@ -44,8 +48,14 @@ export const schema = z
       .max(180),
 
     description: z.string(),
-    amount_units: z.string().nullable(),
-    amount_quantity: stringToNumber,
+    containers: z
+      .array(
+        z.object({
+          container_id: z.string().uuid("Select a container"),
+          amount: stringToNumber,
+        }),
+      )
+      .default([]),
     duration: z.string().nullable(),
     collected_by: z.string().uuid(),
     person_ids: z.array(z.string().uuid()).default([]),
@@ -67,15 +77,17 @@ export const schema = z
     },
   )
 
-type CollectionFormData = z.infer<typeof schema>
+export type CollectionFormData = z.infer<typeof schema>
 
 const useCollectionForm = ({
   instance,
   tripId,
+  initialContainers,
   onSuccess,
 }: {
   instance?: Collection
   tripId?: string
+  initialContainers: CollectionContainerInput[]
   onSuccess: (collection: Collection) => void
 }) => {
   const { organisation, user } = useUserStore()
@@ -98,8 +110,7 @@ const useCollectionForm = ({
           phenology_start: collection.phenology_start,
           phenology_peak: collection.phenology_peak,
           phenology_end: collection.phenology_end,
-          amount_quantity: collection.amount_quantity,
-          amount_units: collection.amount_units ?? "",
+          containers: initialContainers,
           duration: collection.duration ?? null,
           collected_on: collection.collected_on,
           collected_by: collection.collected_by,
@@ -112,18 +123,17 @@ const useCollectionForm = ({
           latitude: undefined,
           longitude: undefined,
           specimen_collected: false,
-          collected_on: new Date().toLocaleDateString(),
+          collected_on: formatDateInputValue(new Date()),
           collected_by: user?.id,
           person_ids: [],
           description: "",
           phenology_start: null,
           phenology_peak: null,
           phenology_end: null,
-          amount_units: "",
-          amount_quantity: undefined,
+          containers: initialContainers,
           duration: null,
         }
-  }, [collection, user?.id])
+  }, [collection, initialContainers, user?.id])
 
   const form = useForm<CollectionFormData>({
     defaultValues,
@@ -131,42 +141,51 @@ const useCollectionForm = ({
     mode: "onChange",
   })
 
-  const {
-    mutateAsync: updateCollection,
-    isPending,
-    error: updateCollectionError,
-  } = useUpdateCollection()
-
-  if (updateCollectionError) form.setError("root", updateCollectionError)
+  const { mutateAsync: updateCollection, isPending } = useUpdateCollection()
 
   const onSubmit = useCallback(
     async (data: CollectionFormData) => {
-      if (!user || !organisation?.id) throw new Error("Not logged in")
+      form.clearErrors("root")
 
-      if (!tripId && !collection?.trip_id)
-        throw new Error(
-          "tripId or collection must be supplied to CollectionForm",
-        )
+      try {
+        if (!user || !organisation?.id) throw new Error("Not logged in")
 
-      // type assertion safe because of check above
-      const trip_id = (collection ? collection.trip_id : tripId) as string
+        if (!tripId && !collection?.trip_id)
+          throw new Error(
+            "tripId or collection must be supplied to CollectionForm",
+          )
 
-      const { latitude, longitude, ...rest } = data
-      const location = `POINT(${longitude} ${latitude})`
-      const newCollection: MaybeNewCollection = {
-        ...rest,
-        id: collection?.id,
-        created_by: user.id,
-        location,
-        organisation_id: organisation.id,
-        trip_id,
-      }
-      const updatedRecord = await updateCollection(newCollection)
+        // type assertion safe because of check above
+        const trip_id = (collection ? collection.trip_id : tripId) as string
 
-      if (onSuccess && updatedRecord) {
-        setCollection(updatedRecord)
-        form.reset(data)
-        onSuccess(updatedRecord)
+        const { latitude, longitude, containers, ...rest } = data
+        const location = `POINT(${longitude} ${latitude})`
+        const newCollection: MaybeNewCollectionWithContainers = {
+          ...rest,
+          containers,
+          id: collection?.id,
+          created_by: user.id,
+          collected_by: user.id,
+          location,
+          organisation_id: organisation.id,
+          trip_id,
+        }
+        const updatedRecord = await updateCollection(newCollection)
+
+        if (onSuccess && updatedRecord) {
+          setCollection(updatedRecord)
+          form.reset(data)
+          onSuccess(updatedRecord)
+        }
+      } catch (error) {
+        console.error("Collection submission failed:", error)
+        form.setError("root", {
+          type: "server",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to save collection",
+        })
       }
     },
     [user, organisation, tripId, collection, updateCollection, onSuccess, form],
@@ -223,21 +242,52 @@ export const useCollectionFormContext = () => {
   return context
 }
 
-export const CollectionFormProvider = ({
-  stage,
-  setStage,
-  close,
-  children,
-  tripId,
-  instance,
-}: {
+type ProviderProps = {
   instance?: Collection
   tripId?: string
   stage: CollectionFormStage
   setStage: (stage: CollectionFormStage) => void
   close: () => void
   children: React.ReactNode
-}) => {
+}
+
+// The collection's containers live in a separate table, so they arrive after
+// the collection itself. Wait for them here so the form below is mounted once
+// with its real default values and stays the single source of truth.
+export const CollectionFormProvider = (props: ProviderProps) => {
+  const { data: collectionContainers, isLoading } = useCollectionContainers(
+    props.instance?.id,
+  )
+
+  if (props.instance && isLoading)
+    return (
+      <div className="flex justify-center p-6">
+        <Spinner />
+      </div>
+    )
+
+  return (
+    <CollectionFormProviderInner
+      {...props}
+      initialContainers={
+        collectionContainers?.map(({ container_id, amount }) => ({
+          container_id,
+          amount,
+        })) ?? []
+      }
+    />
+  )
+}
+
+const CollectionFormProviderInner = ({
+  stage,
+  setStage,
+  close,
+  children,
+  tripId,
+  instance,
+  initialContainers,
+}: ProviderProps & { initialContainers: CollectionContainerInput[] }) => {
   const {
     onSubmit,
     isPending,
@@ -250,6 +300,7 @@ export const CollectionFormProvider = ({
   } = useCollectionForm({
     tripId,
     instance,
+    initialContainers,
     onSuccess: (_) => {
       setStage("photos")
     },

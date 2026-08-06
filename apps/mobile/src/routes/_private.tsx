@@ -14,9 +14,25 @@ import { Suspense, useEffect } from "react"
 import * as Sentry from "@sentry/react"
 import { ErrorFallback } from "@/components/common/ErrorComponent"
 import { TripDataSyncStream } from "@/contexts/PowerSync"
+import { canUseApp } from "@/utils/permissions"
+
+// Members without the collections permission have a valid account but nothing
+// they can do here — every screen in the PWA is a collections screen. Blocking
+// at the layout keeps them out of the sync stream too, rather than letting
+// them fill in a form the database will refuse to store.
+const NoAccess = ({ organisationName }: { organisationName?: string }) => (
+  <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
+    <h1 className="text-xl font-bold">No field access</h1>
+    <p>
+      Your account with {organisationName ?? "this organisation"} does not have
+      Collections access, so there is nothing to record here.
+    </p>
+    <p className="text-sm">Ask an administrator to grant it.</p>
+  </div>
+)
 
 function AuthLayout() {
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, role, permissions, organisation } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const tripId = location.pathname.match(/^\/trips\/([^/]+)/)?.[1]
@@ -28,6 +44,9 @@ function AuthLayout() {
       })
     }
   }, [isLoggedIn])
+
+  if (isLoggedIn && !canUseApp({ role, permissions }))
+    return <NoAccess organisationName={organisation?.name} />
 
   return (
     <GeoLocationProvider>

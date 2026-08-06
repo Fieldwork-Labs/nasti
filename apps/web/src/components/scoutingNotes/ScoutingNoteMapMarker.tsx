@@ -5,12 +5,12 @@ export const ScoutingNoteMapMarker = ({
   latitude,
   longitude,
   isHovered,
-  popupContent,
+  popupContents,
 }: {
   latitude: number
   longitude: number
   isHovered?: boolean
-  popupContent?: React.ReactNode
+  popupContents?: React.ReactNode[]
 }) => {
   return (
     <DataItemMapMarker
@@ -18,7 +18,8 @@ export const ScoutingNoteMapMarker = ({
       isHovered={isHovered}
       latitude={latitude}
       longitude={longitude}
-      popupContent={popupContent}
+      popupContents={popupContents}
+      maxWidth="320px"
     />
   )
 }
