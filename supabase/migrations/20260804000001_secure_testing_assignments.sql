@@ -344,6 +344,21 @@ BEGIN
         USING ERRCODE = 'P0002';
     END IF;
 
+    -- Checked before the holder test on purpose. An assigned bag is held by the
+    -- laboratory, so the holder test would also reject it — but with "not held
+    -- by your organisation", which describes a consequence rather than the
+    -- cause and invites the caller to go looking for a custody problem that
+    -- does not exist. A double-send is a conflict, and says so.
+    IF EXISTS (
+      SELECT 1
+      FROM public.batch_testing_assignment bta
+      WHERE bta.sub_batch_id = v_bag_id
+        AND bta.closed_at IS NULL
+    ) THEN
+      RAISE EXCEPTION 'Bag % already has an active testing assignment', v_bag_id
+        USING ERRCODE = '55000';
+    END IF;
+
     -- Holding the bag, not owning the parent batch, is what entitles an
     -- organisation to send it: a bag already out at a laboratory is not the
     -- owner's to forward.
@@ -368,16 +383,6 @@ BEGIN
       RAISE EXCEPTION
         'Sample weight must be less than the current weight of bag %', v_bag_id
         USING ERRCODE = '22023';
-    END IF;
-
-    IF EXISTS (
-      SELECT 1
-      FROM public.batch_testing_assignment bta
-      WHERE bta.sub_batch_id = v_bag_id
-        AND bta.closed_at IS NULL
-    ) THEN
-      RAISE EXCEPTION 'Bag % already has an active testing assignment', v_bag_id
-        USING ERRCODE = '55000';
     END IF;
 
     IF v_container_id IS NOT NULL AND NOT EXISTS (

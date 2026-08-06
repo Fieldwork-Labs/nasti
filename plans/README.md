@@ -13,7 +13,8 @@ the status row when finished.
 |---|---|---:|---:|---|---|
 | [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | DONE |
 | [003](./003-complete-testing-organisation-assignments.md) | Complete and secure testing-organisation assignments | P1 | L | — | DONE — `feat/new-inventory` |
-| [004](./004-sub-batch-testing-assignments.md) | Make testing assignments bag-based | P1 | L | 003 | TODO |
+| [004](./004-sub-batch-testing-assignments.md) | Make testing assignments bag-based | P1 | L | 003 | IN PROGRESS — database and tests done; frontend remains |
+| [005](./005-retained-bag-lifecycle-notes.md) | What a Testing organisation may do with seed it holds | P2 | — | 004 | NOTES ONLY — see decision note |
 
 Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason, or
 `REJECTED` with a rationale.
@@ -56,6 +57,9 @@ a time without repeating the audit.
 | 7 | A used container can have its purpose changed retroactively | P2 | S–M | **DONE:** purpose is immutable from creation; containers can still be renamed, activated, deactivated, or replaced |
 | 8 | Cleaning, bagging, split, merge, and storage RPCs lack behavioral integration coverage | P1 | M | Add pgTAP tests for weight conservation, tenancy, retry behavior, and history preservation |
 | 9 | Cleaning photo upload/delete sequences can leave orphaned objects or broken metadata | P2 | M | Add compensating cleanup and retry-safe upload/delete behavior |
+| 10 | No way to record seed being discarded, spoiled or used up outside a quality test | P1 | S–M | Add a custody-gated `fn_discard_sub_batch`; see [note 005](./005-retained-bag-lifecycle-notes.md) |
+| 11 | A bag retained by a Testing organisation blocks deletion of its parent batch forever, invisibly | P2 | S | Make `batch_has_externally_held_bags` ignore zero-weight bags, once disposal exists |
+| 12 | A Testing organisation cleaning a retained bag silently produces a General-owned batch | P2 | S | Block Testing-side cleaning; the guard shape already exists in `fn_clean_sub_batch` |
 
 ## Dependency notes
 
@@ -70,6 +74,10 @@ a time without repeating the audit.
 - Plan 004 removes treatments rather than making them bag-scoped: Testing
   organisations only test. `fn_treat_batch` goes; the `treatments` table and the
   views that join it stay and go empty, pending a stakeholder decision.
+- Note 005 records what a Testing organisation may do with seed left over after
+  testing, and three defects that fall out of Plan 004's bag-custody model. It
+  is a decision note, not an executable plan; issues 10-12 above are its
+  actionable parts.
 - Plan 004 is backend-first. The assignment UI is being redesigned separately,
   so the plan deletes the old modal instead of porting it.
 - Issue 8 should be implemented alongside or immediately before issues 1–5.

@@ -89,7 +89,13 @@ insert into public.containers (id, organisation_id, name, purpose, active)
 values
   ('d5000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'General mailing box', 'storage', true),
   ('d5000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', 'General sample box', 'storage', true),
-  ('d5000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000002', 'Testing retained vial', 'storage', true);
+  ('d5000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000002', 'Testing retained vial', 'storage', true),
+  -- Containers 4 and 5 exist so that container 1 is referenced by exactly one
+  -- bag. The visibility matrix asserts that the assigned bag's container goes
+  -- dark for Testing after close; sharing a container with a bag Testing still
+  -- holds would make that cell true for the wrong reason.
+  ('d5000000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000001', 'General second box', 'storage', true),
+  ('d5000000-0000-0000-0000-000000000005', 'd1000000-0000-0000-0000-000000000001', 'General third box', 'storage', true);
 
 insert into public.storage_locations (id, organisation_id, name, active)
 values
@@ -100,10 +106,10 @@ insert into public.sub_batches (id, batch_id, container_id, weight_grams, notes)
 values
   ('d3000000-0000-0000-0000-000000000001', 'd2000000-0000-0000-0000-000000000001', 'd5000000-0000-0000-0000-000000000001', 100, 'Assigned visibility bag'),
   ('d3000000-0000-0000-0000-000000000002', 'd2000000-0000-0000-0000-000000000001', 'd5000000-0000-0000-0000-000000000002', 150, 'General sibling bag'),
-  ('d3000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000002', 'd5000000-0000-0000-0000-000000000001', 80, 'First independently assigned bag'),
+  ('d3000000-0000-0000-0000-000000000003', 'd2000000-0000-0000-0000-000000000002', 'd5000000-0000-0000-0000-000000000004', 80, 'First independently assigned bag'),
   ('d3000000-0000-0000-0000-000000000004', 'd2000000-0000-0000-0000-000000000002', 'd5000000-0000-0000-0000-000000000002', 90, 'Second independently assigned bag'),
   ('d3000000-0000-0000-0000-000000000005', 'd2000000-0000-0000-0000-000000000003', 'd5000000-0000-0000-0000-000000000002', 100, 'Adjusted sample source'),
-  ('d3000000-0000-0000-0000-000000000006', 'd2000000-0000-0000-0000-000000000004', 'd5000000-0000-0000-0000-000000000001', 50, 'Quality-test lifecycle bag'),
+  ('d3000000-0000-0000-0000-000000000006', 'd2000000-0000-0000-0000-000000000004', 'd5000000-0000-0000-0000-000000000005', 50, 'Quality-test lifecycle bag'),
   ('d3000000-0000-0000-0000-000000000007', 'd2000000-0000-0000-0000-000000000004', 'd5000000-0000-0000-0000-000000000002', 40, 'Unassigned lifecycle sibling');
 
 insert into public.batch_weight_adjustments (
@@ -621,7 +627,11 @@ select throws_ok(
       'Owner write probe'
     )
   $$,
-  '42501',
+  -- 23514, not 42501: a BEFORE INSERT trigger runs ahead of the RLS WITH CHECK,
+  -- so validate_active_storage_location rejects the row first. The location
+  -- belongs to General while the bag is held by Testing. Either way the write
+  -- is refused; this records which guard actually fires.
+  '23514',
   null,
   'an owner cannot directly store a Testing-held bag'
 );
@@ -776,11 +786,13 @@ select throws_ok(
   $$
     select public.fn_clean_sub_batch(
       'd3000000-0000-0000-0000-000000000001',
+      null::interval,
       'seed',
       null,
       null,
       false,
       null,
+      '{}'::uuid[],
       '[{"quality":"ORG","material_type":"seed","weight_grams":1}]'::jsonb
     )
   $$,
@@ -1295,6 +1307,28 @@ select isnt(
   'a returned assignment records closed_at'
 );
 
+-- The returned bag and the batch's custody history are read as General from
+-- here. Testing has just handed the bag back, so it can no longer see either --
+-- which is the visibility rule working, not a gap in it. Reading them under the
+-- Testing JWT would return NULL and zero rows and prove nothing about what the
+-- return actually wrote. The retained child is checked before the switch,
+-- because that one Testing genuinely still holds.
+select is(
+  (
+    select held_by_org_id
+    from public.sub_batches
+    where id = (select id from retained_result limit 1)
+  ),
+  'd1000000-0000-0000-0000-000000000002'::uuid,
+  'returning the parent does not move the retained Testing child'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000001","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000001","role":"Admin","permissions":[]}}',
+  true
+);
+
 select is(
   (
     select held_by_org_id
@@ -1307,22 +1341,18 @@ select is(
 
 select is(
   (
-    select held_by_org_id
-    from public.sub_batches
-    where id = (select id from retained_result limit 1)
-  ),
-  'd1000000-0000-0000-0000-000000000002'::uuid,
-  'returning the parent does not move the retained Testing child'
-);
-
-select is(
-  (
     select count(*)
     from public.batch_custody
     where batch_id = 'd2000000-0000-0000-0000-000000000001'
   ),
   1::bigint,
   'returning a bag writes no batch_custody row'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
+  true
 );
 
 select lives_ok(

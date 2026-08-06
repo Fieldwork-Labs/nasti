@@ -481,7 +481,9 @@ select throws_ok(
     )
   $$,
   'P0001',
-  'Permission denied: not current custodian of batch',
+  -- Merging is gated on who holds the bags, not who owns the parent batch, so
+  -- the refusal now names the bags rather than the batch.
+  'Permission denied: not the current holder of these bags',
   'sources outside the caller custody are rejected'
 );
 
