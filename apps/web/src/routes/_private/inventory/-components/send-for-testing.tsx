@@ -7,8 +7,13 @@ import { ArrowLeft, ShoppingBasket, TriangleAlert, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { useAssignBagsForTesting } from "@/hooks/useAssignBagsForTesting"
-import { useBagsForAssignment } from "@/hooks/useBagsForAssignment"
+import {
+  useBagsForAssignment,
+  type BagForAssignment,
+} from "@/hooks/useBagsForAssignment"
 import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
+import { estimatePureLiveSeedCount } from "@/lib/pureLiveSeed"
+import { resolveSendingWeight, type SendingWeight } from "@/lib/sendingWeight"
 import useBagBasketStore, { useBasketBags } from "@/store/bagBasketStore"
 
 const formatCount = (value: number | null) =>
@@ -43,51 +48,78 @@ export const SendForTestingPage = () => {
   // split that much off and send the child instead.
   const [sampleWeights, setSampleWeights] = useState<Record<string, string>>({})
 
-  const sendable = bags.filter((bag) => !bag.alreadyAssigned)
+  // One resolution of the weight rule per bag, reused by every column, both
+  // totals, the validity check and the payload. Recomputed on each render so
+  // the pure live seed figure tracks the input as it is typed.
+  const rows: Array<{
+    bag: BagForAssignment
+    sending: SendingWeight
+    pureLiveSeedCount: number | null
+  }> = bags.map((bag) => {
+    const sending = resolveSendingWeight(
+      sampleWeights[bag.subBatchId],
+      bag.currentWeightGrams,
+    )
+
+    return {
+      bag,
+      sending,
+      // Derived from what is actually being sent, not scaled down from a
+      // full-bag total — rounding a fraction of a rounded count drifts.
+      pureLiveSeedCount:
+        sending.kind === "invalid"
+          ? null
+          : estimatePureLiveSeedCount(
+              sending.grams,
+              bag.pureLiveSeedStatistics,
+            ),
+    }
+  })
+
+  const sendableRows = rows.filter((row) => !row.bag.alreadyAssigned)
+  const sendable = sendableRows.map((row) => row.bag)
   const blocked = bags.filter((bag) => bag.alreadyAssigned)
 
-  const totalWeight = sendable.reduce((sum, bag) => {
-    const override = Number(sampleWeights[bag.subBatchId])
-    return sum + (override > 0 ? override : bag.currentWeightGrams)
+  const totalWeight = sendableRows.reduce(
+    (sum, row) =>
+      sum + (row.sending.kind === "invalid" ? 0 : row.sending.grams),
+    0,
+  )
+
+  const totalPls = sendableRows.reduce<number | null>((sum, row) => {
+    if (sum === null || row.pureLiveSeedCount === null) return null
+    return sum + row.pureLiveSeedCount
   }, 0)
 
-  const totalPls = sendable.reduce<number | null>((sum, bag) => {
-    if (sum === null || bag.pureLiveSeedCount === null) return null
-    const override = Number(sampleWeights[bag.subBatchId])
-    const fraction =
-      override > 0 && bag.currentWeightGrams > 0
-        ? override / bag.currentWeightGrams
-        : 1
-    return sum + Math.round(bag.pureLiveSeedCount * fraction)
-  }, 0)
+  const hasWeightError = sendableRows.some(
+    (row) => row.sending.kind === "invalid",
+  )
 
-  const weightError = sendable.find((bag) => {
-    const raw = sampleWeights[bag.subBatchId]
-    if (!raw) return false
-    const value = Number(raw)
-    return (
-      !Number.isFinite(value) || value <= 0 || value >= bag.currentWeightGrams
-    )
-  })
+  // Kept apart from the weight error: an untested bag and an unusable number
+  // both leave the total unknown, but they are not the same problem and must
+  // not be explained with the same sentence.
+  const hasUntestedBag = sendableRows.some(
+    (row) => row.bag.pureLiveSeedStatistics === null,
+  )
 
   const canSend =
     Boolean(testingOrgId) &&
     sendable.length > 0 &&
-    !weightError &&
+    !hasWeightError &&
     !assignBags.isPending
 
   const handleSend = async () => {
     try {
       await assignBags.mutateAsync({
         testing_org_id: testingOrgId,
-        sub_batch_assignments: sendable.map((bag) => {
-          const raw = sampleWeights[bag.subBatchId]
-          const value = Number(raw)
-          return {
-            sub_batch_id: bag.subBatchId,
-            ...(raw && value > 0 ? { sample_weight_grams: value } : {}),
-          }
-        }),
+        sub_batch_assignments: sendableRows.map(({ bag, sending }) => ({
+          sub_batch_id: bag.subBatchId,
+          // Only a genuine sample carries a weight; sending the whole bag is
+          // expressed by omitting it.
+          ...(sending.kind === "sample"
+            ? { sample_weight_grams: sending.grams }
+            : {}),
+        })),
       })
 
       toast({
@@ -162,14 +194,9 @@ export const SendForTestingPage = () => {
               </tr>
             </thead>
             <tbody>
-              {bags.map((bag) => {
+              {rows.map(({ bag, sending, pureLiveSeedCount }) => {
                 const raw = sampleWeights[bag.subBatchId] ?? ""
-                const value = Number(raw)
-                const invalid =
-                  Boolean(raw) &&
-                  (!Number.isFinite(value) ||
-                    value <= 0 ||
-                    value >= bag.currentWeightGrams)
+                const invalid = sending.kind === "invalid"
 
                 return (
                   <tr
@@ -208,7 +235,18 @@ export const SendForTestingPage = () => {
                       />
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatCount(bag.pureLiveSeedCount)}
+                      {formatCount(pureLiveSeedCount)}
+                      {sending.kind === "sample" && (
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          of{" "}
+                          {formatCount(
+                            estimatePureLiveSeedCount(
+                              bag.currentWeightGrams,
+                              bag.pureLiveSeedStatistics,
+                            ),
+                          )}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Button
@@ -253,7 +291,14 @@ export const SendForTestingPage = () => {
         </div>
       )}
 
-      {totalPls === null && (
+      {hasWeightError && (
+        <p className="text-destructive text-sm">
+          A sending weight is more than its bag holds, or is not a number. Clear
+          the field to send the whole bag.
+        </p>
+      )}
+
+      {hasUntestedBag && (
         <p className="text-muted-foreground text-sm">
           Some of these bags have never been tested, so the pure live seed total
           cannot be worked out. An untested bag shows a dash rather than a zero.

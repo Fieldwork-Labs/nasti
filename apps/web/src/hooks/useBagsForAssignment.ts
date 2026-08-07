@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 
 import {
-  estimatePureLiveSeedCount,
   readPureLiveSeedStatistics,
+  type PureLiveSeedStatistics,
 } from "@/lib/pureLiveSeed"
 
 export type BagForAssignment = {
@@ -12,8 +12,13 @@ export type BagForAssignment = {
   batchCode: string | null
   containerName: string | null
   currentWeightGrams: number
-  /** Null when the bag has never been tested — not zero; see pureLiveSeed. */
-  pureLiveSeedCount: number | null
+  /**
+   * The ratios needed to work out pure live seed for any weight, or null when
+   * the bag has never been tested. Deliberately not a finished count: the page
+   * lets the user choose how much to send, so the figure has to be recomputed
+   * as they type rather than scaled from a full-bag total.
+   */
+  pureLiveSeedStatistics: PureLiveSeedStatistics | null
   /** True once some other request has sent this bag while the basket sat open. */
   alreadyAssigned: boolean
 }
@@ -93,10 +98,7 @@ export const useBagsForAssignment = (subBatchIds: string[]) => {
           batchCode: batch?.code ?? null,
           containerName: container?.name ?? null,
           currentWeightGrams,
-          pureLiveSeedCount: estimatePureLiveSeedCount(
-            currentWeightGrams,
-            readPureLiveSeedStatistics(test?.statistics),
-          ),
+          pureLiveSeedStatistics: readPureLiveSeedStatistics(test?.statistics),
           alreadyAssigned: assignedBagIds.has(bagId),
         }
       })
