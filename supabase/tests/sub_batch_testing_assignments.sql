@@ -1241,8 +1241,8 @@ select is(
   'no active assignment points at deleted material'
 );
 
--- A quality test completes exactly one assignment, rejects sibling access, and
--- protects the bag from over-consumption.
+-- A quality test leaves work open until it consumes all represented seed,
+-- rejects sibling access, and protects the bag from over-consumption.
 select set_config(
   'request.jwt.claims',
   '{"sub":"d0000000-0000-0000-0000-000000000001","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000001","role":"Admin","permissions":[]}}',
@@ -1291,24 +1291,24 @@ select is(
   'test consumption references the test that deducted the weight'
 );
 
-select isnt(
+select is(
   (
-    select completed_at
+    select work_closed_at
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000006'
   ),
   null,
-  'the quality test completes its own assignment'
+  'the first quality test leaves its work open'
 );
 
 select is(
   (
-    select completed_at
+    select work_closed_at
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
   ),
   null,
-  'a quality test completes no other assignment'
+  'a quality test closes no other assignment'
 );
 
 select throws_ok(
@@ -1393,22 +1393,22 @@ select lives_ok(
 
 select is(
   (
-    select outcome
+    select work_status
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000006'
   ),
-  'consumed'::text,
-  'zero remaining weight closes the assignment as consumed'
+  'completed'::text,
+  'zero remaining weight closes the work as completed'
 );
 
 select isnt(
   (
-    select closed_at
+    select work_closed_at
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000006'
   ),
   null,
-  'a consumed assignment has a closed_at timestamp'
+  'automatically completed work records its closure timestamp'
 );
 
 select is(
