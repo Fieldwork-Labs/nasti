@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(97);
+select plan(103);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -228,6 +228,94 @@ select is(
   ),
   2::bigint,
   'one parent may have two active bag assignments'
+);
+
+select results_eq(
+  $$
+    select count(distinct sti.transfer_event_id)::integer
+    from public.batch_testing_assignment bta
+    inner join public.seed_transfer_item sti
+      on sti.id = bta.outbound_transfer_item_id
+    where bta.batch_id = 'd2000000-0000-0000-0000-000000000002'
+  $$,
+  array[1],
+  'one multi-bag assignment request creates one transfer header'
+);
+
+select results_eq(
+  $$
+    select count(*)::integer
+    from public.seed_transfer_item sti
+    where sti.transfer_event_id = (
+      select sti2.transfer_event_id
+      from public.batch_testing_assignment bta2
+      inner join public.seed_transfer_item sti2
+        on sti2.id = bta2.outbound_transfer_item_id
+      where bta2.batch_id = 'd2000000-0000-0000-0000-000000000002'
+      limit 1
+    )
+  $$,
+  array[2],
+  'the grouped transfer has one immutable item per moved bag'
+);
+
+select results_eq(
+  $$
+    select sti.weight_grams
+    from public.batch_testing_assignment bta
+    inner join public.seed_transfer_item sti
+      on sti.id = bta.outbound_transfer_item_id
+    where bta.batch_id = 'd2000000-0000-0000-0000-000000000002'
+    order by sti.weight_grams
+  $$,
+  $$ values (80::numeric), (90::numeric) $$,
+  'transfer items snapshot each dispatched bag weight'
+);
+
+select results_eq(
+  $$
+    select distinct
+      ste.sender_org_id,
+      ste.recipient_org_id,
+      ste.kind::text,
+      sti.owner_org_id
+    from public.batch_testing_assignment bta
+    inner join public.seed_transfer_item sti
+      on sti.id = bta.outbound_transfer_item_id
+    inner join public.seed_transfer_event ste
+      on ste.id = sti.transfer_event_id
+    where bta.batch_id = 'd2000000-0000-0000-0000-000000000002'
+  $$,
+  $$
+    values (
+      'd1000000-0000-0000-0000-000000000001'::uuid,
+      'd1000000-0000-0000-0000-000000000002'::uuid,
+      'testing_dispatch'::text,
+      'd1000000-0000-0000-0000-000000000001'::uuid
+    )
+  $$,
+  'the transfer snapshots sender, recipient, kind, and seed owner'
+);
+
+select throws_ok(
+  $$
+    update public.seed_transfer_event
+    set reason = 'attempted rewrite'
+    where sender_org_id = 'd1000000-0000-0000-0000-000000000001'
+  $$,
+  '42501',
+  null,
+  'authenticated senders cannot update immutable transfer headers'
+);
+
+select throws_ok(
+  $$
+    delete from public.seed_transfer_item
+    where owner_org_id = 'd1000000-0000-0000-0000-000000000001'
+  $$,
+  '42501',
+  null,
+  'authenticated owners cannot delete immutable transfer items'
 );
 
 select is(

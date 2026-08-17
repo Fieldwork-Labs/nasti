@@ -272,12 +272,18 @@ INSERT INTO "public"."batch_storage" ("id", "batch_id", "location_id", "stored_a
 -- Data for Name: batch_testing_assignment; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+INSERT INTO "public"."seed_transfer_event" ("id", "sender_org_id", "recipient_org_id", "kind", "effective_at", "recorded_at", "recorded_by", "reverses_event_id", "corrects_event_id", "reason") VALUES
+	('6919a199-0e38-4b64-bf77-f92ffd6eecb2', '02aba5b9-6c46-406d-831a-4f51851599f2', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', 'testing_dispatch', '2026-08-06 04:46:49.651367+00', '2026-08-06 04:46:49.651367+00', 'e18b3927-87a9-4dcc-8d59-148461504a02', NULL, NULL, NULL);
+
+INSERT INTO "public"."seed_transfer_item" ("id", "transfer_event_id", "sub_batch_id", "batch_id", "owner_org_id", "weight_grams") VALUES
+	('c0dcd905-f083-4d87-879e-cc1494b28e94', '6919a199-0e38-4b64-bf77-f92ffd6eecb2', 'efe5355a-37b1-4581-8c6d-36f979afe128', 'adedaba3-ffe6-460e-babd-2439793fe8f9', '02aba5b9-6c46-406d-831a-4f51851599f2', 50);
+
 -- An assignment is now one bag, not one batch. This row is the 50g bag split
 -- off CHAUNC-CO.SWA.26-1-HQ-1 and sent as a sample — the same bag the seeded
 -- quality test above was recorded against. It is closed, so it needs an
 -- outcome to satisfy the closed_at/outcome coupling constraint.
-INSERT INTO "public"."batch_testing_assignment" ("id", "batch_id", "sub_batch_id", "assigned_to_org_id", "assigned_by_org_id", "assigned_at", "completed_at", "closed_at", "outcome") VALUES
-	('c49869fd-adaf-4811-87d1-52ec900a8059', 'adedaba3-ffe6-460e-babd-2439793fe8f9', 'efe5355a-37b1-4581-8c6d-36f979afe128', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', '02aba5b9-6c46-406d-831a-4f51851599f2', '2026-08-06 04:46:49.651367+00', '2026-08-06 04:47:17.406406+00', '2026-08-06 04:47:17.406406+00', 'returned');
+INSERT INTO "public"."batch_testing_assignment" ("id", "batch_id", "sub_batch_id", "assigned_to_org_id", "assigned_by_org_id", "assigned_at", "completed_at", "closed_at", "outcome", "outbound_transfer_item_id") VALUES
+	('c49869fd-adaf-4811-87d1-52ec900a8059', 'adedaba3-ffe6-460e-babd-2439793fe8f9', 'efe5355a-37b1-4581-8c6d-36f979afe128', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', '02aba5b9-6c46-406d-831a-4f51851599f2', '2026-08-06 04:46:49.651367+00', '2026-08-06 04:47:17.406406+00', '2026-08-06 04:47:17.406406+00', 'returned', 'c0dcd905-f083-4d87-879e-cc1494b28e94');
 
 
 --

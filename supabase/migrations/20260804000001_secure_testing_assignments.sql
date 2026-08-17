@@ -100,6 +100,176 @@ CREATE UNIQUE INDEX batch_testing_assignment_one_active_per_bag
 COMMENT ON INDEX public.batch_testing_assignment_one_active_per_bag IS
   'A bag may be assigned to at most one Testing organisation at a time. "Active" means closed_at IS NULL.';
 
+-- ============================================================================
+-- Immutable seed-transfer facts
+-- ============================================================================
+-- A dispatch is one event even when several bags move. Items snapshot what was
+-- moved; assignments point at those items instead of reconstructing history
+-- from mutable custody rows.
+CREATE TYPE public.seed_transfer_event_kind AS ENUM (
+  'testing_dispatch',
+  'return',
+  'reversal',
+  'correction'
+);
+
+CREATE TABLE public.seed_transfer_event (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_org_id uuid NOT NULL REFERENCES public.organisation(id) ON DELETE RESTRICT,
+  recipient_org_id uuid NOT NULL REFERENCES public.organisation(id) ON DELETE RESTRICT,
+  kind public.seed_transfer_event_kind NOT NULL,
+  effective_at timestamptz NOT NULL DEFAULT now(),
+  recorded_at timestamptz NOT NULL DEFAULT now(),
+  recorded_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  reverses_event_id uuid REFERENCES public.seed_transfer_event(id) ON DELETE RESTRICT,
+  corrects_event_id uuid REFERENCES public.seed_transfer_event(id) ON DELETE RESTRICT,
+  reason text,
+  CONSTRAINT seed_transfer_event_distinct_parties
+    CHECK (sender_org_id <> recipient_org_id),
+  CONSTRAINT seed_transfer_event_reference_shape CHECK (
+    (kind = 'reversal' AND reverses_event_id IS NOT NULL
+      AND corrects_event_id IS NULL AND nullif(btrim(reason), '') IS NOT NULL)
+    OR
+    (kind = 'correction' AND corrects_event_id IS NOT NULL
+      AND reverses_event_id IS NULL AND nullif(btrim(reason), '') IS NOT NULL)
+    OR
+    (kind IN ('testing_dispatch', 'return')
+      AND reverses_event_id IS NULL AND corrects_event_id IS NULL)
+  ),
+  CONSTRAINT seed_transfer_event_not_self_referential CHECK (
+    id IS DISTINCT FROM reverses_event_id
+    AND id IS DISTINCT FROM corrects_event_id
+  )
+);
+
+CREATE INDEX idx_seed_transfer_event_sender
+  ON public.seed_transfer_event (sender_org_id, effective_at DESC);
+CREATE INDEX idx_seed_transfer_event_recipient
+  ON public.seed_transfer_event (recipient_org_id, effective_at DESC);
+CREATE INDEX idx_seed_transfer_event_reverses
+  ON public.seed_transfer_event (reverses_event_id)
+  WHERE reverses_event_id IS NOT NULL;
+CREATE INDEX idx_seed_transfer_event_corrects
+  ON public.seed_transfer_event (corrects_event_id)
+  WHERE corrects_event_id IS NOT NULL;
+
+CREATE TABLE public.seed_transfer_item (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  transfer_event_id uuid NOT NULL REFERENCES public.seed_transfer_event(id) ON DELETE RESTRICT,
+  sub_batch_id uuid NOT NULL,
+  batch_id uuid NOT NULL,
+  owner_org_id uuid NOT NULL REFERENCES public.organisation(id) ON DELETE RESTRICT,
+  weight_grams numeric NOT NULL CHECK (weight_grams > 0),
+  CONSTRAINT seed_transfer_item_bag_matches_batch_fkey
+    FOREIGN KEY (sub_batch_id, batch_id)
+    REFERENCES public.sub_batches(id, batch_id)
+    ON DELETE RESTRICT
+);
+
+ALTER TABLE public.seed_transfer_item
+  ADD CONSTRAINT seed_transfer_item_composite_identity
+  UNIQUE (id, sub_batch_id, batch_id);
+
+CREATE INDEX idx_seed_transfer_item_event
+  ON public.seed_transfer_item (transfer_event_id);
+CREATE INDEX idx_seed_transfer_item_bag
+  ON public.seed_transfer_item (sub_batch_id);
+CREATE INDEX idx_seed_transfer_item_batch_owner
+  ON public.seed_transfer_item (batch_id, owner_org_id);
+
+CREATE OR REPLACE FUNCTION public.validate_seed_transfer_item()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.batches b
+    WHERE b.id = NEW.batch_id
+      AND b.organisation_id = NEW.owner_org_id
+  ) THEN
+    RAISE EXCEPTION 'Transfer owner snapshot must match the parent batch owner'
+      USING ERRCODE = '23514';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER seed_transfer_item_validate
+  BEFORE INSERT ON public.seed_transfer_item
+  FOR EACH ROW EXECUTE FUNCTION public.validate_seed_transfer_item();
+
+CREATE OR REPLACE FUNCTION public.reject_seed_transfer_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  RAISE EXCEPTION 'Seed transfer facts are append-only'
+    USING ERRCODE = '55000';
+END;
+$$;
+
+CREATE TRIGGER seed_transfer_event_append_only
+  BEFORE UPDATE OR DELETE ON public.seed_transfer_event
+  FOR EACH ROW EXECUTE FUNCTION public.reject_seed_transfer_mutation();
+
+CREATE TRIGGER seed_transfer_item_append_only
+  BEFORE UPDATE OR DELETE ON public.seed_transfer_item
+  FOR EACH ROW EXECUTE FUNCTION public.reject_seed_transfer_mutation();
+
+ALTER TABLE public.seed_transfer_event ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.seed_transfer_item ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY seed_transfer_event_select ON public.seed_transfer_event
+  FOR SELECT TO authenticated
+  USING (
+    sender_org_id = (SELECT public.get_user_organisation_id())
+    OR recipient_org_id = (SELECT public.get_user_organisation_id())
+  );
+
+CREATE POLICY seed_transfer_item_select ON public.seed_transfer_item
+  FOR SELECT TO authenticated
+  USING (
+    owner_org_id = (SELECT public.get_user_organisation_id())
+    OR EXISTS (
+      SELECT 1
+      FROM public.seed_transfer_event ste
+      WHERE ste.id = seed_transfer_item.transfer_event_id
+        AND (
+          ste.sender_org_id = (SELECT public.get_user_organisation_id())
+          OR ste.recipient_org_id = (SELECT public.get_user_organisation_id())
+        )
+    )
+  );
+
+REVOKE ALL PRIVILEGES ON TABLE public.seed_transfer_event, public.seed_transfer_item
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.seed_transfer_event, public.seed_transfer_item
+  TO authenticated;
+
+COMMENT ON TABLE public.seed_transfer_event IS
+  'Append-only header for one accountable seed custody movement.';
+COMMENT ON TABLE public.seed_transfer_item IS
+  'Append-only line item snapshot of a physical bag or portion moved by one transfer event.';
+COMMENT ON COLUMN public.seed_transfer_item.owner_org_id IS
+  'Immutable owner snapshot from batches.organisation_id at transfer time.';
+
+ALTER TABLE public.batch_testing_assignment
+  ADD COLUMN outbound_transfer_item_id uuid NOT NULL UNIQUE;
+
+ALTER TABLE public.batch_testing_assignment
+  ADD CONSTRAINT batch_testing_assignment_transfer_item_matches_bag_fkey
+  FOREIGN KEY (outbound_transfer_item_id, sub_batch_id, batch_id)
+  REFERENCES public.seed_transfer_item (id, sub_batch_id, batch_id)
+  ON DELETE RESTRICT;
+
+COMMENT ON COLUMN public.batch_testing_assignment.outbound_transfer_item_id IS
+  'The immutable outbound transfer line that created this testing work assignment.';
+
 
 -- ############################################################################
 -- 1. ASSIGNMENT AND RETURN
@@ -164,6 +334,10 @@ DECLARE
   v_container_id uuid;
   v_current_weight numeric;
   v_split_ids uuid[];
+  v_transfer_event_id uuid;
+  v_transfer_item_id uuid;
+  v_owner_org_id uuid;
+  v_moved_weight numeric;
   v_assignment_id uuid;
   v_now timestamptz := now();
 BEGIN
@@ -334,9 +508,10 @@ BEGIN
     v_sample_weight := nullif(v_item ->> 'sample_weight_grams', '')::numeric;
     v_container_id := nullif(v_item ->> 'container_id', '')::uuid;
 
-    SELECT sb.batch_id, sb.held_by_org_id
-      INTO v_batch_id, v_holder_org_id
+    SELECT sb.batch_id, sb.held_by_org_id, b.organisation_id
+      INTO v_batch_id, v_holder_org_id, v_owner_org_id
     FROM public.sub_batches sb
+    INNER JOIN public.batches b ON b.id = sb.batch_id
     WHERE sb.id = v_bag_id;
 
     IF NOT FOUND THEN
@@ -359,11 +534,16 @@ BEGIN
         USING ERRCODE = '55000';
     END IF;
 
-    -- Holding the bag, not owning the parent batch, is what entitles an
-    -- organisation to send it: a bag already out at a laboratory is not the
-    -- owner's to forward.
+    -- Dispatch requires both ownership and physical custody. A provider can
+    -- send seed it owns, but custody alone never permits forwarding another
+    -- organisation's seed to a third party.
     IF v_holder_org_id IS DISTINCT FROM v_caller_org_id THEN
       RAISE EXCEPTION 'Bag % is not held by your organisation', v_bag_id
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF v_owner_org_id IS DISTINCT FROM v_caller_org_id THEN
+      RAISE EXCEPTION 'Bag % is not owned by your organisation', v_bag_id
         USING ERRCODE = '42501';
     END IF;
 
@@ -403,6 +583,23 @@ BEGIN
   -- --------------------------------------------------------------------
   -- Writes
   -- --------------------------------------------------------------------
+  INSERT INTO public.seed_transfer_event (
+    sender_org_id,
+    recipient_org_id,
+    kind,
+    effective_at,
+    recorded_at,
+    recorded_by
+  ) VALUES (
+    v_caller_org_id,
+    p_provider_org_id,
+    'testing_dispatch',
+    v_now,
+    v_now,
+    v_user_id
+  )
+  RETURNING id INTO v_transfer_event_id;
+
   FOR v_item IN SELECT jsonb_array_elements(v_requests) LOOP
     v_bag_id := (v_item ->> 'sub_batch_id')::uuid;
     v_sample_weight := nullif(v_item ->> 'sample_weight_grams', '')::numeric;
@@ -439,6 +636,28 @@ BEGIN
       END IF;
     END IF;
 
+    SELECT b.organisation_id, sbcw.current_weight
+      INTO v_owner_org_id, v_moved_weight
+    FROM public.sub_batches sb
+    INNER JOIN public.batches b ON b.id = sb.batch_id
+    INNER JOIN public.sub_batch_current_weight sbcw ON sbcw.id = sb.id
+    WHERE sb.id = v_assigned_bag_id;
+
+    INSERT INTO public.seed_transfer_item (
+      transfer_event_id,
+      sub_batch_id,
+      batch_id,
+      owner_org_id,
+      weight_grams
+    ) VALUES (
+      v_transfer_event_id,
+      v_assigned_bag_id,
+      v_batch_id,
+      v_owner_org_id,
+      v_moved_weight
+    )
+    RETURNING id INTO v_transfer_item_id;
+
     -- An assigned bag is in the mail, not on a shelf. Close its storage row
     -- while the caller still holds it — fn_set_sub_batch_storage is gated on
     -- the bag's holder, and the next statement hands the bag over.
@@ -465,13 +684,15 @@ BEGIN
       sub_batch_id,
       assigned_to_org_id,
       assigned_by_org_id,
-      assigned_at
+      assigned_at,
+      outbound_transfer_item_id
     ) VALUES (
       v_batch_id,
       v_assigned_bag_id,
       p_provider_org_id,
       v_caller_org_id,
-      v_now
+      v_now,
+      v_transfer_item_id
     )
     RETURNING id INTO v_assignment_id;
 
@@ -487,7 +708,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.fn_assign_bags_for_testing(uuid, jsonb) IS
-  'Sends one or more held bags to a linked Testing organisation, splitting a sample off first where a sample weight is given. Moves each assigned bag out of storage and into the Testing organisation''s hands. All or nothing.';
+  'Records one grouped testing dispatch and sends one or more owned-and-held bags to a linked testing provider, splitting a sample first where requested. All or nothing.';
 
 REVOKE ALL PRIVILEGES ON FUNCTION public.fn_assign_bags_for_testing(uuid, jsonb)
   FROM PUBLIC, anon;

@@ -511,6 +511,7 @@ export type Database = {
           closed_at: string | null
           completed_at: string | null
           id: string
+          outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
         }
@@ -522,6 +523,7 @@ export type Database = {
           closed_at?: string | null
           completed_at?: string | null
           id?: string
+          outbound_transfer_item_id: string
           outcome?: string | null
           sub_batch_id: string
         }
@@ -533,6 +535,7 @@ export type Database = {
           closed_at?: string | null
           completed_at?: string | null
           id?: string
+          outbound_transfer_item_id?: string
           outcome?: string | null
           sub_batch_id?: string
         }
@@ -585,6 +588,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sub_batches"
             referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_transfer_item_matches_bag_fkey"
+            columns: ["outbound_transfer_item_id", "sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
+            referencedColumns: ["id", "sub_batch_id", "batch_id"]
           },
         ]
       }
@@ -1429,6 +1439,130 @@ export type Database = {
             columns: ["scouting_notes_id"]
             isOneToOne: false
             referencedRelation: "scouting_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seed_transfer_event: {
+        Row: {
+          corrects_event_id: string | null
+          effective_at: string
+          id: string
+          kind: Database["public"]["Enums"]["seed_transfer_event_kind"]
+          reason: string | null
+          recipient_org_id: string
+          recorded_at: string
+          recorded_by: string
+          reverses_event_id: string | null
+          sender_org_id: string
+        }
+        Insert: {
+          corrects_event_id?: string | null
+          effective_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["seed_transfer_event_kind"]
+          reason?: string | null
+          recipient_org_id: string
+          recorded_at?: string
+          recorded_by: string
+          reverses_event_id?: string | null
+          sender_org_id: string
+        }
+        Update: {
+          corrects_event_id?: string | null
+          effective_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["seed_transfer_event_kind"]
+          reason?: string | null
+          recipient_org_id?: string
+          recorded_at?: string
+          recorded_by?: string
+          reverses_event_id?: string | null
+          sender_org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seed_transfer_event_corrects_event_id_fkey"
+            columns: ["corrects_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_event_recipient_org_id_fkey"
+            columns: ["recipient_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_event_reverses_event_id_fkey"
+            columns: ["reverses_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_event_sender_org_id_fkey"
+            columns: ["sender_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seed_transfer_item: {
+        Row: {
+          batch_id: string
+          id: string
+          owner_org_id: string
+          sub_batch_id: string
+          transfer_event_id: string
+          weight_grams: number
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          owner_org_id: string
+          sub_batch_id: string
+          transfer_event_id: string
+          weight_grams: number
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          owner_org_id?: string
+          sub_batch_id?: string
+          transfer_event_id?: string
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seed_transfer_item_bag_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_item_bag_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_item_owner_org_id_fkey"
+            columns: ["owner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_item_transfer_event_id_fkey"
+            columns: ["transfer_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
             referencedColumns: ["id"]
           },
         ]
@@ -2469,6 +2603,7 @@ export type Database = {
           closed_at: string | null
           completed_at: string | null
           id: string
+          outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
         }[]
@@ -2559,6 +2694,7 @@ export type Database = {
           closed_at: string | null
           completed_at: string | null
           id: string
+          outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
         }
@@ -3638,6 +3774,11 @@ export type Database = {
       org_permission: "collections" | "inventory"
       org_user_types: "Member" | "Admin"
       person_source_type: "user" | "personnel"
+      seed_transfer_event_kind:
+        | "testing_dispatch"
+        | "return"
+        | "reversal"
+        | "correction"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3796,6 +3937,12 @@ export const Constants = {
       org_permission: ["collections", "inventory"],
       org_user_types: ["Member", "Admin"],
       person_source_type: ["user", "personnel"],
+      seed_transfer_event_kind: [
+        "testing_dispatch",
+        "return",
+        "reversal",
+        "correction",
+      ],
     },
   },
 } as const

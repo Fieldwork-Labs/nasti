@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(18);
+select plan(19);
 
 select has_table('public', 'seed_transfer_event', 'seed transfer headers exist');
 select has_table('public', 'seed_transfer_item', 'seed transfer line items exist');
@@ -39,16 +39,16 @@ select columns_are(
   'transfer items snapshot the moved bag, parent, owner, and weight'
 );
 
-select col_not_null('public', 'seed_transfer_event', 'sender_org_id');
-select col_not_null('public', 'seed_transfer_event', 'recipient_org_id');
-select col_not_null('public', 'seed_transfer_event', 'effective_at');
-select col_not_null('public', 'seed_transfer_event', 'recorded_at');
-select col_not_null('public', 'seed_transfer_event', 'recorded_by');
-select col_not_null('public', 'seed_transfer_item', 'transfer_event_id');
-select col_not_null('public', 'seed_transfer_item', 'sub_batch_id');
-select col_not_null('public', 'seed_transfer_item', 'batch_id');
-select col_not_null('public', 'seed_transfer_item', 'owner_org_id');
-select col_not_null('public', 'seed_transfer_item', 'weight_grams');
+select col_not_null('public', 'seed_transfer_event', 'sender_org_id', 'transfer sender is required');
+select col_not_null('public', 'seed_transfer_event', 'recipient_org_id', 'transfer recipient is required');
+select col_not_null('public', 'seed_transfer_event', 'effective_at', 'effective timestamp is required');
+select col_not_null('public', 'seed_transfer_event', 'recorded_at', 'recorded timestamp is required');
+select col_not_null('public', 'seed_transfer_event', 'recorded_by', 'transfer actor is required');
+select col_not_null('public', 'seed_transfer_item', 'transfer_event_id', 'item header is required');
+select col_not_null('public', 'seed_transfer_item', 'sub_batch_id', 'moved bag is required');
+select col_not_null('public', 'seed_transfer_item', 'batch_id', 'parent batch is required');
+select col_not_null('public', 'seed_transfer_item', 'owner_org_id', 'owner snapshot is required');
+select col_not_null('public', 'seed_transfer_item', 'weight_grams', 'weight snapshot is required');
 select col_not_null(
   'public',
   'batch_testing_assignment',
@@ -67,6 +67,24 @@ select results_eq(
   $$,
   array[0],
   'clients cannot directly mutate transfer facts'
+);
+
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_trigger
+    where tgrelid in (
+      'public.seed_transfer_event'::regclass,
+      'public.seed_transfer_item'::regclass
+    )
+      and tgname in (
+        'seed_transfer_event_append_only',
+        'seed_transfer_item_append_only'
+      )
+      and not tgisinternal
+  $$,
+  array[2],
+  'database triggers keep transfer headers and items append-only for every role'
 );
 
 select results_eq(

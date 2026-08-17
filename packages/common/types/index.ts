@@ -230,6 +230,9 @@ export type QualityTest = Omit<Table<"tests">, "result" | "statistics"> & {
 export type OrganisationLink = Table<"organisation_link">
 export type OrganisationLinkRequest = Table<"organisation_link_request">
 export type BatchTestingAssignment = Table<"batch_testing_assignment">
+export type SeedTransferEvent = Table<"seed_transfer_event">
+export type SeedTransferItem = Table<"seed_transfer_item">
+export type SeedTransferEventKind = Enums["seed_transfer_event_kind"]
 
 // Extended types with joined data.
 //
