@@ -144,19 +144,20 @@ describe("getAssignmentActions", () => {
     ).toBe(true)
   })
 
-  it("leaves a closed assignment with no actions at all", () => {
-    for (const outcome of ["returned", "consumed"] as const) {
-      const actions = getAssignmentActions(
-        closed(outcome, { completed_at: "2026-08-01T00:00:00Z" }),
-        { hasVisibleSubBatch: true },
-      )
+  it("keeps custody actions available after work closes while seed remains held", () => {
+    const actions = getAssignmentActions(
+      closed("returned", { completed_at: "2026-08-01T00:00:00Z" }),
+      {
+        hasVisibleSubBatch: true,
+        hasReturnableSeed: true,
+      },
+    )
 
-      expect(actions).toEqual({
-        canTest: false,
-        canReturn: false,
-        canDelete: false,
-      })
-    }
+    expect(actions).toEqual({
+      canTest: true,
+      canReturn: true,
+      canDelete: false,
+    })
   })
 
   it("never offers delete to a Testing organisation", () => {
