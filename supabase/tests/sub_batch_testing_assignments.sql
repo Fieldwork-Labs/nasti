@@ -895,7 +895,7 @@ select set_config(
   true
 );
 
-select throws_ok(
+select lives_ok(
   $$
     select public.fn_merge_sub_batches(
       array[
@@ -906,9 +906,7 @@ select throws_ok(
       null
     )
   $$,
-  'P0001',
-  null,
-  'merging an assigned bag is rejected'
+  'assigned bags can merge because the destination preserves their ancestry'
 );
 
 select set_config(

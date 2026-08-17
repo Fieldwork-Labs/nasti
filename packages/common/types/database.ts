@@ -1715,6 +1715,79 @@ export type Database = {
           },
         ]
       }
+      sub_batch_lineage: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          derived_sub_batch_id: string
+          id: string
+          operation_id: string
+          operation_kind: Database["public"]["Enums"]["sub_batch_lineage_operation_kind"]
+          source_sub_batch_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          derived_sub_batch_id: string
+          id?: string
+          operation_id: string
+          operation_kind: Database["public"]["Enums"]["sub_batch_lineage_operation_kind"]
+          source_sub_batch_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          derived_sub_batch_id?: string
+          id?: string
+          operation_id?: string
+          operation_kind?: Database["public"]["Enums"]["sub_batch_lineage_operation_kind"]
+          source_sub_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_batch_lineage_derived_sub_batch_id_fkey"
+            columns: ["derived_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_derived_sub_batch_id_fkey"
+            columns: ["derived_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_derived_sub_batch_id_fkey"
+            columns: ["derived_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_source_sub_batch_id_fkey"
+            columns: ["source_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_source_sub_batch_id_fkey"
+            columns: ["source_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_source_sub_batch_id_fkey"
+            columns: ["source_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sub_batches: {
         Row: {
           batch_id: string
@@ -2646,6 +2719,20 @@ export type Database = {
         }
         Returns: string
       }
+      fn_clean_sub_batch_without_lineage: {
+        Args: {
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_is_cleaned?: boolean
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_outputs?: Json
+          p_sub_batch_id: string
+          p_worker_ids?: string[]
+        }
+        Returns: string
+      }
       fn_create_quality_test: {
         Args: {
           p_batch_id: string
@@ -2683,6 +2770,12 @@ export type Database = {
       fn_remove_storage_location: {
         Args: { p_location_id: string }
         Returns: string
+      }
+      fn_resolve_testing_assignments_for_sub_batch: {
+        Args: { p_sub_batch_id: string }
+        Returns: {
+          assignment_id: string
+        }[]
       }
       fn_return_bag_from_testing: {
         Args: { p_assignment_id: string }
@@ -2738,6 +2831,10 @@ export type Database = {
         Returns: string
       }
       fn_split_sub_batch: {
+        Args: { p_outputs: Json; p_sub_batch_id: string }
+        Returns: string[]
+      }
+      fn_split_sub_batch_without_lineage: {
         Args: { p_outputs: Json; p_sub_batch_id: string }
         Returns: string[]
       }
@@ -3779,6 +3876,7 @@ export type Database = {
         | "return"
         | "reversal"
         | "correction"
+      sub_batch_lineage_operation_kind: "split" | "merge" | "cleaning"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -3943,6 +4041,7 @@ export const Constants = {
         "reversal",
         "correction",
       ],
+      sub_batch_lineage_operation_kind: ["split", "merge", "cleaning"],
     },
   },
 } as const
