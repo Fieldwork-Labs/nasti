@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(26);
+select plan(28);
 
 -- Isolated fixtures use the seeded admin as the current custodian.
 insert into public.organisation (id, name, owner_id)
@@ -269,6 +269,75 @@ values (
   'e18b3927-87a9-4dcc-8d59-148461504a02'
 );
 
+-- Active work remains attached to the source bags. The merge destination must
+-- represent both assignments through lineage instead of rejecting the merge.
+insert into public.seed_transfer_event (
+  id,
+  sender_org_id,
+  recipient_org_id,
+  kind,
+  recorded_by
+)
+values (
+  '98000000-0000-0000-0000-000000000001',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  '2fd8367a-22b3-47a8-9803-7eb3a10e0be4',
+  'testing_dispatch',
+  'e18b3927-87a9-4dcc-8d59-148461504a02'
+);
+
+insert into public.seed_transfer_item (
+  id,
+  transfer_event_id,
+  sub_batch_id,
+  batch_id,
+  owner_org_id,
+  weight_grams
+)
+values
+  (
+    '98000000-0000-0000-0000-000000000002',
+    '98000000-0000-0000-0000-000000000001',
+    '95000000-0000-0000-0000-000000000001',
+    '92000000-0000-0000-0000-000000000001',
+    '02aba5b9-6c46-406d-831a-4f51851599f2',
+    100
+  ),
+  (
+    '98000000-0000-0000-0000-000000000003',
+    '98000000-0000-0000-0000-000000000001',
+    '95000000-0000-0000-0000-000000000002',
+    '92000000-0000-0000-0000-000000000001',
+    '02aba5b9-6c46-406d-831a-4f51851599f2',
+    59.75
+  );
+
+insert into public.batch_testing_assignment (
+  id,
+  batch_id,
+  sub_batch_id,
+  assigned_to_org_id,
+  assigned_by_org_id,
+  outbound_transfer_item_id
+)
+values
+  (
+    '98000000-0000-0000-0000-000000000004',
+    '92000000-0000-0000-0000-000000000001',
+    '95000000-0000-0000-0000-000000000001',
+    '2fd8367a-22b3-47a8-9803-7eb3a10e0be4',
+    '02aba5b9-6c46-406d-831a-4f51851599f2',
+    '98000000-0000-0000-0000-000000000002'
+  ),
+  (
+    '98000000-0000-0000-0000-000000000005',
+    '92000000-0000-0000-0000-000000000001',
+    '95000000-0000-0000-0000-000000000002',
+    '2fd8367a-22b3-47a8-9803-7eb3a10e0be4',
+    '02aba5b9-6c46-406d-831a-4f51851599f2',
+    '98000000-0000-0000-0000-000000000003'
+  );
+
 create temporary table merge_result (id uuid);
 create temporary table optional_merge_result (id uuid);
 grant insert, select on merge_result, optional_merge_result to authenticated;
@@ -417,6 +486,38 @@ select is(
   ),
   0::bigint,
   'destination does not inherit a source quality test'
+);
+
+select is(
+  (
+    select count(*)
+    from public.sub_batch_lineage lineage
+    join merge_result result
+      on result.id = lineage.derived_sub_batch_id
+    where lineage.operation_kind = 'merge'
+      and lineage.source_sub_batch_id in (
+        '95000000-0000-0000-0000-000000000001',
+        '95000000-0000-0000-0000-000000000002'
+      )
+  ),
+  2::bigint,
+  'merge writes one lineage edge from each source bag'
+);
+
+select results_eq(
+  $$
+    select resolved.assignment_id
+    from merge_result result
+    cross join lateral
+      public.fn_resolve_testing_assignments_for_sub_batch(result.id) resolved
+    order by resolved.assignment_id
+  $$,
+  $$
+    values
+      ('98000000-0000-0000-0000-000000000004'::uuid),
+      ('98000000-0000-0000-0000-000000000005'::uuid)
+  $$,
+  'a merge destination resolves the union of source assignments'
 );
 
 set local role authenticated;

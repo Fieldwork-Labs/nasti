@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(103);
+select plan(104);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -1206,6 +1206,21 @@ select is(
   ),
   20::numeric,
   'the retained child has its split weight'
+);
+
+select results_eq(
+  $$
+    select resolved.assignment_id
+    from retained_result result
+    cross join lateral
+      public.fn_resolve_testing_assignments_for_sub_batch(result.id) resolved
+  $$,
+  $$
+    select id
+    from public.batch_testing_assignment
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
+  $$,
+  'a split child resolves the assignment represented by its source bag'
 );
 
 -- This historical row is General-authored on purpose.  It proves that an

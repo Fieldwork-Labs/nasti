@@ -2,7 +2,23 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(4);
+select plan(6);
+
+insert into public.batches (id, organisation_id, code, weight_grams)
+values (
+  '80000000-0000-0000-0000-000000000001',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  'CLEANING-LINEAGE-INPUT',
+  50
+);
+
+insert into public.sub_batches (id, batch_id, weight_grams, notes)
+values (
+  '80000000-0000-0000-0000-000000000002',
+  '80000000-0000-0000-0000-000000000001',
+  50,
+  'Cleaning lineage input bag'
+);
 
 insert into public.batches (id, organisation_id, code, weight_grams)
 values (
@@ -20,6 +36,8 @@ values (
 
 insert into public.batch_cleaning (
   id,
+  input_batch_id,
+  input_sub_batch_id,
   is_cleaned,
   duration,
   organisation_id,
@@ -27,10 +45,65 @@ insert into public.batch_cleaning (
 )
 values (
   '82000000-0000-0000-0000-000000000001',
+  '80000000-0000-0000-0000-000000000001',
+  '80000000-0000-0000-0000-000000000002',
   true,
   interval '1 hour',
   '02aba5b9-6c46-406d-831a-4f51851599f2',
   'e18b3927-87a9-4dcc-8d59-148461504a02'
+);
+
+insert into public.seed_transfer_event (
+  id,
+  sender_org_id,
+  recipient_org_id,
+  kind,
+  recorded_by
+)
+values (
+  '80000000-0000-0000-0000-000000000003',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  '2fd8367a-22b3-47a8-9803-7eb3a10e0be4',
+  'testing_dispatch',
+  'e18b3927-87a9-4dcc-8d59-148461504a02'
+);
+
+insert into public.seed_transfer_item (
+  id,
+  transfer_event_id,
+  sub_batch_id,
+  batch_id,
+  owner_org_id,
+  weight_grams
+)
+values (
+  '80000000-0000-0000-0000-000000000004',
+  '80000000-0000-0000-0000-000000000003',
+  '80000000-0000-0000-0000-000000000002',
+  '80000000-0000-0000-0000-000000000001',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  50
+);
+
+insert into public.batch_testing_assignment (
+  id,
+  batch_id,
+  sub_batch_id,
+  assigned_to_org_id,
+  assigned_by_org_id,
+  closed_at,
+  outcome,
+  outbound_transfer_item_id
+)
+values (
+  '80000000-0000-0000-0000-000000000005',
+  '80000000-0000-0000-0000-000000000001',
+  '80000000-0000-0000-0000-000000000002',
+  '2fd8367a-22b3-47a8-9803-7eb3a10e0be4',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  now(),
+  'returned',
+  '80000000-0000-0000-0000-000000000004'
 );
 
 insert into public.batch_cleaning_output (
@@ -140,6 +213,38 @@ select is(
   ),
   2::bigint,
   'the RPC returns every unstored sub-batch it creates'
+);
+
+select is(
+  (
+    select count(*)
+    from public.sub_batch_lineage lineage
+    join bagging_result result
+      on result.id = lineage.derived_sub_batch_id
+    where lineage.source_sub_batch_id =
+      '80000000-0000-0000-0000-000000000002'
+      and lineage.operation_kind = 'cleaning'
+      and lineage.operation_id =
+        '82000000-0000-0000-0000-000000000001'
+  ),
+  2::bigint,
+  'cleaning writes lineage to every physical output bag'
+);
+
+select results_eq(
+  $$
+    select result.id, resolved.assignment_id
+    from bagging_result result
+    cross join lateral
+      public.fn_resolve_testing_assignments_for_sub_batch(result.id) resolved
+    order by result.id
+  $$,
+  $$
+    select result.id, '80000000-0000-0000-0000-000000000005'::uuid
+    from bagging_result result
+    order by result.id
+  $$,
+  'cleaning output bags preserve source ancestry across parent batches'
 );
 
 select * from finish();
