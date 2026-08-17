@@ -1299,6 +1299,8 @@ select lives_ok(
   'Testing can return part of a held bag and explicitly close its work'
 );
 
+reset role;
+
 select results_eq(
   $$
     select fact, value
@@ -1317,6 +1319,15 @@ select results_eq(
         (
           'result_count'::text,
           (select count(*)::text from partial_return_result)
+        ),
+        (
+          'return_assignment_link_count'::text,
+          (
+            select count(*)::text
+            from partial_return_result result
+            inner join public.batch_testing_assignment_return_item link
+              on link.transfer_item_id = result.transfer_item_id
+          )
         ),
         (
           'return_event'::text,
@@ -1397,19 +1408,32 @@ select results_eq(
     order by fact
   $$,
   $$
-    values
-      ('assignment_lineage_count'::text, '1'::text),
-      ('result_count'::text, '1'::text),
-      ('return_event'::text, 'return|d1000000-0000-0000-0000-000000000002|d1000000-0000-0000-0000-000000000001'::text),
-      ('returned_container_is_null'::text, 'true'::text),
-      ('returned_holder'::text, 'd1000000-0000-0000-0000-000000000001'::text),
-      ('returned_open_storage_count'::text, '0'::text),
-      ('returned_weight'::text, '25'::text),
-      ('source_holder'::text, 'd1000000-0000-0000-0000-000000000002'::text),
-      ('source_weight'::text, '35'::text),
-      ('work_outcome'::text, 'partially_completed|Only viability testing was completed'::text)
+    select fact, value
+    from (
+      values
+        ('assignment_lineage_count'::text, '1'::text),
+        ('result_count'::text, '1'::text),
+        ('return_assignment_link_count'::text, '1'::text),
+        ('return_event'::text, 'return|d1000000-0000-0000-0000-000000000002|d1000000-0000-0000-0000-000000000001'::text),
+        ('returned_container_is_null'::text, 'true'::text),
+        ('returned_holder'::text, 'd1000000-0000-0000-0000-000000000001'::text),
+        ('returned_open_storage_count'::text, '0'::text),
+        ('returned_weight'::text, '25'::text),
+        ('source_holder'::text, 'd1000000-0000-0000-0000-000000000002'::text),
+        ('source_weight'::text, '35'::text),
+        ('work_outcome'::text, 'partially_completed|Only viability testing was completed'::text)
+    ) expected(fact, value)
+    order by fact
   $$,
   'a partial return separates custody from closed work and preserves lineage'
+);
+
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
+  true
 );
 
 select lives_ok(
