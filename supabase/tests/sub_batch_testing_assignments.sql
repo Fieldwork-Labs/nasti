@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(134);
+select plan(137);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -159,7 +159,14 @@ create temporary table partial_return_result (
   returned_sub_batch_id uuid,
   returned_weight_grams numeric
 );
-grant insert, select on multi_assignment_order, retained_result, partial_return_result to authenticated;
+create temporary table final_return_result (
+  transfer_event_id uuid,
+  transfer_item_id uuid,
+  source_sub_batch_id uuid,
+  returned_sub_batch_id uuid,
+  returned_weight_grams numeric
+);
+grant insert, select on multi_assignment_order, retained_result, partial_return_result, final_return_result to authenticated;
 
 set local role authenticated;
 
@@ -1545,6 +1552,137 @@ select set_config(
   'request.jwt.claims',
   '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
   true
+);
+
+select lives_ok(
+  $$
+    insert into final_return_result
+    select *
+    from public.fn_return_bags_from_testing(
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008"}]'::jsonb
+    )
+  $$,
+  'Testing can return the whole remaining portion after earlier partial returns'
+);
+
+reset role;
+
+select results_eq(
+  $$
+    select fact, value
+    from (
+      values
+        (
+          'conserved_weight'::text,
+          (
+            select (
+              coalesce(sum(returned_weight_grams), 0)
+              + (select coalesce(sum(returned_weight_grams), 0) from final_return_result)
+              + (
+                select weight.current_weight
+                from public.sub_batch_current_weight weight
+                where weight.id = 'd3000000-0000-0000-0000-000000000008'
+              )
+            )::text
+            from partial_return_result
+          )
+        ),
+        (
+          'final_return'::text,
+          coalesce((
+            select concat_ws(
+              '|',
+              weight.current_weight::text,
+              bag.held_by_org_id::text,
+              (bag.container_id is null)::text
+            )
+            from final_return_result result
+            inner join public.sub_batches bag
+              on bag.id = result.returned_sub_batch_id
+            inner join public.sub_batch_current_weight weight
+              on weight.id = bag.id
+          ), 'missing')
+        ),
+        (
+          'return_assignment_link_count'::text,
+          (
+            select (
+              (select count(*) from partial_return_result partial_result
+                inner join public.batch_testing_assignment_return_item partial_link
+                  on partial_link.transfer_item_id = partial_result.transfer_item_id)
+              +
+              (select count(*) from final_return_result final_result
+                inner join public.batch_testing_assignment_return_item final_link
+                  on final_link.transfer_item_id = final_result.transfer_item_id)
+            )::text
+          )
+        ),
+        (
+          'return_event_count'::text,
+          (
+            select count(distinct movement.transfer_event_id)::text
+            from (
+              select transfer_event_id from partial_return_result
+              union all
+              select transfer_event_id from final_return_result
+            ) movement
+          )
+        ),
+        (
+          'source_weight'::text,
+          (
+            select weight.current_weight::text
+            from public.sub_batch_current_weight weight
+            where weight.id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        ),
+        (
+          'work_audit_count'::text,
+          (
+            select count(*)::text
+            from public.batch_testing_assignment_status_audit audit
+            inner join public.batch_testing_assignment assignment
+              on assignment.id = audit.assignment_id
+            where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        )
+    ) observed(fact, value)
+    order by fact
+  $$,
+  $$
+    select fact, value
+    from (
+      values
+        ('conserved_weight'::text, '60'::text),
+        ('final_return'::text, '25|d1000000-0000-0000-0000-000000000001|true'::text),
+        ('return_assignment_link_count'::text, '3'::text),
+        ('return_event_count'::text, '3'::text),
+        ('source_weight'::text, '0'::text),
+        ('work_audit_count'::text, '1'::text)
+    ) expected(fact, value)
+    order by fact
+  $$,
+  'the whole remainder ends positive lab custody without losing weight or rewriting work'
+);
+
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
+  true
+);
+
+select throws_ok(
+  $$
+    select *
+    from public.fn_return_bags_from_testing(
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008"}]'::jsonb
+    )
+  $$,
+  '22023',
+  null,
+  'a fully returned lab source cannot be returned again'
 );
 
 select lives_ok(
