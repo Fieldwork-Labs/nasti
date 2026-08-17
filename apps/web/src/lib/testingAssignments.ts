@@ -39,6 +39,15 @@ export type AssignmentActionContext = {
    * once the caller can actually see one to test.
    */
   hasVisibleSubBatch?: boolean
+
+  /**
+   * Whether this lab still holds seed that can be returned. Custody is
+   * independent from whether the assignment's testing work is open.
+   *
+   * Omit while reading the legacy assignment shape; active assignments are
+   * treated as returnable until the custody read model supplies this value.
+   */
+  hasReturnableSeed?: boolean
 }
 
 export const getAssignmentStatus = (
@@ -85,11 +94,12 @@ export const getAssignmentActions = (
   assignment: AssignmentState,
   context: AssignmentActionContext = {},
 ): AssignmentActions => {
-  const active = isAssignmentActive(assignment)
+  const hasReturnableSeed =
+    context.hasReturnableSeed ?? isAssignmentActive(assignment)
 
   return {
-    canTest: active && Boolean(context.hasVisibleSubBatch),
-    canReturn: active,
+    canTest: Boolean(context.hasVisibleSubBatch),
+    canReturn: hasReturnableSeed,
     canDelete: false,
   }
 }
