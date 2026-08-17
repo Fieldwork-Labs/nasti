@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(106);
+select plan(129);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -295,6 +295,280 @@ select results_eq(
     )
   $$,
   'the transfer snapshots sender, recipient, kind, and seed owner'
+);
+
+-- Testing work closes explicitly and remains independent from physical
+-- custody. Corrections replace the current classification while preserving
+-- every earlier declaration in append-only audit history.
+select has_column(
+  'public',
+  'batch_testing_assignment',
+  'work_closed_at',
+  'assignments record when testing work closed'
+);
+
+select has_column(
+  'public',
+  'batch_testing_assignment',
+  'work_status',
+  'assignments record an explicit work outcome'
+);
+
+select has_column(
+  'public',
+  'batch_testing_assignment',
+  'work_status_note',
+  'assignments can explain a partial or incomplete outcome'
+);
+
+select has_column(
+  'public',
+  'batch_testing_assignment',
+  'work_closed_by',
+  'assignments record who first closed the work'
+);
+
+select has_table(
+  'public',
+  'batch_testing_assignment_status_audit',
+  'assignment work status has an audit table'
+);
+
+select has_function(
+  'public',
+  'fn_set_testing_assignment_work_status',
+  array['uuid', 'text', 'text'],
+  'work status changes use one public RPC'
+);
+
+select throws_ok(
+  $$
+    select public.fn_set_testing_assignment_work_status(
+      (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'),
+      'completed',
+      null
+    )
+  $$,
+  '42501',
+  null,
+  'the seed owner cannot close the provider assignment'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000004","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Member","permissions":[]}}',
+  true
+);
+
+select throws_ok(
+  $$
+    select public.fn_set_testing_assignment_work_status(
+      (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'),
+      'completed',
+      null
+    )
+  $$,
+  '42501',
+  null,
+  'a Testing Member cannot close or correct work status'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
+  true
+);
+
+select lives_ok(
+  $$
+    select public.fn_set_testing_assignment_work_status(
+      (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'),
+      'completed',
+      null
+    )
+  $$,
+  'a Testing Admin can close work as completed without a note'
+);
+
+select results_eq(
+  $$
+    select work_status
+    from public.batch_testing_assignment
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  $$ values ('completed'::text) $$,
+  'completed is stored as the current work outcome'
+);
+
+select results_eq(
+  $$
+    select work_closed_at is not null
+    from public.batch_testing_assignment
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  $$ values (true) $$,
+  'explicit work closure records its timestamp'
+);
+
+select results_eq(
+  $$
+    select work_closed_by
+    from public.batch_testing_assignment
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  $$ values ('d0000000-0000-0000-0000-000000000003'::uuid) $$,
+  'explicit work closure records its actor'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.batch_testing_assignment_status_audit audit
+    inner join public.batch_testing_assignment assignment
+      on assignment.id = audit.assignment_id
+    where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+      and audit.old_work_status is null
+      and audit.new_work_status = 'completed'
+  $$,
+  $$ values (1::bigint) $$,
+  'initial work closure appends its audit fact'
+);
+
+select throws_ok(
+  $$
+    select public.fn_set_testing_assignment_work_status(
+      (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'),
+      'partially_completed',
+      '   '
+    )
+  $$,
+  '22023',
+  null,
+  'partial completion requires a nonblank note'
+);
+
+select lives_ok(
+  $$
+    select public.fn_set_testing_assignment_work_status(
+      (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'),
+      'partially_completed',
+      'Only viability testing was completed'
+    )
+  $$,
+  'a Testing Admin can correct completed work to partially completed'
+);
+
+select results_eq(
+  $$
+    select work_status, work_status_note
+    from public.batch_testing_assignment
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  $$
+    values (
+      'partially_completed'::text,
+      'Only viability testing was completed'::text
+    )
+  $$,
+  'the corrected work outcome and note become current'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.batch_testing_assignment_status_audit audit
+    inner join public.batch_testing_assignment assignment
+      on assignment.id = audit.assignment_id
+    where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+      and audit.old_work_status = 'completed'
+      and audit.new_work_status = 'partially_completed'
+      and audit.note = 'Only viability testing was completed'
+  $$,
+  $$ values (1::bigint) $$,
+  'a status correction appends the old and new outcomes'
+);
+
+select lives_ok(
+  $$
+    select public.fn_set_testing_assignment_work_status(
+      (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'),
+      'not_completed',
+      'Sample was unsuitable for the requested work'
+    )
+  $$,
+  'a Testing Admin can classify work as not completed with a note'
+);
+
+select results_eq(
+  $$
+    select work_status
+    from public.batch_testing_assignment
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  $$ values ('not_completed'::text) $$,
+  'not completed is stored as the current work outcome'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.batch_testing_assignment_status_audit audit
+    inner join public.batch_testing_assignment assignment
+      on assignment.id = audit.assignment_id
+    where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+      and audit.old_work_status = 'partially_completed'
+      and audit.new_work_status = 'not_completed'
+  $$,
+  $$ values (1::bigint) $$,
+  'the second correction also preserves its predecessor'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.batch_testing_assignment_status_audit audit
+    inner join public.batch_testing_assignment assignment
+      on assignment.id = audit.assignment_id
+    where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  $$ values (3::bigint) $$,
+  'all work status declarations remain in audit history'
+);
+
+reset role;
+
+select throws_ok(
+  $$
+    update public.batch_testing_assignment
+    set work_status_note = null
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+  $$,
+  '23514',
+  null,
+  'the table rejects a missing note for not-completed work'
+);
+
+select throws_ok(
+  $$
+    update public.batch_testing_assignment_status_audit
+    set note = 'attempted rewrite'
+    where assignment_id = (
+      select id
+      from public.batch_testing_assignment
+      where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+    )
+  $$,
+  '55000',
+  null,
+  'work status audit history is append-only even to privileged callers'
+);
+
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000001","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000001","role":"Admin","permissions":[]}}',
+  true
 );
 
 select throws_ok(
