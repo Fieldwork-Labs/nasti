@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(137);
+select plan(138);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -1554,15 +1554,35 @@ select set_config(
   true
 );
 
+select throws_ok(
+  $$
+    select *
+    from public.fn_return_bags_from_testing(
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008","weight_grams":22}]'::jsonb,
+      null,
+      null,
+      true,
+      null
+    )
+  $$,
+  '22023',
+  null,
+  'a final return with a weight shortage requires a variance reason'
+);
+
 select lives_ok(
   $$
     insert into final_return_result
     select *
     from public.fn_return_bags_from_testing(
-      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008"}]'::jsonb
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008","weight_grams":22}]'::jsonb,
+      null,
+      null,
+      true,
+      'Three grams could not be reconciled at final weighing'
     )
   $$,
-  'Testing can return the whole remaining portion after earlier partial returns'
+  'Testing can acknowledge a final shortage after earlier partial returns'
 );
 
 reset role;
@@ -1583,6 +1603,12 @@ select results_eq(
                 from public.sub_batch_current_weight weight
                 where weight.id = 'd3000000-0000-0000-0000-000000000008'
               )
+              - coalesce((
+                select sum(adjustment.weight_grams)
+                from public.batch_weight_adjustments adjustment
+                where adjustment.sub_batch_id = 'd3000000-0000-0000-0000-000000000008'
+                  and adjustment.kind = 'variance'
+              ), 0)
             )::text
             from partial_return_result
           )
@@ -1645,6 +1671,21 @@ select results_eq(
               on assignment.id = audit.assignment_id
             where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000008'
           )
+        ),
+        (
+          'variance'::text,
+          coalesce((
+            select concat_ws(
+              '|',
+              adjustment.weight_grams,
+              adjustment.reason,
+              (adjustment.transfer_item_id = result.transfer_item_id)::text
+            )
+            from final_return_result result
+            inner join public.batch_weight_adjustments adjustment
+              on adjustment.transfer_item_id = result.transfer_item_id
+              and adjustment.kind = 'variance'
+          ), 'missing')
         )
     ) observed(fact, value)
     order by fact
@@ -1654,15 +1695,16 @@ select results_eq(
     from (
       values
         ('conserved_weight'::text, '60'::text),
-        ('final_return'::text, '25|d1000000-0000-0000-0000-000000000001|true'::text),
+        ('final_return'::text, '22|d1000000-0000-0000-0000-000000000001|true'::text),
         ('return_assignment_link_count'::text, '3'::text),
         ('return_event_count'::text, '3'::text),
         ('source_weight'::text, '0'::text),
+        ('variance'::text, '-3|Three grams could not be reconciled at final weighing|true'::text),
         ('work_audit_count'::text, '1'::text)
     ) expected(fact, value)
     order by fact
   $$,
-  'the whole remainder ends positive lab custody without losing weight or rewriting work'
+  'an acknowledged shortage ends positive lab custody with immutable variance accounting'
 );
 
 set local role authenticated;
