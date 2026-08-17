@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(132);
+select plan(134);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -1426,6 +1426,117 @@ select results_eq(
     order by fact
   $$,
   'a partial return separates custody from closed work and preserves lineage'
+);
+
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
+  true
+);
+
+select lives_ok(
+  $$
+    insert into partial_return_result
+    select *
+    from public.fn_return_bags_from_testing(
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008","weight_grams":10}]'::jsonb
+    )
+  $$,
+  'Testing can return another portion after its work is already closed'
+);
+
+reset role;
+
+select results_eq(
+  $$
+    select fact, value
+    from (
+      values
+        (
+          'return_assignment_link_count'::text,
+          (
+            select count(*)::text
+            from partial_return_result result
+            inner join public.batch_testing_assignment_return_item link
+              on link.transfer_item_id = result.transfer_item_id
+          )
+        ),
+        (
+          'return_event_count'::text,
+          (
+            select count(distinct result.transfer_event_id)::text
+            from partial_return_result result
+          )
+        ),
+        (
+          'returned_portion_count'::text,
+          (select count(*)::text from partial_return_result)
+        ),
+        (
+          'second_return'::text,
+          coalesce((
+            select concat_ws(
+              '|',
+              weight.current_weight::text,
+              bag.held_by_org_id::text,
+              (bag.container_id is null)::text
+            )
+            from partial_return_result result
+            inner join public.sub_batches bag
+              on bag.id = result.returned_sub_batch_id
+            inner join public.sub_batch_current_weight weight
+              on weight.id = bag.id
+            where result.returned_weight_grams = 10
+          ), 'missing')
+        ),
+        (
+          'source_remainder'::text,
+          (
+            select concat_ws('|', weight.current_weight, bag.held_by_org_id)
+            from public.sub_batches bag
+            inner join public.sub_batch_current_weight weight
+              on weight.id = bag.id
+            where bag.id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        ),
+        (
+          'work_audit_count'::text,
+          (
+            select count(*)::text
+            from public.batch_testing_assignment_status_audit audit
+            inner join public.batch_testing_assignment assignment
+              on assignment.id = audit.assignment_id
+            where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        ),
+        (
+          'work_outcome'::text,
+          (
+            select concat_ws('|', assignment.work_status, assignment.work_status_note)
+            from public.batch_testing_assignment assignment
+            where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        )
+    ) observed(fact, value)
+    order by fact
+  $$,
+  $$
+    select fact, value
+    from (
+      values
+        ('return_assignment_link_count'::text, '2'::text),
+        ('return_event_count'::text, '2'::text),
+        ('returned_portion_count'::text, '2'::text),
+        ('second_return'::text, '10|d1000000-0000-0000-0000-000000000001|true'::text),
+        ('source_remainder'::text, '25|d1000000-0000-0000-0000-000000000002'::text),
+        ('work_audit_count'::text, '1'::text),
+        ('work_outcome'::text, 'partially_completed|Only viability testing was completed'::text)
+    ) expected(fact, value)
+    order by fact
+  $$,
+  'a repeated return moves only the new portion and leaves work closure unchanged'
 );
 
 set local role authenticated;
