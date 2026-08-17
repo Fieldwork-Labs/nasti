@@ -10,7 +10,7 @@ import {
 type OrgFields = [
   "id",
   "name",
-  "type",
+  "is_testing_provider",
   "contact_address",
   "contact_email",
   "contact_name",
@@ -80,7 +80,7 @@ const useUserStore = create<UserState>((set, get) => ({
           `*, organisation(
             "id",
             "name",
-            "type",
+            "is_testing_provider",
             "contact_address",
             "contact_email",
             "contact_name",

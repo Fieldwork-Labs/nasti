@@ -47,8 +47,9 @@ INSERT INTO "auth"."identities" ("provider_id", "user_id", "identity_data", "pro
 -- Data for Name: organisation; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."organisation" ("id", "name", "owner_id", "created_at", "contact_name", "contact_email", "contact_phone", "contact_address") VALUES
-	('02aba5b9-6c46-406d-831a-4f51851599f2', 'Chid''s Org', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:40:04+00', NULL, NULL, NULL, NULL);
+INSERT INTO "public"."organisation" ("id", "name", "owner_id", "created_at", "contact_name", "contact_email", "contact_phone", "contact_address", "is_testing_provider") VALUES
+	('02aba5b9-6c46-406d-831a-4f51851599f2', 'Chid''s Org', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:40:04+00', NULL, NULL, NULL, NULL, false),
+	('2fd8367a-22b3-47a8-9803-7eb3a10e0be4', 'Chid''s Testing Provider', 'b422f046-5d63-4afd-b56a-b89a12971951', '2026-08-06 04:26:51+00', NULL, NULL, NULL, NULL, true);
 
 
 
@@ -56,7 +57,7 @@ INSERT INTO "public"."organisation" ("id", "name", "owner_id", "created_at", "co
 -- Data for Name: organisation_link; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."organisation_link" ("id", "general_org_id", "testing_org_id", "created_by", "created_at") VALUES
+INSERT INTO "public"."organisation_link" ("id", "requesting_org_id", "provider_org_id", "created_by", "created_at") VALUES
 	('b07d43a6-4b14-4483-b533-793c1ebdab41', '02aba5b9-6c46-406d-831a-4f51851599f2', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', 'b422f046-5d63-4afd-b56a-b89a12971951', '2026-08-06 04:44:58.838918+00');
 
 
@@ -64,7 +65,7 @@ INSERT INTO "public"."organisation_link" ("id", "general_org_id", "testing_org_i
 -- Data for Name: organisation_link_request; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."organisation_link_request" ("id", "general_org_id", "testing_org_id", "created_by", "created_at", "accepted_by", "accepted_at") VALUES
+INSERT INTO "public"."organisation_link_request" ("id", "requesting_org_id", "provider_org_id", "created_by", "created_at", "accepted_by", "accepted_at") VALUES
 	('35fbd4b6-172f-4a58-95a5-7f74b2031386', '02aba5b9-6c46-406d-831a-4f51851599f2', '2fd8367a-22b3-47a8-9803-7eb3a10e0be4', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2026-08-06 04:44:22.766003+00', 'b422f046-5d63-4afd-b56a-b89a12971951', '2026-08-06 04:44:58.854+00');
 
 

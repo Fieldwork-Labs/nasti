@@ -4,19 +4,19 @@
 -- =====================================================
 -- HELPER FUNCTION: Check if organisations are linked
 -- =====================================================
-CREATE OR REPLACE FUNCTION is_linked_testing_org(p_general_org_id UUID, p_testing_org_id UUID)
+CREATE OR REPLACE FUNCTION is_linked_testing_provider(p_requesting_org_id UUID, p_provider_org_id UUID)
 RETURNS BOOLEAN
 LANGUAGE sql STABLE
 AS $$
   SELECT EXISTS (
     SELECT 1
     FROM organisation_link
-    WHERE general_org_id = p_general_org_id
-      AND testing_org_id = p_testing_org_id
+    WHERE requesting_org_id = p_requesting_org_id
+      AND provider_org_id = p_provider_org_id
   );
 $$;
 
-COMMENT ON FUNCTION is_linked_testing_org IS 'Check if two organisations have an accepted link';
+COMMENT ON FUNCTION is_linked_testing_provider IS 'Check whether a requester has an accepted link to a testing provider';
 
 
 -- =====================================================
@@ -28,14 +28,14 @@ ALTER TABLE "public"."organisation_link" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY general_org_can_view_links ON organisation_link
   FOR SELECT
   USING (
-    is_org_member(auth.uid(), general_org_id)
+    is_org_member(auth.uid(), requesting_org_id)
   );
 
 -- Testing orgs can view links pointing to them (read-only)
 CREATE POLICY testing_org_can_view_links ON organisation_link
   FOR SELECT
   USING (
-    is_org_member(auth.uid(), testing_org_id)
+    is_org_member(auth.uid(), provider_org_id)
   );
 
 -- Testing org admins can create links (typically from accepting a request)
@@ -46,7 +46,7 @@ CREATE POLICY testing_org_can_insert_links ON organisation_link
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = testing_org_id
+        AND org_user.organisation_id = provider_org_id
         AND org_user.role = 'Admin'
     )
   );
@@ -59,7 +59,7 @@ CREATE POLICY general_org_can_delete_links ON organisation_link
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = general_org_id
+        AND org_user.organisation_id = requesting_org_id
         AND org_user.role = 'Admin'
     )
   );
@@ -72,7 +72,7 @@ CREATE POLICY general_org_can_update_links ON organisation_link
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = general_org_id
+        AND org_user.organisation_id = requesting_org_id
         AND org_user.role = 'Admin'
     )
   )
@@ -81,7 +81,7 @@ CREATE POLICY general_org_can_update_links ON organisation_link
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = general_org_id
+        AND org_user.organisation_id = requesting_org_id
         AND org_user.role = 'Admin'
     )
   );
@@ -96,14 +96,14 @@ ALTER TABLE "public"."organisation_link_request" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY general_org_can_view_requests ON organisation_link_request
   FOR SELECT
   USING (
-    is_org_member(auth.uid(), general_org_id)
+    is_org_member(auth.uid(), requesting_org_id)
   );
 
 -- Testing orgs can view incoming requests
 CREATE POLICY testing_org_can_view_requests ON organisation_link_request
   FOR SELECT
   USING (
-    is_org_member(auth.uid(), testing_org_id)
+    is_org_member(auth.uid(), provider_org_id)
   );
 
 -- General org admins can create requests
@@ -114,7 +114,7 @@ CREATE POLICY general_org_can_insert_requests ON organisation_link_request
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = general_org_id
+        AND org_user.organisation_id = requesting_org_id
         AND org_user.role = 'Admin'
     )
   );
@@ -127,7 +127,7 @@ CREATE POLICY general_org_can_delete_requests ON organisation_link_request
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = general_org_id
+        AND org_user.organisation_id = requesting_org_id
         AND org_user.role = 'Admin'
     )
   );
@@ -140,7 +140,7 @@ CREATE POLICY testing_org_can_update_requests ON organisation_link_request
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = testing_org_id
+        AND org_user.organisation_id = provider_org_id
         AND org_user.role = 'Admin'
     )
   )
@@ -149,7 +149,7 @@ CREATE POLICY testing_org_can_update_requests ON organisation_link_request
       SELECT 1
       FROM org_user
       WHERE org_user.user_id = auth.uid()
-        AND org_user.organisation_id = testing_org_id
+        AND org_user.organisation_id = provider_org_id
         AND org_user.role = 'Admin'
     )
   );

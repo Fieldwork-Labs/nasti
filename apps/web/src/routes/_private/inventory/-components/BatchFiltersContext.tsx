@@ -110,7 +110,7 @@ export const BatchFiltersProvider = ({
   // see exactly what has been assigned to them and not returned. Only one of
   // the two queries runs.
   const { organisation } = useUserStore()
-  const isTestingOrg = organisation?.type === "Testing"
+  const isTestingOrg = organisation?.is_testing_provider
 
   const assignmentFilter = useMemo(
     () => ({

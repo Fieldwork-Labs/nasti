@@ -311,7 +311,6 @@ const PeopleList = () => {
   // TODO search function
 
   const { organisation, isAdmin, session, user: currentUser } = useUserStore()
-  const isTestingOrg = organisation?.type === "Testing"
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -427,18 +426,14 @@ const PeopleList = () => {
                   </td>
                   {isAdmin && user.is_active && (
                     <td className="flex justify-center gap-2 px-4 py-2">
-                      {/* Nothing to edit in a testing organisation: its
-                          members always hold inventory access. */}
-                      {!isTestingOrg && (
-                        <Button
-                          size="icon"
-                          title="Edit access"
-                          onClick={() => setUserToEditPermissions(user)}
-                          disabled={user.role === ROLE.ADMIN}
-                        >
-                          <KeyRoundIcon aria-label="Edit access" size={16} />
-                        </Button>
-                      )}
+                      <Button
+                        size="icon"
+                        title="Edit access"
+                        onClick={() => setUserToEditPermissions(user)}
+                        disabled={user.role === ROLE.ADMIN}
+                      >
+                        <KeyRoundIcon aria-label="Edit access" size={16} />
+                      </Button>
                       <Button
                         size="icon"
                         onClick={() => setPersonToDelete(user.id)}

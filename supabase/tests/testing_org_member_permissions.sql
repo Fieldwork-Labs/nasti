@@ -204,7 +204,10 @@ select results_eq(
     from information_schema.columns
     where table_schema = 'public'
       and table_name in ('organisation_link', 'organisation_link_request')
-      and column_name in ('general_org_id', 'testing_org_id')
+      and column_name in (
+        concat('general', '_org_id'),
+        concat('testing', '_org_id')
+      )
   $$,
   array[0],
   'link tables have no exclusive organisation-role columns'

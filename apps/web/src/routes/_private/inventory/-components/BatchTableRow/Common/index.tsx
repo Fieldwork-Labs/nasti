@@ -465,7 +465,7 @@ export const BatchExpandedDetails = ({
 
 const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {
   const { organisation } = useUserStore()
-  const isTesting = organisation?.type === "Testing"
+  const isTesting = organisation?.is_testing_provider
 
   if (!batch.collection_id) return null
   // don't show the collection modal for testing orgs

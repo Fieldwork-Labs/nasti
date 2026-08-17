@@ -111,7 +111,7 @@ export const SendForTestingPage = () => {
   const handleSend = async () => {
     try {
       await assignBags.mutateAsync({
-        testing_org_id: testingOrgId,
+        provider_org_id: testingOrgId,
         sub_batch_assignments: sendableRows.map(({ bag, sending }) => ({
           sub_batch_id: bag.subBatchId,
           // Only a genuine sample carries a weight; sending the whole bag is
@@ -321,7 +321,7 @@ export const SendForTestingPage = () => {
           >
             <option value="">Choose a laboratory…</option>
             {links.map((link) => (
-              <option key={link.id} value={link.testing_org_id}>
+              <option key={link.id} value={link.provider_org_id}>
                 {link.testing_org_name || "Unnamed organisation"}
               </option>
             ))}

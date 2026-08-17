@@ -85,7 +85,7 @@ Deno.serve((r) =>
       )
 
       let body: {
-        testing_org_id?: string
+        provider_org_id?: string
         sub_batch_assignments?: BagAssignmentRequest[]
       }
 
@@ -95,10 +95,10 @@ Deno.serve((r) =>
         return returnErrorResponse("Request body must be valid JSON", 400)
       }
 
-      const { testing_org_id, sub_batch_assignments: bagAssignments } = body
+      const { provider_org_id, sub_batch_assignments: bagAssignments } = body
 
-      if (!testing_org_id || typeof testing_org_id !== "string") {
-        return returnErrorResponse("Missing required field: testing_org_id", 400)
+      if (!provider_org_id || typeof provider_org_id !== "string") {
+        return returnErrorResponse("Missing required field: provider_org_id", 400)
       }
 
       if (
@@ -151,7 +151,7 @@ Deno.serve((r) =>
       const { data, error } = await supabaseClient.rpc(
         "fn_assign_bags_for_testing",
         {
-          p_testing_org_id: testing_org_id,
+          p_provider_org_id: provider_org_id,
           p_bags: bagAssignments,
         },
       )

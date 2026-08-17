@@ -574,12 +574,12 @@ CREATE POLICY organisation_select ON public.organisation
   FOR SELECT TO authenticated
   USING (
     id = (SELECT public.get_user_organisation_id())
-    OR type = 'Testing'
+    OR is_testing_provider
     OR EXISTS (
       SELECT 1
       FROM public.organisation_link ol
-      INNER JOIN public.org_user ou ON ou.organisation_id = ol.testing_org_id
-      WHERE ol.general_org_id = organisation.id
+      INNER JOIN public.org_user ou ON ou.organisation_id = ol.provider_org_id
+      WHERE ol.requesting_org_id = organisation.id
         AND ou.user_id = (SELECT auth.uid())
     )
   );
@@ -607,32 +607,32 @@ DROP POLICY IF EXISTS general_org_can_update_links ON public.organisation_link;
 CREATE POLICY organisation_link_select ON public.organisation_link
   FOR SELECT TO authenticated
   USING (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
-    OR public.is_org_member((SELECT auth.uid()), testing_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
+    OR public.is_org_member((SELECT auth.uid()), provider_org_id)
   );
 
 CREATE POLICY organisation_link_insert ON public.organisation_link
   FOR INSERT TO authenticated
   WITH CHECK (
-    public.is_org_member((SELECT auth.uid()), testing_org_id)
+    public.is_org_member((SELECT auth.uid()), provider_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   );
 
 CREATE POLICY organisation_link_update ON public.organisation_link
   FOR UPDATE TO authenticated
   USING (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   )
   WITH CHECK (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   );
 
 CREATE POLICY organisation_link_delete ON public.organisation_link
   FOR DELETE TO authenticated
   USING (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   );
 
@@ -648,32 +648,32 @@ DROP POLICY IF EXISTS testing_org_can_update_requests ON public.organisation_lin
 CREATE POLICY organisation_link_request_select ON public.organisation_link_request
   FOR SELECT TO authenticated
   USING (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
-    OR public.is_org_member((SELECT auth.uid()), testing_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
+    OR public.is_org_member((SELECT auth.uid()), provider_org_id)
   );
 
 CREATE POLICY organisation_link_request_insert ON public.organisation_link_request
   FOR INSERT TO authenticated
   WITH CHECK (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   );
 
 CREATE POLICY organisation_link_request_update ON public.organisation_link_request
   FOR UPDATE TO authenticated
   USING (
-    public.is_org_member((SELECT auth.uid()), testing_org_id)
+    public.is_org_member((SELECT auth.uid()), provider_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   )
   WITH CHECK (
-    public.is_org_member((SELECT auth.uid()), testing_org_id)
+    public.is_org_member((SELECT auth.uid()), provider_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   );
 
 CREATE POLICY organisation_link_request_delete ON public.organisation_link_request
   FOR DELETE TO authenticated
   USING (
-    public.is_org_member((SELECT auth.uid()), general_org_id)
+    public.is_org_member((SELECT auth.uid()), requesting_org_id)
     AND (SELECT public.auth_org_role()) = 'Admin'
   );
 

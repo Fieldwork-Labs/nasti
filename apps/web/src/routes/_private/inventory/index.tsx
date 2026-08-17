@@ -16,7 +16,7 @@ import { BatchFiltersProvider } from "./-components/BatchFiltersContext"
 
 const RouteDecider = () => {
   const { organisation } = useUserStore()
-  if (organisation?.type === "Testing") {
+  if (organisation?.is_testing_provider) {
     return <InventoryPageTesting />
   }
   return <InventoryPageGeneral />

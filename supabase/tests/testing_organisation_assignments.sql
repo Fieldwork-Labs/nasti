@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(15);
 
 -- This file keeps the small, organisation-level contracts that used to be
 -- mixed into the batch-assignment fixture.  The multi-bag state machine lives
@@ -14,11 +14,11 @@ values
   ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'assignment-contract-testing@test.invalid'),
   ('00000000-0000-0000-0000-000000000000', 'c0000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'assignment-contract-unlinked@test.invalid');
 
-insert into public.organisation (id, name, owner_id, type)
+insert into public.organisation (id, name, owner_id, is_testing_provider)
 values
-  ('c1000000-0000-0000-0000-000000000001', 'Assignment contract General', 'c0000000-0000-0000-0000-000000000001', 'General'),
-  ('c1000000-0000-0000-0000-000000000002', 'Assignment contract Testing', 'c0000000-0000-0000-0000-000000000002', 'Testing'),
-  ('c1000000-0000-0000-0000-000000000003', 'Assignment contract unlinked Testing', 'c0000000-0000-0000-0000-000000000003', 'Testing');
+  ('c1000000-0000-0000-0000-000000000001', 'Assignment contract requester', 'c0000000-0000-0000-0000-000000000001', false),
+  ('c1000000-0000-0000-0000-000000000002', 'Assignment contract provider', 'c0000000-0000-0000-0000-000000000002', true),
+  ('c1000000-0000-0000-0000-000000000003', 'Assignment contract unlinked provider', 'c0000000-0000-0000-0000-000000000003', true);
 
 insert into public.org_user (organisation_id, user_id, role, is_active, permissions)
 values
@@ -27,14 +27,36 @@ values
   ('c1000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000003', 'Admin', true, '{}');
 
 insert into public.organisation_link (
-  general_org_id,
-  testing_org_id,
+  requesting_org_id,
+  provider_org_id,
   created_by
 )
 values (
   'c1000000-0000-0000-0000-000000000001',
   'c1000000-0000-0000-0000-000000000002',
   'c0000000-0000-0000-0000-000000000001'
+);
+
+insert into public.organisation_link (
+  requesting_org_id,
+  provider_org_id,
+  created_by
+)
+values (
+  'c1000000-0000-0000-0000-000000000002',
+  'c1000000-0000-0000-0000-000000000003',
+  'c0000000-0000-0000-0000-000000000002'
+);
+
+select is(
+  (
+    select count(*)
+    from public.organisation_link
+    where requesting_org_id = 'c1000000-0000-0000-0000-000000000002'
+      and provider_org_id = 'c1000000-0000-0000-0000-000000000003'
+  ),
+  1::bigint,
+  'a provider may request services from another provider'
 );
 
 -- Capability flags were removed because every remaining assignment is a test.
@@ -66,8 +88,8 @@ select is(
   (
     select count(*)
     from public.organisation_link
-    where general_org_id = 'c1000000-0000-0000-0000-000000000001'
-      and testing_org_id = 'c1000000-0000-0000-0000-000000000002'
+    where requesting_org_id = 'c1000000-0000-0000-0000-000000000001'
+      and provider_org_id = 'c1000000-0000-0000-0000-000000000002'
   ),
   1::bigint,
   'an accepted organisation link remains the assignment permission'

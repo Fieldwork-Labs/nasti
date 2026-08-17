@@ -18,15 +18,15 @@ export const useAssignBagsForTesting = () => {
   return useMutation({
     mutationFn: async ({
       sub_batch_assignments,
-      testing_org_id,
+      provider_org_id,
     }: {
       sub_batch_assignments: BagAssignment[]
-      testing_org_id: string
+      provider_org_id: string
     }) => {
       const { error, data } = await supabase.functions.invoke(
         "assign_batches_for_testing",
         {
-          body: { sub_batch_assignments, testing_org_id },
+          body: { sub_batch_assignments, provider_org_id },
         },
       )
 

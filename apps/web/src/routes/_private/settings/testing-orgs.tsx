@@ -10,12 +10,12 @@ export const Route = createFileRoute("/_private/settings/testing-orgs")({
 function TestingOrgsPage() {
   const { organisation } = useUserStore()
 
-  // Show different interface based on organisation type
-  const isTestingOrg = organisation?.type === "Testing"
+  const isTestingProvider = organisation?.is_testing_provider
 
   return (
     <div className="container mx-auto p-6">
-      {isTestingOrg ? <TestingOrgLinks /> : <TestingOrgsManagement />}
+      {isTestingProvider && <TestingOrgLinks />}
+      <TestingOrgsManagement />
     </div>
   )
 }

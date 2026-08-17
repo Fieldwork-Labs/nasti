@@ -19,7 +19,7 @@ export const LinkRequestModal = ({
 
   const handleSubmit = async () => {
     try {
-      await createRequest.mutateAsync({ testing_org_id: testingOrg.id })
+      await createRequest.mutateAsync({ provider_org_id: testingOrg.id })
       onSuccess()
     } catch (err) {
       toast({

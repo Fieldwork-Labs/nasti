@@ -1077,9 +1077,9 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           id: string
+          is_testing_provider: boolean
           name: string
           owner_id: string
-          type: Database["public"]["Enums"]["organisation_type"]
         }
         Insert: {
           contact_address?: string | null
@@ -1088,9 +1088,9 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           id?: string
+          is_testing_provider?: boolean
           name: string
           owner_id: string
-          type?: Database["public"]["Enums"]["organisation_type"]
         }
         Update: {
           contact_address?: string | null
@@ -1099,9 +1099,9 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           id?: string
+          is_testing_provider?: boolean
           name?: string
           owner_id?: string
-          type?: Database["public"]["Enums"]["organisation_type"]
         }
         Relationships: []
       }
@@ -1109,35 +1109,35 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
-          general_org_id: string
           id: string
-          testing_org_id: string
+          provider_org_id: string
+          requesting_org_id: string
         }
         Insert: {
           created_at?: string
           created_by: string
-          general_org_id: string
           id?: string
-          testing_org_id: string
+          provider_org_id: string
+          requesting_org_id: string
         }
         Update: {
           created_at?: string
           created_by?: string
-          general_org_id?: string
           id?: string
-          testing_org_id?: string
+          provider_org_id?: string
+          requesting_org_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "organisation_link_general_org_fkey"
-            columns: ["general_org_id"]
+            foreignKeyName: "organisation_link_provider_fkey"
+            columns: ["provider_org_id"]
             isOneToOne: false
             referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "organisation_link_testing_org_fkey"
-            columns: ["testing_org_id"]
+            foreignKeyName: "organisation_link_requester_fkey"
+            columns: ["requesting_org_id"]
             isOneToOne: false
             referencedRelation: "organisation"
             referencedColumns: ["id"]
@@ -1150,39 +1150,39 @@ export type Database = {
           accepted_by: string | null
           created_at: string
           created_by: string
-          general_org_id: string
           id: string
-          testing_org_id: string
+          provider_org_id: string
+          requesting_org_id: string
         }
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
           created_at?: string
           created_by: string
-          general_org_id: string
           id?: string
-          testing_org_id: string
+          provider_org_id: string
+          requesting_org_id: string
         }
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
           created_at?: string
           created_by?: string
-          general_org_id?: string
           id?: string
-          testing_org_id?: string
+          provider_org_id?: string
+          requesting_org_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "organisation_link_request_general_org_fkey"
-            columns: ["general_org_id"]
+            foreignKeyName: "organisation_link_request_provider_fkey"
+            columns: ["provider_org_id"]
             isOneToOne: false
             referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "organisation_link_request_testing_org_fkey"
-            columns: ["testing_org_id"]
+            foreignKeyName: "organisation_link_request_requester_fkey"
+            columns: ["requesting_org_id"]
             isOneToOne: false
             referencedRelation: "organisation"
             referencedColumns: ["id"]
@@ -2460,7 +2460,7 @@ export type Database = {
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
       fn_assign_bags_for_testing: {
-        Args: { p_bags: Json; p_testing_org_id: string }
+        Args: { p_bags: Json; p_provider_org_id: string }
         Returns: {
           assigned_at: string
           assigned_by_org_id: string
@@ -2958,8 +2958,8 @@ export type Database = {
         Args: { p_batch_id: string; p_user_id: string }
         Returns: boolean
       }
-      is_linked_testing_org: {
-        Args: { p_general_org_id: string; p_testing_org_id: string }
+      is_linked_testing_provider: {
+        Args: { p_provider_org_id: string; p_requesting_org_id: string }
         Returns: boolean
       }
       is_org_admin: { Args: { org_id: string }; Returns: boolean }
@@ -3637,7 +3637,6 @@ export type Database = {
       container_purpose: "collection" | "storage"
       org_permission: "collections" | "inventory"
       org_user_types: "Member" | "Admin"
-      organisation_type: "General" | "Testing"
       person_source_type: "user" | "personnel"
     }
     CompositeTypes: {
@@ -3796,7 +3795,6 @@ export const Constants = {
       container_purpose: ["collection", "storage"],
       org_permission: ["collections", "inventory"],
       org_user_types: ["Member", "Admin"],
-      organisation_type: ["General", "Testing"],
       person_source_type: ["user", "personnel"],
     },
   },

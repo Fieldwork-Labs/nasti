@@ -226,8 +226,7 @@ export type QualityTest = Omit<Table<"tests">, "result" | "statistics"> & {
   statistics: QualityTestStatistics
 }
 
-// Testing Organisation Types
-export type OrganisationType = Enums["organisation_type"]
+// Testing-provider relationship types
 export type OrganisationLink = Table<"organisation_link">
 export type OrganisationLinkRequest = Table<"organisation_link_request">
 export type BatchTestingAssignment = Table<"batch_testing_assignment">

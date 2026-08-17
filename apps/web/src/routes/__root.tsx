@@ -138,7 +138,7 @@ const RootComponent = () => {
                 </Link>
                 {session && (
                   <>
-                    {organisation?.type === "General" && canSeeCollections && (
+                    {canSeeCollections && (
                       <Link to="/trips" className="text-lead">
                         Trips
                       </Link>

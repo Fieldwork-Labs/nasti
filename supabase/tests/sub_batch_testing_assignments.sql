@@ -15,11 +15,11 @@ values
   ('00000000-0000-0000-0000-000000000000', 'd0000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'sub-assignment-testing-member@test.invalid'),
   ('00000000-0000-0000-0000-000000000000', 'd0000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', 'sub-assignment-other-admin@test.invalid');
 
-insert into public.organisation (id, name, owner_id, type)
+insert into public.organisation (id, name, owner_id, is_testing_provider)
 values
-  ('d1000000-0000-0000-0000-000000000001', 'Sub-assignment General', 'd0000000-0000-0000-0000-000000000001', 'General'),
-  ('d1000000-0000-0000-0000-000000000002', 'Sub-assignment Testing', 'd0000000-0000-0000-0000-000000000003', 'Testing'),
-  ('d1000000-0000-0000-0000-000000000003', 'Sub-assignment Other', 'd0000000-0000-0000-0000-000000000005', 'Testing');
+  ('d1000000-0000-0000-0000-000000000001', 'Sub-assignment owner', 'd0000000-0000-0000-0000-000000000001', false),
+  ('d1000000-0000-0000-0000-000000000002', 'Sub-assignment provider', 'd0000000-0000-0000-0000-000000000003', true),
+  ('d1000000-0000-0000-0000-000000000003', 'Sub-assignment other provider', 'd0000000-0000-0000-0000-000000000005', true);
 
 insert into public.org_user (organisation_id, user_id, role, is_active, permissions)
 values
@@ -30,8 +30,8 @@ values
   ('d1000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000005', 'Admin', true, '{}');
 
 insert into public.organisation_link (
-  general_org_id,
-  testing_org_id,
+  requesting_org_id,
+  provider_org_id,
   created_by
 )
 values (

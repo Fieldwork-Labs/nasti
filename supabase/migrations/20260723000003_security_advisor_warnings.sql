@@ -20,7 +20,7 @@ DECLARE
     'public.fn_split_sub_batch(uuid, jsonb)',
     'public.validate_treatment_array(jsonb)',
     'public.assert_same_custodian(uuid[])',
-    'public.is_linked_testing_org(uuid, uuid)',
+    'public.is_linked_testing_provider(uuid, uuid)',
     'public.is_batch_custodian_or_past(uuid, uuid)',
     'public.get_invitation_by_token(uuid)',
     'public.auto_populate_collection_code()',

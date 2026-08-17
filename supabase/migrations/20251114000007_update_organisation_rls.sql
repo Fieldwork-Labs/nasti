@@ -19,7 +19,7 @@ CREATE POLICY "organisation_select_policy" ON "public"."organisation"
     )
     OR
     -- Organisation is a Testing organisation (public directory)
-    type = 'Testing'
+    is_testing_provider
   );
 
 -- Create UPDATE policy (only Admins can update their own organisation)
@@ -45,5 +45,5 @@ CREATE POLICY "organisation_update_policy" ON "public"."organisation"
   );
 
 -- Add comments
-COMMENT ON POLICY "organisation_select_policy" ON "public"."organisation" IS 'Users can see their own organisation and all Testing organisations (public directory)';
+COMMENT ON POLICY "organisation_select_policy" ON "public"."organisation" IS 'Users can see their own organisation and all testing providers in the service directory';
 COMMENT ON POLICY "organisation_update_policy" ON "public"."organisation" IS 'Only Admins can update their own organisation details';

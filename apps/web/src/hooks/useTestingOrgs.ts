@@ -17,7 +17,7 @@ export const useTestingOrganisations = () => {
       const { data, error } = await supabase
         .from("organisation")
         .select("*")
-        .eq("type", "Testing")
+        .eq("is_testing_provider", true)
         .order("name")
 
       if (error) throw new Error(error.message)
@@ -40,10 +40,10 @@ export const useOrganisationLinks = () => {
         .select(
           `
           *,
-          testing_org:organisation!testing_org_id(name)
+          testing_org:organisation!provider_org_id(name)
         `,
         )
-        .eq("general_org_id", organisation.id)
+        .eq("requesting_org_id", organisation.id)
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -72,10 +72,10 @@ export const useOrganisationLinkRequests = () => {
         .select(
           `
           *,
-          testing_org:organisation!testing_org_id(name)
+          testing_org:organisation!provider_org_id(name)
         `,
         )
-        .eq("general_org_id", organisation.id)
+        .eq("requesting_org_id", organisation.id)
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -96,7 +96,7 @@ export const useCreateLinkRequest = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ testing_org_id }: { testing_org_id: string }) => {
+    mutationFn: async ({ provider_org_id }: { provider_org_id: string }) => {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create_link_request`,
         {
@@ -105,7 +105,7 @@ export const useCreateLinkRequest = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ testing_org_id }),
+          body: JSON.stringify({ provider_org_id }),
         },
       )
 
@@ -186,10 +186,10 @@ export const useIncomingLinkRequests = () => {
         .select(
           `
           *,
-          general_org:organisation!general_org_id(name)
+          general_org:organisation!requesting_org_id(name)
         `,
         )
-        .eq("testing_org_id", organisation.id)
+        .eq("provider_org_id", organisation.id)
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -218,10 +218,10 @@ export const useTestingOrgAcceptedLinks = () => {
         .select(
           `
           *,
-          general_org:organisation!general_org_id(name)
+          general_org:organisation!requesting_org_id(name)
         `,
         )
-        .eq("testing_org_id", organisation.id)
+        .eq("provider_org_id", organisation.id)
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)

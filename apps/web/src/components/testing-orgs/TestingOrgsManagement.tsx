@@ -85,9 +85,9 @@ export const TestingOrgsManagement = () => {
 
   // Check if org is already linked or has pending request
   const getOrgStatus = (orgId: string) => {
-    const isLinked = myLinks?.some((link) => link.testing_org_id === orgId)
+    const isLinked = myLinks?.some((link) => link.provider_org_id === orgId)
     const hasPendingRequest = myRequests?.some(
-      (req) => req.testing_org_id === orgId && !req.accepted_at,
+      (req) => req.provider_org_id === orgId && !req.accepted_at,
     )
     return { isLinked, hasPendingRequest }
   }

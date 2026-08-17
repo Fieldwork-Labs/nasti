@@ -104,7 +104,7 @@ Deno.serve((req) =>
         .from("org_user")
         .select("organisation_id, role")
         .eq("user_id", user.id)
-        .eq("organisation_id", linkRequest.testing_org_id)
+        .eq("organisation_id", linkRequest.provider_org_id)
         .single()
 
       if (!orgMembership) {
@@ -135,8 +135,8 @@ Deno.serve((req) =>
       const { data: newLink, error: linkError } = await supabaseClient
         .from("organisation_link")
         .insert({
-          general_org_id: linkRequest.general_org_id,
-          testing_org_id: linkRequest.testing_org_id,
+          requesting_org_id: linkRequest.requesting_org_id,
+          provider_org_id: linkRequest.provider_org_id,
           created_by: user.id,
         })
         .select()

@@ -13,14 +13,14 @@ CREATE POLICY "organisation_select_policy" ON "public"."organisation"
     )
     OR
     -- Everyone can see Testing organisations (public directory)
-    type = 'Testing'
+    is_testing_provider
     OR
     -- Testing orgs can see General orgs they have links with
     EXISTS (
       SELECT 1
       FROM public.organisation_link ol
-      INNER JOIN public.org_user ou ON ou.organisation_id = ol.testing_org_id
-      WHERE ol.general_org_id = organisation.id
+      INNER JOIN public.org_user ou ON ou.organisation_id = ol.provider_org_id
+      WHERE ol.requesting_org_id = organisation.id
         AND ou.user_id = auth.uid()
     )
   );

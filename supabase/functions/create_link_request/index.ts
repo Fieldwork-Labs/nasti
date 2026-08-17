@@ -1,6 +1,6 @@
 // Edge Function: Create Link Request
-// General organisation admin creates a link request to a Testing organisation
-// Sends notification email to Testing organisation admins
+// An organisation admin requests testing services from a provider.
+// Provider organisations may also request another provider's services.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -54,12 +54,12 @@ Deno.serve((r) =>
       }
 
       // Get request body
-      const { testing_org_id } = await req.json()
+      const { provider_org_id } = await req.json()
 
       // Validate inputs
-      if (!testing_org_id) {
+      if (!provider_org_id) {
         return new Response(
-          JSON.stringify({ error: "Missing required field: testing_org_id" }),
+          JSON.stringify({ error: "Missing required field: provider_org_id" }),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -70,7 +70,7 @@ Deno.serve((r) =>
       // Get user's organisation and verify admin role
       const { data: orgUser, error: orgUserError } = await supabaseClient
         .from("org_user")
-        .select("organisation_id, role, organisation(name, type)")
+        .select("organisation_id, role, organisation(name)")
         .eq("user_id", userData.user.id)
         .single()
 
@@ -93,34 +93,18 @@ Deno.serve((r) =>
           },
         )
       }
-      const org = orgUser.organisation as unknown as {
-        type: string
-        name: string
-      }
-
-      // Verify the requesting org is a General org
-      if (org.type !== "General") {
-        return new Response(
-          JSON.stringify({
-            error: "Only General organisations can request links",
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
-        )
-      }
+      const org = orgUser.organisation as unknown as { name: string }
 
       // Get testing organisation details
       const { data: testingOrg, error: testingOrgError } = await supabaseClient
         .from("organisation")
-        .select("id, name, type")
-        .eq("id", testing_org_id)
+        .select("id, name, is_testing_provider")
+        .eq("id", provider_org_id)
         .single()
 
       if (testingOrgError || !testingOrg) {
         return new Response(
-          JSON.stringify({ error: "Testing organisation not found" }),
+          JSON.stringify({ error: "Testing provider not found" }),
           {
             status: 404,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -128,10 +112,10 @@ Deno.serve((r) =>
         )
       }
 
-      if (testingOrg.type !== "Testing") {
+      if (!testingOrg.is_testing_provider) {
         return new Response(
           JSON.stringify({
-            error: "Target organisation is not a Testing organisation",
+            error: "Target organisation is not a testing provider",
           }),
           {
             status: 400,
@@ -144,8 +128,8 @@ Deno.serve((r) =>
       const { data: existingLink } = await supabaseClient
         .from("organisation_link")
         .select("id")
-        .eq("general_org_id", orgUser.organisation_id)
-        .eq("testing_org_id", testing_org_id)
+        .eq("requesting_org_id", orgUser.organisation_id)
+        .eq("provider_org_id", provider_org_id)
         .maybeSingle()
 
       if (existingLink) {
@@ -163,8 +147,8 @@ Deno.serve((r) =>
       const { data: existingRequest } = await supabaseClient
         .from("organisation_link_request")
         .select("id")
-        .eq("general_org_id", orgUser.organisation_id)
-        .eq("testing_org_id", testing_org_id)
+        .eq("requesting_org_id", orgUser.organisation_id)
+        .eq("provider_org_id", provider_org_id)
         .is("accepted_at", null)
         .maybeSingle()
 
@@ -184,8 +168,8 @@ Deno.serve((r) =>
       const { data: newRequest, error: insertError } = await supabaseClient
         .from("organisation_link_request")
         .insert({
-          general_org_id: orgUser.organisation_id,
-          testing_org_id,
+          requesting_org_id: orgUser.organisation_id,
+          provider_org_id,
           created_by: userData.user.id,
         })
         .select()
@@ -208,7 +192,7 @@ Deno.serve((r) =>
         await supabaseClient
           .from("org_user")
           .select("user_id, users:user_id(email)")
-          .eq("organisation_id", testing_org_id)
+          .eq("organisation_id", provider_org_id)
           .eq("role", "Admin")
 
       if (!adminsError && testingOrgAdmins && testingOrgAdmins.length > 0) {

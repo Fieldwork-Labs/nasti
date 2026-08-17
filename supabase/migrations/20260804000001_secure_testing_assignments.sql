@@ -139,7 +139,7 @@ COMMENT ON INDEX public.batch_testing_assignment_one_active_per_bag IS
 -- split goes through fn_split_sub_batch rather than repeating weight
 -- arithmetic that would then have to be kept in step with it.
 CREATE OR REPLACE FUNCTION public.fn_assign_bags_for_testing(
-  p_testing_org_id uuid,
+  p_provider_org_id uuid,
   p_bags jsonb
 )
 RETURNS SETOF public.batch_testing_assignment
@@ -268,32 +268,32 @@ BEGIN
   -- is the same thing, so there was nothing left for them to discriminate.
   -- --------------------------------------------------------------------
   IF NOT EXISTS (
-    SELECT 1 FROM public.organisation o WHERE o.id = p_testing_org_id
+    SELECT 1 FROM public.organisation o WHERE o.id = p_provider_org_id
   ) THEN
-    RAISE EXCEPTION 'Testing organisation not found'
+    RAISE EXCEPTION 'Testing provider not found'
       USING ERRCODE = 'P0002';
   END IF;
 
   IF NOT EXISTS (
     SELECT 1
     FROM public.organisation o
-    WHERE o.id = p_testing_org_id
-      AND o.type = 'Testing'
+    WHERE o.id = p_provider_org_id
+      AND o.is_testing_provider
   ) THEN
-    RAISE EXCEPTION 'Bags may only be assigned to a Testing organisation'
+    RAISE EXCEPTION 'Bags may only be assigned to a testing provider'
       USING ERRCODE = '42501';
   END IF;
 
   -- A row in organisation_link is an accepted link; requests live in their own
-  -- table until they are accepted. Matching on general_org_id is also what
+  -- table until they are accepted. Matching on requesting_org_id is also what
   -- proves the caller is the General side of the relationship.
   IF NOT EXISTS (
     SELECT 1
     FROM public.organisation_link ol
-    WHERE ol.general_org_id = v_caller_org_id
-      AND ol.testing_org_id = p_testing_org_id
+    WHERE ol.requesting_org_id = v_caller_org_id
+      AND ol.provider_org_id = p_provider_org_id
   ) THEN
-    RAISE EXCEPTION 'Your organisation is not linked to that Testing organisation'
+    RAISE EXCEPTION 'Your organisation is not linked to that testing provider'
       USING ERRCODE = '42501';
   END IF;
 
@@ -457,7 +457,7 @@ BEGIN
     END IF;
 
     UPDATE public.sub_batches
-    SET held_by_org_id = p_testing_org_id
+    SET held_by_org_id = p_provider_org_id
     WHERE id = v_assigned_bag_id;
 
     INSERT INTO public.batch_testing_assignment (
@@ -469,7 +469,7 @@ BEGIN
     ) VALUES (
       v_batch_id,
       v_assigned_bag_id,
-      p_testing_org_id,
+      p_provider_org_id,
       v_caller_org_id,
       v_now
     )

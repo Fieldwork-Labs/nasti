@@ -33,7 +33,7 @@ export const Route = createFileRoute("/_private/settings/")({
 function SettingsDashboard() {
   const { organisation } = useUserStore()
 
-  const isTestingOrg = organisation?.type === "Testing"
+  const isTestingProvider = organisation?.is_testing_provider
 
   const settingsCards: SettingsCard[] = [
     {
@@ -74,7 +74,7 @@ function SettingsDashboard() {
   ]
   const { data } = useIncomingLinkRequests()
 
-  if (isTestingOrg) {
+  if (isTestingProvider) {
     settingsCards.push({
       title: "Organisation Links",
       description: "Manage link requests and connections",
