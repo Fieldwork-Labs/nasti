@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(129);
+select plan(132);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -73,7 +73,8 @@ values
   ('d2000000-0000-0000-0000-000000000001', 'd7000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'SUBASSIGN-MERGE-CODE', 250),
   ('d2000000-0000-0000-0000-000000000002', 'd7000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'SUBASSIGN-MERGE-CODE', 170),
   ('d2000000-0000-0000-0000-000000000003', 'd7000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'SUBASSIGN-SAMPLE-CODE', 100),
-  ('d2000000-0000-0000-0000-000000000004', 'd7000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'SUBASSIGN-LIFE-CODE', 90);
+  ('d2000000-0000-0000-0000-000000000004', 'd7000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'SUBASSIGN-LIFE-CODE', 90),
+  ('d2000000-0000-0000-0000-000000000005', 'd7000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'SUBASSIGN-PARTIAL-RETURN', 60);
 
 insert into public.batch_custody (batch_id, organisation_id)
 select id, 'd1000000-0000-0000-0000-000000000001'
@@ -82,7 +83,8 @@ where id in (
   'd2000000-0000-0000-0000-000000000001',
   'd2000000-0000-0000-0000-000000000002',
   'd2000000-0000-0000-0000-000000000003',
-  'd2000000-0000-0000-0000-000000000004'
+  'd2000000-0000-0000-0000-000000000004',
+  'd2000000-0000-0000-0000-000000000005'
 );
 
 insert into public.containers (id, organisation_id, name, purpose, active)
@@ -110,7 +112,8 @@ values
   ('d3000000-0000-0000-0000-000000000004', 'd2000000-0000-0000-0000-000000000002', 'd5000000-0000-0000-0000-000000000002', 90, 'Second independently assigned bag'),
   ('d3000000-0000-0000-0000-000000000005', 'd2000000-0000-0000-0000-000000000003', 'd5000000-0000-0000-0000-000000000002', 100, 'Adjusted sample source'),
   ('d3000000-0000-0000-0000-000000000006', 'd2000000-0000-0000-0000-000000000004', 'd5000000-0000-0000-0000-000000000005', 50, 'Quality-test lifecycle bag'),
-  ('d3000000-0000-0000-0000-000000000007', 'd2000000-0000-0000-0000-000000000004', 'd5000000-0000-0000-0000-000000000002', 40, 'Unassigned lifecycle sibling');
+  ('d3000000-0000-0000-0000-000000000007', 'd2000000-0000-0000-0000-000000000004', 'd5000000-0000-0000-0000-000000000002', 40, 'Unassigned lifecycle sibling'),
+  ('d3000000-0000-0000-0000-000000000008', 'd2000000-0000-0000-0000-000000000005', 'd5000000-0000-0000-0000-000000000002', 60, 'Partial return lifecycle bag');
 
 insert into public.batch_weight_adjustments (
   sub_batch_id,
@@ -140,7 +143,8 @@ values
   ('d6000000-0000-0000-0000-000000000004', 'd2000000-0000-0000-0000-000000000002', 'd3000000-0000-0000-0000-000000000004', 'd4000000-0000-0000-0000-000000000001', '2026-08-06 01:03:00+00', 'Second multi-bag storage'),
   ('d6000000-0000-0000-0000-000000000005', 'd2000000-0000-0000-0000-000000000003', 'd3000000-0000-0000-0000-000000000005', 'd4000000-0000-0000-0000-000000000001', '2026-08-06 01:04:00+00', 'Sample source storage'),
   ('d6000000-0000-0000-0000-000000000006', 'd2000000-0000-0000-0000-000000000004', 'd3000000-0000-0000-0000-000000000006', 'd4000000-0000-0000-0000-000000000001', '2026-08-06 01:05:00+00', 'Lifecycle storage'),
-  ('d6000000-0000-0000-0000-000000000007', 'd2000000-0000-0000-0000-000000000004', 'd3000000-0000-0000-0000-000000000007', 'd4000000-0000-0000-0000-000000000001', '2026-08-06 01:06:00+00', 'Lifecycle sibling storage');
+  ('d6000000-0000-0000-0000-000000000007', 'd2000000-0000-0000-0000-000000000004', 'd3000000-0000-0000-0000-000000000007', 'd4000000-0000-0000-0000-000000000001', '2026-08-06 01:06:00+00', 'Lifecycle sibling storage'),
+  ('d6000000-0000-0000-0000-000000000008', 'd2000000-0000-0000-0000-000000000005', 'd3000000-0000-0000-0000-000000000008', 'd4000000-0000-0000-0000-000000000001', '2026-08-06 01:07:00+00', 'Partial return lifecycle storage');
 
 create temporary table multi_assignment_order (
   ordinal bigint generated always as identity,
@@ -148,7 +152,14 @@ create temporary table multi_assignment_order (
 );
 
 create temporary table retained_result (id uuid);
-grant insert, select on multi_assignment_order, retained_result to authenticated;
+create temporary table partial_return_result (
+  transfer_event_id uuid,
+  transfer_item_id uuid,
+  source_sub_batch_id uuid,
+  returned_sub_batch_id uuid,
+  returned_weight_grams numeric
+);
+grant insert, select on multi_assignment_order, retained_result, partial_return_result to authenticated;
 
 set local role authenticated;
 
@@ -1259,10 +1270,146 @@ select lives_ok(
   'the lifecycle bag can be assigned'
 );
 
+select lives_ok(
+  $$
+    select public.fn_assign_bags_for_testing(
+      'd1000000-0000-0000-0000-000000000002',
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008"}]'::jsonb
+    )
+  $$,
+  'the partial-return lifecycle bag can be assigned'
+);
+
 select set_config(
   'request.jwt.claims',
   '{"sub":"d0000000-0000-0000-0000-000000000003","role":"authenticated","app_metadata":{"org_id":"d1000000-0000-0000-0000-000000000002","role":"Admin","permissions":[]}}',
   true
+);
+
+select lives_ok(
+  $$
+    insert into partial_return_result
+    select *
+    from public.fn_return_bags_from_testing(
+      '[{"sub_batch_id":"d3000000-0000-0000-0000-000000000008","weight_grams":25}]'::jsonb,
+      'partially_completed',
+      'Only viability testing was completed'
+    )
+  $$,
+  'Testing can return part of a held bag and explicitly close its work'
+);
+
+select results_eq(
+  $$
+    select fact, value
+    from (
+      values
+        (
+          'assignment_lineage_count'::text,
+          (
+            select count(*)::text
+            from partial_return_result result
+            cross join lateral public.fn_resolve_testing_assignments_for_sub_batch(
+              result.returned_sub_batch_id
+            ) resolved
+          )
+        ),
+        (
+          'result_count'::text,
+          (select count(*)::text from partial_return_result)
+        ),
+        (
+          'return_event'::text,
+          coalesce((
+            select concat_ws(
+              '|',
+              event.kind::text,
+              event.sender_org_id::text,
+              event.recipient_org_id::text
+            )
+            from partial_return_result result
+            inner join public.seed_transfer_event event
+              on event.id = result.transfer_event_id
+          ), 'missing')
+        ),
+        (
+          'returned_container_is_null'::text,
+          coalesce((
+            select (bag.container_id is null)::text
+            from partial_return_result result
+            inner join public.sub_batches bag
+              on bag.id = result.returned_sub_batch_id
+          ), 'missing')
+        ),
+        (
+          'returned_holder'::text,
+          coalesce((
+            select bag.held_by_org_id::text
+            from partial_return_result result
+            inner join public.sub_batches bag
+              on bag.id = result.returned_sub_batch_id
+          ), 'missing')
+        ),
+        (
+          'returned_open_storage_count'::text,
+          (
+            select count(*)::text
+            from partial_return_result result
+            inner join public.batch_storage storage
+              on storage.sub_batch_id = result.returned_sub_batch_id
+              and storage.moved_out_at is null
+          )
+        ),
+        (
+          'returned_weight'::text,
+          coalesce((
+            select weight.current_weight::text
+            from partial_return_result result
+            inner join public.sub_batch_current_weight weight
+              on weight.id = result.returned_sub_batch_id
+          ), 'missing')
+        ),
+        (
+          'source_holder'::text,
+          (
+            select bag.held_by_org_id::text
+            from public.sub_batches bag
+            where bag.id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        ),
+        (
+          'source_weight'::text,
+          (
+            select weight.current_weight::text
+            from public.sub_batch_current_weight weight
+            where weight.id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        ),
+        (
+          'work_outcome'::text,
+          (
+            select concat_ws('|', assignment.work_status, assignment.work_status_note)
+            from public.batch_testing_assignment assignment
+            where assignment.sub_batch_id = 'd3000000-0000-0000-0000-000000000008'
+          )
+        )
+    ) observed(fact, value)
+    order by fact
+  $$,
+  $$
+    values
+      ('assignment_lineage_count'::text, '1'::text),
+      ('result_count'::text, '1'::text),
+      ('return_event'::text, 'return|d1000000-0000-0000-0000-000000000002|d1000000-0000-0000-0000-000000000001'::text),
+      ('returned_container_is_null'::text, 'true'::text),
+      ('returned_holder'::text, 'd1000000-0000-0000-0000-000000000001'::text),
+      ('returned_open_storage_count'::text, '0'::text),
+      ('returned_weight'::text, '25'::text),
+      ('source_holder'::text, 'd1000000-0000-0000-0000-000000000002'::text),
+      ('source_weight'::text, '35'::text),
+      ('work_outcome'::text, 'partially_completed|Only viability testing was completed'::text)
+  $$,
+  'a partial return separates custody from closed work and preserves lineage'
 );
 
 select lives_ok(
