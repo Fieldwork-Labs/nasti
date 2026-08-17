@@ -600,30 +600,52 @@ export type Database = {
       }
       batch_weight_adjustments: {
         Row: {
+          corrects_adjustment_id: string | null
           created_at: string | null
           created_by: string | null
           id: string
+          kind: Database["public"]["Enums"]["batch_weight_adjustment_kind"]
+          lineage_operation_id: string | null
           reason: string
           sub_batch_id: string
+          test_id: string | null
+          transfer_item_id: string | null
           weight_grams: number
         }
         Insert: {
+          corrects_adjustment_id?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["batch_weight_adjustment_kind"]
+          lineage_operation_id?: string | null
           reason: string
           sub_batch_id: string
+          test_id?: string | null
+          transfer_item_id?: string | null
           weight_grams: number
         }
         Update: {
+          corrects_adjustment_id?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["batch_weight_adjustment_kind"]
+          lineage_operation_id?: string | null
           reason?: string
           sub_batch_id?: string
+          test_id?: string | null
+          transfer_item_id?: string | null
           weight_grams?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "batch_weight_adjustments_corrects_adjustment_id_fkey"
+            columns: ["corrects_adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "batch_weight_adjustments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
             columns: ["sub_batch_id"]
@@ -643,6 +665,20 @@ export type Database = {
             columns: ["sub_batch_id"]
             isOneToOne: false
             referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_transfer_item_id_fkey"
+            columns: ["transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
             referencedColumns: ["id"]
           },
         ]
@@ -2691,6 +2727,10 @@ export type Database = {
         Args: { p_bags: Json; p_cleaning_id: string }
         Returns: string[]
       }
+      fn_bag_cleaning_outputs_unclassified: {
+        Args: { p_bags: Json; p_cleaning_id: string }
+        Returns: string[]
+      }
       fn_clean_batch: {
         Args: {
           p_cleaning_notes?: string
@@ -2742,6 +2782,15 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_quality_test_without_adjustment_classification: {
+        Args: {
+          p_batch_id: string
+          p_performed_by_organisation_id: string
+          p_result: Json
+          p_sub_batch_id: string
+        }
+        Returns: string
+      }
       fn_get_container_usage: {
         Args: never
         Returns: {
@@ -2755,6 +2804,15 @@ export type Database = {
         Returns: string
       }
       fn_merge_sub_batches: {
+        Args: {
+          p_container_id: string
+          p_location_id?: string
+          p_notes?: string
+          p_sub_batch_ids: string[]
+        }
+        Returns: string
+      }
+      fn_merge_sub_batches_without_adjustment_classification: {
         Args: {
           p_container_id: string
           p_location_id?: string
@@ -3867,6 +3925,13 @@ export type Database = {
     Enums: {
       batch_quality: "ORG" | "HQ" | "LQ"
       batch_treatment_type: "sort" | "coat" | "treat" | "other"
+      batch_weight_adjustment_kind:
+        | "test_consumption"
+        | "variance"
+        | "split"
+        | "merge"
+        | "cleaning"
+        | "correction"
       container_purpose: "collection" | "storage"
       org_permission: "collections" | "inventory"
       org_user_types: "Member" | "Admin"
@@ -4031,6 +4096,14 @@ export const Constants = {
     Enums: {
       batch_quality: ["ORG", "HQ", "LQ"],
       batch_treatment_type: ["sort", "coat", "treat", "other"],
+      batch_weight_adjustment_kind: [
+        "test_consumption",
+        "variance",
+        "split",
+        "merge",
+        "cleaning",
+        "correction",
+      ],
       container_purpose: ["collection", "storage"],
       org_permission: ["collections", "inventory"],
       org_user_types: ["Member", "Admin"],
