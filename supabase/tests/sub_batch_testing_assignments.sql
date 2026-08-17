@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(104);
+select plan(106);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -1003,6 +1003,20 @@ select lives_ok(
   'Testing can create a quality test for its assigned bag'
 );
 
+select is(
+  (
+    select count(*)
+    from public.batch_weight_adjustments adjustment
+    inner join public.tests test ON test.id = adjustment.test_id
+    where adjustment.sub_batch_id =
+      'd3000000-0000-0000-0000-000000000006'
+      and test.sub_batch_id = adjustment.sub_batch_id
+      and adjustment.kind = 'test_consumption'
+  ),
+  1::bigint,
+  'test consumption references the test that deducted the weight'
+);
+
 select isnt(
   (
     select completed_at
@@ -1219,6 +1233,22 @@ select results_eq(
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
   $$,
   'a split child resolves the assignment represented by its source bag'
+);
+
+select is(
+  (
+    select count(*)
+    from public.batch_weight_adjustments adjustment
+    inner join public.sub_batch_lineage lineage
+      on lineage.source_sub_batch_id = adjustment.sub_batch_id
+      and lineage.operation_id = adjustment.lineage_operation_id
+      and lineage.operation_kind = 'split'
+    where adjustment.sub_batch_id =
+      'd3000000-0000-0000-0000-000000000001'
+      and adjustment.kind = 'split'
+  ),
+  1::bigint,
+  'a split deduction references the same structured operation as lineage'
 );
 
 -- This historical row is General-authored on purpose.  It proves that an

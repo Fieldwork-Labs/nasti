@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(28);
+select plan(29);
 
 -- Isolated fixtures use the seeded admin as the current custodian.
 insert into public.organisation (id, name, owner_id)
@@ -518,6 +518,24 @@ select results_eq(
       ('98000000-0000-0000-0000-000000000005'::uuid)
   $$,
   'a merge destination resolves the union of source assignments'
+);
+
+select is(
+  (
+    select count(*)
+    from public.batch_weight_adjustments adjustment
+    inner join public.sub_batch_lineage lineage
+      on lineage.source_sub_batch_id = adjustment.sub_batch_id
+      and lineage.operation_id = adjustment.lineage_operation_id
+      and lineage.operation_kind = 'merge'
+    where adjustment.sub_batch_id in (
+      '95000000-0000-0000-0000-000000000001',
+      '95000000-0000-0000-0000-000000000002'
+    )
+      and adjustment.kind = 'merge'
+  ),
+  2::bigint,
+  'merge weight deductions reference the same structured operation as lineage'
 );
 
 set local role authenticated;

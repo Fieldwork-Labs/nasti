@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(6);
+select plan(7);
 
 insert into public.batches (id, organisation_id, code, weight_grams)
 values (
@@ -245,6 +245,20 @@ select results_eq(
     order by result.id
   $$,
   'cleaning output bags preserve source ancestry across parent batches'
+);
+
+select is(
+  (
+    select count(*)
+    from public.batch_weight_adjustments adjustment
+    where adjustment.sub_batch_id =
+      '84000000-0000-0000-0000-000000000001'
+      and adjustment.kind = 'cleaning'
+      and adjustment.lineage_operation_id =
+        '82000000-0000-0000-0000-000000000001'
+  ),
+  1::bigint,
+  'cleaning bag replacement records its structured lineage operation'
 );
 
 select * from finish();
