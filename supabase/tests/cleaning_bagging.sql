@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(7);
+select plan(11);
 
 insert into public.batches (id, organisation_id, code, weight_grams)
 values (
@@ -149,8 +149,50 @@ values (
   'Initial sub-batch from cleaning'
 );
 
+insert into public.collection (
+  id,
+  organisation_id,
+  collected_by,
+  collected_on,
+  code
+)
+values (
+  '85000000-0000-0000-0000-000000000001',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  'e18b3927-87a9-4dcc-8d59-148461504a02',
+  current_date,
+  'WHOLE-CLEANING-LINEAGE'
+);
+
+insert into public.batches (
+  id,
+  collection_id,
+  organisation_id,
+  code,
+  weight_grams
+)
+values (
+  '85000000-0000-0000-0000-000000000002',
+  '85000000-0000-0000-0000-000000000001',
+  '02aba5b9-6c46-406d-831a-4f51851599f2',
+  'WHOLE-CLEANING-LINEAGE-INPUT',
+  30
+);
+
+insert into public.batch_custody (batch_id, organisation_id)
+values (
+  '85000000-0000-0000-0000-000000000002',
+  '02aba5b9-6c46-406d-831a-4f51851599f2'
+);
+
 create temporary table bagging_result (id uuid);
 grant insert, select on bagging_result to authenticated;
+
+create temporary table whole_cleaning_result (id uuid);
+grant insert, select on whole_cleaning_result to authenticated;
+
+create temporary table whole_bagging_result (id uuid);
+grant insert, select on whole_bagging_result to authenticated;
 
 select set_config(
   'request.jwt.claims',
@@ -181,7 +223,81 @@ select lives_ok(
   'cleaning output can be bagged without a storage location'
 );
 
+select lives_ok(
+  $$
+    insert into whole_cleaning_result (id)
+    select public.fn_clean_batch(
+      '85000000-0000-0000-0000-000000000002',
+      interval '30 minutes',
+      'seed',
+      null,
+      null,
+      true,
+      'Whole-batch cleaning lineage regression',
+      '{}'::uuid[],
+      '[
+        {
+          "quality": "HQ",
+          "material_type": "seed",
+          "weight_grams": 30
+        }
+      ]'::jsonb
+    )
+  $$,
+  'a whole batch can be cleaned before bagging'
+);
+
+select lives_ok(
+  $$
+    insert into whole_bagging_result (id)
+    select unnest(public.fn_bag_and_store_cleaning_outputs(
+      cleaning.id,
+      jsonb_build_array(jsonb_build_object(
+        'output_batch_id', output.output_batch_id,
+        'containers', jsonb_build_array(jsonb_build_object(
+          'container_id', '83000000-0000-0000-0000-000000000001',
+          'quantity', 1,
+          'weight_grams', 30
+        ))
+      ))
+    ))
+    from whole_cleaning_result cleaning
+    inner join public.batch_cleaning_output output
+      on output.cleaning_id = cleaning.id
+  $$,
+  'whole-batch cleaning output can be physically bagged'
+);
+
 reset role;
+
+select is(
+  (select count(*) from whole_bagging_result),
+  1::bigint,
+  'whole-batch bagging returns its physical output bag'
+);
+
+select is(
+  (
+    select count(*)
+    from whole_cleaning_result cleaning
+    inner join public.batch_cleaning_output output
+      on output.cleaning_id = cleaning.id
+    inner join whole_bagging_result result on true
+    inner join public.sub_batch_lineage lineage
+      on lineage.derived_sub_batch_id = result.id
+      and lineage.operation_kind = 'cleaning'
+      and lineage.operation_id = cleaning.id
+    inner join public.sub_batches aggregate
+      on aggregate.id = lineage.source_sub_batch_id
+      and aggregate.batch_id = output.output_batch_id
+      and aggregate.id <> result.id
+    inner join public.sub_batch_current_weight aggregate_weight
+      on aggregate_weight.id = aggregate.id
+      and aggregate_weight.current_weight = 0
+  ),
+  1::bigint,
+  'whole-batch physical bags descend from their zero-weight output aggregate'
+);
 
 select is(
   (
