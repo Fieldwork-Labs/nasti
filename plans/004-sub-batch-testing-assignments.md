@@ -1,5 +1,13 @@
 # Plan 004: Make testing assignments bag-based
 
+> **SUPERSEDED 2026-08-17:** Do not execute the remaining steps in this plan.
+> UAT established that retained seed remains owned by the originating
+> organisation, work closure is independent from later custody/returns, owned
+> total weight includes seed at laboratories, and Testing is an additive
+> provider capability. Plans 006–009 replace this plan. The completed database
+> work remains useful historical evidence but encodes product decisions that
+> must now be removed.
+
 > Executor instructions: follow this plan step by step. This plan is
 > **backend-first**; the only front-end work in scope is deleting what the
 > backend change kills and making the web app compile again. Do not build new
@@ -38,6 +46,7 @@ part of this plan.
 - Risk: HIGH
 - Depends on: Plan 003
 - Category: architecture, migration, bug, tests
+- Superseded by: Plans 006–009
 - Planned at: commit 73c40f8, 2026-08-06
 - Rescoped: 2026-08-06 after product decisions recorded below
 - Amended: 2026-08-06 after reviewer findings; see "Reviewer findings: resolution"

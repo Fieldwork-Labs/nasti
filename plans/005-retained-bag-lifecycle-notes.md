@@ -1,5 +1,10 @@
 # Note 005: What a Testing organisation may do with seed it holds
 
+> **SUPERSEDED 2026-08-17:** UAT reversed this note's ownership premise.
+> Retained seed remains owned by the originating organisation, remains visible
+> there as aggregate external custody, and may be returned in later movements
+> after testing work closes. Plans 006–009 contain the replacement contract.
+
 > This is a decision note, not an executable plan. It records findings from a
 > 2026-08-06 discussion so they can be planned later without re-deriving them.
 > Nothing here has been implemented. Written against commit `2d5b00f`, after

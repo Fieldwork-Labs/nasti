@@ -2,7 +2,8 @@
 
 Maintained from focused NASTI audits. The initial cleaning, bagging, container,
 and storage audit was recorded on 2026-07-28; the testing-organisation and batch
-assignment audit was added on 2026-07-29. Execute plans in the order below
+assignment audit was added on 2026-07-29. UAT ownership, custody, transfer, and
+privacy decisions were reconciled on 2026-08-17. Execute plans in the order below
 unless their dependency notes say otherwise. Each executor must read its plan
 fully, honor its STOP conditions, run every verification command, and update
 the status row when finished.
@@ -13,11 +14,15 @@ the status row when finished.
 |---|---|---:|---:|---|---|
 | [001](./001-container-aware-sub-batch-merge.md) | Preserve physical storage semantics when merging sub-batches | P1 | M | — | DONE |
 | [003](./003-complete-testing-organisation-assignments.md) | Complete and secure testing-organisation assignments | P1 | L | — | DONE — `feat/new-inventory` |
-| [004](./004-sub-batch-testing-assignments.md) | Make testing assignments bag-based | P1 | L | 003 | IN PROGRESS — database and tests done; frontend remains |
-| [005](./005-retained-bag-lifecycle-notes.md) | What a Testing organisation may do with seed it holds | P2 | — | 004 | NOTES ONLY — see decision note |
+| [004](./004-sub-batch-testing-assignments.md) | Make testing assignments bag-based | P1 | L | 003 | SUPERSEDED — database landed, but UAT reversed its retained-ownership and custody-relative-weight decisions |
+| [005](./005-retained-bag-lifecycle-notes.md) | What a Testing organisation may do with seed it holds | P2 | — | 004 | SUPERSEDED — retained seed remains owner-owned and is returnable after work closes |
+| [006](./006-seed-transfer-and-lineage-foundation.md) | Establish testing-provider, seed-transfer, and bag-lineage foundations | P1 | L | — | TODO |
+| [007](./007-testing-work-and-custody-movements.md) | Separate testing work from repeatable custody movements | P1 | L | 006 | TODO |
+| [008](./008-private-ownership-and-custody-read-models.md) | Provide privacy-safe ownership and custody read models | P1 | L | 006, 007 | TODO |
+| [009](./009-unified-seed-inventory-and-testing-workflows.md) | Unify seed inventory and expose the new testing workflows | P1 | L | 006, 007, 008 | TODO |
 
-Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason, or
-`REJECTED` with a rationale.
+Status values: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED` with a reason,
+`REJECTED` with a rationale, or `SUPERSEDED` with its replacement.
 
 ### Plan 003 completion notes
 
@@ -57,9 +62,9 @@ a time without repeating the audit.
 | 7 | A used container can have its purpose changed retroactively | P2 | S–M | **DONE:** purpose is immutable from creation; containers can still be renamed, activated, deactivated, or replaced |
 | 8 | Cleaning, bagging, split, merge, and storage RPCs lack behavioral integration coverage | P1 | M | Add pgTAP tests for weight conservation, tenancy, retry behavior, and history preservation |
 | 9 | Cleaning photo upload/delete sequences can leave orphaned objects or broken metadata | P2 | M | Add compensating cleanup and retry-safe upload/delete behavior |
-| 10 | No way to record seed being discarded, spoiled or used up outside a quality test | P1 | S–M | Add a custody-gated `fn_discard_sub_batch`; see [note 005](./005-retained-bag-lifecycle-notes.md) |
-| 11 | A bag retained by a Testing organisation blocks deletion of its parent batch forever, invisibly | P2 | S | Make `batch_has_externally_held_bags` ignore zero-weight bags, once disposal exists |
-| 12 | A Testing organisation cleaning a retained bag silently produces a General-owned batch | P2 | S | Block Testing-side cleaning; the guard shape already exists in `fn_clean_sub_batch` |
+| 10 | No intentional disposal workflow exists | P2 | M | **DEFERRED:** disposal requires an owner-authorised workflow; an acknowledged variance is not disposal |
+| 11 | External positive-weight seed must block owner deletion without exposing lab internals | P1 | M | Covered by Plan 008's owner aggregate; zero-weight lineage must not block deletion |
+| 12 | Cleaning foreign-owned seed moves custody to the owner | P1 | M | Covered by Plan 007: keep source ownership and performing custodian; do not expose a lab cleaning UI |
 
 ## Dependency notes
 
@@ -80,6 +85,21 @@ a time without repeating the audit.
   actionable parts.
 - Plan 004 is backend-first. The assignment UI is being redesigned separately,
   so the plan deletes the old modal instead of porting it.
+- Plans 004 and 005 remain historical evidence only. Their decisions that a
+  retained split becomes Testing-owned/invisible, displayed weight is
+  custody-relative, one whole-bag return closes physical custody, and Testing
+  is an exclusive organisation mode are superseded by UAT.
+- Plan 006 establishes additive provider capability, one grouped seed-transfer
+  event with bag line items, and structured split/merge/cleaning ancestry. It
+  must land before any new lifecycle or read-model work.
+- Plan 007 uses that foundation for independent work closure, partial/repeated
+  returns, late tests, variance, correction, merge lineage, and coherent
+  foreign-seed cleaning.
+- Plan 008 must follow the write model because its custody intervals, owner
+  summaries, and privacy projections depend on immutable movements and lineage.
+- Plan 009 is last: the unified inventory and workflows must consume the
+  reviewed projections rather than reconstructing security-sensitive state in
+  the client.
 - Issue 8 should be implemented alongside or immediately before issues 1–5.
   Plan 001 includes the merge-specific database tests needed to make issue 1
   safe; issue 8 remains broader processing-workflow coverage.
@@ -144,3 +164,15 @@ The audit checked these areas and did not reopen them:
   not planned. The current product request treats catalogue rows as container
   types and individual sub-batches as the physical portions; labels or QR codes
   remain a future product option.
+- **A separate laboratory-only inventory** was rejected. Provider organisations
+  may own and collect seed; one inventory with ownership/custody/work filters is
+  the default direction. A history panel may remain a presentation slice, not
+  the source of inventory membership.
+- **Receiver acknowledgement and an in-transit state** were rejected for this
+  phase. The sender's record completes a movement; corrections handle mistakes.
+- **Blocking foreign-seed cleaning in the database** was rejected. The UI does
+  not expose it, but if invoked the database must retain source ownership,
+  current custody, and lineage coherently.
+- **Bag-level ownership now** was rejected as premature. Parent batch ownership
+  remains authoritative; a future seed-sale workflow will design ownership
+  transfer separately.
