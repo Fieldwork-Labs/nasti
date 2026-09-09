@@ -34,36 +34,44 @@ import { stringToNumber } from "@nasti/common/utils"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
 import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
 import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
 import { hasMediaChanges } from "@/lib/mediaChanges"
 
-const schema = z
-  .object({
-    species_id: z.preprocess(
-      (val) => (val === "" ? null : val),
-      z.string().nullable(),
-    ),
-    species_uncertain: z.boolean(),
-    field_name: z
-      .string()
-      .nullable()
-      .transform((val) => val || ""),
-    specimen_collected: z.boolean(),
-    description: z
-      .string()
-      .optional()
-      .transform((val) => val || ""),
-    amount_units: z.string().nullable(),
-    amount_quantity: stringToNumber,
-    duration: z.string().nullable(),
-    material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
-    latitude: stringToNumber,
-    longitude: stringToNumber,
-    person_ids: z.array(z.string().uuid()).default([]),
-    phenology_start: z.number().min(-100).max(100).nullable(),
-    phenology_peak: z.number().min(-100).max(100).nullable(),
-    phenology_end: z.number().min(-100).max(100).nullable(),
+const collectionFields = z.object({
+  species_id: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable(),
+  ),
+  species_uncertain: z.boolean(),
+  field_name: z
+    .string()
+    .nullable()
+    .transform((val) => val || ""),
+  specimen_collected: z.boolean(),
+  description: z
+    .string()
+    .optional()
+    .transform((val) => val || ""),
+  amount_units: z.string().nullable(),
+  amount_quantity: stringToNumber,
+  duration: z.string().nullable(),
+  material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
+  latitude: stringToNumber,
+  longitude: stringToNumber,
+  person_ids: z.array(z.string().uuid()).default([]),
+  phenology_start: z.number().min(-100).max(100).nullable(),
+  phenology_peak: z.number().min(-100).max(100).nullable(),
+  phenology_end: z.number().min(-100).max(100).nullable(),
+})
+
+const schema = collectionFields
+  .extend({
+    // a collection has to record what material was collected
+    material_type: z
+      .array(z.enum(MATERIAL_TYPES))
+      .min(1, "Select the material collected"),
   })
   .refine(
     (data) => Boolean(data.species_id) || data.field_name.trim().length > 0,
@@ -198,7 +206,9 @@ function CollectionFormReady({
     keep: initialAudios,
   })
 
-  const defaultValues = schema.parse({
+  // parsed leniently - collections recorded before material type was required
+  // still have to open in the form
+  const defaultValues = collectionFields.parse({
     ...DEFAULT_VALUES,
     ...collection,
     material_type: toMaterialTypes(collection.material_type),
@@ -468,19 +478,26 @@ function CollectionFormReady({
             </div>
           </div>
 
-          <Controller
-            control={control}
-            name="material_type"
-            render={({ field }) => (
-              <CheckboxGroup
-                label="Material Collected"
-                size="lg"
-                options={MATERIAL_TYPE_OPTIONS}
-                value={field.value}
-                onChange={field.onChange}
-              />
+          <div>
+            <Controller
+              control={control}
+              name="material_type"
+              render={({ field }) => (
+                <CheckboxGroup
+                  label="Material Collected"
+                  size="lg"
+                  options={MATERIAL_TYPE_OPTIONS}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            {errors.material_type && (
+              <div className="mt-1 text-sm text-amber-600">
+                {errors.material_type.message}
+              </div>
             )}
-          />
+          </div>
 
           <div>
             <Label className="flex items-center gap-2">
@@ -530,67 +547,69 @@ function CollectionFormReady({
             </div>
           </div>
 
-          <Controller
-            control={control}
-            name="duration"
-            render={({ field }) => (
-              <DurationPickerField
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="phenology_start"
-            render={({ field: startField }) => (
-              <Controller
-                control={control}
-                name="phenology_peak"
-                render={({ field: peakField }) => (
-                  <Controller
-                    control={control}
-                    name="phenology_end"
-                    render={({ field: endField }) => (
-                      <PhenologyRangeInput
-                        value={[
-                          startField.value,
-                          peakField.value,
-                          endField.value,
-                        ]}
-                        onValueChange={([start, peak, end]) => {
-                          startField.onChange(start)
-                          peakField.onChange(peak)
-                          endField.onChange(end)
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
-          />
-          <PhotosForm
-            initialPhotos={initialPhotos}
-            onPhotosChange={setPhotoChanges}
-          />
-
-          <div>
-            <Label>Description</Label>
-            <Textarea
-              {...register("description")}
-              className={cn(
-                "transition-all",
-                descriptionFocus ? "h-40" : "h-20",
+          <ExtraFieldsAccordion>
+            <Controller
+              control={control}
+              name="duration"
+              render={({ field }) => (
+                <DurationPickerField
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               )}
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
             />
-            <AudiosForm
-              initialAudios={initialAudios}
-              onAudiosChange={setAudioChanges}
+            <Controller
+              control={control}
+              name="phenology_start"
+              render={({ field: startField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_peak"
+                  render={({ field: peakField }) => (
+                    <Controller
+                      control={control}
+                      name="phenology_end"
+                      render={({ field: endField }) => (
+                        <PhenologyRangeInput
+                          value={[
+                            startField.value,
+                            peakField.value,
+                            endField.value,
+                          ]}
+                          onValueChange={([start, peak, end]) => {
+                            startField.onChange(start)
+                            peakField.onChange(peak)
+                            endField.onChange(end)
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
             />
-          </div>
+            <PhotosForm
+              initialPhotos={initialPhotos}
+              onPhotosChange={setPhotoChanges}
+            />
+
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                {...register("description")}
+                className={cn(
+                  "transition-all",
+                  descriptionFocus ? "h-40" : "h-20",
+                )}
+                onFocus={() => setDescriptionFocus(true)}
+                onBlur={() => setDescriptionFocus(false)}
+              />
+              <AudiosForm
+                initialAudios={initialAudios}
+                onAudiosChange={setAudioChanges}
+              />
+            </div>
+          </ExtraFieldsAccordion>
         </div>
 
         <div className="flex space-x-2 border-t p-2">

@@ -26,7 +26,11 @@ export const ExtraFieldsAccordion = ({
           className={cn("h-5 w-5 transition-transform", isOpen && "rotate-90")}
         />
       </Button>
-      {isOpen && <div className="space-y-4 pb-4">{children}</div>}
+      {/* hidden rather than unmounted: photo and audio fields hold their
+          pending files in local state, which a remount would discard */}
+      <div className={cn("space-y-4 pb-4", !isOpen && "hidden")}>
+        {children}
+      </div>
     </section>
   )
 }

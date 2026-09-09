@@ -24,6 +24,7 @@ import { useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
 import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
 import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
 import { hasMediaChanges } from "@/lib/mediaChanges"
@@ -459,58 +460,60 @@ function ScoutingNoteFormReady({
             </div>
           </div>
 
-          <Controller
-            control={control}
-            name="phenology_start"
-            render={({ field: startField }) => (
-              <Controller
-                control={control}
-                name="phenology_peak"
-                render={({ field: peakField }) => (
-                  <Controller
-                    control={control}
-                    name="phenology_end"
-                    render={({ field: endField }) => (
-                      <PhenologyRangeInput
-                        value={[
-                          startField.value,
-                          peakField.value,
-                          endField.value,
-                        ]}
-                        onValueChange={([start, peak, end]) => {
-                          startField.onChange(start)
-                          peakField.onChange(peak)
-                          endField.onChange(end)
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
-          />
-
-          <PhotosForm
-            initialPhotos={initialPhotos}
-            onPhotosChange={setPhotoChanges}
-          />
-          <div>
-            <Label>Description</Label>
-            <Textarea
-              {...register("description")}
-              className={cn(
-                "transition-all",
-                descriptionFocus ? "h-40" : "h-20",
+          <ExtraFieldsAccordion>
+            <Controller
+              control={control}
+              name="phenology_start"
+              render={({ field: startField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_peak"
+                  render={({ field: peakField }) => (
+                    <Controller
+                      control={control}
+                      name="phenology_end"
+                      render={({ field: endField }) => (
+                        <PhenologyRangeInput
+                          value={[
+                            startField.value,
+                            peakField.value,
+                            endField.value,
+                          ]}
+                          onValueChange={([start, peak, end]) => {
+                            startField.onChange(start)
+                            peakField.onChange(peak)
+                            endField.onChange(end)
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
               )}
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
             />
-          </div>
 
-          <AudiosForm
-            initialAudios={initialAudios}
-            onAudiosChange={setAudioChanges}
-          />
+            <PhotosForm
+              initialPhotos={initialPhotos}
+              onPhotosChange={setPhotoChanges}
+            />
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                {...register("description")}
+                className={cn(
+                  "transition-all",
+                  descriptionFocus ? "h-40" : "h-20",
+                )}
+                onFocus={() => setDescriptionFocus(true)}
+                onBlur={() => setDescriptionFocus(false)}
+              />
+            </div>
+
+            <AudiosForm
+              initialAudios={initialAudios}
+              onAudiosChange={setAudioChanges}
+            />
+          </ExtraFieldsAccordion>
         </div>
 
         <div className="flex space-x-2 border-t p-2">
