@@ -310,12 +310,6 @@ INSERT INTO "public"."batch_weight_adjustments" ("id", "sub_batch_id", "weight_g
 
 
 
---
--- Name: refresh_tokens_id_seq; Type: SEQUENCE SET; Schema: auth; Owner: supabase_auth_admin
---
-
-SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 7, true);
-
 
 --
 -- Name: ibra_regions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
@@ -323,12 +317,6 @@ SELECT pg_catalog.setval('"auth"."refresh_tokens_id_seq"', 7, true);
 
 SELECT pg_catalog.setval('"public"."ibra_regions_id_seq"', 89, true);
 
-
---
--- Name: hooks_id_seq; Type: SEQUENCE SET; Schema: supabase_functions; Owner: supabase_functions_admin
---
-
-SELECT pg_catalog.setval('"supabase_functions"."hooks_id_seq"', 1, false);
 
 
 --
