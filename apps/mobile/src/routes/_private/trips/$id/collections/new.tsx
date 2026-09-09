@@ -20,8 +20,13 @@ import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
+import { CheckboxGroup } from "@nasti/ui/checkboxGroup"
 import { InfoIcon, X } from "lucide-react"
-import { NewCollection } from "@nasti/common/types"
+import {
+  MATERIAL_TYPES,
+  MATERIAL_TYPE_OPTIONS,
+  NewCollection,
+} from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
@@ -65,6 +70,7 @@ const schema = z
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
     duration: z.string().nullable(),
+    material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
     person_ids: z.array(z.string().uuid()).default([]),
   })
   .refine(
@@ -96,6 +102,7 @@ const defaultValues = {
   amount_units: "",
   amount_quantity: null,
   duration: null,
+  material_type: [],
   person_ids: [],
 }
 
@@ -380,6 +387,19 @@ function AddCollection() {
               </div>
             </div>
           </div>
+          <Controller
+            control={control}
+            name="material_type"
+            render={({ field }) => (
+              <CheckboxGroup
+                label="Material Collected"
+                size="lg"
+                options={MATERIAL_TYPE_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
           <Controller
             control={control}
             name="phenology_start"

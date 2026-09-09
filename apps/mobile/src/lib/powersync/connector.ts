@@ -17,7 +17,7 @@ const JSON_FIELDS: Record<string, string[]> = {
 }
 
 const ARRAY_FIELDS: Record<string, string[]> = {
-  collection: ["person_ids"],
+  collection: ["person_ids", "material_type"],
   scouting_notes: ["person_ids"],
 }
 

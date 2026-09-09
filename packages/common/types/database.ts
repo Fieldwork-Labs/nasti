@@ -48,6 +48,7 @@ export type Database = {
           field_name: string | null
           id: string
           location: unknown
+          material_type: string[]
           organisation_id: string | null
           person_ids: string[]
           phenology_end: number | null
@@ -71,6 +72,7 @@ export type Database = {
           field_name?: string | null
           id?: string
           location?: unknown
+          material_type?: string[]
           organisation_id?: string | null
           person_ids?: string[]
           phenology_end?: number | null
@@ -94,6 +96,7 @@ export type Database = {
           field_name?: string | null
           id?: string
           location?: unknown
+          material_type?: string[]
           organisation_id?: string | null
           person_ids?: string[]
           phenology_end?: number | null

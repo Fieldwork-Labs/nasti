@@ -1,5 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Collection } from "@nasti/common/types"
+import {
+  Collection,
+  MATERIAL_TYPES,
+  toMaterialTypes,
+} from "@nasti/common/types"
 import {
   createContext,
   useCallback,
@@ -47,6 +51,7 @@ export const schema = z
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
     duration: z.string().nullable(),
+    material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
     collected_by: z.string().uuid(),
     person_ids: z.array(z.string().uuid()).default([]),
     phenology_start: z.number().min(-100).max(100).nullable(),
@@ -101,6 +106,7 @@ const useCollectionForm = ({
           amount_quantity: collection.amount_quantity,
           amount_units: collection.amount_units ?? "",
           duration: collection.duration ?? null,
+          material_type: toMaterialTypes(collection.material_type),
           collected_on: collection.collected_on,
           collected_by: collection.collected_by,
           person_ids: collection.person_ids ?? [],
@@ -122,6 +128,7 @@ const useCollectionForm = ({
           amount_units: "",
           amount_quantity: undefined,
           duration: null,
+          material_type: [],
         }
   }, [collection, user?.id])
 

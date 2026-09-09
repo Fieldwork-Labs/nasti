@@ -78,6 +78,7 @@ const collection = new Table(
     duration: column.text,
     field_name: column.text,
     location: column.text,
+    material_type: column.text,
     organisation_id: column.text,
     species_id: column.text,
     species_uncertain: column.integer,
