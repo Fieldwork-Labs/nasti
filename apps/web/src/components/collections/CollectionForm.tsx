@@ -307,26 +307,33 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
         />
       </div>
 
-      <Controller
-        control={control}
-        name="material_type"
-        render={({ field }) => (
-          <CheckboxGroup
-            label={
-              <span className="inline-flex items-center gap-2">
-                <span>Material Collected</span>
-                <InfoIconWithTooltip>
-                  What plant material was collected. Used to pre-fill the
-                  cleaning form.
-                </InfoIconWithTooltip>
-              </span>
-            }
-            options={MATERIAL_TYPE_OPTIONS}
-            value={field.value}
-            onChange={field.onChange}
-          />
+      <div>
+        <Controller
+          control={control}
+          name="material_type"
+          render={({ field }) => (
+            <CheckboxGroup
+              label={
+                <span className="inline-flex items-center gap-2">
+                  <span>Material Collected</span>
+                  <InfoIconWithTooltip>
+                    What plant material was collected. Used to pre-fill the
+                    cleaning form.
+                  </InfoIconWithTooltip>
+                </span>
+              }
+              options={MATERIAL_TYPE_OPTIONS}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {errors.material_type && (
+          <div className="flex h-4 justify-end text-xs text-orange-800">
+            {errors.material_type.message}
+          </div>
         )}
-      />
+      </div>
 
       <Controller
         control={control}

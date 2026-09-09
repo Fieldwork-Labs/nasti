@@ -51,7 +51,10 @@ export const schema = z
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
     duration: z.string().nullable(),
-    material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
+    material_type: z
+      .array(z.enum(MATERIAL_TYPES))
+      .min(1, "Select the material collected")
+      .default([]),
     collected_by: z.string().uuid(),
     person_ids: z.array(z.string().uuid()).default([]),
     phenology_start: z.number().min(-100).max(100).nullable(),

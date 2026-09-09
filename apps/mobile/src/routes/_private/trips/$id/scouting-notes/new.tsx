@@ -35,6 +35,11 @@ import {
   baseSchema,
 } from "@/components/common/dataSchema"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
+import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
+import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
+import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
+import { hasDirtyValues } from "@/lib/formDirty"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -72,7 +77,7 @@ function AddCollection() {
     setValue,
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting },
+    formState: { isValid, isSubmitting, dirtyFields },
     control,
   } = useForm<BaseFormData>({
     defaultValues: { ...baseDefaultValues, species_id: initialSpeciesId },
@@ -95,6 +100,23 @@ function AddCollection() {
   const [audios, setAudios] = useState<UploadAudioVariables[]>([])
 
   const { user, organisation } = useAuth()
+
+  // the people field selects the current user by default, so only treat other
+  // people as an edit the user would be sad to lose
+  const currentUserPerson = useCurrentUserPerson(organisation?.id)
+  const { person_ids: _personIds, ...otherDirtyFields } = dirtyFields
+  const isPeopleSelectionEdited = watch("person_ids").some(
+    (personId) => personId !== currentUserPerson?.id,
+  )
+
+  const { isPromptOpen, discardChanges, keepEditing, allowNavigation } =
+    useUnsavedChangesPrompt({
+      hasUnsavedChanges:
+        hasDirtyValues(otherDirtyFields) ||
+        isPeopleSelectionEdited ||
+        photos.length > 0 ||
+        audios.length > 0,
+    })
 
   const navigate = useNavigate()
 
@@ -136,7 +158,10 @@ function AddCollection() {
 
       if (createPhotoMutation.isError) {
         console.error(createPhotoMutation.error)
-      } else navigate({ to: "/trips/$id", params: { id: tripId } })
+      } else {
+        allowNavigation()
+        navigate({ to: "/trips/$id", params: { id: tripId } })
+      }
     },
     [
       user,
@@ -149,6 +174,7 @@ function AddCollection() {
       organisation,
       photos,
       audios,
+      allowNavigation,
     ],
   )
 
@@ -237,6 +263,19 @@ function AddCollection() {
               </Popover>
             </div>
           </div>
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={organisation?.id}
+                value={field.value}
+                onChange={field.onChange}
+                defaultToCurrentUser
+              />
+            )}
+          />
+
           <div>
             <Label htmlFor="location">
               <span>Location</span>
@@ -256,68 +295,57 @@ function AddCollection() {
             />
           </div>
 
-          <Controller
-            control={control}
-            name="person_ids"
-            render={({ field }) => (
-              <PersonMultiSelectField
-                organisationId={organisation?.id}
-                value={field.value}
-                onChange={field.onChange}
-                defaultToCurrentUser
-              />
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="phenology_start"
-            render={({ field: startField }) => (
-              <Controller
-                control={control}
-                name="phenology_peak"
-                render={({ field: peakField }) => (
-                  <Controller
-                    control={control}
-                    name="phenology_end"
-                    render={({ field: endField }) => (
-                      <PhenologyRangeInput
-                        value={[
-                          startField.value,
-                          peakField.value,
-                          endField.value,
-                        ]}
-                        onValueChange={([start, peak, end]) => {
-                          startField.onChange(start)
-                          peakField.onChange(peak)
-                          endField.onChange(end)
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
-          />
-          <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
-          <div>
-            <Label htmlFor="description">
-              <span>Description</span>
-            </Label>
-            <Textarea
-              {...register("description")}
-              id="description"
-              name="description"
-              className={cn(
-                "h-20 text-lg transition-all duration-500 ease-in-out",
-                descriptionFocus && "h-40",
+          <ExtraFieldsAccordion>
+            <Controller
+              control={control}
+              name="phenology_start"
+              render={({ field: startField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_peak"
+                  render={({ field: peakField }) => (
+                    <Controller
+                      control={control}
+                      name="phenology_end"
+                      render={({ field: endField }) => (
+                        <PhenologyRangeInput
+                          value={[
+                            startField.value,
+                            peakField.value,
+                            endField.value,
+                          ]}
+                          onValueChange={([start, peak, end]) => {
+                            startField.onChange(start)
+                            peakField.onChange(peak)
+                            endField.onChange(end)
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
               )}
-              placeholder="Enter notes or description here"
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
             />
-            <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
-          </div>
+            <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
+            <div>
+              <Label htmlFor="description">
+                <span>Description</span>
+              </Label>
+              <Textarea
+                {...register("description")}
+                id="description"
+                name="description"
+                className={cn(
+                  "h-20 text-lg transition-all duration-500 ease-in-out",
+                  descriptionFocus && "h-40",
+                )}
+                placeholder="Enter notes or description here"
+                onFocus={() => setDescriptionFocus(true)}
+                onBlur={() => setDescriptionFocus(false)}
+              />
+              <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
+            </div>
+          </ExtraFieldsAccordion>
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">
@@ -337,6 +365,11 @@ function AddCollection() {
           {isSubmitting ? "Saving..." : "Save Scouting Note"}
         </Button>
       </div>
+      <UnsavedChangesDialog
+        open={isPromptOpen}
+        onDiscard={discardChanges}
+        onKeepEditing={keepEditing}
+      />
     </div>
   )
 }
