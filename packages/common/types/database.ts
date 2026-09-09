@@ -7,37 +7,736 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
+      batch_cleaning: {
+        Row: {
+          cleaning_notes: string | null
+          created_at: string | null
+          created_by: string | null
+          duration: string | null
+          id: string
+          input_batch_id: string | null
+          input_sub_batch_id: string | null
+          is_cleaned: boolean
+          material_notes: string | null
+          material_subtype: string | null
+          material_type: string | null
+          organisation_id: string
+          worker_ids: string[]
+        }
+        Insert: {
+          cleaning_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          duration?: string | null
+          id?: string
+          input_batch_id?: string | null
+          input_sub_batch_id?: string | null
+          is_cleaned?: boolean
+          material_notes?: string | null
+          material_subtype?: string | null
+          material_type?: string | null
+          organisation_id: string
+          worker_ids?: string[]
+        }
+        Update: {
+          cleaning_notes?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          duration?: string | null
+          id?: string
+          input_batch_id?: string | null
+          input_sub_batch_id?: string | null
+          is_cleaned?: boolean
+          material_notes?: string | null
+          material_subtype?: string | null
+          material_type?: string | null
+          organisation_id?: string
+          worker_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_cleaning_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
+            columns: ["input_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
+            columns: ["input_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_input_sub_batch_id_fkey"
+            columns: ["input_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_cleaning_output: {
+        Row: {
+          cleaning_id: string
+          id: string
+          material_type: string
+          output_batch_id: string
+          quality: string
+          weight_grams: number
+        }
+        Insert: {
+          cleaning_id: string
+          id?: string
+          material_type: string
+          output_batch_id: string
+          quality: string
+          weight_grams: number
+        }
+        Update: {
+          cleaning_id?: string
+          id?: string
+          material_type?: string
+          output_batch_id?: string
+          quality?: string
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_cleaning_output_cleaning_id_fkey"
+            columns: ["cleaning_id"]
+            isOneToOne: false
+            referencedRelation: "batch_cleaning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_output_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_output_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_output_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_cleaning_photo: {
+        Row: {
+          caption: string | null
+          cleaning_id: string
+          id: string
+          organisation_id: string
+          stage: string
+          uploaded_at: string
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          cleaning_id: string
+          id?: string
+          organisation_id: string
+          stage: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          cleaning_id?: string
+          id?: string
+          organisation_id?: string
+          stage?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_cleaning_photo_cleaning_id_fkey"
+            columns: ["cleaning_id"]
+            isOneToOne: false
+            referencedRelation: "batch_cleaning"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_cleaning_photo_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_custody: {
+        Row: {
+          batch_id: string
+          id: string
+          notes: string | null
+          organisation_id: string
+          previous_organisation_id: string | null
+          received_at: string
+          transferred_by: string | null
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          notes?: string | null
+          organisation_id: string
+          previous_organisation_id?: string | null
+          received_at?: string
+          transferred_by?: string | null
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          notes?: string | null
+          organisation_id?: string
+          previous_organisation_id?: string | null
+          received_at?: string
+          transferred_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_custody_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_previous_organisation_id_fkey"
+            columns: ["previous_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_merges: {
+        Row: {
+          created_at: string | null
+          id: string
+          merged_batch_id: string
+          source_batch_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          merged_batch_id: string
+          source_batch_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          merged_batch_id?: string
+          source_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_merges_merged_batch_id_fkey"
+            columns: ["merged_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_merges_merged_batch_id_fkey"
+            columns: ["merged_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_merges_merged_batch_id_fkey"
+            columns: ["merged_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_merges_source_batch_id_fkey"
+            columns: ["source_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_merges_source_batch_id_fkey"
+            columns: ["source_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_merges_source_batch_id_fkey"
+            columns: ["source_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_splits: {
+        Row: {
+          child_batch_id: string
+          created_at: string | null
+          id: string
+          parent_batch_id: string
+        }
+        Insert: {
+          child_batch_id: string
+          created_at?: string | null
+          id?: string
+          parent_batch_id: string
+        }
+        Update: {
+          child_batch_id?: string
+          created_at?: string | null
+          id?: string
+          parent_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_splits_child_batch_id_fkey"
+            columns: ["child_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_splits_child_batch_id_fkey"
+            columns: ["child_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_splits_child_batch_id_fkey"
+            columns: ["child_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_splits_parent_batch_id_fkey"
+            columns: ["parent_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_splits_parent_batch_id_fkey"
+            columns: ["parent_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_splits_parent_batch_id_fkey"
+            columns: ["parent_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_storage: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          location_id: string
+          moved_out_at: string | null
+          notes: string | null
+          stored_at: string | null
+          sub_batch_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          location_id: string
+          moved_out_at?: string | null
+          notes?: string | null
+          stored_at?: string | null
+          sub_batch_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          moved_out_at?: string | null
+          notes?: string | null
+          stored_at?: string | null
+          sub_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_storage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+        ]
+      }
+      batch_testing_assignment: {
+        Row: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          batch_id: string
+          closed_at: string | null
+          completed_at: string | null
+          id: string
+          outbound_transfer_item_id: string
+          outcome: string | null
+          sub_batch_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          batch_id: string
+          closed_at?: string | null
+          completed_at?: string | null
+          id?: string
+          outbound_transfer_item_id: string
+          outcome?: string | null
+          sub_batch_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by_org_id?: string
+          assigned_to_org_id?: string
+          batch_id?: string
+          closed_at?: string | null
+          completed_at?: string | null
+          id?: string
+          outbound_transfer_item_id?: string
+          outcome?: string | null
+          sub_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_testing_assignment_assigned_by_org_fkey"
+            columns: ["assigned_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_assigned_to_org_fkey"
+            columns: ["assigned_to_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_batch_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_batch_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_batch_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_sub_batch_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_transfer_item_matches_bag_fkey"
+            columns: ["outbound_transfer_item_id", "sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
+            referencedColumns: ["id", "sub_batch_id", "batch_id"]
+          },
+        ]
+      }
+      batch_weight_adjustments: {
+        Row: {
+          corrects_adjustment_id: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          kind: Database["public"]["Enums"]["batch_weight_adjustment_kind"]
+          lineage_operation_id: string | null
+          reason: string
+          sub_batch_id: string
+          test_id: string | null
+          transfer_item_id: string | null
+          weight_grams: number
+        }
+        Insert: {
+          corrects_adjustment_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["batch_weight_adjustment_kind"]
+          lineage_operation_id?: string | null
+          reason: string
+          sub_batch_id: string
+          test_id?: string | null
+          transfer_item_id?: string | null
+          weight_grams: number
+        }
+        Update: {
+          corrects_adjustment_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["batch_weight_adjustment_kind"]
+          lineage_operation_id?: string | null
+          reason?: string
+          sub_batch_id?: string
+          test_id?: string | null
+          transfer_item_id?: string | null
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_weight_adjustments_corrects_adjustment_id_fkey"
+            columns: ["corrects_adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "batch_weight_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_weight_adjustments_transfer_item_id_fkey"
+            columns: ["transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batches: {
+        Row: {
+          code: string | null
+          collection_id: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          organisation_id: string
+          weight_grams: number | null
+        }
+        Insert: {
+          code?: string | null
+          collection_id?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          organisation_id: string
+          weight_grams?: number | null
+        }
+        Update: {
+          code?: string | null
+          collection_id?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          organisation_id?: string
+          weight_grams?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collection"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection: {
         Row: {
-          amount_quantity: number | null
-          amount_units: string | null
           code: string | null
           collected_by: string
           collected_on: string
@@ -59,8 +758,6 @@ export type Database = {
           trip_id: string | null
         }
         Insert: {
-          amount_quantity?: number | null
-          amount_units?: string | null
           code?: string | null
           collected_by: string
           collected_on?: string
@@ -82,8 +779,6 @@ export type Database = {
           trip_id?: string | null
         }
         Update: {
-          amount_quantity?: number | null
-          amount_units?: string | null
           code?: string | null
           collected_by?: string
           collected_on?: string
@@ -164,6 +859,59 @@ export type Database = {
             referencedRelation: "collection"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "collection_audio_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_containers: {
+        Row: {
+          amount: number | null
+          collection_id: string
+          container_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          amount?: number | null
+          collection_id: string
+          container_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          amount?: number | null
+          collection_id?: string
+          container_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_containers_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collection"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_containers_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_containers_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       collection_photo: {
@@ -194,6 +942,48 @@ export type Database = {
             columns: ["collection_id"]
             isOneToOne: false
             referencedRelation: "collection"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_photo_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      containers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          organisation_id: string
+          purpose: Database["public"]["Enums"]["container_purpose"]
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          organisation_id: string
+          purpose: Database["public"]["Enums"]["container_purpose"]
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          organisation_id?: string
+          purpose?: Database["public"]["Enums"]["container_purpose"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "containers_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
             referencedColumns: ["id"]
           },
         ]
@@ -245,6 +1035,7 @@ export type Database = {
           name: string | null
           organisation_id: string
           organisation_name: string | null
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           token: string
         }
@@ -258,6 +1049,7 @@ export type Database = {
           name?: string | null
           organisation_id: string
           organisation_name?: string | null
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role?: Database["public"]["Enums"]["org_user_types"]
           token?: string
         }
@@ -271,6 +1063,7 @@ export type Database = {
           name?: string | null
           organisation_id?: string
           organisation_name?: string | null
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role?: Database["public"]["Enums"]["org_user_types"]
           token?: string
         }
@@ -290,6 +1083,7 @@ export type Database = {
           is_active: boolean
           joined_at: string | null
           organisation_id: string
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           user_id: string
         }
@@ -298,6 +1092,7 @@ export type Database = {
           is_active?: boolean
           joined_at?: string | null
           organisation_id: string
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           user_id: string
         }
@@ -306,6 +1101,7 @@ export type Database = {
           is_active?: boolean
           joined_at?: string | null
           organisation_id?: string
+          permissions?: Database["public"]["Enums"]["org_permission"][]
           role?: Database["public"]["Enums"]["org_user_types"]
           user_id?: string
         }
@@ -327,6 +1123,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           id: string
+          is_testing_provider: boolean
           name: string
           owner_id: string
         }
@@ -337,6 +1134,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           id?: string
+          is_testing_provider?: boolean
           name: string
           owner_id: string
         }
@@ -347,10 +1145,95 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           id?: string
+          is_testing_provider?: boolean
           name?: string
           owner_id?: string
         }
         Relationships: []
+      }
+      organisation_link: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          provider_org_id: string
+          requesting_org_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          provider_org_id: string
+          requesting_org_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          provider_org_id?: string
+          requesting_org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_link_provider_fkey"
+            columns: ["provider_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_link_requester_fkey"
+            columns: ["requesting_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisation_link_request: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string
+          id: string
+          provider_org_id: string
+          requesting_org_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          provider_org_id: string
+          requesting_org_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          provider_org_id?: string
+          requesting_org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_link_request_provider_fkey"
+            columns: ["provider_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_link_request_requester_fkey"
+            columns: ["requesting_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       person: {
         Row: {
@@ -596,6 +1479,130 @@ export type Database = {
           },
         ]
       }
+      seed_transfer_event: {
+        Row: {
+          corrects_event_id: string | null
+          effective_at: string
+          id: string
+          kind: Database["public"]["Enums"]["seed_transfer_event_kind"]
+          reason: string | null
+          recipient_org_id: string
+          recorded_at: string
+          recorded_by: string
+          reverses_event_id: string | null
+          sender_org_id: string
+        }
+        Insert: {
+          corrects_event_id?: string | null
+          effective_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["seed_transfer_event_kind"]
+          reason?: string | null
+          recipient_org_id: string
+          recorded_at?: string
+          recorded_by: string
+          reverses_event_id?: string | null
+          sender_org_id: string
+        }
+        Update: {
+          corrects_event_id?: string | null
+          effective_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["seed_transfer_event_kind"]
+          reason?: string | null
+          recipient_org_id?: string
+          recorded_at?: string
+          recorded_by?: string
+          reverses_event_id?: string | null
+          sender_org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seed_transfer_event_corrects_event_id_fkey"
+            columns: ["corrects_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_event_recipient_org_id_fkey"
+            columns: ["recipient_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_event_reverses_event_id_fkey"
+            columns: ["reverses_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_event_sender_org_id_fkey"
+            columns: ["sender_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seed_transfer_item: {
+        Row: {
+          batch_id: string
+          id: string
+          owner_org_id: string
+          sub_batch_id: string
+          transfer_event_id: string
+          weight_grams: number
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          owner_org_id: string
+          sub_batch_id: string
+          transfer_event_id: string
+          weight_grams: number
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          owner_org_id?: string
+          sub_batch_id?: string
+          transfer_event_id?: string
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seed_transfer_item_bag_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_item_bag_matches_batch_fkey"
+            columns: ["sub_batch_id", "batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id", "batch_id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_item_owner_org_id_fkey"
+            columns: ["owner_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seed_transfer_item_transfer_event_id_fkey"
+            columns: ["transfer_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spatial_ref_sys: {
         Row: {
           auth_name: string | null
@@ -705,6 +1712,352 @@ export type Database = {
             columns: ["species_id"]
             isOneToOne: false
             referencedRelation: "species"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storage_locations: {
+        Row: {
+          active: boolean
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          organisation_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organisation_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organisation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_locations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_batch_lineage: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          derived_sub_batch_id: string
+          id: string
+          operation_id: string
+          operation_kind: Database["public"]["Enums"]["sub_batch_lineage_operation_kind"]
+          source_sub_batch_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          derived_sub_batch_id: string
+          id?: string
+          operation_id: string
+          operation_kind: Database["public"]["Enums"]["sub_batch_lineage_operation_kind"]
+          source_sub_batch_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          derived_sub_batch_id?: string
+          id?: string
+          operation_id?: string
+          operation_kind?: Database["public"]["Enums"]["sub_batch_lineage_operation_kind"]
+          source_sub_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_batch_lineage_derived_sub_batch_id_fkey"
+            columns: ["derived_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_derived_sub_batch_id_fkey"
+            columns: ["derived_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_derived_sub_batch_id_fkey"
+            columns: ["derived_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_source_sub_batch_id_fkey"
+            columns: ["source_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_source_sub_batch_id_fkey"
+            columns: ["source_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_lineage_source_sub_batch_id_fkey"
+            columns: ["source_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_batches: {
+        Row: {
+          batch_id: string
+          container_id: string | null
+          created_at: string | null
+          held_by_org_id: string
+          id: string
+          notes: string | null
+          weight_grams: number
+        }
+        Insert: {
+          batch_id: string
+          container_id?: string | null
+          created_at?: string | null
+          held_by_org_id: string
+          id?: string
+          notes?: string | null
+          weight_grams: number
+        }
+        Update: {
+          batch_id?: string
+          container_id?: string | null
+          created_at?: string | null
+          held_by_org_id?: string
+          id?: string
+          notes?: string | null
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_held_by_org_id_fkey"
+            columns: ["held_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tests: {
+        Row: {
+          batch_id: string
+          id: string
+          performed_by_organisation_id: string | null
+          result: Json | null
+          statistics: Json | null
+          sub_batch_id: string
+          tested_at: string | null
+          tested_by: string | null
+          type: string
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          performed_by_organisation_id?: string | null
+          result?: Json | null
+          statistics?: Json | null
+          sub_batch_id: string
+          tested_at?: string | null
+          tested_by?: string | null
+          type: string
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          performed_by_organisation_id?: string | null
+          result?: Json | null
+          statistics?: Json | null
+          sub_batch_id?: string
+          tested_at?: string | null
+          tested_by?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_performed_by_organisation_id_fkey"
+            columns: ["performed_by_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatments: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          input_batch_id: string | null
+          notes: string | null
+          organisation_id: string
+          output_batch_id: string
+          quality_assessment: Database["public"]["Enums"]["batch_quality"]
+          treat: Json
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_batch_id?: string | null
+          notes?: string | null
+          organisation_id: string
+          output_batch_id: string
+          quality_assessment: Database["public"]["Enums"]["batch_quality"]
+          treat: Json
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          input_batch_id?: string | null
+          notes?: string | null
+          organisation_id?: string
+          output_batch_id?: string
+          quality_assessment?: Database["public"]["Enums"]["batch_quality"]
+          treat?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatments_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_input_batch_id_fkey"
+            columns: ["input_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatments_output_batch_id_fkey"
+            columns: ["output_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
             referencedColumns: ["id"]
           },
         ]
@@ -823,6 +2176,252 @@ export type Database = {
       }
     }
     Views: {
+      active_batches: {
+        Row: {
+          code: string | null
+          collection_id: string | null
+          created_at: string | null
+          current_location_id: string | null
+          current_weight: number | null
+          id: string | null
+          is_cleaned: boolean | null
+          is_treated: boolean | null
+          latest_quality_statistics: Json | null
+          notes: string | null
+          organisation_id: string | null
+          original_weight: number | null
+          species_id: string | null
+          weight_grams: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["current_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collection"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "obfuscated_collection_data"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_species_id_fkey"
+            columns: ["species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      active_sub_batches: {
+        Row: {
+          batch_id: string | null
+          container_id: string | null
+          created_at: string | null
+          current_location_id: string | null
+          current_weight: number | null
+          held_by_org_id: string | null
+          id: string | null
+          notes: string | null
+          original_weight: number | null
+          weight_grams: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["current_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_held_by_org_id_fkey"
+            columns: ["held_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_current_weight: {
+        Row: {
+          current_weight: number | null
+          id: string | null
+          original_weight: number | null
+        }
+        Insert: {
+          current_weight?: never
+          id?: string | null
+          original_weight?: number | null
+        }
+        Update: {
+          current_weight?: never
+          id?: string | null
+          original_weight?: number | null
+        }
+        Relationships: []
+      }
+      batch_lineage: {
+        Row: {
+          batch_id: string | null
+          created_at: string | null
+          creation_event: string | null
+          event_details: Json | null
+          parent_batch_id: string | null
+        }
+        Relationships: []
+      }
+      batch_lineage_to_collections: {
+        Row: {
+          batch_id: string | null
+          collection_id: string | null
+        }
+        Relationships: []
+      }
+      current_batch_custody: {
+        Row: {
+          batch_id: string | null
+          organisation_id: string | null
+          received_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_custody_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_custody_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      current_batch_storage: {
+        Row: {
+          batch_id: string | null
+          id: string | null
+          location_id: string | null
+          notes: string | null
+          stored_at: string | null
+          sub_batch_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_storage_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_storage_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batches_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geography_columns: {
         Row: {
           coord_dimension: number | null
@@ -862,6 +2461,50 @@ export type Database = {
           f_table_schema?: unknown
           srid?: number | null
           type?: string | null
+        }
+        Relationships: []
+      }
+      obfuscated_collection_data: {
+        Row: {
+          collected_month_year: string | null
+          id: string | null
+          organisation_id: string | null
+        }
+        Insert: {
+          collected_month_year?: never
+          id?: string | null
+          organisation_id?: string | null
+        }
+        Update: {
+          collected_month_year?: never
+          id?: string | null
+          organisation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_company_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_batch_current_weight: {
+        Row: {
+          current_weight: number | null
+          id: string | null
+          original_weight: number | null
+        }
+        Insert: {
+          current_weight?: never
+          id?: string | null
+          original_weight?: number | null
+        }
+        Update: {
+          current_weight?: never
+          id?: string | null
+          original_weight?: number | null
         }
         Relationships: []
       }
@@ -994,7 +2637,37 @@ export type Database = {
             }
             Returns: string
           }
+      assert_same_custodian: {
+        Args: { p_batch_ids: string[] }
+        Returns: string
+      }
+      auth_org_permissions: { Args: never; Returns: string[] }
+      auth_org_role: { Args: never; Returns: string }
+      batch_has_externally_held_bags: {
+        Args: { p_batch_id: string }
+        Returns: boolean
+      }
+      batch_weight_info: {
+        Args: { batch_row: Database["public"]["Tables"]["batches"]["Row"] }
+        Returns: Json
+      }
       bytea_to_text: { Args: { data: string }; Returns: string }
+      calculate_quality_test_statistics: {
+        Args: { p_test_id: string }
+        Returns: Json
+      }
+      calculate_standard_deviation: {
+        Args: { input_values: number[] }
+        Returns: number
+      }
+      can_read_batch: { Args: { p_batch_id: string }; Returns: boolean }
+      can_read_sub_batch: { Args: { p_sub_batch_id: string }; Returns: boolean }
+      current_custodian_org_id: {
+        Args: { p_batch_id: string }
+        Returns: string
+      }
+      current_org_id: { Args: never; Returns: string }
+      current_user_role: { Args: never; Returns: string }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
@@ -1029,8 +2702,215 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      fn_assign_bags_for_testing: {
+        Args: { p_bags: Json; p_provider_org_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          batch_id: string
+          closed_at: string | null
+          completed_at: string | null
+          id: string
+          outbound_transfer_item_id: string
+          outcome: string | null
+          sub_batch_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "batch_testing_assignment"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      fn_bag_and_store_cleaning_outputs: {
+        Args: { p_bags: Json; p_cleaning_id: string }
+        Returns: string[]
+      }
+      fn_bag_cleaning_outputs_unclassified: {
+        Args: { p_bags: Json; p_cleaning_id: string }
+        Returns: string[]
+      }
+      fn_clean_batch: {
+        Args: {
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_input_batch_id: string
+          p_is_cleaned?: boolean
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_outputs?: Json
+          p_worker_ids?: string[]
+        }
+        Returns: string
+      }
+      fn_clean_sub_batch: {
+        Args: {
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_is_cleaned?: boolean
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_outputs?: Json
+          p_sub_batch_id: string
+          p_worker_ids?: string[]
+        }
+        Returns: string
+      }
+      fn_clean_sub_batch_without_lineage: {
+        Args: {
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_is_cleaned?: boolean
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_outputs?: Json
+          p_sub_batch_id: string
+          p_worker_ids?: string[]
+        }
+        Returns: string
+      }
+      fn_create_quality_test: {
+        Args: {
+          p_batch_id: string
+          p_performed_by_organisation_id: string
+          p_result: Json
+          p_sub_batch_id: string
+        }
+        Returns: string
+      }
+      fn_create_quality_test_without_adjustment_classification: {
+        Args: {
+          p_batch_id: string
+          p_performed_by_organisation_id: string
+          p_result: Json
+          p_sub_batch_id: string
+        }
+        Returns: string
+      }
+      fn_get_container_usage: {
+        Args: never
+        Returns: {
+          collection_count: number
+          container_id: string
+          storage_sub_batch_count: number
+        }[]
+      }
+      fn_merge_batches: {
+        Args: { p_notes?: string; p_source_batch_ids: string[] }
+        Returns: string
+      }
+      fn_merge_sub_batches: {
+        Args: {
+          p_container_id: string
+          p_location_id?: string
+          p_notes?: string
+          p_sub_batch_ids: string[]
+        }
+        Returns: string
+      }
+      fn_merge_sub_batches_without_adjustment_classification: {
+        Args: {
+          p_container_id: string
+          p_location_id?: string
+          p_notes?: string
+          p_sub_batch_ids: string[]
+        }
+        Returns: string
+      }
+      fn_mix_batches: {
+        Args: { p_notes?: string; p_source_batch_ids: string[] }
+        Returns: string
+      }
+      fn_remove_storage_location: {
+        Args: { p_location_id: string }
+        Returns: string
+      }
+      fn_resolve_testing_assignments_for_sub_batch: {
+        Args: { p_sub_batch_id: string }
+        Returns: {
+          assignment_id: string
+        }[]
+      }
+      fn_return_bag_from_testing: {
+        Args: { p_assignment_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          batch_id: string
+          closed_at: string | null
+          completed_at: string | null
+          id: string
+          outbound_transfer_item_id: string
+          outcome: string | null
+          sub_batch_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "batch_testing_assignment"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_set_sub_batch_storage: {
+        Args: {
+          p_effective_at?: string
+          p_location_id?: string
+          p_notes?: string
+          p_sub_batch_id: string
+        }
+        Returns: {
+          batch_id: string
+          created_at: string
+          id: string
+          location_id: string
+          moved_out_at: string | null
+          notes: string | null
+          stored_at: string | null
+          sub_batch_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "batch_storage"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      fn_split_batch: {
+        Args: {
+          p_notes?: string
+          p_parent_batch_id: string
+          p_weight_grams?: number
+        }
+        Returns: string
+      }
+      fn_split_sub_batch: {
+        Args: { p_outputs: Json; p_sub_batch_id: string }
+        Returns: string[]
+      }
+      fn_split_sub_batch_without_lineage: {
+        Args: { p_outputs: Json; p_sub_batch_id: string }
+        Returns: string[]
+      }
+      fn_update_batch_cleaning: {
+        Args: {
+          p_cleaning_id: string
+          p_cleaning_notes?: string
+          p_duration?: string
+          p_material_notes?: string
+          p_material_subtype?: string
+          p_material_type?: string
+          p_worker_ids?: string[]
+        }
+        Returns: string
+      }
       generate_collection_code: {
         Args: {
+          p_collection_id: string
           p_created_at: string
           p_field_name: string
           p_location: unknown
@@ -1040,6 +2920,10 @@ export type Database = {
         Returns: string
       }
       generate_org_abbreviation: { Args: { org_name: string }; Returns: string }
+      generate_species_abbreviation: {
+        Args: { species_name: string }
+        Returns: string
+      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -1170,6 +3054,7 @@ export type Database = {
           name: string | null
           organisation_id: string
           organisation_name: string | null
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
           token: string
         }
@@ -1180,6 +3065,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_merged_batch_inherited_statistics: {
+        Args: { p_merged_batch_id: string }
+        Returns: Json
+      }
+      get_next_code_sequence: {
+        Args: {
+          base_code: string
+          p_collection_id?: string
+          p_organisation_id: string
+        }
+        Returns: number
+      }
       get_organisation_users: {
         Args: never
         Returns: {
@@ -1189,6 +3086,7 @@ export type Database = {
           joined_at: string
           name: string
           organisation_id: string
+          permissions: Database["public"]["Enums"]["org_permission"][]
           role: Database["public"]["Enums"]["org_user_types"]
         }[]
       }
@@ -1211,6 +3109,8 @@ export type Database = {
       }
       get_user_organisation_id: { Args: never; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
+      has_org_permission: { Args: { p_permission: string }; Returns: boolean }
+      holds_any_bag_of_batch: { Args: { p_batch_id: string }; Returns: boolean }
       http: {
         Args: { request: Database["public"]["CompositeTypes"]["http_request"] }
         Returns: Database["public"]["CompositeTypes"]["http_response"]
@@ -1336,6 +3236,28 @@ export type Database = {
         Args: { curlopt: string; value: string }
         Returns: boolean
       }
+      is_batch_custodian_or_past: {
+        Args: { auth_uid: string; batch_id: string }
+        Returns: boolean
+      }
+      is_batch_owner: { Args: { p_batch_id: string }; Returns: boolean }
+      is_current_bag_custodian: {
+        Args: { p_sub_batch_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_current_custodian: {
+        Args: { p_batch_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_linked_testing_provider: {
+        Args: { p_provider_org_id: string; p_requesting_org_id: string }
+        Returns: boolean
+      }
+      is_org_admin: { Args: { org_id: string }; Returns: boolean }
+      is_org_member: {
+        Args: { org_id: string; user_id: string }
+        Returns: boolean
+      }
       load_ibra7_regions_paginated: { Args: never; Returns: undefined }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
@@ -1378,6 +3300,13 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      set_org_user_permissions: {
+        Args: {
+          p_permissions: Database["public"]["Enums"]["org_permission"][]
+          p_user_id: string
+        }
+        Returns: Database["public"]["Enums"]["org_permission"][]
+      }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -1959,6 +3888,12 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      sub_batch_weight_info: {
+        Args: {
+          sub_batch_row: Database["public"]["Tables"]["sub_batches"]["Row"]
+        }
+        Returns: Json
+      }
       text_to_bytea: { Args: { data: string }; Returns: string }
       unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {
@@ -1985,10 +3920,28 @@ export type Database = {
               error: true
             } & "Could not choose the best candidate function between: public.urlencode(string => bytea), public.urlencode(string => varchar). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
           }
+      validate_treatment_array: { Args: { treats: Json }; Returns: boolean }
     }
     Enums: {
+      batch_quality: "ORG" | "HQ" | "LQ"
+      batch_treatment_type: "sort" | "coat" | "treat" | "other"
+      batch_weight_adjustment_kind:
+        | "test_consumption"
+        | "variance"
+        | "split"
+        | "merge"
+        | "cleaning"
+        | "correction"
+      container_purpose: "collection" | "storage"
+      org_permission: "collections" | "inventory"
       org_user_types: "Member" | "Admin"
       person_source_type: "user" | "personnel"
+      seed_transfer_event_kind:
+        | "testing_dispatch"
+        | "return"
+        | "reversal"
+        | "correction"
+      sub_batch_lineage_operation_kind: "split" | "merge" | "cleaning"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -2139,13 +4092,29 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
+      batch_quality: ["ORG", "HQ", "LQ"],
+      batch_treatment_type: ["sort", "coat", "treat", "other"],
+      batch_weight_adjustment_kind: [
+        "test_consumption",
+        "variance",
+        "split",
+        "merge",
+        "cleaning",
+        "correction",
+      ],
+      container_purpose: ["collection", "storage"],
+      org_permission: ["collections", "inventory"],
       org_user_types: ["Member", "Admin"],
       person_source_type: ["user", "personnel"],
+      seed_transfer_event_kind: [
+        "testing_dispatch",
+        "return",
+        "reversal",
+        "correction",
+      ],
+      sub_batch_lineage_operation_kind: ["split", "merge", "cleaning"],
     },
   },
 } as const

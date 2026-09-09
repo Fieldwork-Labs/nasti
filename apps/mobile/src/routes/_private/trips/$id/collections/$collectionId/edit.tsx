@@ -1,4 +1,10 @@
+import { CollectionContainersField } from "@/components/collection/CollectionContainersField"
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
+import {
+  saveCollectionContainers,
+  useCollectionContainers,
+  type CollectionContainerInput,
+} from "@/hooks/useContainers"
 import { useAuth } from "@/hooks/useAuth"
 import { FullCollection, useCollection } from "@/hooks/useCollection"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
@@ -45,8 +51,14 @@ const schema = z
       .string()
       .optional()
       .transform((val) => val || ""),
-    amount_units: z.string().nullable(),
-    amount_quantity: stringToNumber,
+    containers: z
+      .array(
+        z.object({
+          container_id: z.string().uuid("Select a container"),
+          amount: stringToNumber,
+        }),
+      )
+      .default([]),
     duration: z.string().nullable(),
     latitude: stringToNumber,
     longitude: stringToNumber,
@@ -77,8 +89,7 @@ const DEFAULT_VALUES: FormValues = {
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
-  amount_units: "",
-  amount_quantity: null,
+  containers: [],
   duration: null,
 }
 
@@ -93,6 +104,9 @@ function CollectionForm() {
     from: "/_private/trips/$id/collections/$collectionId/edit",
   })
   const collection = useCollection({ collectionId, tripId })
+  // The join rows load separately, so hold off mounting the form until they
+  // are here and it can be initialised with its real values.
+  const { data: collectionContainers } = useCollectionContainers(collectionId)
 
   const navigate = useNavigate({
     from: "/trips/$id/collections/$collectionId/edit",
@@ -119,11 +133,16 @@ function CollectionForm() {
       </div>
     )
 
+  if (!collectionContainers) return null
+
   return (
     <CollectionFormReady
       collection={collection}
       collectionId={collectionId}
       tripId={tripId}
+      initialContainers={collectionContainers.map(
+        ({ container_id, amount }) => ({ container_id, amount }),
+      )}
     />
   )
 }
@@ -132,10 +151,12 @@ function CollectionFormReady({
   collection,
   collectionId,
   tripId,
+  initialContainers,
 }: {
   collection: FullCollection
   collectionId: string
   tripId: string
+  initialContainers: CollectionContainerInput[]
 }) {
   const { user, organisation, role } = useAuth()
   const currentUserPerson = useCurrentUserPerson(collection.organisation_id)
@@ -190,6 +211,7 @@ function CollectionFormReady({
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...collection,
+    containers: initialContainers,
     latitude: collection.locationCoord?.latitude ?? null,
     longitude: collection.locationCoord?.longitude ?? null,
   })
@@ -225,7 +247,7 @@ function CollectionFormReady({
       if (!user || !organisation) throw new Error("Not logged in")
       if (!tripId) throw new Error("tripId must be supplied")
 
-      const { latitude, longitude, person_ids, ...rest } = data
+      const { latitude, longitude, person_ids, containers, ...rest } = data
       const locationPoint = `POINT(${longitude} ${latitude})`
       const filteredPersonIds = currentUserPerson?.id
         ? person_ids.filter((personId) => personId !== currentUserPerson.id)
@@ -253,6 +275,7 @@ function CollectionFormReady({
 
       const updatePromise = updateCollection(payload)
       if (isOnline) await updatePromise
+      await saveCollectionContainers(collectionIdRef.current, containers)
       await Promise.all(
         photoChanges.add.map(async (photo) =>
           putImage(photo.id, await fileToBase64(photo.file)),
@@ -486,53 +509,16 @@ function CollectionFormReady({
             )}
           />
 
-          <div>
-            <Label className="flex items-center gap-2">
-              <span>Amount</span>
-            </Label>
-            <div className="flex w-full gap-2">
-              <div className="w-full">
-                <Label htmlFor="amount_quantity" className="text-sm">
-                  Quantity
-                </Label>
-                <Input
-                  autoComplete="off"
-                  {...register("amount_quantity")}
-                  className={cn(
-                    "w-full",
-                    errors.amount_quantity ? "border-amber-600" : "",
-                  )}
-                  id="amount_quantity"
-                  name="amount_quantity"
-                />
-                {errors.amount_quantity && (
-                  <div className="mt-1 text-sm text-amber-600">
-                    {errors.amount_quantity.message}
-                  </div>
-                )}
-              </div>
-              <div className="w-full">
-                <Label htmlFor="amount_units" className="text-sm">
-                  Units
-                </Label>
-                <Input
-                  autoComplete="off"
-                  {...register("amount_units")}
-                  className={cn(
-                    "w-full",
-                    errors.amount_units ? "border-amber-600" : "",
-                  )}
-                  id="amount_units"
-                  name="amount_units"
-                />
-                {errors.amount_units && (
-                  <div className="mt-1 text-sm text-amber-600">
-                    {errors.amount_units.message}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <Controller
+            control={control}
+            name="containers"
+            render={({ field }) => (
+              <CollectionContainersField
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
 
           <Controller
             control={control}

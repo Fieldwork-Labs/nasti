@@ -21,6 +21,7 @@ import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
+import { useCollectionContainers, useContainers } from "@/hooks/useContainers"
 import { formatDuration } from "@/lib/duration"
 
 const CollectionDetail = () => {
@@ -49,6 +50,16 @@ const CollectionDetail = () => {
     collection?.person_ids?.includes(person.id),
   )
   const formattedDuration = formatDuration(collection?.duration)
+
+  const { data: collectionContainers } = useCollectionContainers(collectionId)
+  const { data: containers } = useContainers()
+  const containerSummary =
+    collectionContainers?.map(({ container_id, amount }) => {
+      const name =
+        containers?.find((container) => container.id === container_id)?.name ??
+        "Unknown container"
+      return amount === null ? name : `${amount} × ${name}`
+    }) ?? []
 
   if (!collection)
     return (
@@ -157,7 +168,7 @@ const CollectionDetail = () => {
         )}
       </table>
       {(Boolean(collection.description) ||
-        Boolean(collection.amount_quantity || collection.amount_units) ||
+        containerSummary.length > 0 ||
         Boolean(formattedDuration) ||
         Boolean(collection.phenology_start)) && (
         <div>
@@ -177,18 +188,16 @@ const CollectionDetail = () => {
                 </tbody>
               </>
             )}
-            {Boolean(collection.amount_quantity || collection.amount_units) && (
+            {containerSummary.length > 0 && (
               <>
                 <thead>
                   <tr className="text-muted-foreground text-left">
-                    <th>Amount Description</th>
+                    <th>Containers</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>
-                      {collection.amount_quantity} {collection.amount_units}
-                    </td>
+                    <td>{containerSummary.join(", ")}</td>
                   </tr>
                 </tbody>
               </>

@@ -1,0 +1,4 @@
+-- Testing-provider capability is additive. Provider organisations use the
+-- ordinary member permission model established in 20260803000000: Admins may
+-- grant collections and inventory independently, and invitations preserve the
+-- selected permission set. No provider-specific normalisation is required.

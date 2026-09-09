@@ -6,8 +6,12 @@ import {
   TripSpeciesModal,
 } from "@/components/trips/modals"
 import { getTripCoordinates } from "@/components/trips/utils"
-import { getTripDetail, TripWithDetails } from "@/hooks/useTripDetail"
-import { TripSpeciesWithDetails, useTripSpecies } from "@/hooks/useTripSpecies"
+import { clusterByProximity } from "@/lib/clusterByProximity"
+import {
+  getTripDetailQueryOptions,
+  TripWithDetails,
+} from "@/hooks/useTripDetail"
+import { useTripSpecies } from "@/hooks/useTripSpecies"
 import useUserStore from "@/store/userStore"
 import { parseWkbPoint, queryClient } from "@nasti/common/utils"
 import { Button } from "@nasti/ui/button"
@@ -21,6 +25,7 @@ import {
 import {
   ArrowLeftIcon,
   Binoculars,
+  Layers,
   MapPin,
   PencilIcon,
   ShoppingBag,
@@ -28,13 +33,12 @@ import {
 import mapboxgl from "mapbox-gl"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Map, Marker } from "react-map-gl"
-import { SpeciesListItem } from "../../species"
+import { SpeciesListItem } from "@/components/species/SpeciesListItem"
 
-import { CollectionListItem } from "@/components/collections/CollectionListItem"
-import { CollectionMapMarker } from "@/components/collections/CollectionMapMarker"
+import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
+import { DataItemMapMarker } from "@/components/common/DataItemMapMarker"
 import { AddScoutingNoteWizardModal } from "@/components/scoutingNotes/ScoutingNoteFormModal"
 import { ScoutingNoteListItem } from "@/components/scoutingNotes/ScoutingNoteListItem"
-import { ScoutingNoteMapMarker } from "@/components/scoutingNotes/ScoutingNoteMapMarker"
 import { useCollectionsByTrip } from "@/hooks/useCollectionsByTrip"
 import { useScoutingNotesByTrip } from "@/hooks/useScoutingNotesByTrip"
 import { Collection, ScoutingNote } from "@nasti/common"
@@ -43,11 +47,12 @@ import { Spinner } from "@nasti/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { useSuspenseQuery } from "@tanstack/react-query"
 
-const getTripQueryOptions = (id: string) => ({
-  queryKey: ["trip", id],
-  queryFn: () => getTripDetail(id),
-  enabled: Boolean(id),
-})
+type MapItem = {
+  kind: "collection" | "scoutingNote"
+  id: string
+  latitude: number
+  longitude: number
+}
 
 type ModalComponentNames =
   | "details"
@@ -60,20 +65,9 @@ type ModalComponentNames =
 const TripDetail = () => {
   const { id } = useParams({ from: "/_private/trips/$id/" })
   const { isAdmin } = useUserStore()
-  const { data: instance } = useSuspenseQuery(getTripQueryOptions(id))
+  const { data: instance } = useSuspenseQuery(getTripDetailQueryOptions(id))
 
   const { data: tripSpecies } = useTripSpecies(instance?.id)
-  const tripSpeciesMap = useMemo(() => {
-    return (
-      tripSpecies?.reduce(
-        (acc, species) => ({
-          ...acc,
-          [species.species_id]: species,
-        }),
-        {} as Record<string, TripSpeciesWithDetails>,
-      ) ?? {}
-    )
-  }, [tripSpecies])
 
   const { data: collections, isPending: isPendingCollections } =
     useCollectionsByTrip(id)
@@ -112,6 +106,33 @@ const TripDetail = () => {
   useEffect(() => {
     setViewState(initViewState)
   }, [initViewState])
+
+  const mapItems = useMemo((): MapItem[] => {
+    const collectionItems: MapItem[] =
+      collections
+        ?.filter(({ location }) => Boolean(location))
+        .map((coll) => ({
+          kind: "collection",
+          id: coll.id,
+          ...parseWkbPoint(coll.location!),
+        })) ?? []
+
+    const scoutingNoteItems: MapItem[] =
+      scoutingNotes
+        ?.filter(({ location }) => Boolean(location))
+        .map((sn) => ({
+          kind: "scoutingNote",
+          id: sn.id,
+          ...parseWkbPoint(sn.location!),
+        })) ?? []
+
+    return [...collectionItems, ...scoutingNoteItems]
+  }, [collections, scoutingNotes])
+
+  const mapItemClusters = useMemo(
+    () => clusterByProximity(mapItems, (item) => item, viewState.zoom),
+    [mapItems, viewState.zoom],
+  )
 
   if (!instance) return <div>No trip found</div>
   return (
@@ -190,66 +211,38 @@ const TripDetail = () => {
                   </div>
                 </Marker>
 
-                {collections
-                  ?.filter(({ location }) => Boolean(location))
-                  .map((coll) => {
-                    const species = coll.species_id
-                      ? tripSpeciesMap[coll.species_id]
-                      : null
+                {mapItemClusters.map((cluster) => {
+                  const kinds = new Set(cluster.map(({ kind }) => kind))
+                  const Icon =
+                    kinds.size > 1
+                      ? Layers
+                      : kinds.has("collection")
+                        ? ShoppingBag
+                        : Binoculars
 
-                    return (
-                      <CollectionMapMarker
-                        {...parseWkbPoint(coll.location!)}
-                        key={coll.id}
-                        isHovered={itemHovered === coll.id}
-                        popupContent={
-                          coll.species_id ? (
-                            <Link
-                              className="text-primary"
-                              to="/species/$id"
-                              params={{ id: coll.species_id }}
-                            >
-                              {species?.species.name}
-                            </Link>
+                  return (
+                    <DataItemMapMarker
+                      Icon={Icon}
+                      latitude={cluster[0].latitude}
+                      longitude={cluster[0].longitude}
+                      key={cluster.map(({ id }) => id).join("-")}
+                      isHovered={cluster.some(({ id }) => id === itemHovered)}
+                      maxWidth="320px"
+                      popupLabels={cluster.map(({ kind }) =>
+                        kind === "collection" ? "Collection" : "Scouting Note",
+                      )}
+                      popupContents={cluster.map((item) => (
+                        <div className="w-72" key={item.id}>
+                          {item.kind === "collection" ? (
+                            <CollectionListItemWithModal id={item.id} />
                           ) : (
-                            <span className="text-primary">
-                              {coll.field_name}
-                            </span>
-                          )
-                        }
-                      />
-                    )
-                  })}
-                {scoutingNotes
-                  ?.filter(({ location }) => Boolean(location))
-                  .map((sn) => {
-                    const species = sn.species_id
-                      ? tripSpeciesMap[sn.species_id]
-                      : null
-
-                    return (
-                      <ScoutingNoteMapMarker
-                        {...parseWkbPoint(sn.location!)}
-                        key={sn.id}
-                        isHovered={itemHovered === sn.id}
-                        popupContent={
-                          sn.species_id ? (
-                            <Link
-                              className="text-primary"
-                              to="/species/$id"
-                              params={{ id: sn.species_id }}
-                            >
-                              {species?.species.name}
-                            </Link>
-                          ) : (
-                            <span className="text-primary">
-                              {sn.field_name}
-                            </span>
-                          )
-                        }
-                      />
-                    )
-                  })}
+                            <ScoutingNoteListItem id={item.id} />
+                          )}
+                        </div>
+                      ))}
+                    />
+                  )
+                })}
               </Map>
             )}
           </div>
@@ -406,7 +399,7 @@ const CollectionsList = ({
         {isLoading && <Spinner />}
         {!collections || (collections.length === 0 && "No collections yet")}
         {collections?.map((coll) => (
-          <CollectionListItem
+          <CollectionListItemWithModal
             key={coll.id}
             id={coll.id}
             onHover={setItemHovered}
@@ -463,7 +456,7 @@ export const Route = createFileRoute("/_private/trips/$id/")({
     const { id } = params
 
     return queryClient.ensureQueryData<TripWithDetails | null>(
-      getTripQueryOptions(id),
+      getTripDetailQueryOptions(id),
     )
   },
   pendingComponent: () => (

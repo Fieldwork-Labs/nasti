@@ -8,7 +8,7 @@ enabled = true
 port = 57321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
 # endpoints. `public` is always included.
-schemas = ["public", "graphql_public"]
+schemas = ["public"]
 # Extra schemas to add to the search_path of every request. `public` is always included.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
@@ -25,7 +25,7 @@ port = 57322
 shadow_port = 57320
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
 # server_version;` on the remote database to check.
-major_version = 15
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -208,8 +208,32 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 s3_secret_key = "env(S3_SECRET_KEY)"
 
 
-[functions.ala_image_proxy]
+[functions.accept_invitation]
 verify_jwt = false
 
-[functions.accept_invitation]
+[functions.accept_link_request]
+verify_jwt = false
+
+[functions.assign_batches_for_testing]
+verify_jwt = false
+
+[functions.copy_collection_photo_to_species]
+verify_jwt = false
+
+[functions.create_link_request]
+verify_jwt = false
+
+[functions.delete_trip_data]
+verify_jwt = false
+
+[functions.disable_user]
+verify_jwt = false
+
+[functions.resend_invitation]
+verify_jwt = false
+
+[functions.return_batch_from_testing]
+verify_jwt = false
+
+[functions.send_invitation]
 verify_jwt = false

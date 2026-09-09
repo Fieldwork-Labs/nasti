@@ -199,10 +199,7 @@ const UpdateCollectionFormModal = () => {
       e.preventDefault()
 
       if (!form.formState.isDirty) return setStage("photos")
-      else {
-        await onSubmit()
-        setStage("photos")
-      }
+      await onSubmit()
     },
     [form.formState.isDirty, setStage, onSubmit],
   )

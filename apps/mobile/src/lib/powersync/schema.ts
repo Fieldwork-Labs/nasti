@@ -67,8 +67,6 @@ const trip_species = new Table(
 
 const collection = new Table(
   {
-    amount_quantity: column.real,
-    amount_units: column.text,
     code: column.text,
     collected_by: column.text,
     collected_on: column.text,
@@ -94,6 +92,38 @@ const collection = new Table(
       species: ["species_id"],
       organisation: ["organisation_id"],
       created_at: ["created_at"],
+    },
+  },
+)
+
+// Read-only on mobile: the container catalogue is managed by admins on web.
+const containers = new Table(
+  {
+    active: column.integer,
+    created_at: column.text,
+    name: column.text,
+    organisation_id: column.text,
+    purpose: column.text,
+  },
+  {
+    indexes: {
+      organisation: ["organisation_id"],
+      purpose: ["purpose"],
+    },
+  },
+)
+
+const collection_containers = new Table(
+  {
+    amount: column.real,
+    collection_id: column.text,
+    container_id: column.text,
+    created_at: column.text,
+  },
+  {
+    indexes: {
+      collection: ["collection_id"],
+      container: ["container_id"],
     },
   },
 )
@@ -250,6 +280,8 @@ export const AppSchema = new Schema({
   species,
   trip_species,
   collection,
+  containers,
+  collection_containers,
   collection_photo,
   collection_audio,
   scouting_notes,
@@ -266,6 +298,9 @@ export type PowerSyncTripMemberRow = PowerSyncAppDatabase["trip_member"]
 export type PowerSyncSpeciesRow = PowerSyncAppDatabase["species"]
 export type PowerSyncTripSpeciesRow = PowerSyncAppDatabase["trip_species"]
 export type PowerSyncCollectionRow = PowerSyncAppDatabase["collection"]
+export type PowerSyncContainerRow = PowerSyncAppDatabase["containers"]
+export type PowerSyncCollectionContainerRow =
+  PowerSyncAppDatabase["collection_containers"]
 export type PowerSyncCollectionPhotoRow =
   PowerSyncAppDatabase["collection_photo"]
 export type PowerSyncCollectionAudioRow =
