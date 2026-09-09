@@ -32,6 +32,33 @@ export type UpdateCollection = TablesUpdate<"collection"> & {
   location: string
 }
 
+export const MATERIAL_TYPES = [
+  "seed",
+  "capsules_pods_fruit",
+  "branches_stems",
+] as const
+
+export type MaterialType = (typeof MATERIAL_TYPES)[number]
+
+export const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
+  seed: "Seed",
+  capsules_pods_fruit: "Capsules, pods, fruit",
+  branches_stems: "Branches, stems",
+}
+
+export const isMaterialType = (value: string): value is MaterialType =>
+  (MATERIAL_TYPES as readonly string[]).includes(value)
+
+/** Narrows a stored material_type array, dropping anything we don't recognise. */
+export const toMaterialTypes = (
+  value: readonly string[] | null | undefined,
+): MaterialType[] => value?.filter(isMaterialType) ?? []
+
+export const MATERIAL_TYPE_OPTIONS = MATERIAL_TYPES.map((value) => ({
+  value,
+  label: MATERIAL_TYPE_LABELS[value],
+}))
+
 export type CollectionPhoto = Table<"collection_photo">
 
 export type CollectionAudio = Table<"collection_audio">

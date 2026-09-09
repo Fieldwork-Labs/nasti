@@ -17,6 +17,7 @@ import { usePersons } from "@/hooks/usePersons"
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { Label, labelVariants } from "@nasti/ui/label"
+import { CheckboxGroup } from "@nasti/ui/checkboxGroup"
 import { MultiSelect, Option } from "@nasti/ui/multi-select"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
 import { withTooltip } from "@nasti/ui/tooltip"
@@ -26,6 +27,7 @@ import {
 } from "./CollectionFormContext"
 import { useEffect, useMemo, useState } from "react"
 import useUserStore from "@/store/userStore"
+import { MATERIAL_TYPE_OPTIONS } from "@nasti/common/types"
 import { DurationInput } from "./DurationInput"
 
 // Create tooltip-wrapped component
@@ -304,6 +306,27 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
           className="w-full"
         />
       </div>
+
+      <Controller
+        control={control}
+        name="material_type"
+        render={({ field }) => (
+          <CheckboxGroup
+            label={
+              <span className="inline-flex items-center gap-2">
+                <span>Material Collected</span>
+                <InfoIconWithTooltip>
+                  What plant material was collected. Used to pre-fill the
+                  cleaning form.
+                </InfoIconWithTooltip>
+              </span>
+            }
+            options={MATERIAL_TYPE_OPTIONS}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )}
+      />
 
       <Controller
         control={control}

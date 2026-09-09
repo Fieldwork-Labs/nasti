@@ -33,6 +33,7 @@ import {
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 import { formatDuration } from "@/lib/duration"
+import { MATERIAL_TYPE_LABELS, toMaterialTypes } from "@nasti/common/types"
 
 const PhotosTab = ({
   photos,
@@ -156,6 +157,7 @@ export const CollectionDetailModal = ({
     collection?.person_ids?.includes(person.id),
   )
   const formattedDuration = formatDuration(collection?.duration)
+  const materialTypes = toMaterialTypes(collection?.material_type)
 
   if (!collection) return null
 
@@ -264,6 +266,18 @@ export const CollectionDetailModal = ({
                   <div>
                     <div className="text-lead mb-1">Duration</div>
                     <div className="text-sm">{formattedDuration}</div>
+                  </div>
+                )}
+                {materialTypes.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">Material Collected</div>
+                    <div className="flex flex-wrap gap-2">
+                      {materialTypes.map((materialType) => (
+                        <Badge key={materialType} variant="secondary">
+                          {MATERIAL_TYPE_LABELS[materialType]}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {collection.phenology_start !== null && (

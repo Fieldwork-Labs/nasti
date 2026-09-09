@@ -6,12 +6,19 @@ import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ROLE, UpdateCollection } from "@nasti/common/types"
+import {
+  MATERIAL_TYPES,
+  MATERIAL_TYPE_OPTIONS,
+  ROLE,
+  toMaterialTypes,
+  UpdateCollection,
+} from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
+import { CheckboxGroup } from "@nasti/ui/checkboxGroup"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { cn } from "@nasti/ui/utils"
@@ -48,6 +55,7 @@ const schema = z
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
     duration: z.string().nullable(),
+    material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
     latitude: stringToNumber,
     longitude: stringToNumber,
     person_ids: z.array(z.string().uuid()).default([]),
@@ -80,6 +88,7 @@ const DEFAULT_VALUES: FormValues = {
   amount_units: "",
   amount_quantity: null,
   duration: null,
+  material_type: [],
 }
 
 export const Route = createFileRoute(
@@ -190,6 +199,7 @@ function CollectionFormReady({
   const defaultValues = schema.parse({
     ...DEFAULT_VALUES,
     ...collection,
+    material_type: toMaterialTypes(collection.material_type),
     latitude: collection.locationCoord?.latitude ?? null,
     longitude: collection.locationCoord?.longitude ?? null,
   })
@@ -533,6 +543,20 @@ function CollectionFormReady({
               </div>
             </div>
           </div>
+
+          <Controller
+            control={control}
+            name="material_type"
+            render={({ field }) => (
+              <CheckboxGroup
+                label="Material Collected"
+                size="lg"
+                options={MATERIAL_TYPE_OPTIONS}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
 
           <Controller
             control={control}

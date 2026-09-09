@@ -88,6 +88,7 @@ streams:
           duration::text AS duration,
           field_name,
           ST_AsText(location) AS location,
+          material_type::text AS material_type,
           organisation_id,
           species_id,
           species_uncertain,
