@@ -35,6 +35,10 @@ import {
   baseSchema,
 } from "@/components/common/dataSchema"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
+import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
+import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
+import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
+import { hasDirtyValues } from "@/lib/formDirty"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -72,7 +76,7 @@ function AddCollection() {
     setValue,
     register,
     handleSubmit,
-    formState: { isValid, isSubmitting },
+    formState: { isValid, isSubmitting, dirtyFields },
     control,
   } = useForm<BaseFormData>({
     defaultValues: { ...baseDefaultValues, species_id: initialSpeciesId },
@@ -95,6 +99,23 @@ function AddCollection() {
   const [audios, setAudios] = useState<UploadAudioVariables[]>([])
 
   const { user, organisation } = useAuth()
+
+  // the people field selects the current user by default, so only treat other
+  // people as an edit the user would be sad to lose
+  const currentUserPerson = useCurrentUserPerson(organisation?.id)
+  const { person_ids: _personIds, ...otherDirtyFields } = dirtyFields
+  const isPeopleSelectionEdited = watch("person_ids").some(
+    (personId) => personId !== currentUserPerson?.id,
+  )
+
+  const { isPromptOpen, discardChanges, keepEditing, allowNavigation } =
+    useUnsavedChangesPrompt({
+      hasUnsavedChanges:
+        hasDirtyValues(otherDirtyFields) ||
+        isPeopleSelectionEdited ||
+        photos.length > 0 ||
+        audios.length > 0,
+    })
 
   const navigate = useNavigate()
 
@@ -136,7 +157,10 @@ function AddCollection() {
 
       if (createPhotoMutation.isError) {
         console.error(createPhotoMutation.error)
-      } else navigate({ to: "/trips/$id", params: { id: tripId } })
+      } else {
+        allowNavigation()
+        navigate({ to: "/trips/$id", params: { id: tripId } })
+      }
     },
     [
       user,
@@ -149,6 +173,7 @@ function AddCollection() {
       organisation,
       photos,
       audios,
+      allowNavigation,
     ],
   )
 
@@ -237,6 +262,19 @@ function AddCollection() {
               </Popover>
             </div>
           </div>
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={organisation?.id}
+                value={field.value}
+                onChange={field.onChange}
+                defaultToCurrentUser
+              />
+            )}
+          />
+
           <div>
             <Label htmlFor="location">
               <span>Location</span>
@@ -255,19 +293,6 @@ function AddCollection() {
               className="h-12 text-lg"
             />
           </div>
-
-          <Controller
-            control={control}
-            name="person_ids"
-            render={({ field }) => (
-              <PersonMultiSelectField
-                organisationId={organisation?.id}
-                value={field.value}
-                onChange={field.onChange}
-                defaultToCurrentUser
-              />
-            )}
-          />
 
           <Controller
             control={control}
@@ -337,6 +362,11 @@ function AddCollection() {
           {isSubmitting ? "Saving..." : "Save Scouting Note"}
         </Button>
       </div>
+      <UnsavedChangesDialog
+        open={isPromptOpen}
+        onDiscard={discardChanges}
+        onKeepEditing={keepEditing}
+      />
     </div>
   )
 }

@@ -36,8 +36,9 @@ import { stringToNumber } from "@nasti/common/utils"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
-import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
+import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
+import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -70,7 +71,7 @@ const schema = z
     amount_units: z.string().nullable(),
     amount_quantity: stringToNumber,
     duration: z.string().nullable(),
-    material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
+    material_type: z.array(z.enum(MATERIAL_TYPES)).default(["seed"]),
     person_ids: z.array(z.string().uuid()).default([]),
   })
   .refine(
@@ -102,7 +103,7 @@ const defaultValues = {
   amount_units: "",
   amount_quantity: null,
   duration: null,
-  material_type: [],
+  material_type: ["seed" as const],
   person_ids: [],
 }
 
@@ -137,7 +138,7 @@ function AddCollection() {
     register,
     handleSubmit,
     control,
-    formState: { isValid, isSubmitting, errors },
+    formState: { isValid, isSubmitting, errors, isDirty },
   } = useForm<CollectionFormData>({
     defaultValues: {
       ...defaultValues,
@@ -160,6 +161,11 @@ function AddCollection() {
 
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
   const [audios, setAudios] = useState<UploadAudioVariables[]>([])
+
+  const { isPromptOpen, discardChanges, keepEditing, allowNavigation } =
+    useUnsavedChangesPrompt({
+      hasUnsavedChanges: isDirty || photos.length > 0 || audios.length > 0,
+    })
 
   const navigate = useNavigate()
 
@@ -207,7 +213,10 @@ function AddCollection() {
 
       if (createPhotoMutation.isError) {
         console.error(createPhotoMutation.error)
-      } else navigate({ to: "/trips/$id", params: { id: tripId } })
+      } else {
+        allowNavigation()
+        navigate({ to: "/trips/$id", params: { id: tripId } })
+      }
     },
     [
       user,
@@ -221,6 +230,7 @@ function AddCollection() {
       createAudioMutation,
       currentUserPerson?.id,
       navigate,
+      allowNavigation,
     ],
   )
   const [descriptionFocus, setDescriptionFocus] = useState(false)
@@ -308,6 +318,20 @@ function AddCollection() {
               </Popover>
             </div>
           </div>
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={organisation?.id}
+                value={field.value}
+                onChange={field.onChange}
+                displayCurrentUser
+                label="Collectors"
+              />
+            )}
+          />
+
           <div>
             <Label htmlFor="location">
               <span>Location</span>
@@ -328,18 +352,17 @@ function AddCollection() {
           </div>
           <Controller
             control={control}
-            name="person_ids"
+            name="material_type"
             render={({ field }) => (
-              <PersonMultiSelectField
-                organisationId={organisation?.id}
+              <CheckboxGroup
+                label="Material Collected"
+                size="lg"
+                options={MATERIAL_TYPE_OPTIONS}
                 value={field.value}
                 onChange={field.onChange}
-                displayCurrentUser
-                label="Collectors"
               />
             )}
           />
-
           <div>
             <Label className="flex items-center gap-2">
               <span>Amount</span>
@@ -389,12 +412,9 @@ function AddCollection() {
           </div>
           <Controller
             control={control}
-            name="material_type"
+            name="duration"
             render={({ field }) => (
-              <CheckboxGroup
-                label="Material Collected"
-                size="lg"
-                options={MATERIAL_TYPE_OPTIONS}
+              <DurationPickerField
                 value={field.value}
                 onChange={field.onChange}
               />
@@ -449,18 +469,6 @@ function AddCollection() {
             />
             <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
           </div>
-          <ExtraFieldsAccordion>
-            <Controller
-              control={control}
-              name="duration"
-              render={({ field }) => (
-                <DurationPickerField
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-            />
-          </ExtraFieldsAccordion>
         </div>
       </div>
       <div className="flex flex-col gap-2 border-t border-green-800 px-1 pt-2 md:flex-row md:gap-4">
@@ -480,6 +488,11 @@ function AddCollection() {
           {isSubmitting ? "Saving..." : "Save Collection"}
         </Button>
       </div>
+      <UnsavedChangesDialog
+        open={isPromptOpen}
+        onDiscard={discardChanges}
+        onKeepEditing={keepEditing}
+      />
     </div>
   )
 }
