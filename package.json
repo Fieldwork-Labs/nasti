@@ -15,6 +15,7 @@
     "powersync:up": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml up -d",
     "powersync:down": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml down",
     "powersync:logs": "docker compose --env-file powersync/docker/.env.dev -f powersync/docker/docker-compose.dev.yaml logs -f",
+    "mobile-release": "bash bin/mobile-release.sh",
     "gen-types": "supabase gen types --lang=typescript --local > packages/common/types/database.ts"
   },
   "lint-staged": {
@@ -30,6 +31,8 @@
     ]
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.1",
+    "@changesets/parse": "^1.0.0",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@nasti/eslint-config": "workspace:*",

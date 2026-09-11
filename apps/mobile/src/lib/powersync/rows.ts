@@ -29,7 +29,7 @@ function parseJson<T>(value: string | null | undefined, fallback: T): T {
   }
 }
 
-function parseUuidArray(value: string | null | undefined): string[] {
+function parseStringArray(value: string | null | undefined): string[] {
   if (!value) return []
   try {
     const parsed = JSON.parse(value)
@@ -69,7 +69,8 @@ export function rowToCollection(row: PowerSyncCollectionRow): Collection {
     ...row,
     species_uncertain: Boolean(row.species_uncertain),
     specimen_collected: sqliteBoolean(row.specimen_collected),
-    person_ids: parseUuidArray(row.person_ids),
+    person_ids: parseStringArray(row.person_ids),
+    material_type: parseStringArray(row.material_type),
   } as unknown as Collection
 }
 
@@ -78,7 +79,7 @@ export function rowToScoutingNote(row: PowerSyncScoutingNoteRow): ScoutingNote {
     ...row,
     species_uncertain: Boolean(row.species_uncertain),
     specimen_collected: sqliteBoolean(row.specimen_collected),
-    person_ids: parseUuidArray(row.person_ids),
+    person_ids: parseStringArray(row.person_ids),
   } as unknown as ScoutingNote
 }
 

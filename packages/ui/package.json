@@ -29,6 +29,7 @@
     "./separator": "./components/separator.tsx",
     "./tabs": "./components/tabs.tsx",
     "./checkbox": "./components/checkbox.tsx",
+    "./checkboxGroup": "./components/checkboxGroup.tsx",
     "./dropdown-menu": "./components/dropdown-menu.tsx",
     "./label": "./components/label.tsx",
     "./pagination": "./components/pagination.tsx",

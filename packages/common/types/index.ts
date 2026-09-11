@@ -34,6 +34,35 @@ export type UpdateCollection = TablesUpdate<"collection"> & {
   location: string
 }
 
+export const MATERIAL_TYPES = [
+  "seed",
+  "capsules_pods_fruit",
+  "branches_stems",
+] as const
+
+export type CollectionMaterialType = (typeof MATERIAL_TYPES)[number]
+
+export const MATERIAL_TYPE_LABELS: Record<CollectionMaterialType, string> = {
+  seed: "Seed",
+  capsules_pods_fruit: "Capsules, pods, fruit",
+  branches_stems: "Branches, stems",
+}
+
+export const isMaterialType = (
+  value: string,
+): value is CollectionMaterialType =>
+  (MATERIAL_TYPES as readonly string[]).includes(value)
+
+/** Narrows a stored material_type array, dropping anything we don't recognise. */
+export const toMaterialTypes = (
+  value: readonly string[] | null | undefined,
+): CollectionMaterialType[] => value?.filter(isMaterialType) ?? []
+
+export const MATERIAL_TYPE_OPTIONS = MATERIAL_TYPES.map((value) => ({
+  value,
+  label: MATERIAL_TYPE_LABELS[value],
+}))
+
 export type CollectionPhoto = Table<"collection_photo">
 
 export type CollectionAudio = Table<"collection_audio">
@@ -256,8 +285,7 @@ export type OrganisationLinkWithGeneralName = OrganisationLink & {
   general_org_name: string
 }
 
-export type OrganisationLinkRequestWithGeneralName =
-  OrganisationLinkRequest & {
-    general_org: { name: string }
-    general_org_name: string
-  }
+export type OrganisationLinkRequestWithGeneralName = OrganisationLinkRequest & {
+  general_org: { name: string }
+  general_org_name: string
+}

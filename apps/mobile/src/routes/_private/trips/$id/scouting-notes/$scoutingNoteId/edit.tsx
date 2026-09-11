@@ -20,10 +20,14 @@ import { Textarea } from "@nasti/ui/textarea"
 import { cn } from "@nasti/ui/utils"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { ChevronLeft, InfoIcon, X } from "lucide-react"
-import { useCallback, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
+import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
+import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
+import { hasMediaChanges } from "@/lib/mediaChanges"
 
 // --- Schema & Types ---
 const stringToNumber = z.preprocess(
@@ -213,6 +217,14 @@ function ScoutingNoteFormReady({
     reValidateMode: "onChange",
   })
 
+  const hasUnsavedChanges =
+    isDirty ||
+    hasMediaChanges(initialPhotos, photoChanges) ||
+    hasMediaChanges(initialAudios, audioChanges)
+
+  const { isPromptOpen, discardChanges, keepEditing, allowNavigation } =
+    useUnsavedChangesPrompt({ hasUnsavedChanges })
+
   // Field name entry toggle
   const isFieldName =
     watch("specimen_collected") || Boolean(initialValues.field_name)
@@ -224,115 +236,102 @@ function ScoutingNoteFormReady({
   }
 
   // Handlers
-  const onFormSubmit = useCallback(
-    async (data: FormValues) => {
-      if (!user || !organisation) throw new Error("Not logged in")
-      if (!tripId) throw new Error("tripId must be supplied")
+  const onFormSubmit = async (data: FormValues) => {
+    if (!user || !organisation) throw new Error("Not logged in")
+    if (!tripId) throw new Error("tripId must be supplied")
 
-      const { latitude, longitude, ...rest } = data
-      const locationPoint = `POINT(${longitude} ${latitude})`
+    const { latitude, longitude, ...rest } = data
+    const locationPoint = `POINT(${longitude} ${latitude})`
 
-      const payload: UpdateScoutingNote = {
-        id: scoutingNoteIdRef.current,
-        trip_id: tripId,
-        organisation_id: organisation.id,
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        location: locationPoint,
-        ...rest,
-      }
-      console.log({ payload })
-      if (
-        !isDirty &&
-        photoChanges.add.length === 0 &&
-        audioChanges.add.length === 0
-      )
-        navigate({
-          to: "/trips/$id/scouting-notes/$scoutingNoteId",
-          params: { id: tripId, scoutingNoteId },
-        })
-
-      const updatePromise = updateScoutingNote(payload)
-      if (isOnline) await updatePromise
-      await Promise.all(
-        photoChanges.add.map(async (photo) =>
-          putImage(photo.id, await fileToBase64(photo.file)),
-        ),
-      )
-      await Promise.all(
-        photoChanges.add.map((photo) =>
-          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
-        ),
-      )
-      await Promise.all(
-        audioChanges.add.map((audio) =>
-          createAudioMutation.mutateAsync(audio, { onError: console.error }),
-        ),
-      )
-      // find which photos have been removed from the initial list
-      const removedPhotos = initialPhotos.filter(
-        (photo) => !photoChanges.keep.find((p) => p.id === photo.id),
-      )
-      const deletePhotoPromises = removedPhotos.map((photo) =>
-        deletePhotoMutation.mutateAsync(photo.id, { onError: console.error }),
-      )
-
-      // for the remaining photos, update captions if they have changed
-      const changedPhotos = photoChanges.keep.filter((kept) => {
-        const existing = initialPhotos.find((p) => p.id === kept.id)
-        return existing?.caption !== kept.caption
-      })
-
-      const changePhotoPromises = changedPhotos.map((photo) =>
-        updateCaptionMutation.mutateAsync({
-          photoId: photo.id,
-          caption: photo.caption,
-        }),
-      )
-
-      // removed + caption-changed audio
-      const removedAudios = initialAudios.filter(
-        (audio) => !audioChanges.keep.find((a) => a.id === audio.id),
-      )
-      const deleteAudioPromises = removedAudios.map((audio) =>
-        deleteAudioMutation.mutateAsync(audio.id, { onError: console.error }),
-      )
-      const changedAudios = audioChanges.keep.filter((kept) => {
-        const existing = initialAudios.find((a) => a.id === kept.id)
-        return existing?.caption !== kept.caption
-      })
-      const changeAudioPromises = changedAudios.map((audio) =>
-        updateAudioCaptionMutation.mutateAsync({
-          audioId: audio.id,
-          caption: audio.caption,
-        }),
-      )
-
-      if (isOnline) {
-        // do not await the add photo Promises - they're slower and can happen in parallel
-        // await Promise.all(addPhotoPromises)
-        await Promise.all(deletePhotoPromises)
-        await Promise.all(changePhotoPromises)
-        await Promise.all(deleteAudioPromises)
-        await Promise.all(changeAudioPromises)
-      }
-
+    const payload: UpdateScoutingNote = {
+      id: scoutingNoteIdRef.current,
+      trip_id: tripId,
+      organisation_id: organisation.id,
+      created_by: user.id,
+      created_at: new Date().toISOString(),
+      location: locationPoint,
+      ...rest,
+    }
+    console.log({ payload })
+    if (!hasUnsavedChanges) {
+      allowNavigation()
       return navigate({
         to: "/trips/$id/scouting-notes/$scoutingNoteId",
         params: { id: tripId, scoutingNoteId },
       })
-    },
-    [
-      user,
-      organisation,
-      tripId,
-      location,
-      photoChanges,
-      audioChanges,
-      isDirty,
-      isOnline,
-    ],
-  )
+    }
+
+    const updatePromise = updateScoutingNote(payload)
+    if (isOnline) await updatePromise
+    await Promise.all(
+      photoChanges.add.map(async (photo) =>
+        putImage(photo.id, await fileToBase64(photo.file)),
+      ),
+    )
+    await Promise.all(
+      photoChanges.add.map((photo) =>
+        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+      ),
+    )
+    await Promise.all(
+      audioChanges.add.map((audio) =>
+        createAudioMutation.mutateAsync(audio, { onError: console.error }),
+      ),
+    )
+    // find which photos have been removed from the initial list
+    const removedPhotos = initialPhotos.filter(
+      (photo) => !photoChanges.keep.find((p) => p.id === photo.id),
+    )
+    const deletePhotoPromises = removedPhotos.map((photo) =>
+      deletePhotoMutation.mutateAsync(photo.id, { onError: console.error }),
+    )
+
+    // for the remaining photos, update captions if they have changed
+    const changedPhotos = photoChanges.keep.filter((kept) => {
+      const existing = initialPhotos.find((p) => p.id === kept.id)
+      return existing?.caption !== kept.caption
+    })
+
+    const changePhotoPromises = changedPhotos.map((photo) =>
+      updateCaptionMutation.mutateAsync({
+        photoId: photo.id,
+        caption: photo.caption,
+      }),
+    )
+
+    // removed + caption-changed audio
+    const removedAudios = initialAudios.filter(
+      (audio) => !audioChanges.keep.find((a) => a.id === audio.id),
+    )
+    const deleteAudioPromises = removedAudios.map((audio) =>
+      deleteAudioMutation.mutateAsync(audio.id, { onError: console.error }),
+    )
+    const changedAudios = audioChanges.keep.filter((kept) => {
+      const existing = initialAudios.find((a) => a.id === kept.id)
+      return existing?.caption !== kept.caption
+    })
+    const changeAudioPromises = changedAudios.map((audio) =>
+      updateAudioCaptionMutation.mutateAsync({
+        audioId: audio.id,
+        caption: audio.caption,
+      }),
+    )
+
+    if (isOnline) {
+      // do not await the add photo Promises - they're slower and can happen in parallel
+      // await Promise.all(addPhotoPromises)
+      await Promise.all(deletePhotoPromises)
+      await Promise.all(changePhotoPromises)
+      await Promise.all(deleteAudioPromises)
+      await Promise.all(changeAudioPromises)
+    }
+
+    allowNavigation()
+    return navigate({
+      to: "/trips/$id/scouting-notes/$scoutingNoteId",
+      params: { id: tripId, scoutingNoteId },
+    })
+  }
 
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
@@ -426,6 +425,18 @@ function ScoutingNoteFormReady({
             </Popover>
           </div>
 
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={initialValues.organisation_id}
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Latitude</Label>
@@ -449,70 +460,60 @@ function ScoutingNoteFormReady({
             </div>
           </div>
 
-          <Controller
-            control={control}
-            name="person_ids"
-            render={({ field }) => (
-              <PersonMultiSelectField
-                organisationId={initialValues.organisation_id}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-
-          <div>
-            <Label>Description</Label>
-            <Textarea
-              {...register("description")}
-              className={cn(
-                "transition-all",
-                descriptionFocus ? "h-40" : "h-20",
+          <ExtraFieldsAccordion>
+            <Controller
+              control={control}
+              name="phenology_start"
+              render={({ field: startField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_peak"
+                  render={({ field: peakField }) => (
+                    <Controller
+                      control={control}
+                      name="phenology_end"
+                      render={({ field: endField }) => (
+                        <PhenologyRangeInput
+                          value={[
+                            startField.value,
+                            peakField.value,
+                            endField.value,
+                          ]}
+                          onValueChange={([start, peak, end]) => {
+                            startField.onChange(start)
+                            peakField.onChange(peak)
+                            endField.onChange(end)
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
               )}
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
             />
-          </div>
 
-          <Controller
-            control={control}
-            name="phenology_start"
-            render={({ field: startField }) => (
-              <Controller
-                control={control}
-                name="phenology_peak"
-                render={({ field: peakField }) => (
-                  <Controller
-                    control={control}
-                    name="phenology_end"
-                    render={({ field: endField }) => (
-                      <PhenologyRangeInput
-                        value={[
-                          startField.value,
-                          peakField.value,
-                          endField.value,
-                        ]}
-                        onValueChange={([start, peak, end]) => {
-                          startField.onChange(start)
-                          peakField.onChange(peak)
-                          endField.onChange(end)
-                        }}
-                      />
-                    )}
-                  />
+            <PhotosForm
+              initialPhotos={initialPhotos}
+              onPhotosChange={setPhotoChanges}
+            />
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                {...register("description")}
+                className={cn(
+                  "transition-all",
+                  descriptionFocus ? "h-40" : "h-20",
                 )}
+                onFocus={() => setDescriptionFocus(true)}
+                onBlur={() => setDescriptionFocus(false)}
               />
-            )}
-          />
+            </div>
 
-          <PhotosForm
-            initialPhotos={initialPhotos}
-            onPhotosChange={setPhotoChanges}
-          />
-          <AudiosForm
-            initialAudios={initialAudios}
-            onAudiosChange={setAudioChanges}
-          />
+            <AudiosForm
+              initialAudios={initialAudios}
+              onAudiosChange={setAudioChanges}
+            />
+          </ExtraFieldsAccordion>
         </div>
 
         <div className="flex space-x-2 border-t p-2">
@@ -532,6 +533,11 @@ function ScoutingNoteFormReady({
           </Button>
         </div>
       </form>
+      <UnsavedChangesDialog
+        open={isPromptOpen}
+        onDiscard={discardChanges}
+        onKeepEditing={keepEditing}
+      />
     </div>
   )
 }

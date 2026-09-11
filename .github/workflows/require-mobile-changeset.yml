@@ -1,0 +1,71 @@
+name: Require mobile changeset
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  require-changeset:
+    name: Require changeset for mobile changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find added changesets
+        id: detect
+        run: |
+          set -euo pipefail
+          BASE="origin/${{ github.base_ref }}"
+          CHANGED_FILES="$(git diff --name-only "$BASE...HEAD")"
+          if ! grep -q '^apps/mobile/' <<< "$CHANGED_FILES"; then
+            echo "No apps/mobile changes, no changeset required."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ADDED_CHANGESETS="$(git diff --name-only --diff-filter=A "$BASE...HEAD" -- '.changeset/*.md' \
+            | grep -v '^\.changeset/README\.md$' || true)"
+          if [[ -z "$ADDED_CHANGESETS" ]]; then
+            echo "::error::This PR changes apps/mobile/** but adds no changeset. Run 'pnpm changeset' to describe the mobile version bump, or 'pnpm changeset add --empty' if this change shouldn't bump the mobile app version." >&2
+            exit 1
+          fi
+          {
+            echo "files<<CHANGESET_EOF"
+            echo "$ADDED_CHANGESETS"
+            echo "CHANGESET_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "needed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        if: steps.detect.outputs.needed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        if: steps.detect.outputs.needed == 'true'
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.10.5 --activate
+
+      - name: Install dependencies
+        if: steps.detect.outputs.needed == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate changeset contents
+        if: steps.detect.outputs.needed == 'true'
+        env:
+          ADDED_CHANGESETS: ${{ steps.detect.outputs.files }}
+        run: |
+          set -euo pipefail
+          changeset_files=()
+          while IFS= read -r line; do
+            [[ -n "$line" ]] && changeset_files+=("$line")
+          done <<< "$ADDED_CHANGESETS"
+          node bin/validate-changesets.mjs "${changeset_files[@]}"

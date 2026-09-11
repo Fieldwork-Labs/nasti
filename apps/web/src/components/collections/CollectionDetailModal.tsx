@@ -34,6 +34,7 @@ import { usePersons } from "@/hooks/usePersons"
 import { formatDuration } from "@/lib/duration"
 import { useCollection } from "@/hooks/useCollection"
 import { useCollectionContainers } from "@/hooks/useContainers"
+import { MATERIAL_TYPE_LABELS, toMaterialTypes } from "@nasti/common/types"
 
 const PhotosTab = ({
   photos,
@@ -158,6 +159,7 @@ export const CollectionDetailModal = ({
     collection?.person_ids?.includes(person.id),
   )
   const formattedDuration = formatDuration(collection?.duration)
+  const materialTypes = toMaterialTypes(collection?.material_type)
 
   const { data: collectionContainers } = useCollectionContainers(collection?.id)
   const containerSummary = useMemo(
@@ -279,6 +281,18 @@ export const CollectionDetailModal = ({
                   <div>
                     <div className="text-lead mb-1">Duration</div>
                     <div className="text-sm">{formattedDuration}</div>
+                  </div>
+                )}
+                {materialTypes.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">Material Collected</div>
+                    <div className="flex flex-wrap gap-2">
+                      {materialTypes.map((materialType) => (
+                        <Badge key={materialType} variant="secondary">
+                          {MATERIAL_TYPE_LABELS[materialType]}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {containerSummary.length > 0 && (

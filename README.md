@@ -9,6 +9,13 @@ The repo is a pnpm + Turborepo monorepo holding two front ends, a set of shared
 packages, the Supabase backend, and the PowerSync service config that makes the
 mobile app work offline.
 
+## Releasing
+
+See [RELEASING.md](RELEASING.md) for the mobile app's Changesets and
+tag-based semantic release flow.
+
+Currently, two official plugins are available:
+
 ## Repo layout
 
 | Path                         | What it is                                                                                         |

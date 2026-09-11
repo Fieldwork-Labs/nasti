@@ -12,18 +12,25 @@ import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ROLE, UpdateCollection } from "@nasti/common/types"
+import {
+  MATERIAL_TYPES,
+  MATERIAL_TYPE_OPTIONS,
+  ROLE,
+  toMaterialTypes,
+  UpdateCollection,
+} from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
+import { CheckboxGroup } from "@nasti/ui/checkboxGroup"
 import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { cn } from "@nasti/ui/utils"
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { ChevronLeft, InfoIcon, X } from "lucide-react"
-import { useCallback, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import * as z from "zod"
 import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
@@ -32,40 +39,51 @@ import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
-import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
+import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
+import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
+import { hasMediaChanges } from "@/lib/mediaChanges"
 
-const schema = z
-  .object({
-    species_id: z.preprocess(
-      (val) => (val === "" ? null : val),
-      z.string().nullable(),
-    ),
-    species_uncertain: z.boolean(),
-    field_name: z
-      .string()
-      .nullable()
-      .transform((val) => val || ""),
-    specimen_collected: z.boolean(),
-    description: z
-      .string()
-      .optional()
-      .transform((val) => val || ""),
-    containers: z
-      .array(
-        z.object({
-          container_id: z.string().uuid("Select a container"),
-          amount: stringToNumber,
-        }),
-      )
-      .default([]),
-    duration: z.string().nullable(),
-    latitude: stringToNumber,
-    longitude: stringToNumber,
-    person_ids: z.array(z.string().uuid()).default([]),
-    phenology_start: z.number().min(-100).max(100).nullable(),
-    phenology_peak: z.number().min(-100).max(100).nullable(),
-    phenology_end: z.number().min(-100).max(100).nullable(),
+const collectionFields = z.object({
+  species_id: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable(),
+  ),
+  species_uncertain: z.boolean(),
+  field_name: z
+    .string()
+    .nullable()
+    .transform((val) => val || ""),
+  specimen_collected: z.boolean(),
+  description: z
+    .string()
+    .optional()
+    .transform((val) => val || ""),
+  containers: z
+    .array(
+      z.object({
+        container_id: z.string().uuid("Select a container"),
+        amount: stringToNumber,
+      }),
+    )
+    .default([]),
+  duration: z.string().nullable(),
+  material_type: z.array(z.enum(MATERIAL_TYPES)).default([]),
+  latitude: stringToNumber,
+  longitude: stringToNumber,
+  person_ids: z.array(z.string().uuid()).default([]),
+  phenology_start: z.number().min(-100).max(100).nullable(),
+  phenology_peak: z.number().min(-100).max(100).nullable(),
+  phenology_end: z.number().min(-100).max(100).nullable(),
+})
+
+const schema = collectionFields
+  .extend({
+    // a collection has to record what material was collected
+    material_type: z
+      .array(z.enum(MATERIAL_TYPES))
+      .min(1, "Select the material collected"),
   })
   .refine(
     (data) => Boolean(data.species_id) || data.field_name.trim().length > 0,
@@ -91,6 +109,7 @@ const DEFAULT_VALUES: FormValues = {
   phenology_end: null,
   containers: [],
   duration: null,
+  material_type: [],
 }
 
 export const Route = createFileRoute(
@@ -208,10 +227,13 @@ function CollectionFormReady({
     keep: initialAudios,
   })
 
-  const defaultValues = schema.parse({
+  // parsed leniently - collections recorded before material type was required
+  // still have to open in the form
+  const defaultValues = collectionFields.parse({
     ...DEFAULT_VALUES,
     ...collection,
     containers: initialContainers,
+    material_type: toMaterialTypes(collection.material_type),
     latitude: collection.locationCoord?.latitude ?? null,
     longitude: collection.locationCoord?.longitude ?? null,
   })
@@ -231,6 +253,14 @@ function CollectionFormReady({
     reValidateMode: "onChange",
   })
 
+  const hasUnsavedChanges =
+    isDirty ||
+    hasMediaChanges(initialPhotos, photoChanges) ||
+    hasMediaChanges(initialAudios, audioChanges)
+
+  const { isPromptOpen, discardChanges, keepEditing, allowNavigation } =
+    useUnsavedChangesPrompt({ hasUnsavedChanges })
+
   // Field name entry toggle
   const isFieldName =
     watch("specimen_collected") || Boolean(defaultValues.field_name)
@@ -242,127 +272,106 @@ function CollectionFormReady({
   }
 
   // Handlers
-  const onFormSubmit = useCallback(
-    async (data: FormValues) => {
-      if (!user || !organisation) throw new Error("Not logged in")
-      if (!tripId) throw new Error("tripId must be supplied")
+  const onFormSubmit = async (data: FormValues) => {
+    if (!user || !organisation) throw new Error("Not logged in")
+    if (!tripId) throw new Error("tripId must be supplied")
 
-      const { latitude, longitude, person_ids, containers, ...rest } = data
-      const locationPoint = `POINT(${longitude} ${latitude})`
-      const filteredPersonIds = currentUserPerson?.id
-        ? person_ids.filter((personId) => personId !== currentUserPerson.id)
-        : person_ids
+    const { latitude, longitude, person_ids, containers, ...rest } = data
+    const locationPoint = `POINT(${longitude} ${latitude})`
+    const filteredPersonIds = currentUserPerson?.id
+      ? person_ids.filter((personId) => personId !== currentUserPerson.id)
+      : person_ids
 
-      const payload: UpdateCollection = {
-        id: collectionIdRef.current,
-        trip_id: tripId,
-        organisation_id: organisation.id,
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        location: locationPoint,
-        ...rest,
-        person_ids: filteredPersonIds,
-      }
-      if (
-        !isDirty &&
-        photoChanges.add.length === 0 &&
-        audioChanges.add.length === 0
-      )
-        navigate({
-          to: "/trips/$id/collections/$collectionId",
-          params: { id: tripId, collectionId },
-        })
-
-      const updatePromise = updateCollection(payload)
-      if (isOnline) await updatePromise
-      await saveCollectionContainers(collectionIdRef.current, containers)
-      await Promise.all(
-        photoChanges.add.map(async (photo) =>
-          putImage(photo.id, await fileToBase64(photo.file)),
-        ),
-      )
-      await Promise.all(
-        photoChanges.add.map((photo) =>
-          createPhotoMutation.mutateAsync(photo, { onError: console.error }),
-        ),
-      )
-      await Promise.all(
-        audioChanges.add.map((audio) =>
-          createAudioMutation.mutateAsync(audio, { onError: console.error }),
-        ),
-      )
-      // find which photos have been removed from the initial list
-      const removedPhotos = initialPhotos.filter(
-        (photo) => !photoChanges.keep.find((p) => p.id === photo.id),
-      )
-      const deletePhotoPromises = removedPhotos.map((photo) =>
-        deletePhotoMutation.mutateAsync(photo.id, { onError: console.error }),
-      )
-
-      // for the remaining photos, update captions if they have changed
-      const changedPhotos = photoChanges.keep.filter((kept) => {
-        const existing = initialPhotos.find((p) => p.id === kept.id)
-        return existing?.caption !== kept.caption
-      })
-
-      const changePhotoPromises = changedPhotos.map((photo) =>
-        updateCaptionMutation.mutateAsync({
-          photoId: photo.id,
-          caption: photo.caption,
-        }),
-      )
-
-      // removed + caption-changed audio
-      const removedAudios = initialAudios.filter(
-        (audio) => !audioChanges.keep.find((a) => a.id === audio.id),
-      )
-      const deleteAudioPromises = removedAudios.map((audio) =>
-        deleteAudioMutation.mutateAsync(audio.id, { onError: console.error }),
-      )
-      const changedAudios = audioChanges.keep.filter((kept) => {
-        const existing = initialAudios.find((a) => a.id === kept.id)
-        return existing?.caption !== kept.caption
-      })
-      const changeAudioPromises = changedAudios.map((audio) =>
-        updateAudioCaptionMutation.mutateAsync({
-          audioId: audio.id,
-          caption: audio.caption,
-        }),
-      )
-
-      if (isOnline) {
-        // do not await the add photo Promises - they're slower and can happen in parallel
-        // await Promise.all(addPhotoPromises)
-        await Promise.all(deletePhotoPromises)
-        await Promise.all(changePhotoPromises)
-        await Promise.all(deleteAudioPromises)
-        await Promise.all(changeAudioPromises)
-      }
-
+    const payload: UpdateCollection = {
+      id: collectionIdRef.current,
+      trip_id: tripId,
+      organisation_id: organisation.id,
+      created_by: user.id,
+      created_at: new Date().toISOString(),
+      location: locationPoint,
+      ...rest,
+      person_ids: filteredPersonIds,
+    }
+    if (!hasUnsavedChanges) {
+      allowNavigation()
       return navigate({
         to: "/trips/$id/collections/$collectionId",
         params: { id: tripId, collectionId },
       })
-    },
-    [
-      user,
-      organisation,
-      tripId,
-      location,
-      photoChanges,
-      audioChanges,
-      isDirty,
-      photoChanges.add,
-      photoChanges.keep,
-      audioChanges.add,
-      audioChanges.keep,
-      navigate,
-      collectionId,
-      updateCollection,
-      isOnline,
-      currentUserPerson?.id,
-    ],
-  )
+    }
+
+    const updatePromise = updateCollection(payload)
+    if (isOnline) await updatePromise
+    await saveCollectionContainers(collectionIdRef.current, containers)
+    await Promise.all(
+      photoChanges.add.map(async (photo) =>
+        putImage(photo.id, await fileToBase64(photo.file)),
+      ),
+    )
+    await Promise.all(
+      photoChanges.add.map((photo) =>
+        createPhotoMutation.mutateAsync(photo, { onError: console.error }),
+      ),
+    )
+    await Promise.all(
+      audioChanges.add.map((audio) =>
+        createAudioMutation.mutateAsync(audio, { onError: console.error }),
+      ),
+    )
+    // find which photos have been removed from the initial list
+    const removedPhotos = initialPhotos.filter(
+      (photo) => !photoChanges.keep.find((p) => p.id === photo.id),
+    )
+    const deletePhotoPromises = removedPhotos.map((photo) =>
+      deletePhotoMutation.mutateAsync(photo.id, { onError: console.error }),
+    )
+
+    // for the remaining photos, update captions if they have changed
+    const changedPhotos = photoChanges.keep.filter((kept) => {
+      const existing = initialPhotos.find((p) => p.id === kept.id)
+      return existing?.caption !== kept.caption
+    })
+
+    const changePhotoPromises = changedPhotos.map((photo) =>
+      updateCaptionMutation.mutateAsync({
+        photoId: photo.id,
+        caption: photo.caption,
+      }),
+    )
+
+    // removed + caption-changed audio
+    const removedAudios = initialAudios.filter(
+      (audio) => !audioChanges.keep.find((a) => a.id === audio.id),
+    )
+    const deleteAudioPromises = removedAudios.map((audio) =>
+      deleteAudioMutation.mutateAsync(audio.id, { onError: console.error }),
+    )
+    const changedAudios = audioChanges.keep.filter((kept) => {
+      const existing = initialAudios.find((a) => a.id === kept.id)
+      return existing?.caption !== kept.caption
+    })
+    const changeAudioPromises = changedAudios.map((audio) =>
+      updateAudioCaptionMutation.mutateAsync({
+        audioId: audio.id,
+        caption: audio.caption,
+      }),
+    )
+
+    if (isOnline) {
+      // do not await the add photo Promises - they're slower and can happen in parallel
+      // await Promise.all(addPhotoPromises)
+      await Promise.all(deletePhotoPromises)
+      await Promise.all(changePhotoPromises)
+      await Promise.all(deleteAudioPromises)
+      await Promise.all(changeAudioPromises)
+    }
+
+    allowNavigation()
+    return navigate({
+      to: "/trips/$id/collections/$collectionId",
+      params: { id: tripId, collectionId },
+    })
+  }
 
   const speciesId = watch("species_id")
   const [descriptionFocus, setDescriptionFocus] = useState(false)
@@ -455,6 +464,20 @@ function CollectionFormReady({
             </Popover>
           </div>
 
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={collection.organisation_id}
+                value={field.value}
+                onChange={field.onChange}
+                displayCurrentUser
+                label="Collectors"
+              />
+            )}
+          />
+
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Latitude</Label>
@@ -479,35 +502,25 @@ function CollectionFormReady({
           </div>
 
           <div>
-            <Label>Description</Label>
-            <Textarea
-              {...register("description")}
-              className={cn(
-                "transition-all",
-                descriptionFocus ? "h-40" : "h-20",
+            <Controller
+              control={control}
+              name="material_type"
+              render={({ field }) => (
+                <CheckboxGroup
+                  label="Material Collected"
+                  size="lg"
+                  options={MATERIAL_TYPE_OPTIONS}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               )}
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
             />
-            <AudiosForm
-              initialAudios={initialAudios}
-              onAudiosChange={setAudioChanges}
-            />
-          </div>
-
-          <Controller
-            control={control}
-            name="person_ids"
-            render={({ field }) => (
-              <PersonMultiSelectField
-                organisationId={collection.organisation_id}
-                value={field.value}
-                onChange={field.onChange}
-                displayCurrentUser
-                label="Collectors"
-              />
+            {errors.material_type && (
+              <div className="mt-1 text-sm text-amber-600">
+                {errors.material_type.message}
+              </div>
             )}
-          />
+          </div>
 
           <Controller
             control={control}
@@ -518,41 +531,6 @@ function CollectionFormReady({
                 onChange={field.onChange}
               />
             )}
-          />
-
-          <Controller
-            control={control}
-            name="phenology_start"
-            render={({ field: startField }) => (
-              <Controller
-                control={control}
-                name="phenology_peak"
-                render={({ field: peakField }) => (
-                  <Controller
-                    control={control}
-                    name="phenology_end"
-                    render={({ field: endField }) => (
-                      <PhenologyRangeInput
-                        value={[
-                          startField.value,
-                          peakField.value,
-                          endField.value,
-                        ]}
-                        onValueChange={([start, peak, end]) => {
-                          startField.onChange(start)
-                          peakField.onChange(peak)
-                          endField.onChange(end)
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
-          />
-          <PhotosForm
-            initialPhotos={initialPhotos}
-            onPhotosChange={setPhotoChanges}
           />
 
           <ExtraFieldsAccordion>
@@ -566,6 +544,57 @@ function CollectionFormReady({
                 />
               )}
             />
+            <Controller
+              control={control}
+              name="phenology_start"
+              render={({ field: startField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_peak"
+                  render={({ field: peakField }) => (
+                    <Controller
+                      control={control}
+                      name="phenology_end"
+                      render={({ field: endField }) => (
+                        <PhenologyRangeInput
+                          value={[
+                            startField.value,
+                            peakField.value,
+                            endField.value,
+                          ]}
+                          onValueChange={([start, peak, end]) => {
+                            startField.onChange(start)
+                            peakField.onChange(peak)
+                            endField.onChange(end)
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
+            />
+            <PhotosForm
+              initialPhotos={initialPhotos}
+              onPhotosChange={setPhotoChanges}
+            />
+
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                {...register("description")}
+                className={cn(
+                  "transition-all",
+                  descriptionFocus ? "h-40" : "h-20",
+                )}
+                onFocus={() => setDescriptionFocus(true)}
+                onBlur={() => setDescriptionFocus(false)}
+              />
+              <AudiosForm
+                initialAudios={initialAudios}
+                onAudiosChange={setAudioChanges}
+              />
+            </div>
           </ExtraFieldsAccordion>
         </div>
 
@@ -586,6 +615,11 @@ function CollectionFormReady({
           </Button>
         </div>
       </form>
+      <UnsavedChangesDialog
+        open={isPromptOpen}
+        onDiscard={discardChanges}
+        onKeepEditing={keepEditing}
+      />
     </div>
   )
 }

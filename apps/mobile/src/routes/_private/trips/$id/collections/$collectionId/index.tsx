@@ -23,6 +23,7 @@ import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 import { useCollectionContainers, useContainers } from "@/hooks/useContainers"
 import { formatDuration } from "@/lib/duration"
+import { MATERIAL_TYPE_LABELS, toMaterialTypes } from "@nasti/common/types"
 
 const CollectionDetail = () => {
   const { user, role } = useAuth()
@@ -50,6 +51,7 @@ const CollectionDetail = () => {
     collection?.person_ids?.includes(person.id),
   )
   const formattedDuration = formatDuration(collection?.duration)
+  const materialTypes = toMaterialTypes(collection?.material_type)
 
   const { data: collectionContainers } = useCollectionContainers(collectionId)
   const { data: containers } = useContainers()
@@ -170,6 +172,7 @@ const CollectionDetail = () => {
       {(Boolean(collection.description) ||
         containerSummary.length > 0 ||
         Boolean(formattedDuration) ||
+        materialTypes.length > 0 ||
         Boolean(collection.phenology_start)) && (
         <div>
           <hr />
@@ -184,6 +187,26 @@ const CollectionDetail = () => {
                 <tbody>
                   <tr>
                     <td>{formattedDuration}</td>
+                  </tr>
+                </tbody>
+              </>
+            )}
+            {materialTypes.length > 0 && (
+              <>
+                <thead>
+                  <tr className="text-muted-foreground text-left">
+                    <th>Material Collected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="flex flex-wrap gap-2 pt-1">
+                      {materialTypes.map((materialType) => (
+                        <Badge key={materialType} variant="secondary">
+                          {MATERIAL_TYPE_LABELS[materialType]}
+                        </Badge>
+                      ))}
+                    </td>
                   </tr>
                 </tbody>
               </>

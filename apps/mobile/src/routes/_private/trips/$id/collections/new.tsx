@@ -22,8 +22,13 @@ import { Switch } from "@nasti/ui/switch"
 import { Textarea } from "@nasti/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { PhenologyRangeInput } from "@nasti/ui/phenologyRangeInput"
+import { CheckboxGroup } from "@nasti/ui/checkboxGroup"
 import { InfoIcon, X } from "lucide-react"
-import { NewCollection } from "@nasti/common/types"
+import {
+  MATERIAL_TYPES,
+  MATERIAL_TYPE_OPTIONS,
+  NewCollection,
+} from "@nasti/common/types"
 import { cn } from "@nasti/ui/utils"
 import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
@@ -33,8 +38,10 @@ import { stringToNumber } from "@nasti/common/utils"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
-import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
+import { ExtraFieldsAccordion } from "@/components/common/ExtraFieldsAccordion"
+import { useUnsavedChangesPrompt } from "@/hooks/useUnsavedChangesPrompt"
+import { UnsavedChangesDialog } from "@/components/common/UnsavedChangesDialog"
 
 const addCollectionSearchSchema = z.object({
   speciesId: z.string().optional(),
@@ -73,6 +80,10 @@ const schema = z
       )
       .default([]),
     duration: z.string().nullable(),
+    material_type: z
+      .array(z.enum(MATERIAL_TYPES))
+      .min(1, "Select the material collected")
+      .default(["seed"]),
     person_ids: z.array(z.string().uuid()).default([]),
   })
   .refine(
@@ -103,6 +114,7 @@ const defaultValues = {
   phenology_end: null,
   containers: [],
   duration: null,
+  material_type: ["seed" as const],
   person_ids: [],
 }
 
@@ -137,7 +149,7 @@ function AddCollection() {
     register,
     handleSubmit,
     control,
-    formState: { isValid, isSubmitting },
+    formState: { isValid, isSubmitting, errors, isDirty },
   } = useForm<CollectionFormData>({
     defaultValues: {
       ...defaultValues,
@@ -160,6 +172,11 @@ function AddCollection() {
 
   const [photos, setPhotos] = useState<UploadPhotoVariables[]>([])
   const [audios, setAudios] = useState<UploadAudioVariables[]>([])
+
+  const { isPromptOpen, discardChanges, keepEditing, allowNavigation } =
+    useUnsavedChangesPrompt({
+      hasUnsavedChanges: isDirty || photos.length > 0 || audios.length > 0,
+    })
 
   const navigate = useNavigate()
 
@@ -209,7 +226,10 @@ function AddCollection() {
 
       if (createPhotoMutation.isError) {
         console.error(createPhotoMutation.error)
-      } else navigate({ to: "/trips/$id", params: { id: tripId } })
+      } else {
+        allowNavigation()
+        navigate({ to: "/trips/$id", params: { id: tripId } })
+      }
     },
     [
       user,
@@ -223,6 +243,7 @@ function AddCollection() {
       createAudioMutation,
       currentUserPerson?.id,
       navigate,
+      allowNavigation,
     ],
   )
   const [descriptionFocus, setDescriptionFocus] = useState(false)
@@ -310,6 +331,20 @@ function AddCollection() {
               </Popover>
             </div>
           </div>
+          <Controller
+            control={control}
+            name="person_ids"
+            render={({ field }) => (
+              <PersonMultiSelectField
+                organisationId={organisation?.id}
+                value={field.value}
+                onChange={field.onChange}
+                displayCurrentUser
+                label="Collectors"
+              />
+            )}
+          />
+
           <div>
             <Label htmlFor="location">
               <span>Location</span>
@@ -328,20 +363,26 @@ function AddCollection() {
               className="h-12 text-lg"
             />
           </div>
-          <Controller
-            control={control}
-            name="person_ids"
-            render={({ field }) => (
-              <PersonMultiSelectField
-                organisationId={organisation?.id}
-                value={field.value}
-                onChange={field.onChange}
-                displayCurrentUser
-                label="Collectors"
-              />
+          <div>
+            <Controller
+              control={control}
+              name="material_type"
+              render={({ field }) => (
+                <CheckboxGroup
+                  label="Material Collected"
+                  size="lg"
+                  options={MATERIAL_TYPE_OPTIONS}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            {errors.material_type && (
+              <div className="mt-1 text-sm text-amber-600">
+                {errors.material_type.message}
+              </div>
             )}
-          />
-
+          </div>
           <Controller
             control={control}
             name="containers"
@@ -352,55 +393,6 @@ function AddCollection() {
               />
             )}
           />
-          <Controller
-            control={control}
-            name="phenology_start"
-            render={({ field: startField }) => (
-              <Controller
-                control={control}
-                name="phenology_peak"
-                render={({ field: peakField }) => (
-                  <Controller
-                    control={control}
-                    name="phenology_end"
-                    render={({ field: endField }) => (
-                      <PhenologyRangeInput
-                        value={[
-                          startField.value,
-                          peakField.value,
-                          endField.value,
-                        ]}
-                        onValueChange={([start, peak, end]) => {
-                          startField.onChange(start)
-                          peakField.onChange(peak)
-                          endField.onChange(end)
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
-          />
-          <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
-          <div>
-            <Label htmlFor="description">
-              <span>Description</span>
-            </Label>
-            <Textarea
-              {...register("description")}
-              id="description"
-              name="description"
-              className={cn(
-                "h-20 text-lg transition-all duration-500 ease-in-out",
-                descriptionFocus && "h-40",
-              )}
-              placeholder="Enter notes or description here"
-              onFocus={() => setDescriptionFocus(true)}
-              onBlur={() => setDescriptionFocus(false)}
-            />
-            <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
-          </div>
           <ExtraFieldsAccordion>
             <Controller
               control={control}
@@ -412,6 +404,55 @@ function AddCollection() {
                 />
               )}
             />
+            <Controller
+              control={control}
+              name="phenology_start"
+              render={({ field: startField }) => (
+                <Controller
+                  control={control}
+                  name="phenology_peak"
+                  render={({ field: peakField }) => (
+                    <Controller
+                      control={control}
+                      name="phenology_end"
+                      render={({ field: endField }) => (
+                        <PhenologyRangeInput
+                          value={[
+                            startField.value,
+                            peakField.value,
+                            endField.value,
+                          ]}
+                          onValueChange={([start, peak, end]) => {
+                            startField.onChange(start)
+                            peakField.onChange(peak)
+                            endField.onChange(end)
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
+            />
+            <PhotosForm onPhotosChange={({ add }) => setPhotos(add)} />
+            <div>
+              <Label htmlFor="description">
+                <span>Description</span>
+              </Label>
+              <Textarea
+                {...register("description")}
+                id="description"
+                name="description"
+                className={cn(
+                  "h-20 text-lg transition-all duration-500 ease-in-out",
+                  descriptionFocus && "h-40",
+                )}
+                placeholder="Enter notes or description here"
+                onFocus={() => setDescriptionFocus(true)}
+                onBlur={() => setDescriptionFocus(false)}
+              />
+              <AudiosForm onAudiosChange={({ add }) => setAudios(add)} />
+            </div>
           </ExtraFieldsAccordion>
         </div>
       </div>
@@ -432,6 +473,11 @@ function AddCollection() {
           {isSubmitting ? "Saving..." : "Save Collection"}
         </Button>
       </div>
+      <UnsavedChangesDialog
+        open={isPromptOpen}
+        onDiscard={discardChanges}
+        onKeepEditing={keepEditing}
+      />
     </div>
   )
 }
