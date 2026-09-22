@@ -97,6 +97,9 @@ do that before its deadline.
 - Create `apps/mobile/src/lib/withTimeout.ts`.
 - Create `apps/mobile/src/lib/offlineAuth.ts` and its tests.
 - Create `apps/mobile/src/contexts/auth.tsx` for one auth-state listener.
+- Update `packages/common/supabaseClient.ts` to export and configure the exact
+  existing Supabase auth-storage key so explicit offline logout can remove the
+  persisted refresh session without depending on a networked `signOut` call.
 - Update `apps/mobile/src/hooks/useAuth.ts`.
 - Update `apps/mobile/src/routes/_private.tsx`, `apps/mobile/src/main.tsx`, and
   router context typing in `apps/mobile/src/routes/__root.tsx`.
@@ -200,8 +203,10 @@ Set logout mutation `networkMode: "always"`. Its ordered behavior is:
 1. mark explicit logout in progress and clear in-memory auth state;
 2. delete the offline snapshot and await completion;
 3. attempt global/server sign-out best-effort;
-4. always perform local Supabase sign-out to remove the persisted refresh
-   token;
+4. attempt local Supabase sign-out, then explicitly remove and verify absence
+   of the configured Supabase auth-storage key because the installed auth-js
+   implementation can return on a retryable network failure before clearing
+   storage;
 5. invalidate the router and navigate to login;
 6. clear the logout marker in `finally`.
 
