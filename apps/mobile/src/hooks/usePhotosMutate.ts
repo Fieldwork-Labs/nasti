@@ -6,11 +6,11 @@ import { queryClient } from "@/lib/queryClient"
 import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 import { useCallback } from "react"
 import { deleteImage } from "@/lib/persistFiles"
-
-import { Upload } from "tus-js-client"
-import { Session } from "@supabase/supabase-js"
+import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { powerSyncDb } from "@/lib/powersync/db"
 import { psDelete, psInsert, psUpdate } from "@/lib/powersync/crud"
+import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
+import { powerSyncQueryClient } from "@/lib/powersync/query"
 import type {
   PowerSyncCollectionPhotoRow,
   PowerSyncScoutingNotePhotoRow,
@@ -31,57 +31,6 @@ export type PendingCollectionPhoto = Omit<UploadPhotoVariables, "file"> & {
 export type PendingScoutingNotePhoto = Omit<UploadPhotoVariables, "file"> & {
   scouting_notes_id: string
   url: string
-}
-
-async function uploadFile(
-  bucketName: string,
-  fileName: string,
-  file: File,
-  metadata: Record<string, string> = {},
-  session: Session,
-  onProgressUpdate?: (percentageComplete: number) => void,
-) {
-  return new Promise(async (resolve, reject) => {
-    if (!session) throw new Error("No session")
-
-    const upload = new Upload(file, {
-      endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
-      retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: {
-        authorization: `Bearer ${session.access_token}`,
-        "x-upsert": "true", // optionally set upsert to true to overwrite existing files
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true, // Important if you want to allow re-uploading the same file https://github.com/tus/tus-js-client/blob/main/docs/api.md#removefingerprintonsuccess
-      metadata: {
-        bucketName: bucketName,
-        objectName: fileName,
-        contentType: "image/png",
-        cacheControl: "3600",
-        ...metadata,
-      },
-      chunkSize: 6 * 1024 * 1024, // NOTE: it must be set to 6MB (for now) do not change it
-      onError: function (error) {
-        console.log("Failed because: " + error)
-        reject(error)
-      },
-      onProgress: function (bytesUploaded, bytesTotal) {
-        const percentage = (bytesUploaded / bytesTotal) * 100
-        onProgressUpdate?.(percentage)
-      },
-      onSuccess: function () {
-        resolve(upload.file)
-      },
-    })
-
-    // Check if there are any previous uploads to continue.
-    const previousUploads = await upload.findPreviousUploads()
-    // Found previous uploads so we select the first one.
-    if (previousUploads.length) {
-      upload.resumeFromPreviousUpload(previousUploads[0])
-    }
-    upload.start()
-  })
 }
 
 export const getUploadProgressQueryKey = (photoId: string) => [
@@ -111,22 +60,6 @@ export const usePhotosMutate = ({
     [organisation, entityId, entityType],
   )
 
-  const updateUploadProgress = (photoId: string, percentage: number) => {
-    const queryKey = getUploadProgressQueryKey(photoId)
-    if (percentage !== 100)
-      queryClient.setQueryData<number>(queryKey, percentage)
-    else
-      queryClient.removeQueries({
-        queryKey,
-      })
-  }
-
-  const clearUploadProgress = (photoId: string) => {
-    queryClient.removeQueries({
-      queryKey: getUploadProgressQueryKey(photoId),
-    })
-  }
-
   const createPhotoMutation = useMutation<
     CollectionPhoto | ScoutingNotePhoto,
     Error,
@@ -140,11 +73,12 @@ export const usePhotosMutate = ({
       if (!file) throw new Error(`No file found for ${photoId}`)
 
       const filePath = getFilePath(file, photoId)
+      await putImage(photoId, (await fileToBase64(file)) as Base64URLString)
       const photoBase = {
         id: photoId,
         url: filePath,
         caption: caption || null,
-        uploaded_at: new Date().toISOString(),
+        uploaded_at: null,
       }
       const photo =
         entityType === "collection"
@@ -157,56 +91,24 @@ export const usePhotosMutate = ({
               scouting_notes_id: entityId,
             } satisfies ScoutingNotePhoto)
 
-      if (entityType === "collection") {
-        await psInsert("collection_photo", photo)
-      } else {
-        await psInsert("scouting_notes_photos", photo)
-      }
-
-      // Get a fresh session before starting operations
-      // This is critical when resuming from offline mode
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error(
-          `[Photos] Saved ${entityType} photo locally, but could not get a session for storage upload:`,
-          sessionError,
-        )
-        return photo
-      }
-
-      if (!session) {
-        console.error(
-          `[Photos] Saved ${entityType} photo locally, but no active session was available for storage upload.`,
-        )
-        return photo
-      }
-
-      try {
-        await uploadFile(
-          "collection-photos",
-          filePath,
-          file,
+      const table = entityType === "collection" ? "collection_photo" : "scouting_notes_photos"
+      await powerSyncDb.writeTransaction(async (transaction) => {
+        await mediaAttachmentQueue.enqueue(
           {
-            entityType,
-            entityId,
-            photoId,
+            id: photoId,
+            kind: "photo",
+            table,
+            bucket: "collection-photos",
+            path: filePath,
+            mimeType: file.type || "image/jpeg",
           },
-          session,
-          (percentage) => updateUploadProgress(photoId, percentage),
+          transaction,
         )
-        return photo
-      } catch (error) {
-        clearUploadProgress(photoId)
-        console.error(
-          `[Photos] Saved ${entityType} photo locally, but storage upload failed:`,
-          error,
-        )
-        return photo
-      }
+        await psInsert(table, photo, transaction)
+      })
+      await powerSyncQueryClient.invalidateQueries()
+      mediaAttachmentQueue.wake()
+      return photo
     },
   })
 

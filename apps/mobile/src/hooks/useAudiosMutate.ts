@@ -8,10 +8,10 @@ import { useCallback } from "react"
 import { deleteAudio, putAudio } from "@/lib/persistAudio"
 import { mimeToExtension } from "@/lib/audio"
 
-import { Upload } from "tus-js-client"
-import { Session } from "@supabase/supabase-js"
 import { powerSyncDb } from "@/lib/powersync/db"
 import { psDelete, psInsert, psUpdate } from "@/lib/powersync/crud"
+import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
+import { powerSyncQueryClient } from "@/lib/powersync/query"
 import type {
   PowerSyncCollectionAudioRow,
   PowerSyncScoutingNoteAudioRow,
@@ -33,51 +33,6 @@ export type PendingCollectionAudio = Omit<UploadAudioVariables, "file"> & {
 export type PendingScoutingNoteAudio = Omit<UploadAudioVariables, "file"> & {
   scouting_notes_id: string
   url: string
-}
-
-async function uploadAudioFile(
-  bucketName: string,
-  fileName: string,
-  file: File,
-  contentType: string,
-  metadata: Record<string, string> = {},
-  session: Session,
-  onProgressUpdate?: (percentageComplete: number) => void,
-) {
-  return new Promise((resolve, reject) => {
-    if (!session) throw new Error("No session")
-
-    const upload = new Upload(file, {
-      endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
-      retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: {
-        authorization: `Bearer ${session.access_token}`,
-        "x-upsert": "true",
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        bucketName,
-        objectName: fileName,
-        contentType,
-        cacheControl: "3600",
-        ...metadata,
-      },
-      chunkSize: 6 * 1024 * 1024,
-      onError: (error) => reject(error),
-      onProgress: (bytesUploaded, bytesTotal) => {
-        onProgressUpdate?.((bytesUploaded / bytesTotal) * 100)
-      },
-      onSuccess: () => resolve(upload.file),
-    })
-
-    upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length) {
-        upload.resumeFromPreviousUpload(previousUploads[0])
-      }
-      upload.start()
-    })
-  })
 }
 
 export const getAudioUploadProgressQueryKey = (audioId: string) => [
@@ -103,16 +58,6 @@ export const useAudiosMutate = ({
     [organisation, entityId, entityType],
   )
 
-  const updateUploadProgress = (audioId: string, percentage: number) => {
-    const queryKey = getAudioUploadProgressQueryKey(audioId)
-    if (percentage !== 100) queryClient.setQueryData<number>(queryKey, percentage)
-    else queryClient.removeQueries({ queryKey })
-  }
-
-  const clearUploadProgress = (audioId: string) => {
-    queryClient.removeQueries({ queryKey: getAudioUploadProgressQueryKey(audioId) })
-  }
-
   const createAudioMutation = useMutation<
     CollectionAudio | ScoutingNoteAudio,
     Error,
@@ -137,7 +82,7 @@ export const useAudiosMutate = ({
         mime_type,
         caption: caption || null,
         duration_ms,
-        uploaded_at: new Date().toISOString(),
+        uploaded_at: null,
       }
       const audio =
         entityType === "collection"
@@ -154,51 +99,25 @@ export const useAudiosMutate = ({
       // offline, and before the upload completes.
       await putAudio(audioId, file, mime_type)
 
-      if (entityType === "collection") {
-        await psInsert("collection_audio", audio)
-      } else {
-        await psInsert("scouting_notes_audio", audio)
-      }
-
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error(
-          `[Audio] Saved ${entityType} audio locally, but could not get a session for storage upload:`,
-          sessionError,
+      const table = entityType === "collection" ? "collection_audio" : "scouting_notes_audio"
+      await powerSyncDb.writeTransaction(async (transaction) => {
+        await mediaAttachmentQueue.enqueue(
+          {
+            id: audioId,
+            kind: "audio",
+            table,
+            bucket: "collection-audio",
+            path: filePath,
+            mimeType: mime_type,
+          },
+          transaction,
         )
-        return audio
-      }
+        await psInsert(table, audio, transaction)
+      })
 
-      if (!session) {
-        console.error(
-          `[Audio] Saved ${entityType} audio locally, but no active session was available for storage upload.`,
-        )
-        return audio
-      }
-
-      try {
-        await uploadAudioFile(
-          "collection-audio",
-          filePath,
-          file,
-          mime_type,
-          { entityType, entityId, audioId },
-          session,
-          (percentage) => updateUploadProgress(audioId, percentage),
-        )
-        return audio
-      } catch (error) {
-        clearUploadProgress(audioId)
-        console.error(
-          `[Audio] Saved ${entityType} audio locally, but storage upload failed:`,
-          error,
-        )
-        return audio
-      }
+      await powerSyncQueryClient.invalidateQueries()
+      mediaAttachmentQueue.wake()
+      return audio
     },
   })
 

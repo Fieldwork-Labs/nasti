@@ -26,7 +26,6 @@ import { UploadPhotoVariables } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
 import { AudiosForm } from "@/components/common/AudiosForm"
 import { UploadAudioVariables, useAudiosMutate } from "@/hooks/useAudiosMutate"
-import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useScoutingNoteCreate } from "@/hooks/useScoutingNoteCreate"
 import {
@@ -140,11 +139,6 @@ function AddCollection() {
         trip_id: tripId,
       }
       await createScoutingNote(newScoutingNote)
-      await Promise.all(
-        photos.map(async (photo) =>
-          putImage(photo.id, await fileToBase64(photo.file)),
-        ),
-      )
       await Promise.all(
         photos.map((photo) =>
           createPhotoMutation.mutateAsync(photo, { onError: console.error }),

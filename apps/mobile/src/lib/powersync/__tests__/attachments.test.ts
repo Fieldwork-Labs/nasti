@@ -67,6 +67,7 @@ describe("LocalAttachmentQueue", () => {
       online: () => true,
     })
     await queue.enqueue({ id: "a", kind: "photo", table: "collection_photo", bucket: "collection-photos", path: "a.jpg", mimeType: "image/jpeg" })
+    queue.wake()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(upload).not.toHaveBeenCalled()
     expect(db.jobs.get("a")).toMatchObject({ status: "queued", attempt_count: 1 })
@@ -89,6 +90,7 @@ describe("LocalAttachmentQueue", () => {
       online: () => true,
     })
     await queue.enqueue({ id: "a", kind: "photo", table: "collection_photo", bucket: "collection-photos", path: "a.jpg", mimeType: "image/jpeg" })
+    queue.wake()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(db.jobs.get("a")).toMatchObject({ status: "queued", attempt_count: 1 })
     expect(db.statements.some(({ sql }) => sql.includes("media_upload_failures"))).toBe(false)
@@ -114,6 +116,7 @@ describe("LocalAttachmentQueue", () => {
     })
     await queue.enqueue({ id: "a", kind: "photo", table: "collection_photo", bucket: "collection-photos", path: "a.jpg", mimeType: "image/jpeg" })
     await queue.enqueue({ id: "b", kind: "photo", table: "collection_photo", bucket: "collection-photos", path: "b.jpg", mimeType: "image/jpeg" })
+    queue.wake()
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(upload).toHaveBeenCalledTimes(2)
     expect(db.jobs.get("a")).toMatchObject({ status: "failed" })

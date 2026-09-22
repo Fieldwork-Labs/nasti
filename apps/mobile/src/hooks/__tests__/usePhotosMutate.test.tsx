@@ -11,7 +11,10 @@ const {
   psUpdateMock,
   removeMock,
   getSessionMock,
-  uploadStartMock,
+  enqueueMock,
+  wakeMock,
+  putImageMock,
+  writeTransactionMock,
 } = vi.hoisted(() => ({
   getOptionalMock: vi.fn(),
   psDeleteMock: vi.fn(),
@@ -19,7 +22,10 @@ const {
   psUpdateMock: vi.fn(),
   removeMock: vi.fn(),
   getSessionMock: vi.fn(),
-  uploadStartMock: vi.fn(),
+  enqueueMock: vi.fn(),
+  wakeMock: vi.fn(),
+  putImageMock: vi.fn(),
+  writeTransactionMock: vi.fn(),
 }))
 
 const toBase64Url = (value: unknown) =>
@@ -53,6 +59,7 @@ vi.mock("../useAuth", () => ({
 vi.mock("@/lib/powersync/db", () => ({
   powerSyncDb: {
     getOptional: getOptionalMock,
+    writeTransaction: writeTransactionMock,
   },
 }))
 
@@ -64,6 +71,12 @@ vi.mock("@/lib/powersync/crud", () => ({
 
 vi.mock("@/lib/persistFiles", () => ({
   deleteImage: vi.fn(),
+  putImage: putImageMock,
+  fileToBase64: vi.fn().mockResolvedValue("data:image/jpeg;base64,YQ=="),
+}))
+
+vi.mock("@/lib/powersync/attachments", () => ({
+  mediaAttachmentQueue: { enqueue: enqueueMock, wake: wakeMock },
 }))
 
 vi.mock("@nasti/common/supabase", () => ({
@@ -77,16 +90,6 @@ vi.mock("@nasti/common/supabase", () => ({
       })),
     },
   },
-}))
-
-vi.mock("tus-js-client", () => ({
-  Upload: vi.fn().mockImplementation((_file, options) => ({
-    file: _file,
-    findPreviousUploads: vi.fn(() => Promise.resolve([])),
-    start: vi.fn(() => {
-      uploadStartMock(options)
-    }),
-  })),
 }))
 
 const createWrapper = () => {
@@ -111,15 +114,55 @@ describe("usePhotosMutate", () => {
     psInsertMock.mockResolvedValue(undefined)
     psUpdateMock.mockResolvedValue(undefined)
     psDeleteMock.mockResolvedValue(undefined)
+    writeTransactionMock.mockImplementation(async (callback) => callback({ execute: vi.fn() }))
     removeMock.mockResolvedValue({ error: null })
-    uploadStartMock.mockImplementation((options) => {
-      options.onProgress?.(1, 2)
-      options.onProgress?.(2, 2)
-      options.onSuccess?.()
-    })
+    enqueueMock.mockResolvedValue(undefined)
+    putImageMock.mockResolvedValue(undefined)
   })
 
-  it("creates collection photo metadata through PowerSync after storage upload", async () => {
+  it("persists collection photo bytes and pending metadata before returning", async () => {
+    const { result } = renderHook(
+      () =>
+        usePhotosMutate({
+          entityId: "collection-1",
+          entityType: "collection",
+          tripId: "trip-1",
+        }),
+      { wrapper: createWrapper() },
+    )
+
+    await act(async () => {
+      await result.current.createPhotoMutation.mutateAsync({
+        id: "photo-1",
+        caption: "Leaf",
+        file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
+      })
+    })
+
+    expect(psInsertMock).toHaveBeenCalledWith(
+      "collection_photo",
+      expect.objectContaining({
+        id: "photo-1",
+        collection_id: "collection-1",
+        url: "org-1/collections/collection-1/photo-1.jpg",
+        caption: "Leaf",
+        uploaded_at: null,
+      }),
+      expect.any(Object),
+    )
+    expect(putImageMock).toHaveBeenCalledWith("photo-1", "data:image/jpeg;base64,YQ==")
+    expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({
+      id: "photo-1",
+      kind: "photo",
+      table: "collection_photo",
+      path: "org-1/collections/collection-1/photo-1.jpg",
+    }), expect.any(Object))
+    expect(wakeMock).toHaveBeenCalledOnce()
+    expect(getSessionMock).not.toHaveBeenCalled()
+  })
+
+  it("registers the durable queue job before inserting metadata", async () => {
+
     const { result } = renderHook(
       () =>
         usePhotosMutate({
@@ -146,47 +189,11 @@ describe("usePhotosMutate", () => {
         url: "org-1/collections/collection-1/photo-1.jpg",
         caption: "Leaf",
       }),
+      expect.any(Object),
     )
-  })
-
-  it("keeps local collection photo metadata when storage upload fails", async () => {
-    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {})
-    uploadStartMock.mockImplementation((options) => {
-      options.onError?.(new Error("storage unavailable"))
-    })
-
-    const { result } = renderHook(
-      () =>
-        usePhotosMutate({
-          entityId: "collection-1",
-          entityType: "collection",
-          tripId: "trip-1",
-        }),
-      { wrapper: createWrapper() },
+    expect(enqueueMock.mock.invocationCallOrder[0]).toBeLessThan(
+      psInsertMock.mock.invocationCallOrder[0],
     )
-
-    await act(async () => {
-      await result.current.createPhotoMutation.mutateAsync({
-        id: "photo-1",
-        caption: "Leaf",
-        file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
-      })
-    })
-
-    expect(psInsertMock).toHaveBeenCalledWith(
-      "collection_photo",
-      expect.objectContaining({
-        id: "photo-1",
-        collection_id: "collection-1",
-        url: "org-1/collections/collection-1/photo-1.jpg",
-        caption: "Leaf",
-      }),
-    )
-    consoleLogSpy.mockRestore()
-    consoleErrorSpy.mockRestore()
   })
 
   it("updates collection photo captions through PowerSync", async () => {

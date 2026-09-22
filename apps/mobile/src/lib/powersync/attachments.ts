@@ -1,4 +1,5 @@
 import { liveUploadCredentials } from "../auth/liveSession"
+import type { Transaction } from "@powersync/web"
 import { getAudio } from "../persistAudio"
 import { getImage } from "../persistFiles"
 import { uploadToStorage, type SanitizedUploadError } from "../storageUpload"
@@ -94,14 +95,17 @@ export class LocalAttachmentQueue {
     bucket: string
     path: string
     mimeType: string
-  }): Promise<void> {
+  }, transaction?: Transaction): Promise<void> {
     const now = this.dependencies.now().toISOString()
-    await this.dependencies.database.execute(
+    await (transaction ?? this.dependencies.database).execute(
       `INSERT OR IGNORE INTO media_upload_jobs
        (id, kind, table_name, bucket, path, mime_type, status, attempt_count, next_attempt_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?, ?)`,
       [job.id, job.kind, job.table, job.bucket, job.path, job.mimeType, now, now],
     )
+  }
+
+  wake(): void {
     void this.pump()
   }
 
