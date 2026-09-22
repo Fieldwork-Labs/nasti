@@ -223,6 +223,31 @@ describe("LocalAttachmentQueue", () => {
     expect(db.jobs.get("a")).toMatchObject({ status: "uploaded" })
   })
 
+  it("requeues a preserved media failure and hides its notice in one local transaction", async () => {
+    const db = setup()
+    db.jobs.set("failed-photo", {
+      id: "failed-photo", kind: "photo", operation: "upload", table_name: "collection_photo",
+      bucket: "collection-photos", path: "test/path.jpg", mime_type: "image/jpeg", status: "failed",
+      attempt_count: 1,
+    })
+    const queue = new LocalAttachmentQueue({
+      database: db,
+      credentials: { acquire: vi.fn().mockResolvedValue(null), confirm: vi.fn() },
+      upload: vi.fn(),
+      getImage: vi.fn(),
+      online: () => false,
+    })
+
+    await queue.retry("failed-photo")
+
+    expect(db.writeTransaction).toHaveBeenCalledTimes(1)
+    expect(db.statements.slice(-2).map(({ sql }) => sql)).toEqual([
+      expect.stringContaining("UPDATE media_upload_jobs SET status = CASE"),
+      "DELETE FROM media_upload_failures WHERE id = ?",
+    ])
+    expect(db.statements[db.statements.length - 1]?.parameters).toEqual(["failed-photo"])
+  })
+
   it("reconciles legacy photo/audio caches idempotently after an interrupted scan", async () => {
     const db = setup()
     const rows = [

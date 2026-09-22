@@ -240,15 +240,17 @@ export class LocalAttachmentQueue {
   }
 
   async retry(id: string): Promise<void> {
-    await this.dependencies.database.execute(
-      `UPDATE media_upload_jobs SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
-       next_attempt_at = ? WHERE id = ? AND status = 'failed'`,
-      [this.dependencies.now().toISOString(), id],
-    )
-    await this.dependencies.database.execute(
-      "DELETE FROM media_upload_failures WHERE id = ?",
-      [id],
-    )
+    await this.dependencies.database.writeTransaction(async (transaction) => {
+      await transaction.execute(
+        `UPDATE media_upload_jobs SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
+         next_attempt_at = ? WHERE id = ? AND status = 'failed'`,
+        [this.dependencies.now().toISOString(), id],
+      )
+      await transaction.execute(
+        "DELETE FROM media_upload_failures WHERE id = ?",
+        [id],
+      )
+    })
     void this.pump()
   }
 
