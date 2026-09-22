@@ -55,6 +55,12 @@ export const createNastiSupabaseClient = (options?: {
     },
   })
 
+/** Creates a client whose every request uses this caller-supplied token. */
+export const createNastiSupabaseClientForToken = (accessToken: string) =>
+  createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    accessToken: async () => accessToken,
+  })
+
 let configuredNastiSupabaseClient: SupabaseClient<Database> | undefined
 
 const getNastiSupabaseClient = () => {
