@@ -37,7 +37,7 @@ TypeScript prevents it from being passed to a network adapter.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---|---|---|---|
-| 001 | Keep authenticated users in the local app for 30 days | P1 | M | — | TODO |
+| 001 | Keep authenticated users in the local app for 30 days | P1 | M | — | DONE (`14e722a`, verified 2026-09-23) |
 | 002 | Authenticate and classify every row upload attempt | P1 | M | 001 | TODO |
 | 003 | Queue photo and audio uploads durably | P1 | L | 001, 002 | TODO |
 | 004 | Surface, retry, and verify preserved failures | P1 | M | 002, 003 | TODO |
@@ -85,4 +85,3 @@ plan assumes the current PowerSync and Supabase dependencies remain in place.
 - Keeping React Query mutations as the media queue: rejected because mutation
   variables contain `File` objects and do not provide the durable,
   restart-safe byte lifecycle this requirement needs.
-
