@@ -235,6 +235,7 @@ const sync_failures = new Table(
     error_info: column.text,
     failed_at: column.text,
     classification: column.text,
+    retry_count: column.integer,
   },
   {
     localOnly: true,

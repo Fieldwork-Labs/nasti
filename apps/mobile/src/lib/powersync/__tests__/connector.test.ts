@@ -60,11 +60,16 @@ function makeTransaction(crud: CrudEntry[], onComplete?: () => void) {
 
 function makeDatabase(transactions: ReturnType<typeof makeTransaction>[]) {
   const savedRows: unknown[][] = []
-  const database = {
+  const database: {
+    getNextCrudTransaction: ReturnType<typeof vi.fn>
+    execute: ReturnType<typeof vi.fn>
+    writeTransaction: ReturnType<typeof vi.fn>
+  } = {
     getNextCrudTransaction: vi.fn(async () => transactions.shift() ?? null),
     execute: vi.fn(async (_sql: string, args: unknown[]) => {
       savedRows.push(args)
     }),
+    writeTransaction: vi.fn(async (callback: (transaction: { execute: (sql: string, args: unknown[]) => Promise<unknown> }) => Promise<void>) => callback(database)),
   }
   return { database, savedRows }
 }
@@ -226,7 +231,56 @@ describe("PowerSync row upload connector", () => {
     expect(savedBeforeComplete).toBe(true)
     expect(database.execute).toHaveBeenCalledOnce()
     expect(transaction.complete).toHaveBeenCalledOnce()
+    expect(savedRows[0]?.[8]).toBe(0)
     expect(JSON.stringify(savedRows)).not.toContain(TOKEN)
+  })
+
+  it("saves every operation from a failed transaction atomically before completion", async () => {
+    upsertMock.mockResolvedValue({ error: rowError("23514") })
+    const SupabaseConnector = await connectorClass()
+    let savedCountAtCompletion = 0
+    const transaction = makeTransaction(
+      [makeOp("species", "row-5a", UpdateType.PUT), makeOp("trip", "row-5b", UpdateType.PATCH)],
+      () => expect(savedCountAtCompletion).toBe(2),
+    )
+    const { database } = makeDatabase([transaction])
+    database.execute.mockImplementation(async (_sql, args) => {
+      savedCountAtCompletion += 1
+      return args
+    })
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(database.writeTransaction).toHaveBeenCalledOnce()
+    expect(database.execute).toHaveBeenCalledTimes(2)
+    expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("does not advance when an atomic failure-record transaction rolls back", async () => {
+    upsertMock.mockResolvedValue({ error: rowError("23514") })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("species", "row-5c", UpdateType.PUT),
+      makeOp("trip", "row-5d", UpdateType.PATCH),
+    ])
+    const { database, savedRows } = makeDatabase([transaction])
+    database.writeTransaction.mockImplementationOnce(async (
+      callback: (transaction: { execute: (sql: string, args: unknown[]) => Promise<unknown> }) => Promise<void>,
+    ) => {
+      const pending: unknown[][] = []
+      await callback({
+        execute: async (_sql, args) => {
+          if (pending.length === 1) throw new Error("write failed")
+          pending.push(args)
+        },
+      })
+      savedRows.push(...pending)
+    })
+
+    await expect(new SupabaseConnector().uploadData(database as never)).rejects.toThrow("write failed")
+
+    expect(savedRows).toEqual([])
+    expect(transaction.complete).not.toHaveBeenCalled()
   })
 
   it("preserves validation errors before completing", async () => {
@@ -293,6 +347,7 @@ describe("PowerSync row upload connector", () => {
         expect(database.database.execute).not.toHaveBeenCalled()
       } else {
         expect(database.database.execute).toHaveBeenCalledOnce()
+        expect(database.savedRows[0]?.[8]).toBe(4)
         expect(badTx.complete).toHaveBeenCalledOnce()
         await new ReloadedConnector().uploadData(database.database as never)
         expect(nextTx.complete).toHaveBeenCalledOnce()

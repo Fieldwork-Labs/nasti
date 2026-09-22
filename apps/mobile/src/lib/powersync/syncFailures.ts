@@ -13,6 +13,7 @@ export type RowFailure = {
   error_info: string | null
   failed_at: string
   classification: string | null
+  retry_count?: number | null
 }
 
 export type MediaFailure = {
@@ -33,6 +34,9 @@ type RecoveryDatabase = {
   getAll(sql: string, parameters?: unknown[]): Promise<unknown[]>
   writeTransaction(callback: (transaction: Pick<RecoveryDatabase, "execute" | "getAll">) => Promise<void>): Promise<void>
 }
+
+export const DELETE_RETRY_UNAVAILABLE_MESSAGE =
+  "This delete cannot be retried automatically because its local row is unavailable. The issue is still saved on this device."
 
 const rowColumns: Record<string, ReadonlySet<string>> = {
   trip: new Set(["created_at", "created_by", "end_date", "location_coordinate", "location_name", "metadata", "name", "organisation_id", "start_date"]),
@@ -75,12 +79,12 @@ function validateFailure(failure: RowFailure): { table: string; data: Record<str
   return { table: failure.target_table, data }
 }
 
-function emitRecoveryEvent(operation: "retry" | "dismiss", failure: SyncFailure, disposition: string): void {
+function emitRecoveryEvent(operation: "retry" | "dismiss", failure: SyncFailure, disposition: string, retryCount?: number): void {
   const common = {
     operation,
     failureKind: failure.failureKind,
     safeServerCode: failure.failureKind === "row" ? safeCode(failure.error_info) : failure.status_code,
-    retryCount: operation === "retry" ? 1 : 0,
+    retryCount: retryCount ?? (failure.failureKind === "row" ? failure.retry_count ?? 0 : 0),
     queueAgeMs: Math.max(0, Date.now() - new Date(failure.failed_at).getTime()),
     appVersion: typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "unknown",
     disposition,
@@ -107,7 +111,7 @@ function safeCode(errorInfo: string | null): string | null {
 
 export async function listSyncFailures(db: RecoveryDatabase = powerSyncDb): Promise<SyncFailure[]> {
   const [rows, media] = await Promise.all([
-    db.getAll("SELECT id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification FROM sync_failures ORDER BY failed_at DESC") as Promise<RowFailure[]>,
+    db.getAll("SELECT id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification, retry_count FROM sync_failures ORDER BY failed_at DESC") as Promise<RowFailure[]>,
     db.getAll("SELECT id, kind, status_code, safe_message, failed_at, app_version FROM media_upload_failures ORDER BY failed_at DESC") as Promise<MediaFailure[]>,
   ])
   return [
@@ -141,20 +145,23 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
   getAudio?: typeof getAudio
 }): Promise<void> {
   const db = dependencies.database ?? powerSyncDb
+  let retryAttemptCount = failure.failureKind === "row" ? failure.retry_count ?? 0 : 0
   try {
     if (failure.failureKind === "row") {
       const { table, data } = validateFailure(failure)
       const columns = rowColumns[table]
+      let retried = false
       await db.writeTransaction(async (transaction) => {
+        const savedFailure = await transaction.getAll(
+          "SELECT id, retry_count FROM sync_failures WHERE id = ?",
+          [failure.id],
+        )
+        if (!savedFailure.length) return
+        const persistedRetryCount = (savedFailure[0] as { retry_count?: number | null }).retry_count ?? 0
+        retryAttemptCount = persistedRetryCount + 1
         if (failure.op_type === "DELETE") {
-          const entries = Object.entries(data).filter(([key]) => key !== "id")
-          if (entries.length) {
-            const names = ["id", ...entries.map(([key]) => key)]
-            const values = [failure.entity_id, ...entries.map(([, value]) => toSqlValue(value))]
-            await transaction.execute(`INSERT OR REPLACE INTO ${table} (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`, values)
-          } else {
-            await transaction.execute(`INSERT OR IGNORE INTO ${table} (id) VALUES (?)`, [failure.entity_id])
-          }
+          const localRow = await transaction.getAll(`SELECT id FROM ${table} WHERE id = ?`, [failure.entity_id])
+          if (!localRow.length) throw new Error(DELETE_RETRY_UNAVAILABLE_MESSAGE)
           await transaction.execute(`DELETE FROM ${table} WHERE id = ?`, [failure.entity_id])
         } else {
           const entries = Object.entries(data).filter(([key]) => key !== "id")
@@ -171,20 +178,26 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
           }
         }
         await transaction.execute("DELETE FROM sync_failures WHERE id = ?", [failure.id])
+        retried = true
       })
+      emitRecoveryEvent("retry", failure, retried ? "success" : "already_retried", retried ? retryAttemptCount : Math.max(0, retryAttemptCount - 1))
+      return
     } else {
-      const [job] = (await db.getAll("SELECT id, kind, operation, table_name, bucket, path, mime_type FROM media_upload_jobs WHERE id = ?", [failure.id])) as Array<{ id: string; kind: MediaKind; operation: "upload" | "delete"; table_name: string; bucket: string; path: string; mime_type: string }>
+      const [job] = (await db.getAll("SELECT id, kind, operation, table_name, bucket, path, mime_type, attempt_count FROM media_upload_jobs WHERE id = ?", [failure.id])) as Array<{ id: string; kind: MediaKind; operation: "upload" | "delete"; table_name: string; bucket: string; path: string; mime_type: string; attempt_count: number }>
       if (!job || job.operation !== "upload") throw new Error("Media upload job is unavailable")
+      retryAttemptCount = job.attempt_count + 1
       const bytes = failure.kind === "photo"
         ? await (dependencies.getImage ?? getImage)(failure.id)
         : await (dependencies.getAudio ?? getAudio)(failure.id)
       if (!bytes) throw new Error("Preserved media bytes are unavailable")
       const queue = dependencies.queue ?? mediaAttachmentQueue
       await queue.retry(job.id)
+      emitRecoveryEvent("retry", failure, "success", retryAttemptCount)
+      return
     }
     emitRecoveryEvent("retry", failure, "success")
   } catch (error) {
-    emitRecoveryEvent("retry", failure, "failed")
+    emitRecoveryEvent("retry", failure, "failed", retryAttemptCount)
     throw error
   }
 }

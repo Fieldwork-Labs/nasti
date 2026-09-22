@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@nasti/ui/alert-dialog"
-import { dismissSyncFailure, listSyncFailures, retrySyncFailure, type SyncFailure } from "@/lib/powersync/syncFailures"
+import { DELETE_RETRY_UNAVAILABLE_MESSAGE, dismissSyncFailure, listSyncFailures, retrySyncFailure, type SyncFailure } from "@/lib/powersync/syncFailures"
 import { useSyncStatus } from "@/hooks/useSyncStatus"
 
 export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -34,8 +34,10 @@ export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange
         queryClient.invalidateQueries({ queryKey: ["sync", "status-summary"] }),
       ])
       return true
-    } catch {
-      setActionError("Retry could not be queued. The issue is still saved on this device.")
+    } catch (error) {
+      setActionError(error instanceof Error && error.message === DELETE_RETRY_UNAVAILABLE_MESSAGE
+        ? DELETE_RETRY_UNAVAILABLE_MESSAGE
+        : "Retry could not be queued. The issue is still saved on this device.")
       return false
     }
   }

@@ -120,6 +120,7 @@ async function saveFailedTransaction(
   database: AbstractPowerSyncDatabase,
   transaction: CrudTransaction,
   error: unknown,
+  retryCount = 0,
 ): Promise<void> {
   const pgCode = errorField(error, "code")
   const errorInfo = JSON.stringify({
@@ -127,22 +128,25 @@ async function saveFailedTransaction(
   })
   const failedAt = new Date().toISOString()
 
-  for (const op of transaction.crud) {
-    await database.execute(
-      `INSERT INTO sync_failures (id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        crypto.randomUUID(),
-        op.table,
-        op.id,
-        op.op,
-        JSON.stringify(op.opData ?? {}),
-        errorInfo,
-        failedAt,
-        classifyPgCode(pgCode ?? undefined),
-      ],
-    )
-  }
+  await database.writeTransaction(async (writeTransaction) => {
+    for (const op of transaction.crud) {
+      await writeTransaction.execute(
+        `INSERT INTO sync_failures (id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification, retry_count)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          crypto.randomUUID(),
+          op.table,
+          op.id,
+          op.op,
+          JSON.stringify(op.opData ?? {}),
+          errorInfo,
+          failedAt,
+          classifyPgCode(pgCode ?? undefined),
+          retryCount,
+        ],
+      )
+    }
+  })
 }
 
 function transactionKey(transaction: CrudTransaction): string {
@@ -312,7 +316,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
 
         if (count > MAX_NON_TRANSIENT_RETRIES) {
           recordDiagnostic(transaction, error, "preserved_dependency_error", count)
-          await saveFailedTransaction(database, transaction, error)
+          await saveFailedTransaction(database, transaction, error, count)
           if (await safeComplete(transaction)) clearDependencyRetryCount(key)
           return
         }

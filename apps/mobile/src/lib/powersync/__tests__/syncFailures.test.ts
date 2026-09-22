@@ -12,13 +12,19 @@ import { dismissSyncFailure, listSyncFailures, retrySyncFailure, type RowFailure
 function database() {
   const statements: Array<{ sql: string; parameters: unknown[] }> = []
   let failWrite = false
+  let failurePresent = true
+  let localRowPresent = true
+  let failureRetryCount = 0
   const execute = vi.fn(async (sql: string, parameters: unknown[] = []) => {
     if (failWrite) throw new Error("transaction failed")
     statements.push({ sql, parameters })
+    if (sql === "DELETE FROM sync_failures WHERE id = ?") failurePresent = false
   })
-  const getAll = vi.fn(async (sql: string): Promise<unknown[]> => {
-    if (sql.includes("SELECT id FROM trip")) return [{ id: "trip-1" }]
-    if (sql.includes("FROM sync_failures")) return [rowFailure]
+  const getAll = vi.fn(async (sql: string, _parameters?: unknown[]): Promise<unknown[]> => {
+    if (sql.includes("SELECT id FROM trip")) return localRowPresent ? [{ id: "trip-1" }] : []
+    if (sql.includes("SELECT id, retry_count FROM sync_failures WHERE")) return failurePresent ? [{ id: "failure-1", retry_count: failureRetryCount }] : []
+    if (sql.includes("SELECT id FROM sync_failures WHERE")) return failurePresent ? [{ id: "failure-1" }] : []
+    if (sql.includes("FROM sync_failures")) return failurePresent ? [rowFailure] : []
     if (sql.includes("FROM media_upload_failures")) return []
     if (sql.includes("FROM media_upload_jobs")) return [{ id: "media-1", kind: "photo", operation: "upload", table_name: "collection_photo", bucket: "collection-photos", path: "private/path.jpg", mime_type: "image/jpeg" }]
     return []
@@ -32,6 +38,8 @@ function database() {
     }),
     statements,
     setFailWrite: (value: boolean) => { failWrite = value },
+    setLocalRowPresent: (value: boolean) => { localRowPresent = value },
+    setFailureRetryCount: (value: number) => { failureRetryCount = value },
   }
   return db
 }
@@ -63,15 +71,24 @@ describe("sync failure recovery", () => {
     expect(db.statements[1]).toMatchObject({ sql: "DELETE FROM sync_failures WHERE id = ?", parameters: ["failure-1"] })
   })
 
-  it("retries DELETE idempotently and uses the allowlisted table", async () => {
+  it("retries DELETE only when the original local row exists, without recreating it", async () => {
     const failure = { ...rowFailure, op_type: "DELETE" as const, op_data: "{}" }
     const db = database()
     await retrySyncFailure({ ...failure, failureKind: "row" }, { database: db })
     expect(db.statements.map(({ sql }) => sql)).toEqual([
-      "INSERT OR IGNORE INTO trip (id) VALUES (?)",
       "DELETE FROM trip WHERE id = ?",
       "DELETE FROM sync_failures WHERE id = ?",
     ])
+  })
+
+  it("preserves the issue when a DELETE row is absent locally", async () => {
+    const failure = { ...rowFailure, op_type: "DELETE" as const, op_data: "{}" }
+    const db = database()
+    db.setLocalRowPresent(false)
+    await expect(retrySyncFailure({ ...failure, failureKind: "row" }, { database: db })).rejects.toThrow(/local row is unavailable/)
+    expect(db.writeTransaction).toHaveBeenCalledOnce()
+    expect(db.execute).not.toHaveBeenCalled()
+    await expect(db.getAll("SELECT id FROM sync_failures WHERE id = ?", [failure.id])).resolves.toEqual([{ id: "failure-1" }])
   })
 
   it("rejects malformed JSON, unknown tables, and unknown columns without writes", async () => {
@@ -107,6 +124,24 @@ describe("sync failure recovery", () => {
     ])
     expect(db.writeTransaction).toHaveBeenCalledTimes(1)
     expect(db.statements.filter(({ sql }) => sql.startsWith("UPDATE trip"))).toHaveLength(1)
+  })
+
+  it("reports the persisted retry attempt count in recovery telemetry", async () => {
+    const db = database()
+    db.setFailureRetryCount(4)
+    await retrySyncFailure({ ...rowFailure, failureKind: "row", retry_count: 4 }, { database: db })
+    const event = mocks.captureMessage.mock.calls[0]?.[1] as { extra?: { retryCount?: number } }
+    expect(event.extra?.retryCount).toBe(5)
+  })
+
+  it("does not replay a stale failure object after its notice was removed", async () => {
+    const db = database()
+    const failure = { ...rowFailure, failureKind: "row" as const }
+    await retrySyncFailure(failure, { database: db })
+    await retrySyncFailure(failure, { database: db })
+    expect(db.writeTransaction).toHaveBeenCalledTimes(2)
+    expect(db.statements.filter(({ sql }) => sql.startsWith("UPDATE trip"))).toHaveLength(1)
+    expect(db.statements.filter(({ sql }) => sql === "DELETE FROM sync_failures WHERE id = ?")).toHaveLength(1)
   })
 
   it("dismisses only the issue notice and emits payload-free telemetry", async () => {
