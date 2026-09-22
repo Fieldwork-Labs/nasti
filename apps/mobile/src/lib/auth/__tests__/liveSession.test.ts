@@ -52,6 +52,16 @@ describe("live upload credentials", () => {
     await Promise.resolve()
   })
 
+  it("bounds default acquisition at 30 seconds for connector credential fetches", async () => {
+    vi.useFakeTimers()
+    getSessionMock.mockReturnValue(new Promise(() => undefined))
+    const acquisition = liveUploadCredentials.acquire()
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    await expect(acquisition).resolves.toBeNull()
+    vi.useRealTimers()
+  })
+
   it("confirms the supplied token with the auth server", async () => {
     getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null })
 

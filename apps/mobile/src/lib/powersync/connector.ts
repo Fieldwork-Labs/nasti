@@ -88,11 +88,8 @@ function prepareForSupabase(
   return result
 }
 
-function waitForOnline(): Promise<void> {
-  if (navigator.onLine) return Promise.resolve()
-  return new Promise((resolve) => {
-    window.addEventListener("online", () => resolve(), { once: true })
-  })
+function ensureOnline(): void {
+  if (!navigator.onLine) throw new Error("Device is offline")
 }
 
 function errorField(error: unknown, field: string): string | null {
@@ -235,7 +232,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     const transaction = await database.getNextCrudTransaction()
     if (!transaction) return
 
-    await waitForOnline()
+    ensureOnline()
     const key = transactionKey(transaction)
     const credentials = await liveUploadCredentials.acquire()
     if (!credentials) {

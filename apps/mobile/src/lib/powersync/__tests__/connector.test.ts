@@ -132,6 +132,32 @@ describe("PowerSync row upload connector", () => {
     expect(transaction.complete).not.toHaveBeenCalled()
   })
 
+  it("returns immediately when offline without acquiring credentials or touching the row", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([makeOp("species", "offline-row", UpdateType.PUT)])
+    const { database } = makeDatabase([transaction])
+
+    await expect(new SupabaseConnector().uploadData(database as never)).rejects.toThrow(
+      "Device is offline",
+    )
+
+    expect(acquireMock).not.toHaveBeenCalled()
+    expect(tokenClientFromMock).not.toHaveBeenCalled()
+    expect(database.execute).not.toHaveBeenCalled()
+    expect(transaction.complete).not.toHaveBeenCalled()
+  })
+
+  it("defers PowerSync connection when bounded credential acquisition fails", async () => {
+    acquireMock.mockResolvedValue(null)
+    const SupabaseConnector = await connectorClass()
+
+    await expect(new SupabaseConnector().fetchCredentials()).rejects.toThrow(
+      "Not authenticated - cannot connect to PowerSync",
+    )
+    expect(acquireMock).toHaveBeenCalledOnce()
+  })
+
   it("leaves a network failure queued", async () => {
     upsertMock.mockResolvedValue({ error: new TypeError("network offline") })
     const SupabaseConnector = await connectorClass()
