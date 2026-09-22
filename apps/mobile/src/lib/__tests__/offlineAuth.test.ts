@@ -4,6 +4,9 @@ import { authStorage } from "@/platform"
 import { supabase } from "@nasti/common/supabase"
 import {
   deleteOfflineAuthSnapshot,
+  allowExplicitLogin,
+  beginExplicitLogout,
+  finishExplicitLogout,
   getAuthStateWithOfflineFallback,
   OFFLINE_ACCESS_MS,
   OFFLINE_AUTH_KEY,
@@ -37,6 +40,9 @@ const session = {
 const snapshot = snapshotFromSession(session, null, true, now)!
 
 beforeEach(() => {
+  beginExplicitLogout()
+  finishExplicitLogout()
+  allowExplicitLogin()
   vi.useFakeTimers()
   vi.setSystemTime(now)
   vi.mocked(authStorage.getItem).mockReset().mockResolvedValue(null)

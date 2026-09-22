@@ -8,8 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@nasti/ui/alert-dialog"
-import { useNavigate } from "@tanstack/react-router"
-import { useCallback } from "react"
+import { useNavigate, useRouter } from "@tanstack/react-router"
 
 export const SettingsMenuModal = ({
   close,
@@ -18,26 +17,46 @@ export const SettingsMenuModal = ({
   close: () => void
   isOpen: boolean
 }) => {
-  const { logout } = useAuth()
-
   const navigate = useNavigate()
-
-  const handleLogout = useCallback(async () => {
-    await logout.mutateAsync()
-  }, [logout, navigate])
+  const router = useRouter()
+  const { logout } = useAuth({
+    onLogout: async () => {
+      await router.invalidate()
+      await navigate({ to: "/auth/login" })
+      close()
+    },
+  })
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={close}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={() => {
+        if (!logout.isPending) close()
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Settings</AlertDialogTitle>
-          <AlertDialogAction className="w-full" onClick={handleLogout}>
-            Logout
+          <AlertDialogAction
+            className="w-full"
+            disabled={logout.isPending}
+            onClick={(event) => {
+              event.preventDefault()
+              logout.mutate()
+            }}
+          >
+            {logout.isPending ? "Logging out…" : "Logout"}
           </AlertDialogAction>
+          {logout.error && (
+            <p role="alert" className="text-destructive text-sm">
+              {logout.error.message}
+            </p>
+          )}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
             className="w-full"
+            disabled={logout.isPending}
             onClick={(e) => {
               e.preventDefault()
               close()

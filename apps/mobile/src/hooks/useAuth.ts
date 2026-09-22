@@ -8,14 +8,23 @@ import { supabase } from "@nasti/common/supabase"
 import { isAuthRetryableFetchError } from "@supabase/supabase-js"
 import {
   type AuthState,
+  allowExplicitLogin,
+  beginExplicitLogout,
+  closeFailedLoginPersistence,
+  deleteOfflineAuthSnapshot,
+  deletePersistedSupabaseSession,
+  finishExplicitLogout,
+  getAuthRevision,
   getAuthStateFromSession,
   getAuthStateWithOfflineFallback,
   isExplicitLogoutInProgress,
   loggedOutAuthState,
+  prepareExplicitLogin,
   readOfflineAuthSnapshot,
   snapshotFromSession,
   writeOfflineAuthSnapshot,
 } from "@/lib/offlineAuth"
+import { withTimeout } from "@/lib/withTimeout"
 
 export {
   getAuthStateFromSession,
@@ -37,7 +46,9 @@ export const setAuthState = (queryClient: QueryClient, state: AuthState) => {
   queryClient.removeQueries({ queryKey: ["auth", "loggedIn"], exact: true })
 }
 
-export const useAuth = () => {
+export const useAuth = ({
+  onLogout,
+}: { onLogout?: () => Promise<void> } = {}) => {
   const queryClient = useQueryClient()
   const login = useMutation({
     mutationFn: async ({
@@ -47,6 +58,10 @@ export const useAuth = () => {
       email: string
       password: string
     }) => {
+      if (isExplicitLogoutInProgress())
+        throw new Error("Please wait for logout to finish")
+      const revision = getAuthRevision()
+      prepareExplicitLogin()
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -56,15 +71,20 @@ export const useAuth = () => {
           throw new Error("Unable to connect to server")
         else throw error
       }
-      return data
+      return { ...data, revision }
     },
     networkMode: "online",
     retry: false,
+    onError: closeFailedLoginPersistence,
     onSuccess: async (data) => {
-      if (isExplicitLogoutInProgress()) return
+      if (isExplicitLogoutInProgress() || data.revision !== getAuthRevision())
+        return
+      allowExplicitLogin()
       setAuthState(queryClient, getAuthStateFromSession(data.session))
       if (data.session) {
         const previous = await readOfflineAuthSnapshot()
+        if (isExplicitLogoutInProgress() || data.revision !== getAuthRevision())
+          return
         const snapshot = snapshotFromSession(data.session, previous, true)
         if (snapshot) await writeOfflineAuthSnapshot(snapshot)
       }
@@ -73,15 +93,26 @@ export const useAuth = () => {
 
   const logout = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut()
-
-      if (error) throw error
-    },
-    onMutate: () => {
-      // Regardless of online state, clear local auth state immediately.
+      beginExplicitLogout()
       setAuthState(queryClient, loggedOutAuthState)
+      try {
+        await deleteOfflineAuthSnapshot()
+        // Both scopes can contact the server. Neither may block local logout.
+        for (const scope of ["global", "local"] as const) {
+          await withTimeout(
+            Promise.resolve()
+              .then(() => supabase.auth.signOut({ scope }))
+              .catch(() => null),
+          )
+        }
+        await deletePersistedSupabaseSession()
+        await onLogout?.()
+      } finally {
+        finishExplicitLogout()
+      }
     },
-    networkMode: "online",
+    networkMode: "always",
+    retry: false,
   })
 
   const { data: authState = loggedOutAuthState } = useQuery({

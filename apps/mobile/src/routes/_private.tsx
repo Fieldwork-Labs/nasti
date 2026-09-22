@@ -1,7 +1,10 @@
 import { GeoLocationProvider } from "@/contexts/location"
 import { setAuthState, useAuth } from "@/hooks/useAuth"
 import { queryClient } from "@/lib/queryClient"
-import { getAuthStateWithOfflineFallback } from "@/lib/offlineAuth"
+import {
+  getAuthStateWithOfflineFallback,
+  isExplicitLogoutInProgress,
+} from "@/lib/offlineAuth"
 import { Spinner } from "@nasti/ui/spinner"
 import {
   Outlet,
@@ -22,7 +25,7 @@ function AuthLayout() {
   const tripId = location.pathname.match(/^\/trips\/([^/]+)/)?.[1]
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && !isExplicitLogoutInProgress()) {
       navigate({
         to: "/auth/login",
       })

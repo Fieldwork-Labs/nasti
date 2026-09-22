@@ -1,6 +1,11 @@
 import { authStorage } from "@/platform"
 import { getAppMeta } from "@nasti/common/authClaims"
 import { supabase } from "@nasti/common/supabase"
+import {
+  setNastiSessionPersistenceEnabled,
+  SUPABASE_AUTH_STORAGE_KEY,
+  waitForNastiSessionWrites,
+} from "@nasti/common/supabaseClient"
 import { ROLE, type Role } from "@nasti/common/types"
 import type { Session } from "@supabase/supabase-js"
 import { z } from "zod"
@@ -33,6 +38,7 @@ export type AuthState = {
     isAdmin: boolean
   } | null
   isLoggedIn: boolean
+  offlineAccessUntil: string | null
 }
 
 export const loggedOutAuthState: AuthState = {
@@ -41,6 +47,7 @@ export const loggedOutAuthState: AuthState = {
   user: null,
   claims: null,
   isLoggedIn: false,
+  offlineAccessUntil: null,
 }
 
 export const getAuthStateFromSession = (session: Session | null): AuthState => {
@@ -66,6 +73,7 @@ export const getAuthStateFromSession = (session: Session | null): AuthState => {
         }
       : null,
     isLoggedIn: true,
+    offlineAccessUntil: null,
   }
 }
 
@@ -86,6 +94,7 @@ export const getAuthStateFromSnapshot = (
     isAdmin: snapshot.role === ROLE.ADMIN,
   },
   isLoggedIn: true,
+  offlineAccessUntil: snapshot.offlineAccessUntil,
 })
 
 const snapshotSchema = z
@@ -112,16 +121,34 @@ const snapshotSchema = z
 let pendingWrite: Promise<void> = Promise.resolve()
 let authRevision = 0
 let loggingOut = false
+let sessionEventsAllowed = true
+let retainedSnapshot: OfflineAuthSnapshot | null = null
 
 export const isExplicitLogoutInProgress = () => loggingOut
+export const areAuthSessionEventsAllowed = () => sessionEventsAllowed
 export const getAuthRevision = () => authRevision
 export const beginExplicitLogout = () => {
   loggingOut = true
+  sessionEventsAllowed = false
+  retainedSnapshot = null
+  setNastiSessionPersistenceEnabled(false)
   authRevision += 1
 }
 export const finishExplicitLogout = () => {
   loggingOut = false
 }
+export const allowExplicitLogin = () => {
+  sessionEventsAllowed = true
+  setNastiSessionPersistenceEnabled(true)
+}
+export const prepareExplicitLogin = () => {
+  setNastiSessionPersistenceEnabled(true)
+}
+export const closeFailedLoginPersistence = () => {
+  if (!sessionEventsAllowed) setNastiSessionPersistenceEnabled(false)
+}
+export const getRetainedOfflineAuthSnapshot = () =>
+  isSnapshotValid(retainedSnapshot) ? retainedSnapshot : null
 
 export const isSnapshotValid = (
   snapshot: OfflineAuthSnapshot | null,
@@ -131,12 +158,14 @@ export const isSnapshotValid = (
 
 export const readOfflineAuthSnapshot =
   async (): Promise<OfflineAuthSnapshot | null> => {
+    const revision = authRevision
     try {
       const stored = await withTimeout(
         Promise.resolve().then(() => authStorage.getItem(OFFLINE_AUTH_KEY)),
       )
       if (stored === TIMED_OUT || stored == null) return null
       const parsed = snapshotSchema.safeParse(JSON.parse(stored))
+      if (parsed.success && revision === authRevision && !loggingOut) retainedSnapshot = parsed.data
       return parsed.success ? parsed.data : null
     } catch {
       // A failed/slow read must never destroy a potentially valid identity.
@@ -149,6 +178,7 @@ export const writeOfflineAuthSnapshot = async (
 ): Promise<boolean> => {
   if (loggingOut) return false
   const validated = snapshotSchema.parse(snapshot)
+  retainedSnapshot = validated
   const revision = authRevision
   const write = pendingWrite.then(async () => {
     if (loggingOut || revision !== authRevision) return
@@ -175,6 +205,21 @@ export const deleteOfflineAuthSnapshot = async () => {
     throw new Error(
       "Unable to remove offline login. Please try logging out again.",
     )
+  }
+}
+
+export const deletePersistedSupabaseSession = async () => {
+  await waitForNastiSessionWrites()
+  for (const key of [
+    SUPABASE_AUTH_STORAGE_KEY,
+    `${SUPABASE_AUTH_STORAGE_KEY}-code-verifier`,
+  ]) {
+    await authStorage.removeItem(key)
+    if ((await authStorage.getItem(key)) != null) {
+      throw new Error(
+        "Unable to remove saved login. Please try logging out again.",
+      )
+    }
   }
 }
 
@@ -207,9 +252,9 @@ export const snapshotFromSession = (
 }
 
 export const getAuthStateWithOfflineFallback = async (): Promise<AuthState> => {
-  if (loggingOut) return loggedOutAuthState
+  if (loggingOut || !sessionEventsAllowed) return loggedOutAuthState
   const revision = authRevision
-  const snapshot = await readOfflineAuthSnapshot()
+  const snapshot = await readOfflineAuthSnapshot() ?? getRetainedOfflineAuthSnapshot()
   if (loggingOut || revision !== authRevision) return loggedOutAuthState
   if (isSnapshotValid(snapshot)) return getAuthStateFromSnapshot(snapshot)
 
@@ -228,5 +273,6 @@ export const getAuthStateWithOfflineFallback = async (): Promise<AuthState> => {
       ? loggedOutAuthState
       : getAuthStateFromSession(session)
   }
-  return loggedOutAuthState
+  const discovered = getRetainedOfflineAuthSnapshot()
+  return discovered ? getAuthStateFromSnapshot(discovered) : loggedOutAuthState
 }

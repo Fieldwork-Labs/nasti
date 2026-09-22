@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query"
 import { StrictMode, type ReactNode } from "react"
 import {
   AuthRetryableFetchError,
@@ -10,7 +14,20 @@ import {
 import { supabase } from "@nasti/common/supabase"
 import { authStorage } from "@/platform"
 import { AuthProvider } from "@/contexts/auth"
-import { snapshotFromSession, OFFLINE_AUTH_KEY } from "@/lib/offlineAuth"
+import {
+  allowExplicitLogin,
+  beginExplicitLogout,
+  finishExplicitLogout,
+  getAuthStateWithOfflineFallback,
+  isExplicitLogoutInProgress,
+  snapshotFromSession,
+  OFFLINE_AUTH_KEY,
+  OFFLINE_ACCESS_MS,
+} from "@/lib/offlineAuth"
+import {
+  SUPABASE_AUTH_STORAGE_KEY,
+  withSessionPersistenceGate,
+} from "@nasti/common/supabaseClient"
 import { authStateQueryKey, useAuth } from "../useAuth"
 
 vi.mock("@/platform", () => ({
@@ -75,6 +92,10 @@ const emit = (event: AuthChangeEvent, value: Session | null) =>
 
 beforeEach(() => {
   vi.resetAllMocks()
+  beginExplicitLogout()
+  finishExplicitLogout()
+  allowExplicitLogin()
+  onlineManager.setOnline(true)
   callbacks.clear()
   stored = new Map()
   client = new QueryClient({
@@ -112,6 +133,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   client.clear()
+  vi.useRealTimers()
+  onlineManager.setOnline(true)
 })
 
 describe("useAuth", () => {
@@ -248,5 +271,227 @@ describe("auth subscription", () => {
     await waitFor(() => expect(result.current.mode).toBe("offline"))
     expect(result.current.session).toBeNull()
     expect(authStorage.removeItem).not.toHaveBeenCalled()
+  })
+
+  it("does not let a delayed bootstrap overwrite a newer auth event", async () => {
+    let finishBootstrapRead!: (value: string | null) => void
+    vi.mocked(authStorage.getItem).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishBootstrapRead = resolve
+        }),
+    )
+    const { result } = renderHook(useAuth, { wrapper: providerWrapper })
+    await waitFor(() => expect(callbacks.size).toBe(1))
+
+    emit("SIGNED_IN", session)
+    await waitFor(() => expect(result.current?.mode).toBe("live"))
+    finishBootstrapRead(null)
+    await waitFor(() => expect(result.current.mode).toBe("live"))
+    expect(result.current.session).toEqual(session)
+  })
+
+  it("expires offline access while the app remains open", async () => {
+    const expiresIn = 500
+    stored.set(
+      OFFLINE_AUTH_KEY,
+      JSON.stringify(
+        snapshotFromSession(
+          session,
+          null,
+          true,
+          Date.now() - OFFLINE_ACCESS_MS + expiresIn,
+        ),
+      ),
+    )
+    const { result } = renderHook(useAuth, { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.mode).toBe("offline"))
+    await waitFor(() => expect(result.current.mode).toBe("logged_out"))
+    expect(authStorage.removeItem).not.toHaveBeenCalled()
+  })
+})
+
+describe("explicit logout", () => {
+  const seedLogin = () => {
+    stored.set(OFFLINE_AUTH_KEY, JSON.stringify(snapshotFromSession(session)))
+    stored.set(SUPABASE_AUTH_STORAGE_KEY, JSON.stringify(session))
+  }
+
+  it("works offline and verifies credentials are removed before navigation", async () => {
+    seedLogin()
+    onlineManager.setOnline(false)
+    vi.mocked(supabase.auth.signOut).mockResolvedValue({
+      error: new AuthRetryableFetchError("offline", 0),
+    })
+    const navigate = vi.fn(async () => {
+      expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
+      expect(stored.has(SUPABASE_AUTH_STORAGE_KEY)).toBe(false)
+      expect(isExplicitLogoutInProgress()).toBe(true)
+    })
+    const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
+      wrapper: providerWrapper,
+    })
+    await waitFor(() => expect(result.current?.mode).toBe("offline"))
+    await act(() => result.current.logout.mutateAsync())
+    expect(supabase.auth.signOut).toHaveBeenNthCalledWith(1, {
+      scope: "global",
+    })
+    expect(supabase.auth.signOut).toHaveBeenNthCalledWith(2, { scope: "local" })
+    expect(navigate).toHaveBeenCalledOnce()
+    expect(isExplicitLogoutInProgress()).toBe(false)
+    await waitFor(() => expect(result.current.isLoggedIn).toBe(false))
+    // Simulate a fresh module lifetime after reload; storage is authoritative.
+    allowExplicitLogin()
+    expect(await getAuthStateWithOfflineFallback()).toMatchObject({
+      mode: "logged_out",
+    })
+  })
+
+  it("completes local removal when global sign-out rejects", async () => {
+    seedLogin()
+    vi.mocked(supabase.auth.signOut).mockRejectedValueOnce(
+      new Error("network down"),
+    )
+    const { result } = renderHook(useAuth, { wrapper })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    await act(() => result.current.logout.mutateAsync())
+    expect(supabase.auth.signOut).toHaveBeenCalledTimes(2)
+    expect(stored.size).toBe(0)
+  })
+
+  it("does not complete or navigate while snapshot deletion is stalled", async () => {
+    seedLogin()
+    let finishDeletion!: () => void
+    vi.mocked(authStorage.removeItem).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDeletion = () => {
+            stored.delete(OFFLINE_AUTH_KEY)
+            resolve()
+          }
+        }),
+    )
+    const navigate = vi.fn(async () => undefined)
+    const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    vi.useFakeTimers()
+    let logout!: Promise<void>
+    act(() => {
+      logout = result.current.logout.mutateAsync()
+    })
+    await act(() => vi.advanceTimersByTimeAsync(60_000))
+    expect(result.current.logout.isPending).toBe(true)
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+    await act(async () => {
+      finishDeletion()
+      await logout
+    })
+    expect(navigate).toHaveBeenCalledOnce()
+  })
+
+  it("reports deletion failures and never presents logout as complete", async () => {
+    seedLogin()
+    vi.mocked(authStorage.removeItem).mockResolvedValue(undefined)
+    const navigate = vi.fn(async () => undefined)
+    const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    await act(async () => {
+      await expect(result.current.logout.mutateAsync()).rejects.toThrow(
+        "Unable to remove offline login",
+      )
+    })
+    expect(navigate).not.toHaveBeenCalled()
+    expect(supabase.auth.signOut).not.toHaveBeenCalled()
+    expect(stored.has(OFFLINE_AUTH_KEY)).toBe(true)
+    expect(isExplicitLogoutInProgress()).toBe(false)
+  })
+
+  it("bounds both stalled sign-out attempts and still removes local credentials", async () => {
+    seedLogin()
+    vi.mocked(supabase.auth.signOut).mockReturnValue(
+      new Promise(() => undefined),
+    )
+    const { result } = renderHook(useAuth, { wrapper })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    vi.useFakeTimers()
+    let logout!: Promise<void>
+    act(() => {
+      logout = result.current.logout.mutateAsync()
+    })
+    await act(() => vi.advanceTimersByTimeAsync(10_000))
+    await logout
+    expect(stored.size).toBe(0)
+  })
+
+  it("blocks late refresh events and writes after logout, then re-enables explicit login", async () => {
+    seedLogin()
+    const gatedStorage = withSessionPersistenceGate(authStorage)
+    const { result } = renderHook(useAuth, { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.mode).toBe("offline"))
+    await act(() => result.current.logout.mutateAsync())
+    await gatedStorage.setItem(
+      SUPABASE_AUTH_STORAGE_KEY,
+      JSON.stringify(session),
+    )
+    emit("TOKEN_REFRESHED", session)
+    expect(stored.size).toBe(0)
+    await waitFor(() => expect(result.current.mode).toBe("logged_out"))
+    vi.mocked(supabase.auth.signInWithPassword).mockImplementation(async () => {
+      await gatedStorage.setItem(
+        SUPABASE_AUTH_STORAGE_KEY,
+        JSON.stringify(session),
+      )
+      return { data: { user: session.user, session }, error: null }
+    })
+    await act(() =>
+      result.current.login.mutateAsync({
+        email: "test@example.com",
+        password: "pw",
+      }),
+    )
+    expect(stored.has(SUPABASE_AUTH_STORAGE_KEY)).toBe(true)
+    expect(stored.has(OFFLINE_AUTH_KEY)).toBe(true)
+    await waitFor(() => expect(result.current.mode).toBe("live"))
+  })
+
+  it("waits for an in-flight Supabase write before verifying logout removal", async () => {
+    seedLogin()
+    let finishWrite!: () => void
+    vi.mocked(authStorage.setItem).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWrite = () => {
+            stored.set(SUPABASE_AUTH_STORAGE_KEY, JSON.stringify(session))
+            resolve()
+          }
+        }),
+    )
+    const gatedStorage = withSessionPersistenceGate(authStorage)
+    const { result } = renderHook(() => useAuth(), { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+
+    const lateWrite = gatedStorage.setItem(
+      SUPABASE_AUTH_STORAGE_KEY,
+      JSON.stringify(session),
+    )
+    await Promise.resolve()
+    let logoutCompleted = false
+    const logout = result.current.logout.mutateAsync().then(() => {
+      logoutCompleted = true
+    })
+    await Promise.resolve()
+    expect(logoutCompleted).toBe(false)
+
+    finishWrite()
+    await lateWrite
+    await logout
+    expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
+    expect(stored.has(SUPABASE_AUTH_STORAGE_KEY)).toBe(false)
+    expect(logoutCompleted).toBe(true)
   })
 })

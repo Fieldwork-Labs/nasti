@@ -1,11 +1,15 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useIsRestoring, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
-import { setAuthState } from "@/hooks/useAuth"
+import { authStateQueryKey, setAuthState } from "@/hooks/useAuth"
 import {
+  areAuthSessionEventsAllowed,
+  type AuthState,
+  getAuthRevision,
   getAuthStateFromSession,
   getAuthStateFromSnapshot,
   getAuthStateWithOfflineFallback,
+  getRetainedOfflineAuthSnapshot,
   isExplicitLogoutInProgress,
   isSnapshotValid,
   loggedOutAuthState,
@@ -24,10 +28,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isRestoring) return
     let disposed = false
     let eventVersion = 0
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined
+    const scheduleExpiry = () => {
+      clearTimeout(expiryTimer)
+      const state = queryClient.getQueryData<AuthState>(authStateQueryKey)
+      if (state?.mode !== "offline" || !state.offlineAccessUntil) return
+      const remaining = Date.parse(state.offlineAccessUntil) - Date.now()
+      if (remaining <= 0) {
+        setAuthState(queryClient, loggedOutAuthState)
+        return
+      }
+      // JS timers cannot represent the full 30-day duration in one interval.
+      expiryTimer = setTimeout(
+        scheduleExpiry,
+        Math.min(remaining, 2_147_483_647),
+      )
+    }
+    const unsubscribeQuery = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.query.queryHash === JSON.stringify(authStateQueryKey)
+      )
+        scheduleExpiry()
+    })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (disposed || isExplicitLogoutInProgress()) return
+      if (
+        disposed ||
+        isExplicitLogoutInProgress() ||
+        !areAuthSessionEventsAllowed()
+      )
+        return
       if (
         ![
           "INITIAL_SESSION",
@@ -38,6 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       )
         return
       const version = ++eventVersion
+      const revision = getAuthRevision()
       if (session && event !== "SIGNED_OUT") {
         setAuthState(queryClient, getAuthStateFromSession(session))
         setReady(true)
@@ -46,7 +79,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (
             disposed ||
             version !== eventVersion ||
-            isExplicitLogoutInProgress()
+            isExplicitLogoutInProgress() ||
+            revision !== getAuthRevision()
           )
             return
           const snapshot = snapshotFromSession(
@@ -61,13 +95,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (
             disposed ||
             version !== eventVersion ||
-            isExplicitLogoutInProgress()
+            isExplicitLogoutInProgress() ||
+            revision !== getAuthRevision()
           )
             return
+          const retained = snapshot ?? getRetainedOfflineAuthSnapshot()
           setAuthState(
             queryClient,
-            isSnapshotValid(snapshot)
-              ? getAuthStateFromSnapshot(snapshot)
+            isSnapshotValid(retained)
+              ? getAuthStateFromSnapshot(retained)
               : loggedOutAuthState,
           )
           setReady(true)
@@ -86,6 +122,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       disposed = true
       subscription.unsubscribe()
+      unsubscribeQuery()
+      clearTimeout(expiryTimer)
     }
   }, [isRestoring, queryClient])
 
