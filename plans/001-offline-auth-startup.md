@@ -60,6 +60,7 @@ Create two types that cannot be confused:
 type OfflineAuthSnapshot = {
   userId: string
   email?: string
+  displayName?: string
   orgId: string
   orgName?: string
   role?: Role
@@ -101,6 +102,12 @@ do that before its deadline.
   router context typing in `apps/mobile/src/routes/__root.tsx`.
 - Update logout handling in `apps/mobile/src/components/app/SettingsMenu.tsx`
   only if needed for error/progress presentation.
+- Update the collection and scouting-note detail routes that currently read
+  `user.user_metadata.name` so they consume the explicit offline-safe
+  `displayName` field instead of requiring a full Supabase `User` object:
+  `apps/mobile/src/routes/_private/trips/$id/collections/$collectionId/index.tsx`
+  and
+  `apps/mobile/src/routes/_private/trips/$id/scouting-notes/$scoutingNoteId/index.tsx`.
 
 **Out of scope**:
 
@@ -200,6 +207,10 @@ Set logout mutation `networkMode: "always"`. Its ordered behavior is:
 
 If snapshot deletion fails, show an error and do not present logout as
 complete; otherwise a cold start could silently restore local access.
+Because the current web `authStorage.removeItem` intentionally swallows its
+underlying IndexedDB/localStorage errors, explicitly read the snapshot key back
+after deletion and fail logout if it is still present or cannot be verified as
+absent. Native secure-storage deletion already rejects on failure.
 
 **Verify**: tests cover offline logout, failed global sign-out, stalled
 snapshot deletion, and cold-start non-restoration after success.
@@ -231,9 +242,9 @@ Vitest tests under `apps/mobile/src/hooks/__tests__`. Cover at minimum:
 
 ## STOP conditions
 
-- A consumer outside the listed mobile files requires a full Supabase `User`
-  object rather than the observed `id`/`email`; report the expanded blast
-  radius before changing its public type.
+- A consumer outside the listed mobile files requires more Supabase `User`
+  state than `id`, `email`, and the explicit `displayName`; report the expanded
+  blast radius before changing its public type.
 - Supabase emits no distinguishable event sequence for explicit versus refresh
   sign-out; retain the snapshot by default and report the observation.
 - Secure-storage deletion cannot be awaited reliably on native.
@@ -245,4 +256,3 @@ Vitest tests under `apps/mobile/src/hooks/__tests__`. Cover at minimum:
 The offline deadline is a product/security policy. Changing it must update
 tests and user-facing copy. Reviewers should scrutinize every future import of
 `OfflineAuthSnapshot`: it is suitable for local attribution and UI only.
-
