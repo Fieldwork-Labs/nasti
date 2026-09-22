@@ -1,19 +1,35 @@
 import { liveUploadCredentials } from "../auth/liveSession"
 import type { Transaction } from "@powersync/web"
-import { getAudio } from "../persistAudio"
-import { getImage } from "../persistFiles"
-import { uploadToStorage, type SanitizedUploadError } from "../storageUpload"
+import { getAllAudios, getAudio } from "../persistAudio"
+import { getAllImages, getImage } from "../persistFiles"
+import { deleteFromStorage, uploadToStorage } from "../storageUpload"
+import type { SanitizedUploadError } from "./attachmentErrors"
 import { powerSyncDb } from "./db"
 
 export type MediaKind = "photo" | "audio"
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function validateMediaUploadIds(
+  mediaId: string,
+  entityId: string,
+  organisationId?: string,
+): void {
+  if (!UUID_PATTERN.test(mediaId)) throw new Error("Invalid media ID")
+  if (!UUID_PATTERN.test(entityId)) throw new Error("Invalid parent ID")
+  if (!organisationId || !UUID_PATTERN.test(organisationId)) {
+    throw new Error("Invalid organisation ID")
+  }
+}
+
 export type MediaUploadJob = {
   id: string
   kind: MediaKind
+  operation: "upload" | "delete"
   table_name: string
   bucket: string
   path: string
   mime_type: string
-  status: "queued" | "sending" | "complete" | "failed" | "deleting"
+  status: "pending" | "uploading" | "uploaded" | "failed" | "deleting" | "complete"
   attempt_count: number
   next_attempt_at: string | null
   created_at: string
@@ -37,6 +53,9 @@ type QueueDependencies = {
   upload: typeof uploadToStorage
   getImage: typeof getImage
   getAudio: typeof getAudio
+  getAllImages: typeof getAllImages
+  getAllAudios: typeof getAllAudios
+  deleteRemote: (accessToken: string, bucket: string, path: string) => Promise<void>
   now: () => Date
   online: () => boolean
 }
@@ -73,6 +92,8 @@ function dataUrlBlob(dataUrl: string, mimeType: string): Blob {
 export class LocalAttachmentQueue {
   private timer: ReturnType<typeof setInterval> | undefined
   private pumping = false
+  private rerunRequested = false
+  private running = true
   private dependencies: QueueDependencies
 
   constructor(overrides: Partial<QueueDependencies> = {}) {
@@ -82,6 +103,10 @@ export class LocalAttachmentQueue {
       upload: uploadToStorage,
       getImage,
       getAudio,
+      getAllImages,
+      getAllAudios,
+      deleteRemote: (accessToken, bucket, path) =>
+        deleteFromStorage(bucket, path, { accessToken }),
       now: () => new Date(),
       online: () => typeof navigator === "undefined" || navigator.onLine,
       ...overrides,
@@ -99,8 +124,25 @@ export class LocalAttachmentQueue {
     const now = this.dependencies.now().toISOString()
     await (transaction ?? this.dependencies.database).execute(
       `INSERT OR IGNORE INTO media_upload_jobs
-       (id, kind, table_name, bucket, path, mime_type, status, attempt_count, next_attempt_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'queued', 0, ?, ?)`,
+       (id, kind, operation, table_name, bucket, path, mime_type, status, attempt_count, next_attempt_at, created_at)
+       VALUES (?, ?, 'upload', ?, ?, ?, ?, 'pending', 0, ?, ?)`,
+      [job.id, job.kind, job.table, job.bucket, job.path, job.mimeType, now, now],
+    )
+  }
+
+  async enqueueDelete(
+    job: { id: string; kind: MediaKind; table: string; bucket: string; path: string; mimeType: string },
+    transaction?: Transaction,
+  ): Promise<void> {
+    const now = this.dependencies.now().toISOString()
+    await (transaction ?? this.dependencies.database).execute(
+      `INSERT INTO media_upload_jobs
+       (id, kind, operation, table_name, bucket, path, mime_type, status, attempt_count, next_attempt_at, created_at)
+       VALUES (?, ?, 'delete', ?, ?, ?, ?, 'deleting', 0, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET operation = 'delete', status = 'deleting',
+         attempt_count = 0, next_attempt_at = excluded.next_attempt_at,
+         table_name = excluded.table_name, bucket = excluded.bucket, path = excluded.path,
+         mime_type = excluded.mime_type`,
       [job.id, job.kind, job.table, job.bucket, job.path, job.mimeType, now, now],
     )
   }
@@ -110,15 +152,20 @@ export class LocalAttachmentQueue {
   }
 
   start(): void {
+    this.running = true
     if (this.timer) return
     this.timer = setInterval(() => void this.pump(), LOOP_INTERVAL_MS)
     if (typeof window !== "undefined") {
       window.addEventListener("online", this.handleOnline)
     }
-    void this.recoverSendingJobs().then(() => this.reconcileMetadata()).then(() => this.pump())
+    void this.recoverSendingJobs()
+      .then(() => this.reconcileLegacyMedia())
+      .then(() => this.pump())
+      .catch(() => console.error("[Media queue] Startup recovery could not finish"))
   }
 
   stop(): void {
+    this.running = false
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
     if (typeof window !== "undefined") {
@@ -132,20 +179,33 @@ export class LocalAttachmentQueue {
 
   private async recoverSendingJobs(): Promise<void> {
     await this.dependencies.database.execute(
-      "UPDATE media_upload_jobs SET status = 'queued', next_attempt_at = ? WHERE status = 'sending'",
+      `UPDATE media_upload_jobs SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
+       next_attempt_at = ? WHERE status = 'uploading'`,
       [this.dependencies.now().toISOString()],
     )
   }
 
-  private async reconcileMetadata(): Promise<void> {
-    const union = TABLES.map(
-      (table) => `SELECT id, url, mime_type, uploaded_at, '${table}' AS table_name FROM ${table} WHERE uploaded_at IS NULL`,
-    ).join(" UNION ALL ")
+  async reconcileLegacyMedia(): Promise<void> {
+    const migrationVersion = "legacy-media-cache-v1"
+    const completed = await this.dependencies.database.getAll(
+      "SELECT id FROM media_migrations WHERE id = ?",
+      [migrationVersion],
+    )
+    if (completed.length) return
+    const [images, audios] = await Promise.all([
+      this.dependencies.getAllImages(),
+      this.dependencies.getAllAudios(),
+    ])
+    const cachedIds = new Set([...images.map(({ id }) => id), ...audios.map(({ id }) => id)])
+    const union = TABLES.map((table) => {
+      const mimeColumn = isAudioTable(table) ? "mime_type" : "NULL"
+      return `SELECT id, url, ${mimeColumn} AS mime_type, uploaded_at, '${table}' AS table_name FROM ${table} WHERE uploaded_at IS NULL`
+    }).join(" UNION ALL ")
     const rows = (await this.dependencies.database.getAll(union)) as Array<
       MediaSourceRow & { table_name: string }
     >
     for (const row of rows) {
-      if (!row.url) continue
+      if (!row.url || !cachedIds.has(row.id)) continue
       await this.enqueue({
         id: row.id,
         kind: isAudioTable(row.table_name) ? "audio" : "photo",
@@ -155,11 +215,16 @@ export class LocalAttachmentQueue {
         mimeType: row.mime_type ?? (isAudioTable(row.table_name) ? "audio/mpeg" : "image/jpeg"),
       })
     }
+    await this.dependencies.database.execute(
+      "INSERT OR REPLACE INTO media_migrations (id, completed_at) VALUES (?, ?)",
+      [migrationVersion, this.dependencies.now().toISOString()],
+    )
   }
 
   async retry(id: string): Promise<void> {
     await this.dependencies.database.execute(
-      "UPDATE media_upload_jobs SET status = 'queued', next_attempt_at = ? WHERE id = ? AND status = 'failed'",
+      `UPDATE media_upload_jobs SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
+       next_attempt_at = ? WHERE id = ? AND status = 'failed'`,
       [this.dependencies.now().toISOString(), id],
     )
     await this.dependencies.database.execute(
@@ -170,15 +235,19 @@ export class LocalAttachmentQueue {
   }
 
   private async pump(): Promise<void> {
-    if (this.pumping || !this.dependencies.online()) return
+    if (!this.running || !this.dependencies.online()) return
+    if (this.pumping) {
+      this.rerunRequested = true
+      return
+    }
     this.pumping = true
     try {
       const attempted = new Set<string>()
-      while (true) {
+      while (this.running) {
         const now = this.dependencies.now().toISOString()
         const jobs = (await this.dependencies.database.getAll(
           `SELECT * FROM media_upload_jobs
-           WHERE status = 'queued' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+          WHERE status IN ('pending', 'deleting') AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
            ORDER BY created_at ASC`,
           [now],
         )) as MediaUploadJob[]
@@ -187,26 +256,57 @@ export class LocalAttachmentQueue {
         const job = jobs.find(({ id }) => !attempted.has(id))
         if (!job) break
         attempted.add(job.id)
-        await this.process(job)
+        try {
+          await this.process(job)
+        } catch {
+          // A local database write can also fail while recording an upload
+          // result. Keep processing other items; startup recovery will reclaim
+          // this uploading job if its retry update could not be persisted.
+          try {
+            const attempt = job.attempt_count + 1
+            const nextAttemptAt = new Date(
+              this.dependencies.now().getTime() + DEFAULT_RETRY_MS,
+            ).toISOString()
+            await this.dependencies.database.execute(
+              `UPDATE media_upload_jobs SET status = ?, attempt_count = ?, next_attempt_at = ? WHERE id = ?`,
+              [job.operation === "delete" ? "deleting" : "pending", attempt, nextAttemptAt, job.id],
+            )
+          } catch {
+            // Preserve the original local state for restart recovery.
+          }
+        }
       }
     } finally {
       this.pumping = false
+      if (this.rerunRequested) {
+        this.rerunRequested = false
+        void this.pump()
+      }
     }
   }
 
   private async process(job: MediaUploadJob): Promise<void> {
     await this.dependencies.database.execute(
-      "UPDATE media_upload_jobs SET status = 'sending' WHERE id = ? AND status = 'queued'",
+      "UPDATE media_upload_jobs SET status = 'uploading' WHERE id = ? AND status IN ('pending', 'deleting')",
       [job.id],
     )
     try {
       const credentials = await this.dependencies.credentials.acquire()
+      if (!this.running) return
       if (!credentials) {
         throw Object.assign(new Error("Upload credentials unavailable"), {
           retryable: true,
           statusCode: null,
           safeMessage: "Upload credentials unavailable",
         })
+      }
+      if (job.operation === "delete") {
+        await this.dependencies.deleteRemote(credentials.accessToken, job.bucket, job.path)
+        await this.dependencies.database.execute(
+          "UPDATE media_upload_jobs SET status = 'complete', next_attempt_at = NULL WHERE id = ?",
+          [job.id],
+        )
+        return
       }
       let bytes: Blob | undefined
       if (job.kind === "photo") {
@@ -239,13 +339,22 @@ export class LocalAttachmentQueue {
         [uploadedAt, job.id],
       )
       await this.dependencies.database.execute(
-        "UPDATE media_upload_jobs SET status = 'complete', next_attempt_at = NULL WHERE id = ?",
+        "UPDATE media_upload_jobs SET status = 'uploaded', next_attempt_at = NULL WHERE id = ? AND operation = 'upload'",
         [job.id],
       )
     } catch (error) {
+      const [currentJob] = (await this.dependencies.database.getAll(
+        "SELECT operation FROM media_upload_jobs WHERE id = ?",
+        [job.id],
+      )) as Array<{ operation: "upload" | "delete" }>
+      if (job.operation === "upload" && currentJob?.operation === "delete") return
       const uploadError = error as Partial<SanitizedUploadError>
       if (uploadError.retryable === false) {
         const failedAt = this.dependencies.now().toISOString()
+        await this.dependencies.database.execute(
+          `UPDATE ${job.table_name} SET uploaded_at = NULL WHERE id = ?`,
+          [job.id],
+        )
         await this.dependencies.database.execute(
           `INSERT OR REPLACE INTO media_upload_failures
            (id, kind, bucket, path, status_code, safe_message, failed_at, app_version)
@@ -265,10 +374,6 @@ export class LocalAttachmentQueue {
           "UPDATE media_upload_jobs SET status = 'failed', attempt_count = attempt_count + 1 WHERE id = ?",
           [job.id],
         )
-        await this.dependencies.database.execute(
-          `UPDATE ${job.table_name} SET uploaded_at = NULL WHERE id = ?`,
-          [job.id],
-        )
         return
       }
       const attempt = job.attempt_count + 1
@@ -278,7 +383,8 @@ export class LocalAttachmentQueue {
       ).toISOString()
       await this.dependencies.database.execute(
         `UPDATE media_upload_jobs
-         SET status = 'queued', attempt_count = ?, next_attempt_at = ? WHERE id = ?`,
+         SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
+             attempt_count = ?, next_attempt_at = ? WHERE id = ?`,
         [attempt, nextAttemptAt, job.id],
       )
     }

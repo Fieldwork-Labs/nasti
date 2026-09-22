@@ -4,6 +4,7 @@ import { powerSyncDb } from "@/lib/powersync/db"
 import { SupabaseConnector } from "@/lib/powersync/connector"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppIsActive } from "@/hooks/useAppIsActive"
+import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
 
 function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (connectedRef.current) return
@@ -15,27 +16,21 @@ function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
         target: __NASTI_TARGET__,
       },
     })
-    .catch((error) => {
+    .catch(() => {
       connectedRef.current = false
-      console.error("[PowerSync] Failed to connect:", error)
+      console.error("[PowerSync] Failed to connect")
     })
 }
 
 function disconnectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (!connectedRef.current) return
   connectedRef.current = false
-  powerSyncDb.disconnect().catch((error) => {
-    console.error("[PowerSync] Failed to disconnect:", error)
+  powerSyncDb.disconnect().catch(() => {
+    console.error("[PowerSync] Failed to disconnect")
   })
 }
 
-function TripListSyncStream({
-  connectedRef,
-  organisationId,
-}: {
-  connectedRef: React.MutableRefObject<boolean>
-  organisationId: string
-}) {
+function TripListSyncStream({ organisationId }: { organisationId: string }) {
   const parameters = useMemo(
     () => ({ organisation_id: organisationId }),
     [organisationId],
@@ -45,10 +40,6 @@ function TripListSyncStream({
     name: "trip_list",
     parameters,
   })
-
-  useEffect(() => {
-    connectPowerSync(connectedRef)
-  }, [connectedRef, organisationId])
 
   return null
 }
@@ -82,22 +73,21 @@ export function PowerSyncProvider({
   const isAppActive = useAppIsActive()
 
   useEffect(() => {
-    if ((!isLoggedIn || !isAppActive) && connectedRef.current) {
+    if (isLoggedIn) {
+      mediaAttachmentQueue.start()
+      connectPowerSync(connectedRef)
+      return
+    }
+    mediaAttachmentQueue.stop()
+    if (connectedRef.current) {
       disconnectPowerSync(connectedRef)
     }
-  }, [isLoggedIn, isAppActive])
-
-  useEffect(() => {
-    if (!organisationId && connectedRef.current) {
-      disconnectPowerSync(connectedRef)
-    }
-  }, [organisationId])
+  }, [isLoggedIn, organisationId])
 
   return (
     <PowerSyncContext.Provider value={powerSyncDb}>
       {organisationId && isAppActive ? (
         <TripListSyncStream
-          connectedRef={connectedRef}
           organisationId={organisationId}
         />
       ) : null}

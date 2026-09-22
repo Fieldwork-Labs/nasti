@@ -12,6 +12,7 @@ const {
   removeMock,
   getSessionMock,
   enqueueMock,
+  enqueueDeleteMock,
   wakeMock,
   putImageMock,
   writeTransactionMock,
@@ -23,6 +24,7 @@ const {
   removeMock: vi.fn(),
   getSessionMock: vi.fn(),
   enqueueMock: vi.fn(),
+  enqueueDeleteMock: vi.fn(),
   wakeMock: vi.fn(),
   putImageMock: vi.fn(),
   writeTransactionMock: vi.fn(),
@@ -51,7 +53,7 @@ const mockAccessToken = createJwt({
 
 vi.mock("../useAuth", () => ({
   useAuth: vi.fn(() => ({
-    organisation: { id: "org-1", name: "Test Organisation" },
+    organisation: { id: "00000000-0000-4000-8000-000000000001", name: "Test Organisation" },
     role: ROLE.ADMIN,
   })),
 }))
@@ -76,7 +78,8 @@ vi.mock("@/lib/persistFiles", () => ({
 }))
 
 vi.mock("@/lib/powersync/attachments", () => ({
-  mediaAttachmentQueue: { enqueue: enqueueMock, wake: wakeMock },
+  mediaAttachmentQueue: { enqueue: enqueueMock, enqueueDelete: enqueueDeleteMock, wake: wakeMock },
+  validateMediaUploadIds: vi.fn(),
 }))
 
 vi.mock("@nasti/common/supabase", () => ({
@@ -117,6 +120,7 @@ describe("usePhotosMutate", () => {
     writeTransactionMock.mockImplementation(async (callback) => callback({ execute: vi.fn() }))
     removeMock.mockResolvedValue({ error: null })
     enqueueMock.mockResolvedValue(undefined)
+    enqueueDeleteMock.mockResolvedValue(undefined)
     putImageMock.mockResolvedValue(undefined)
   })
 
@@ -124,7 +128,7 @@ describe("usePhotosMutate", () => {
     const { result } = renderHook(
       () =>
         usePhotosMutate({
-          entityId: "collection-1",
+          entityId: "00000000-0000-4000-8000-000000000002",
           entityType: "collection",
           tripId: "trip-1",
         }),
@@ -133,7 +137,7 @@ describe("usePhotosMutate", () => {
 
     await act(async () => {
       await result.current.createPhotoMutation.mutateAsync({
-        id: "photo-1",
+        id: "00000000-0000-4000-8000-000000000003",
         caption: "Leaf",
         file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
       })
@@ -142,20 +146,20 @@ describe("usePhotosMutate", () => {
     expect(psInsertMock).toHaveBeenCalledWith(
       "collection_photo",
       expect.objectContaining({
-        id: "photo-1",
-        collection_id: "collection-1",
-        url: "org-1/collections/collection-1/photo-1.jpg",
+        id: "00000000-0000-4000-8000-000000000003",
+        collection_id: "00000000-0000-4000-8000-000000000002",
+        url: "00000000-0000-4000-8000-000000000001/collections/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
         caption: "Leaf",
         uploaded_at: null,
       }),
       expect.any(Object),
     )
-    expect(putImageMock).toHaveBeenCalledWith("photo-1", "data:image/jpeg;base64,YQ==")
+    expect(putImageMock).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000003", "data:image/jpeg;base64,YQ==")
     expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({
-      id: "photo-1",
+      id: "00000000-0000-4000-8000-000000000003",
       kind: "photo",
       table: "collection_photo",
-      path: "org-1/collections/collection-1/photo-1.jpg",
+      path: "00000000-0000-4000-8000-000000000001/collections/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
     }), expect.any(Object))
     expect(wakeMock).toHaveBeenCalledOnce()
     expect(getSessionMock).not.toHaveBeenCalled()
@@ -166,7 +170,7 @@ describe("usePhotosMutate", () => {
     const { result } = renderHook(
       () =>
         usePhotosMutate({
-          entityId: "collection-1",
+          entityId: "00000000-0000-4000-8000-000000000002",
           entityType: "collection",
           tripId: "trip-1",
         }),
@@ -175,7 +179,7 @@ describe("usePhotosMutate", () => {
 
     await act(async () => {
       await result.current.createPhotoMutation.mutateAsync({
-        id: "photo-1",
+        id: "00000000-0000-4000-8000-000000000003",
         caption: "Leaf",
         file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
       })
@@ -184,9 +188,9 @@ describe("usePhotosMutate", () => {
     expect(psInsertMock).toHaveBeenCalledWith(
       "collection_photo",
       expect.objectContaining({
-        id: "photo-1",
-        collection_id: "collection-1",
-        url: "org-1/collections/collection-1/photo-1.jpg",
+        id: "00000000-0000-4000-8000-000000000003",
+        collection_id: "00000000-0000-4000-8000-000000000002",
+        url: "00000000-0000-4000-8000-000000000001/collections/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
         caption: "Leaf",
       }),
       expect.any(Object),
@@ -227,7 +231,7 @@ describe("usePhotosMutate", () => {
     })
   })
 
-  it("deletes collection photo metadata through PowerSync after storage delete", async () => {
+  it("hides a collection photo locally and queues remote deletion", async () => {
     getOptionalMock.mockResolvedValue({
       id: "photo-1",
       collection_id: "collection-1",
@@ -250,7 +254,14 @@ describe("usePhotosMutate", () => {
       await result.current.deletePhotoMutation.mutateAsync("photo-1")
     })
 
-    expect(removeMock).toHaveBeenCalledWith(["photo.jpg"])
-    expect(psDeleteMock).toHaveBeenCalledWith("collection_photo", "photo-1")
+    expect(enqueueDeleteMock).toHaveBeenCalledWith(expect.objectContaining({
+      id: "photo-1",
+      kind: "photo",
+      table: "collection_photo",
+      path: "photo.jpg",
+    }), expect.any(Object))
+    expect(removeMock).not.toHaveBeenCalled()
+    expect(psDeleteMock).not.toHaveBeenCalled()
+    expect(wakeMock).toHaveBeenCalledOnce()
   })
 })

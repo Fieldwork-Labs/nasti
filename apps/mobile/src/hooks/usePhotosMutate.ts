@@ -1,5 +1,4 @@
 import { useMutation, useMutationState } from "@tanstack/react-query"
-import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
 import { queryClient } from "@/lib/queryClient"
@@ -8,8 +7,8 @@ import { useCallback } from "react"
 import { deleteImage } from "@/lib/persistFiles"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { powerSyncDb } from "@/lib/powersync/db"
-import { psDelete, psInsert, psUpdate } from "@/lib/powersync/crud"
-import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
+import { psInsert, psUpdate } from "@/lib/powersync/crud"
+import { mediaAttachmentQueue, validateMediaUploadIds } from "@/lib/powersync/attachments"
 import { powerSyncQueryClient } from "@/lib/powersync/query"
 import type {
   PowerSyncCollectionPhotoRow,
@@ -71,6 +70,7 @@ export const usePhotosMutate = ({
         throw new Error("No entityId or entityType specified")
 
       if (!file) throw new Error(`No file found for ${photoId}`)
+      validateMediaUploadIds(photoId, entityId, organisation?.id)
 
       const filePath = getFilePath(file, photoId)
       await putImage(photoId, (await fileToBase64(file)) as Base64URLString)
@@ -122,14 +122,22 @@ export const usePhotosMutate = ({
       if (!photo) throw new Error(`Collection photo ${photoId} not found`)
       if (!photo.url) throw new Error(`Collection photo ${photoId} has no URL`)
 
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("collection-photos")
-        .remove([photo.url])
-
-      if (storageError) throw storageError
-
-      await psDelete("collection_photo", photoId)
+      await powerSyncDb.writeTransaction(async (transaction) => {
+        await mediaAttachmentQueue.enqueueDelete(
+          {
+            id: photoId,
+            kind: "photo",
+            table: "collection_photo",
+            bucket: "collection-photos",
+            path: photo.url!,
+            mimeType: "image/jpeg",
+          },
+          transaction,
+        )
+        await transaction.execute("DELETE FROM collection_photo WHERE id = ?", [photoId])
+      })
+      await powerSyncQueryClient.invalidateQueries()
+      mediaAttachmentQueue.wake()
 
       return photoId
     },
@@ -153,14 +161,22 @@ export const usePhotosMutate = ({
       if (!photo.url)
         throw new Error(`Scouting note photo ${photoId} has no URL`)
 
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("collection-photos")
-        .remove([photo.url])
-
-      if (storageError) throw storageError
-
-      await psDelete("scouting_notes_photos", photoId)
+      await powerSyncDb.writeTransaction(async (transaction) => {
+        await mediaAttachmentQueue.enqueueDelete(
+          {
+            id: photoId,
+            kind: "photo",
+            table: "scouting_notes_photos",
+            bucket: "collection-photos",
+            path: photo.url!,
+            mimeType: "image/jpeg",
+          },
+          transaction,
+        )
+        await transaction.execute("DELETE FROM scouting_notes_photos WHERE id = ?", [photoId])
+      })
+      await powerSyncQueryClient.invalidateQueries()
+      mediaAttachmentQueue.wake()
 
       return photoId
     },

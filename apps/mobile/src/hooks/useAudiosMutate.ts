@@ -1,5 +1,4 @@
 import { useMutation, useMutationState } from "@tanstack/react-query"
-import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
 import { queryClient } from "@/lib/queryClient"
@@ -9,8 +8,8 @@ import { deleteAudio, putAudio } from "@/lib/persistAudio"
 import { mimeToExtension } from "@/lib/audio"
 
 import { powerSyncDb } from "@/lib/powersync/db"
-import { psDelete, psInsert, psUpdate } from "@/lib/powersync/crud"
-import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
+import { psInsert, psUpdate } from "@/lib/powersync/crud"
+import { mediaAttachmentQueue, validateMediaUploadIds } from "@/lib/powersync/attachments"
 import { powerSyncQueryClient } from "@/lib/powersync/query"
 import type {
   PowerSyncCollectionAudioRow,
@@ -74,6 +73,7 @@ export const useAudiosMutate = ({
       if (!entityType || !entityId)
         throw new Error("No entityId or entityType specified")
       if (!file) throw new Error(`No file found for ${audioId}`)
+      validateMediaUploadIds(audioId, entityId, organisation?.id)
 
       const filePath = getFilePath(mime_type, audioId)
       const audioBase = {
@@ -130,13 +130,22 @@ export const useAudiosMutate = ({
       if (!audio) throw new Error(`Collection audio ${audioId} not found`)
       if (!audio.url) throw new Error(`Collection audio ${audioId} has no URL`)
 
-      const { error: storageError } = await supabase.storage
-        .from("collection-audio")
-        .remove([audio.url])
-
-      if (storageError) throw storageError
-
-      await psDelete("collection_audio", audioId)
+      await powerSyncDb.writeTransaction(async (transaction) => {
+        await mediaAttachmentQueue.enqueueDelete(
+          {
+            id: audioId,
+            kind: "audio",
+            table: "collection_audio",
+            bucket: "collection-audio",
+            path: audio.url!,
+            mimeType: audio.mime_type ?? "audio/mpeg",
+          },
+          transaction,
+        )
+        await transaction.execute("DELETE FROM collection_audio WHERE id = ?", [audioId])
+      })
+      await powerSyncQueryClient.invalidateQueries()
+      mediaAttachmentQueue.wake()
       return audioId
     },
     onError: (error) => {
@@ -158,13 +167,22 @@ export const useAudiosMutate = ({
       if (!audio) throw new Error(`Scouting note audio ${audioId} not found`)
       if (!audio.url) throw new Error(`Scouting note audio ${audioId} has no URL`)
 
-      const { error: storageError } = await supabase.storage
-        .from("collection-audio")
-        .remove([audio.url])
-
-      if (storageError) throw storageError
-
-      await psDelete("scouting_notes_audio", audioId)
+      await powerSyncDb.writeTransaction(async (transaction) => {
+        await mediaAttachmentQueue.enqueueDelete(
+          {
+            id: audioId,
+            kind: "audio",
+            table: "scouting_notes_audio",
+            bucket: "collection-audio",
+            path: audio.url!,
+            mimeType: audio.mime_type ?? "audio/mpeg",
+          },
+          transaction,
+        )
+        await transaction.execute("DELETE FROM scouting_notes_audio WHERE id = ?", [audioId])
+      })
+      await powerSyncQueryClient.invalidateQueries()
+      mediaAttachmentQueue.wake()
       return audioId
     },
     onError: (error) => {

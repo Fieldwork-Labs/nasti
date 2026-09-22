@@ -250,6 +250,7 @@ const sync_failures = new Table(
 const media_upload_jobs = new Table(
   {
     kind: column.text,
+    operation: column.text,
     table_name: column.text,
     bucket: column.text,
     path: column.text,
@@ -287,6 +288,13 @@ const media_upload_failures = new Table(
   },
 )
 
+const media_migrations = new Table(
+  {
+    completed_at: column.text,
+  },
+  { localOnly: true },
+)
+
 export const AppSchema = new Schema({
   trip,
   trip_member,
@@ -303,6 +311,7 @@ export const AppSchema = new Schema({
   sync_failures,
   media_upload_jobs,
   media_upload_failures,
+  media_migrations,
 })
 
 export type PowerSyncAppDatabase = (typeof AppSchema)["types"]
