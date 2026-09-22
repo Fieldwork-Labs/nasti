@@ -4,9 +4,13 @@ import {
   type PowerSyncBackendConnector,
   UpdateType,
 } from "@powersync/web"
-import { supabase } from "@nasti/common/supabase"
+import { createNastiSupabaseClientForToken } from "@nasti/common/supabase"
 import type { Database } from "@nasti/common/types/database"
 import * as Sentry from "@sentry/react"
+import {
+  liveUploadCredentials,
+  type RequestCredentials,
+} from "../auth/liveSession"
 
 type TableName = keyof Database["public"]["Tables"]
 
@@ -39,9 +43,12 @@ const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
 }
 
 const DEPENDENCY_ERROR_CODES = new Set(["23503"])
-const PERMANENT_ERROR_CODES = new Set(["23514", "42501"])
+const PERMANENT_ERROR_CODES = new Set(["23514"])
 const MAX_NON_TRANSIENT_RETRIES = 3
 const NON_TRANSIENT_RETRY_DELAY_MS = 2000
+const DEPENDENCY_RETRY_STORAGE_PREFIX = "nasti-powersync-dependency-retries-v1:"
+
+type TokenClient = ReturnType<typeof createNastiSupabaseClientForToken>
 
 function prepareForSupabase(
   table: string,
@@ -96,11 +103,6 @@ function errorField(error: unknown, field: string): string | null {
   return null
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return errorField(error, "message") ?? String(error)
-}
-
 function classifyPgCode(code: string | undefined): string {
   if (!code) return "internal"
   if (code.startsWith("23") || code.startsWith("42")) return "validation"
@@ -110,9 +112,8 @@ function classifyPgCode(code: string | undefined): string {
 async function safeComplete(transaction: CrudTransaction): Promise<void> {
   try {
     await transaction.complete()
-  } catch (error) {
-    console.error("[PowerSync] transaction.complete() failed:", error)
-    Sentry.captureException(error)
+  } catch {
+    recordDiagnostic(transaction, null, "completion_failed", 0)
   }
 }
 
@@ -123,10 +124,7 @@ async function saveFailedTransaction(
 ): Promise<void> {
   const pgCode = errorField(error, "code")
   const errorInfo = JSON.stringify({
-    message: errorMessage(error),
     code: pgCode,
-    hint: errorField(error, "hint"),
-    details: errorField(error, "details"),
   })
   const failedAt = new Date().toISOString()
 
@@ -149,11 +147,53 @@ async function saveFailedTransaction(
 }
 
 function transactionKey(transaction: CrudTransaction): string {
-  const first = transaction.crud[0]
-  return first ? `${first.table}:${first.id}` : "unknown"
+  const operations = transaction.crud
+    .map(({ table, id, op }) => [table, id, op])
+    .sort(([aTable, aId, aOp], [bTable, bId, bOp]) =>
+      JSON.stringify([aTable, aId, aOp]).localeCompare(
+        JSON.stringify([bTable, bId, bOp]),
+      ),
+    )
+  return `${DEPENDENCY_RETRY_STORAGE_PREFIX}${encodeURIComponent(JSON.stringify(operations))}`
 }
 
-const retryCountMap = new Map<string, number>()
+function getDependencyRetryCount(key: string): number {
+  try {
+    const value = Number.parseInt(localStorage.getItem(key) ?? "0", 10)
+    return Number.isFinite(value) && value > 0 ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+function setDependencyRetryCount(key: string, count: number): void {
+  localStorage.setItem(key, String(count))
+}
+
+function clearDependencyRetryCount(key: string): void {
+  localStorage.removeItem(key)
+}
+
+function recordDiagnostic(
+  transaction: CrudTransaction,
+  error: unknown,
+  disposition: string,
+  retryCount: number,
+): void {
+  const summary = transaction.crud.map(({ table, op }) => `${table}:${op}`)
+  const pgCode = errorField(error, "code")
+  Sentry.captureMessage("PowerSync row upload disposition", {
+    level: disposition.startsWith("retry") ? "warning" : "error",
+    extra: {
+      operationCount: transaction.crud.length,
+      operations: summary,
+      pgCode,
+      disposition,
+      retryCount,
+      appVersion: typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "unknown",
+    },
+  })
+}
 
 function getPowerSyncEndpoint(): string {
   const endpoint = POWERSYNC_URL?.trim().replace(/\/+$/, "")
@@ -166,22 +206,26 @@ function getPowerSyncEndpoint(): string {
 }
 
 export class SupabaseConnector implements PowerSyncBackendConnector {
-  async fetchCredentials() {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession()
+  private tokenClient: TokenClient | undefined
+  private tokenClientAccessToken: string | undefined
 
-    if (!session || error) {
+  private clientFor(credentials: RequestCredentials): TokenClient {
+    if (this.tokenClientAccessToken !== credentials.accessToken) {
+      this.tokenClient = createNastiSupabaseClientForToken(credentials.accessToken)
+      this.tokenClientAccessToken = credentials.accessToken
+    }
+    return this.tokenClient!
+  }
+
+  async fetchCredentials() {
+    const credentials = await liveUploadCredentials.acquire()
+    if (!credentials) {
       throw new Error("Not authenticated - cannot connect to PowerSync")
     }
 
     return {
       endpoint: getPowerSyncEndpoint(),
-      token: session.access_token,
-      expiresAt: session.expires_at
-        ? new Date(session.expires_at * 1000)
-        : undefined,
+      token: credentials.accessToken,
     }
   }
 
@@ -191,6 +235,12 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
 
     await waitForOnline()
     const key = transactionKey(transaction)
+    const credentials = await liveUploadCredentials.acquire()
+    if (!credentials) {
+      recordDiagnostic(transaction, null, "retry_no_credentials", 0)
+      throw new Error("Upload credentials unavailable")
+    }
+    const client = this.clientFor(credentials)
 
     try {
       const sortedOps = [...transaction.crud].sort(
@@ -206,7 +256,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         switch (op.op) {
           case UpdateType.PUT: {
             const data = prepareForSupabase(op.table, op.opData ?? {})
-            const { error } = await supabase
+            const { error } = await client
               .from(table)
               .upsert({ id, ...data } as never)
             if (error) throw error
@@ -214,7 +264,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
           }
           case UpdateType.PATCH: {
             const data = prepareForSupabase(op.table, op.opData ?? {})
-            const { error } = await supabase
+            const { error } = await client
               .from(table)
               .update(data as never)
               .eq("id" as never, id)
@@ -222,7 +272,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
             break
           }
           case UpdateType.DELETE: {
-            const { error } = await supabase
+            const { error } = await client
               .from(table)
               .delete()
               .eq("id" as never, id)
@@ -232,27 +282,41 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         }
       }
 
-      retryCountMap.delete(key)
+      clearDependencyRetryCount(key)
       await transaction.complete()
     } catch (error) {
       const pgCode = errorField(error, "code")
 
-      if (pgCode && PERMANENT_ERROR_CODES.has(pgCode)) {
-        Sentry.captureException(error)
+      if (pgCode === "42501") {
+        const confirmed = await liveUploadCredentials.confirm(credentials)
+        if (!confirmed) {
+          recordDiagnostic(transaction, error, "retry_unconfirmed_rls_denial", 0)
+          throw new Error("RLS denial could not be confirmed")
+        }
+        recordDiagnostic(transaction, error, "preserved_confirmed_rls_denial", 0)
         await saveFailedTransaction(database, transaction, error)
-        retryCountMap.delete(key)
+        clearDependencyRetryCount(key)
+        await safeComplete(transaction)
+        return
+      }
+
+      if (pgCode && PERMANENT_ERROR_CODES.has(pgCode)) {
+        recordDiagnostic(transaction, error, "preserved_validation_error", 0)
+        await saveFailedTransaction(database, transaction, error)
+        clearDependencyRetryCount(key)
         await safeComplete(transaction)
         return
       }
 
       if (pgCode && DEPENDENCY_ERROR_CODES.has(pgCode)) {
-        const count = (retryCountMap.get(key) ?? 0) + 1
-        retryCountMap.set(key, count)
+        const count = getDependencyRetryCount(key) + 1
+        setDependencyRetryCount(key, count)
+        recordDiagnostic(transaction, error, "retry_dependency", count)
 
         if (count > MAX_NON_TRANSIENT_RETRIES) {
-          Sentry.captureException(error)
+          recordDiagnostic(transaction, error, "preserved_dependency_error", count)
           await saveFailedTransaction(database, transaction, error)
-          retryCountMap.delete(key)
+          clearDependencyRetryCount(key)
           await safeComplete(transaction)
           return
         }
@@ -263,7 +327,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         return
       }
 
-      console.error("[PowerSync] Upload failed:", error)
+      recordDiagnostic(transaction, error, "retry", 0)
       throw error
     }
   }
