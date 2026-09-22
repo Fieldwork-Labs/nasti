@@ -109,11 +109,13 @@ function classifyPgCode(code: string | undefined): string {
   return "internal"
 }
 
-async function safeComplete(transaction: CrudTransaction): Promise<void> {
+async function safeComplete(transaction: CrudTransaction): Promise<boolean> {
   try {
     await transaction.complete()
+    return true
   } catch {
     recordDiagnostic(transaction, null, "completion_failed", 0)
+    return false
   }
 }
 
@@ -282,8 +284,8 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         }
       }
 
-      clearDependencyRetryCount(key)
       await transaction.complete()
+      clearDependencyRetryCount(key)
     } catch (error) {
       const pgCode = errorField(error, "code")
 
@@ -295,16 +297,14 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         }
         recordDiagnostic(transaction, error, "preserved_confirmed_rls_denial", 0)
         await saveFailedTransaction(database, transaction, error)
-        clearDependencyRetryCount(key)
-        await safeComplete(transaction)
+        if (await safeComplete(transaction)) clearDependencyRetryCount(key)
         return
       }
 
       if (pgCode && PERMANENT_ERROR_CODES.has(pgCode)) {
         recordDiagnostic(transaction, error, "preserved_validation_error", 0)
         await saveFailedTransaction(database, transaction, error)
-        clearDependencyRetryCount(key)
-        await safeComplete(transaction)
+        if (await safeComplete(transaction)) clearDependencyRetryCount(key)
         return
       }
 
@@ -316,8 +316,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         if (count > MAX_NON_TRANSIENT_RETRIES) {
           recordDiagnostic(transaction, error, "preserved_dependency_error", count)
           await saveFailedTransaction(database, transaction, error)
-          clearDependencyRetryCount(key)
-          await safeComplete(transaction)
+          if (await safeComplete(transaction)) clearDependencyRetryCount(key)
           return
         }
 

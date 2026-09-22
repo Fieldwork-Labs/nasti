@@ -222,6 +222,23 @@ describe("PowerSync row upload connector", () => {
     expect(transaction.complete).toHaveBeenCalledOnce()
   })
 
+  it("replays a preserved transaction when completion fails", async () => {
+    upsertMock.mockResolvedValueOnce({ error: rowError("23514") })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([makeOp("species", "row-6b", UpdateType.PUT)])
+    transaction.complete.mockRejectedValueOnce(new Error("completion failed"))
+    const { database } = makeDatabase([transaction])
+    database.getNextCrudTransaction.mockResolvedValue(transaction)
+    const connector = new SupabaseConnector()
+
+    await connector.uploadData(database as never)
+    expect(transaction.complete).toHaveBeenCalledOnce()
+    await connector.uploadData(database as never)
+
+    expect(upsertMock).toHaveBeenCalledTimes(2)
+    expect(transaction.complete).toHaveBeenCalledTimes(2)
+  })
+
   it("persists dependency retries across reloads and unblocks the next row", async () => {
     const setTimeoutSpy = vi
       .spyOn(globalThis, "setTimeout")
