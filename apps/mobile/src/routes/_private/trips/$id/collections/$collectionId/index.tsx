@@ -130,7 +130,7 @@ const CollectionDetail = () => {
             <td>
               {user?.id === collection.created_by
                 ? "You"
-                : user?.user_metadata.name || "Unknown Person"}
+                : user?.displayName || "Unknown Person"}
             </td>
           </tr>
         </tbody>

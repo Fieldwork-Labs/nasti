@@ -1,281 +1,252 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { renderHook, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import React from "react"
-
-// Import the real supabase module and the hook under test
-import { supabase } from "@nasti/common/supabase"
-import { useAuth } from "../useAuth" // adjust this path if necessary
-import { ROLE } from "@nasti/common/types"
+import { StrictMode, type ReactNode } from "react"
 import {
-  AuthError,
   AuthRetryableFetchError,
+  type AuthChangeEvent,
   type Session,
-  type User,
 } from "@supabase/supabase-js"
+import { supabase } from "@nasti/common/supabase"
+import { authStorage } from "@/platform"
+import { AuthProvider } from "@/contexts/auth"
+import { snapshotFromSession, OFFLINE_AUTH_KEY } from "@/lib/offlineAuth"
+import { authStateQueryKey, useAuth } from "../useAuth"
 
-const toBase64Url = (value: unknown) =>
-  btoa(JSON.stringify(value))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "")
-
-const createJwt = (payload: Record<string, unknown>) =>
-  [
-    toBase64Url({ alg: "RS256", kid: "test-key" }),
-    toBase64Url(payload),
-    "signature",
-  ].join(".")
-
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-const mockUserData: User = {
-  id: "user-123",
-  email: "test@example.com",
-  created_at: "2023-01-01T00:00:00Z",
-  app_metadata: {},
-  user_metadata: {},
-  aud: "authenticated",
-}
-
-const mockSession: Session = {
-  access_token: createJwt({
-    app_metadata: {
-      org_id: "org-123",
-      org_name: "Test Organization",
-      role: ROLE.ADMIN,
+vi.mock("@/platform", () => ({
+  authStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
+}))
+vi.mock("@nasti/common/supabase", () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signOut: vi.fn(),
+      onAuthStateChange: vi.fn(),
     },
-  }),
+  },
+}))
+
+const session: Session = {
+  access_token:
+    "header." +
+    btoa(
+      JSON.stringify({
+        app_metadata: {
+          org_id: "org-123",
+          org_name: "Test Organization",
+          role: "Admin",
+        },
+      }),
+    ) +
+    ".signature",
   refresh_token: "refresh-123",
   expires_in: 3600,
   token_type: "bearer",
-  user: mockUserData,
+  user: {
+    id: "user-123",
+    email: "test@example.com",
+    user_metadata: { name: "Test User" },
+    app_metadata: {},
+    aud: "authenticated",
+    created_at: "",
+  },
 }
+const callbacks = new Set<
+  (event: AuthChangeEvent, session: Session | null) => void
+>()
+let stored: Map<string, string>
+let client: QueryClient
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={client}>{children}</QueryClientProvider>
+)
+const providerWrapper = ({ children }: { children: ReactNode }) =>
+  wrapper({
+    children: (
+      <StrictMode>
+        <AuthProvider>{children}</AuthProvider>
+      </StrictMode>
+    ),
+  })
+const emit = (event: AuthChangeEvent, value: Session | null) =>
+  act(() => {
+    callbacks.forEach((callback) => callback(event, value))
+  })
 
-const mockSessionWithoutClaims: Session = {
-  ...mockSession,
-  access_token: createJwt({ app_metadata: {} }),
-}
-
-const mockOrganisation = {
-  id: "org-123",
-  name: "Test Organization",
-}
-
-// ─── Test‐wrapper for React Query ───────────────────────────────────────────────
-const createWrapper = () => {
-  const queryClient = new QueryClient({
+beforeEach(() => {
+  vi.resetAllMocks()
+  callbacks.clear()
+  stored = new Map()
+  client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  vi.mocked(authStorage.getItem).mockImplementation(
+    async (key) => stored.get(key) ?? null,
   )
-}
-
-// ─── Test Suite ────────────────────────────────────────────────────────────────
-describe("useAuth hook", () => {
-  beforeEach(() => {
-    // Clear any previous spies/mocks on supabase
-    vi.restoreAllMocks()
+  vi.mocked(authStorage.setItem).mockImplementation(async (key, value) => {
+    stored.set(key, value)
   })
-
-  it("returns logged-out state when getSession resolves with no session", async () => {
-    // ─── Arrange ───────────────────────────────────────────────────────────────
-    vi.spyOn(supabase.auth, "getSession").mockResolvedValue({
-      data: { session: null },
-      error: new AuthError("Session not found"),
-    })
-
-    // ─── Act ─────────────────────────────────────────────────────────────────
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper(),
-    })
-
-    await waitFor(() => {
-      expect(supabase.auth.getSession).toHaveBeenCalledOnce()
-    })
-
-    await waitFor(() => {
-      expect(result.current.session).toBeNull()
-      expect(result.current.user).toBeNull()
-      expect(result.current.organisation).toBeNull()
-      expect(result.current.role).toBeNull()
-      expect(result.current.isLoggedIn).toBe(false)
-    })
+  vi.mocked(authStorage.removeItem).mockImplementation(async (key) => {
+    stored.delete(key)
   })
-
-  it("fetches user data when getUser returns a valid user", async () => {
-    // ─── Arrange ───────────────────────────────────────────────────────────────
-    vi.spyOn(supabase.auth, "getSession").mockResolvedValue({
-      data: { session: mockSession },
-      error: null,
-    })
-
-    // ─── Act ─────────────────────────────────────────────────────────────────
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper(),
-    })
-
-    await waitFor(() => {
-      expect(supabase.auth.getSession).toHaveBeenCalledOnce()
-      expect(result.current.session).toEqual(mockSession)
-      expect(result.current.user).toEqual(mockUserData)
-      expect(result.current.organisation).toEqual(mockOrganisation)
-      expect(result.current.role).toBe(ROLE.ADMIN)
-      expect(result.current.isLoggedIn).toBe(true)
-    })
+  vi.mocked(supabase.auth.getSession).mockResolvedValue({
+    data: { session: null },
+    error: null,
   })
-
-  it("derives organisation and role from JWT app_metadata claims on login", async () => {
-    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
-      data: { user: mockUserData },
-      error: null,
-    })
-    vi.spyOn(supabase.auth, "signInWithPassword").mockResolvedValue({
-      data: { user: mockUserData, session: mockSession },
-      error: null,
-    })
-    const fromSpy = vi.spyOn(supabase, "from")
-
-    // ─── Act ─────────────────────────────────────────────────────────────────
-    const { result, rerender } = renderHook(() => useAuth(), {
-      wrapper: createWrapper(),
-    })
-
-    await result.current.login.mutateAsync({
-      email: mockUserData.email!,
-      password: "pw",
-    })
-
-    rerender()
-
-    await waitFor(() => {
-      expect(result.current.organisation).toEqual(mockOrganisation)
-      expect(result.current.role).toBe(ROLE.ADMIN)
-      expect(result.current.isLoggedIn).toBe(true)
-    })
-    expect(fromSpy).not.toHaveBeenCalledWith("org_user")
-  })
-
-  it("leaves organisation and role null when login session has no JWT claims", async () => {
-    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
-      data: { user: mockUserData },
-      error: null,
-    })
-    vi.spyOn(supabase.auth, "signInWithPassword").mockResolvedValue({
-      data: { user: mockUserData, session: mockSessionWithoutClaims },
-      error: null,
-    })
-
-    const { result, rerender } = renderHook(() => useAuth(), {
-      wrapper: createWrapper(),
-    })
-
-    await result.current.login.mutateAsync({
-      email: mockUserData.email!,
-      password: "pw",
-    })
-
-    rerender()
-
-    await waitFor(() => {
-      expect(result.current.organisation).toBeNull()
-      expect(result.current.role).toBeNull()
-      expect(result.current.isLoggedIn).toBe(true)
-    })
-  })
-
-  it("login.mutateAsync throws a retryable‐error message if signInWithPassword yields that kind of error", async () => {
-    const fakeError = new AuthRetryableFetchError("Fetch failed", 502)
-
-    vi.spyOn(supabase.auth, "signInWithPassword").mockResolvedValue({
-      data: { user: null, session: null },
-      error: fakeError,
-    })
-
-    // We do not need getUser or org mocks here, because we’re directly testing login.mutateAsync.
-
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: createWrapper(),
-    })
-
-    // ─── Act ─────────────────────────────────────────────────────────────────
-    let caughtError: Error | null = null
-    try {
-      await result.current.login.mutateAsync({
-        email: "x@x.com",
-        password: "pw",
-      })
-    } catch (err) {
-      caughtError = err as unknown as Error
+  vi.mocked(supabase.auth.signOut).mockResolvedValue({ error: null })
+  vi.mocked(supabase.auth.onAuthStateChange).mockImplementation((callback) => {
+    callbacks.add(callback)
+    return {
+      data: {
+        subscription: {
+          id: "test",
+          callback,
+          unsubscribe: () => {
+            callbacks.delete(callback)
+          },
+        },
+      },
     }
-    // ─── Assert ──────────────────────────────────────────────────────────────
-    expect(caughtError).not.toBeNull()
-    expect((caughtError as unknown as Error).message).toContain(
-      "Unable to connect to server",
+  })
+})
+afterEach(() => {
+  cleanup()
+  client.clear()
+})
+
+describe("useAuth", () => {
+  it("returns logged-out state without identity or session", async () => {
+    const { result } = renderHook(useAuth, { wrapper })
+    await waitFor(() =>
+      expect(client.getQueryState(authStateQueryKey)?.status).toBe("success"),
     )
-  })
-
-  it("clears auth state on logout (user/org become null, isLoggedIn false)", async () => {
-    // ─── Arrange ───────────────────────────────────────────────────────────────
-    vi.spyOn(supabase.auth, "signInWithPassword").mockResolvedValue({
-      data: { user: mockUserData, session: mockSession },
-      error: null,
-    })
-
-    vi.spyOn(supabase.auth, "getUser").mockResolvedValue({
-      data: { user: mockUserData },
-      error: null,
-    })
-
-    const { result, rerender } = renderHook(() => useAuth(), {
-      wrapper: createWrapper(),
-    })
-    await result.current.login.mutateAsync({
-      email: mockUserData.email!,
-      password: "pw",
-    })
-
-    rerender()
-
-    // Wait until the hook picks up both user and org:
-    await waitFor(() => {
-      expect(result.current.user).toEqual(mockUserData)
-      expect(result.current.organisation).toEqual(mockOrganisation)
-      expect(result.current.role).toBe(ROLE.ADMIN)
-      expect(result.current.isLoggedIn).toBe(true)
-    })
-
-    // Now mock signOut to succeed:
-    vi.spyOn(supabase.auth, "signOut").mockResolvedValue({ error: null })
-    expect(supabase.auth.signOut).not.toHaveBeenCalled()
-    // ─── Act ─────────────────────────────────────────────────────────────────
-    await result.current.logout.mutateAsync()
-
-    // ─── Assert ──────────────────────────────────────────────────────────────
-    // Because logout.onMutate() clears all queries under ["auth"], we expect the hook to return user=null, organisation=null, isLoggedIn=false
-    await waitFor(() => {
-      expect(supabase.auth.signOut).toHaveBeenCalled()
-      expect(result.current.user).toBeNull()
-      expect(result.current.organisation).toBeNull()
-      expect(result.current.role).toBeNull()
-      expect(result.current.isLoggedIn).toBe(false)
+    expect(result.current).toMatchObject({
+      mode: "logged_out",
+      session: null,
+      user: null,
+      isLoggedIn: false,
     })
   })
 
-  describe("getSession", () => {
-    it("should return session from supabase", async () => {
-      vi.spyOn(supabase.auth, "getSession").mockResolvedValue({
-        data: { session: mockSession },
-        error: null,
-      })
-
-      const { result } = renderHook(() => useAuth(), {
-        wrapper: createWrapper(),
-      })
-
-      const { data } = await result.current.getSession()
-      expect(data.session).toEqual(mockSession)
-      expect(supabase.auth.getSession).toHaveBeenCalled()
+  it("derives live identity and organisation from the real session", async () => {
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session },
+      error: null,
     })
+    const { result } = renderHook(useAuth, { wrapper })
+    await waitFor(() => expect(result.current.mode).toBe("live"))
+    expect(result.current.session).toEqual(session)
+    expect(result.current.user).toEqual({
+      id: session.user.id,
+      email: session.user.email,
+      displayName: "Test User",
+    })
+    expect(result.current.organisation).toEqual({
+      id: "org-123",
+      name: "Test Organization",
+    })
+    expect(result.current.role).toBe("Admin")
+  })
+
+  it("exposes offline identity without a Supabase Session", async () => {
+    stored.set(OFFLINE_AUTH_KEY, JSON.stringify(snapshotFromSession(session)))
+    const { result } = renderHook(useAuth, { wrapper })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    expect(result.current.session).toBeNull()
+    expect(result.current.isLoggedIn).toBe(true)
+    expect(supabase.auth.getSession).not.toHaveBeenCalled()
+  })
+
+  it("login persists identity and derives JWT claims", async () => {
+    vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+      data: { user: session.user, session },
+      error: null,
+    })
+    const { result } = renderHook(useAuth, { wrapper })
+    await act(() =>
+      result.current.login.mutateAsync({
+        email: "test@example.com",
+        password: "pw",
+      }),
+    )
+    await waitFor(() => expect(result.current.mode).toBe("live"))
+    expect(result.current.organisation?.id).toBe("org-123")
+    expect(stored.has(OFFLINE_AUTH_KEY)).toBe(true)
+  })
+
+  it("leaves organisation absent when no org claims exist", async () => {
+    const withoutClaims = {
+      ...session,
+      access_token: "header." + btoa("{}") + ".signature",
+    }
+    vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+      data: { user: session.user, session: withoutClaims },
+      error: null,
+    })
+    const { result } = renderHook(useAuth, { wrapper })
+    await act(() =>
+      result.current.login.mutateAsync({
+        email: "test@example.com",
+        password: "pw",
+      }),
+    )
+    await waitFor(() => expect(result.current.isLoggedIn).toBe(true))
+    expect(result.current.organisation).toBeNull()
+    expect(result.current.role).toBeNull()
+  })
+
+  it("presents retryable login failures as a connection error", async () => {
+    vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({
+      data: { user: null, session: null },
+      error: new AuthRetryableFetchError("Fetch failed", 502),
+    })
+    const { result } = renderHook(useAuth, { wrapper })
+    await act(async () => {
+      await expect(
+        result.current.login.mutateAsync({
+          email: "test@example.com",
+          password: "pw",
+        }),
+      ).rejects.toThrow("Unable to connect to server")
+    })
+  })
+})
+
+describe("auth subscription", () => {
+  it("maintains one active listener with multiple consumers and StrictMode", async () => {
+    const { result, unmount } = renderHook(() => [useAuth(), useAuth()], {
+      wrapper: providerWrapper,
+    })
+    await waitFor(() => expect(result.current).not.toBeNull())
+    expect(callbacks.size).toBe(1)
+    unmount()
+    expect(callbacks.size).toBe(0)
+  })
+
+  it.each(["INITIAL_SESSION", "SIGNED_IN", "TOKEN_REFRESHED"] as const)(
+    "mirrors %s and refreshes the snapshot",
+    async (event) => {
+      const { result } = renderHook(useAuth, { wrapper: providerWrapper })
+      await waitFor(() => expect(result.current).not.toBeNull())
+      emit(event, session)
+      await waitFor(() => expect(result.current.mode).toBe("live"))
+      await waitFor(() => expect(stored.has(OFFLINE_AUTH_KEY)).toBe(true))
+      expect(JSON.parse(stored.get(OFFLINE_AUTH_KEY)!)).toMatchObject({
+        userId: "user-123",
+        orgId: "org-123",
+      })
+    },
+  )
+
+  it("retains valid local access after auth-library SIGNED_OUT", async () => {
+    stored.set(OFFLINE_AUTH_KEY, JSON.stringify(snapshotFromSession(session)))
+    const { result } = renderHook(useAuth, { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.mode).toBe("offline"))
+    emit("SIGNED_IN", session)
+    await waitFor(() => expect(result.current.mode).toBe("live"))
+    emit("SIGNED_OUT", null)
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    expect(result.current.session).toBeNull()
+    expect(authStorage.removeItem).not.toHaveBeenCalled()
   })
 })
