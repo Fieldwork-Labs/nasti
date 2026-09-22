@@ -245,6 +245,48 @@ const sync_failures = new Table(
   },
 )
 
+// Local-only work records: media bytes remain in the legacy image/audio stores
+// until the user or an explicit retention policy deletes them.
+const media_upload_jobs = new Table(
+  {
+    kind: column.text,
+    table_name: column.text,
+    bucket: column.text,
+    path: column.text,
+    mime_type: column.text,
+    status: column.text,
+    attempt_count: column.integer,
+    next_attempt_at: column.text,
+    created_at: column.text,
+  },
+  {
+    localOnly: true,
+    indexes: {
+      status_due: ["status", "next_attempt_at"],
+      kind: ["kind"],
+    },
+  },
+)
+
+const media_upload_failures = new Table(
+  {
+    kind: column.text,
+    bucket: column.text,
+    path: column.text,
+    status_code: column.integer,
+    safe_message: column.text,
+    failed_at: column.text,
+    app_version: column.text,
+  },
+  {
+    localOnly: true,
+    indexes: {
+      kind: ["kind"],
+      failed_at: ["failed_at"],
+    },
+  },
+)
+
 export const AppSchema = new Schema({
   trip,
   trip_member,
@@ -259,6 +301,8 @@ export const AppSchema = new Schema({
   species_photo,
   person,
   sync_failures,
+  media_upload_jobs,
+  media_upload_failures,
 })
 
 export type PowerSyncAppDatabase = (typeof AppSchema)["types"]
@@ -278,3 +322,5 @@ export type PowerSyncScoutingNoteAudioRow =
   PowerSyncAppDatabase["scouting_notes_audio"]
 export type PowerSyncSpeciesPhotoRow = PowerSyncAppDatabase["species_photo"]
 export type PowerSyncPersonRow = PowerSyncAppDatabase["person"]
+export type PowerSyncMediaUploadJobRow =
+  PowerSyncAppDatabase["media_upload_jobs"]
