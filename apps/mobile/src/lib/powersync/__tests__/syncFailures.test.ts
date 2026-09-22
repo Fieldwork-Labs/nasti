@@ -111,9 +111,11 @@ describe("sync failure recovery", () => {
 
   it("dismisses only the issue notice and emits payload-free telemetry", async () => {
     const db = database()
-    await dismissSyncFailure({ ...rowFailure, failureKind: "row" }, db)
+    await dismissSyncFailure({ ...rowFailure, op_data: '{"name":"Bearer secret-token"}', failureKind: "row" }, db)
     expect(db.statements).toEqual([{ sql: "DELETE FROM sync_failures WHERE id = ?", parameters: ["failure-1"] }])
     expect(JSON.stringify(mocks.captureMessage.mock.calls)).not.toContain("private payload")
     expect(JSON.stringify(mocks.captureMessage.mock.calls)).not.toContain("Field trip")
+    expect(JSON.stringify(mocks.captureMessage.mock.calls)).not.toContain("secret-token")
+    expect(JSON.stringify(mocks.captureMessage.mock.calls)).toContain('"retryCount":0')
   })
 })
