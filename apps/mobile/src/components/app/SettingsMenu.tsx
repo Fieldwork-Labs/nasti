@@ -9,6 +9,9 @@ import {
   AlertDialogTitle,
 } from "@nasti/ui/alert-dialog"
 import { useNavigate, useRouter } from "@tanstack/react-router"
+import { useState } from "react"
+import { SyncIssues } from "./SyncIssues"
+import { useSyncStatus } from "@/hooks/useSyncStatus"
 
 export const SettingsMenuModal = ({
   close,
@@ -19,6 +22,9 @@ export const SettingsMenuModal = ({
 }) => {
   const navigate = useNavigate()
   const router = useRouter()
+  const [syncIssuesOpen, setSyncIssuesOpen] = useState(false)
+  const { status } = useSyncStatus()
+  const failureCount = status.permanentRowFailures + status.permanentMediaFailures
   const { logout } = useAuth({
     onLogout: async () => {
       await router.invalidate()
@@ -28,6 +34,7 @@ export const SettingsMenuModal = ({
   })
 
   return (
+    <>
     <AlertDialog
       open={isOpen}
       onOpenChange={() => {
@@ -37,6 +44,15 @@ export const SettingsMenuModal = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Settings</AlertDialogTitle>
+          <button
+            type="button"
+            className="w-full rounded-md border px-4 py-2 text-left"
+            aria-label={failureCount ? `Sync issues, ${failureCount} failures` : "Sync issues"}
+            onClick={() => setSyncIssuesOpen(true)}
+          >
+            <span>Sync issues</span>
+            {failureCount > 0 && <span className="ml-2 rounded-full bg-destructive px-2 py-0.5 text-xs text-white">{failureCount}</span>}
+          </button>
           <AlertDialogAction
             className="w-full"
             disabled={logout.isPending}
@@ -73,5 +89,7 @@ export const SettingsMenuModal = ({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    <SyncIssues open={syncIssuesOpen} onOpenChange={setSyncIssuesOpen} />
+    </>
   )
 }
