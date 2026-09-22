@@ -1,5 +1,4 @@
 import { liveUploadCredentials } from "../auth/liveSession"
-import type { Transaction } from "@powersync/web"
 import { getAllAudios, getAudio } from "../persistAudio"
 import { getAllImages, getImage } from "../persistFiles"
 import { deleteFromStorage, uploadToStorage } from "../storageUpload"
@@ -43,6 +42,12 @@ type MediaSourceRow = {
 }
 
 type QueueDatabase = {
+  execute(sql: string, parameters?: unknown[]): Promise<unknown>
+  getAll(sql: string, parameters?: unknown[]): Promise<unknown[]>
+  writeTransaction(callback: (transaction: QueueTransaction) => Promise<void>): Promise<void>
+}
+
+type QueueTransaction = {
   execute(sql: string, parameters?: unknown[]): Promise<unknown>
   getAll(sql: string, parameters?: unknown[]): Promise<unknown[]>
 }
@@ -120,7 +125,7 @@ export class LocalAttachmentQueue {
     bucket: string
     path: string
     mimeType: string
-  }, transaction?: Transaction): Promise<void> {
+  }, transaction?: QueueTransaction): Promise<void> {
     const now = this.dependencies.now().toISOString()
     await (transaction ?? this.dependencies.database).execute(
       `INSERT OR IGNORE INTO media_upload_jobs
@@ -132,7 +137,7 @@ export class LocalAttachmentQueue {
 
   async enqueueDelete(
     job: { id: string; kind: MediaKind; table: string; bucket: string; path: string; mimeType: string },
-    transaction?: Transaction,
+    transaction?: QueueTransaction,
   ): Promise<void> {
     const now = this.dependencies.now().toISOString()
     await (transaction ?? this.dependencies.database).execute(
@@ -199,20 +204,33 @@ export class LocalAttachmentQueue {
     const cachedIds = new Set([...images.map(({ id }) => id), ...audios.map(({ id }) => id)])
     const union = TABLES.map((table) => {
       const mimeColumn = isAudioTable(table) ? "mime_type" : "NULL"
-      return `SELECT id, url, ${mimeColumn} AS mime_type, uploaded_at, '${table}' AS table_name FROM ${table} WHERE uploaded_at IS NULL`
+      return `SELECT id, url, ${mimeColumn} AS mime_type, uploaded_at, '${table}' AS table_name FROM ${table}`
     }).join(" UNION ALL ")
     const rows = (await this.dependencies.database.getAll(union)) as Array<
       MediaSourceRow & { table_name: string }
     >
     for (const row of rows) {
+      if (!TABLES.some((table) => table === row.table_name)) continue
       if (!row.url || !cachedIds.has(row.id)) continue
-      await this.enqueue({
+      const job = {
         id: row.id,
-        kind: isAudioTable(row.table_name) ? "audio" : "photo",
+        kind: isAudioTable(row.table_name) ? "audio" as const : "photo" as const,
         table: row.table_name,
         bucket: isAudioTable(row.table_name) ? "collection-audio" : "collection-photos",
         path: row.url,
         mimeType: row.mime_type ?? (isAudioTable(row.table_name) ? "audio/mpeg" : "image/jpeg"),
+      }
+      await this.dependencies.database.writeTransaction(async (transaction) => {
+        const existing = await transaction.getAll(
+          "SELECT id FROM media_upload_jobs WHERE id = ?",
+          [row.id],
+        )
+        if (existing.length) return
+        await transaction.execute(
+          `UPDATE ${row.table_name} SET uploaded_at = NULL WHERE id = ?`,
+          [row.id],
+        )
+        await this.enqueue(job, transaction)
       })
     }
     await this.dependencies.database.execute(
