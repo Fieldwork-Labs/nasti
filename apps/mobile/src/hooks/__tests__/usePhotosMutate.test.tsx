@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ROLE } from "@nasti/common/types"
 import { usePhotosMutate } from "../usePhotosMutate"
@@ -109,6 +109,7 @@ const createWrapper = () => {
 
 describe("usePhotosMutate", () => {
   beforeEach(() => {
+    onlineManager.setOnline(true)
     vi.clearAllMocks()
     getSessionMock.mockResolvedValue({
       data: { session: { access_token: mockAccessToken } },
@@ -163,6 +164,49 @@ describe("usePhotosMutate", () => {
     }), expect.any(Object))
     expect(wakeMock).toHaveBeenCalledOnce()
     expect(getSessionMock).not.toHaveBeenCalled()
+  })
+
+  it("persists a photo and registers its upload while offline", async () => {
+    onlineManager.setOnline(false)
+    const { result } = renderHook(
+      () => usePhotosMutate({ entityId: "collection-1", entityType: "collection", tripId: "trip-1" }),
+      { wrapper: createWrapper() },
+    )
+
+    try {
+      await act(async () => {
+        await result.current.createPhotoMutation.mutateAsync({
+          id: "photo-offline",
+          file: new File(["data"], "offline.jpg", { type: "image/jpeg" }),
+        })
+      })
+
+      expect(putImageMock).toHaveBeenCalledWith("photo-offline", "data:image/jpeg;base64,YQ==")
+      expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ id: "photo-offline" }), expect.any(Object))
+      expect(psInsertMock).toHaveBeenCalledWith("collection_photo", expect.objectContaining({ id: "photo-offline" }), expect.any(Object))
+      expect(enqueueMock.mock.invocationCallOrder[0]).toBeLessThan(psInsertMock.mock.invocationCallOrder[0])
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  it("applies photo deletion and caption edits while offline", async () => {
+    onlineManager.setOnline(false)
+    getOptionalMock.mockResolvedValue({ id: "photo-1", collection_id: "collection-1", url: "photo.jpg", caption: null, uploaded_at: null })
+    const { result } = renderHook(
+      () => usePhotosMutate({ entityId: "collection-1", entityType: "collection", tripId: "trip-1" }),
+      { wrapper: createWrapper() },
+    )
+    try {
+      await act(async () => {
+        await result.current.updateCaptionMutation.mutateAsync({ photoId: "photo-1", caption: "Offline caption" })
+        await result.current.deletePhotoMutation.mutateAsync("photo-1")
+      })
+      expect(psUpdateMock).toHaveBeenCalledWith("collection_photo", "photo-1", { caption: "Offline caption" })
+      expect(enqueueDeleteMock).toHaveBeenCalledWith(expect.objectContaining({ id: "photo-1" }), expect.any(Object))
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 
   it("registers the durable queue job before inserting metadata", async () => {

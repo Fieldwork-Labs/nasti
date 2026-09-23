@@ -65,6 +65,7 @@ export const usePhotosMutate = ({
     UploadPhotoVariables
   >({
     mutationKey: ["photos", "create", entityType, entityId],
+    networkMode: "always",
     mutationFn: async ({ id: photoId, caption, file }) => {
       if (!entityType || !entityId)
         throw new Error("No entityId or entityType specified")
@@ -106,6 +107,7 @@ export const usePhotosMutate = ({
   })
 
   const deletePhotoMutation = useMutation({
+    networkMode: "always",
     mutationFn: async (photoId: string) => deleteQueuedMediaRecord({
       id: photoId,
       kind: "photo",
@@ -133,6 +135,7 @@ export const usePhotosMutate = ({
     Error,
     UpdateCaptionPayload
   >({
+    networkMode: "always",
     mutationFn: async ({ photoId, caption }) => {
       const row = await powerSyncDb.getOptional<PowerSyncCollectionPhotoRow>(
         "SELECT * FROM collection_photo WHERE id = ?",
@@ -150,6 +153,7 @@ export const usePhotosMutate = ({
     Error,
     UpdateCaptionPayload
   >({
+    networkMode: "always",
     mutationFn: async ({ photoId, caption }) => {
       const row = await powerSyncDb.getOptional<PowerSyncScoutingNotePhotoRow>(
         "SELECT * FROM scouting_notes_photos WHERE id = ?",

@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { useAudiosMutate } from "../useAudiosMutate"
 
@@ -45,6 +45,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe("useAudiosMutate", () => {
   beforeEach(() => {
+    onlineManager.setOnline(true)
     vi.clearAllMocks()
     putAudioMock.mockResolvedValue(undefined)
     enqueueMock.mockResolvedValue(undefined)
@@ -83,6 +84,45 @@ describe("useAudiosMutate", () => {
     }), expect.any(Object))
     expect(enqueueMock.mock.invocationCallOrder[0]).toBeLessThan(psInsertMock.mock.invocationCallOrder[0])
     expect(wakeMock).toHaveBeenCalledOnce()
+  })
+
+  it("persists audio and registers its upload while offline", async () => {
+    onlineManager.setOnline(false)
+    const { result } = renderHook(
+      () => useAudiosMutate({ entityId: "collection-1", entityType: "collection", tripId: "trip-1" }),
+      { wrapper },
+    )
+    const file = new File(["audio"], "offline.m4a", { type: "audio/mp4" })
+    try {
+      await act(async () => {
+        await result.current.createAudioMutation.mutateAsync({ id: "audio-offline", file, duration_ms: 1000, mime_type: "audio/mp4" })
+      })
+      expect(putAudioMock).toHaveBeenCalledWith("audio-offline", file, "audio/mp4")
+      expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ id: "audio-offline" }), expect.any(Object))
+      expect(psInsertMock).toHaveBeenCalledWith("collection_audio", expect.objectContaining({ id: "audio-offline" }), expect.any(Object))
+      expect(enqueueMock.mock.invocationCallOrder[0]).toBeLessThan(psInsertMock.mock.invocationCallOrder[0])
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  it("applies audio deletion and caption edits while offline", async () => {
+    onlineManager.setOnline(false)
+    getOptionalMock.mockResolvedValue({ id: "audio-1", collection_id: "collection-1", url: "recording.m4a", mime_type: "audio/mp4", uploaded_at: null, caption: null })
+    const { result } = renderHook(
+      () => useAudiosMutate({ entityId: "collection-1", entityType: "collection", tripId: "trip-1" }),
+      { wrapper },
+    )
+    try {
+      await act(async () => {
+        await result.current.updateCaptionMutation.mutateAsync({ audioId: "audio-1", caption: "Offline caption" })
+        await result.current.deleteAudioMutation.mutateAsync("audio-1")
+      })
+      expect(psUpdateMock).toHaveBeenCalledWith("collection_audio", "audio-1", { caption: "Offline caption" })
+      expect(enqueueDeleteMock).toHaveBeenCalledWith(expect.objectContaining({ id: "audio-1" }), expect.any(Object))
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 
   it("hides audio locally and queues remote cleanup without a Storage request", async () => {

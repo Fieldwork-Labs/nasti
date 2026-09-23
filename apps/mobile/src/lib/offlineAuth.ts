@@ -12,6 +12,8 @@ import { z } from "zod"
 import { TIMED_OUT, withTimeout } from "./withTimeout"
 
 export const OFFLINE_AUTH_KEY = "nasti-offline-auth-v1"
+export const OFFLINE_DATA_OWNER_HINT_KEY = "nasti-local-data-owner-hint-v1"
+export const UNKNOWN_DATA_OWNER_HINT = "unknown"
 export const OFFLINE_ACCESS_MS = 30 * 24 * 60 * 60 * 1_000
 
 export type OfflineAuthSnapshot = {
@@ -24,6 +26,7 @@ export type OfflineAuthSnapshot = {
   lastSuccessfulLoginAt: string
   lastSuccessfulSessionRefreshAt: string
   offlineAccessUntil: string
+  reauthRequired?: boolean
 }
 
 export type AuthMode = "live" | "offline" | "logged_out"
@@ -39,6 +42,7 @@ export type AuthState = {
   } | null
   isLoggedIn: boolean
   offlineAccessUntil: string | null
+  reauthRequired: boolean
 }
 
 export const loggedOutAuthState: AuthState = {
@@ -48,6 +52,7 @@ export const loggedOutAuthState: AuthState = {
   claims: null,
   isLoggedIn: false,
   offlineAccessUntil: null,
+  reauthRequired: false,
 }
 
 export const getAuthStateFromSession = (session: Session | null): AuthState => {
@@ -74,6 +79,7 @@ export const getAuthStateFromSession = (session: Session | null): AuthState => {
       : null,
     isLoggedIn: true,
     offlineAccessUntil: null,
+    reauthRequired: false,
   }
 }
 
@@ -95,6 +101,7 @@ export const getAuthStateFromSnapshot = (
   },
   isLoggedIn: true,
   offlineAccessUntil: snapshot.offlineAccessUntil,
+  reauthRequired: snapshot.reauthRequired === true,
 })
 
 const snapshotSchema = z
@@ -108,6 +115,7 @@ const snapshotSchema = z
     lastSuccessfulLoginAt: z.string().datetime({ offset: true }),
     lastSuccessfulSessionRefreshAt: z.string().datetime({ offset: true }),
     offlineAccessUntil: z.string().datetime({ offset: true }),
+    reauthRequired: z.boolean().optional(),
   })
   .refine((snapshot) => {
     const login = Date.parse(snapshot.lastSuccessfulLoginAt)
@@ -149,6 +157,17 @@ export const closeFailedLoginPersistence = () => {
 }
 export const getRetainedOfflineAuthSnapshot = () =>
   isSnapshotValid(retainedSnapshot) ? retainedSnapshot : null
+/** Identity evidence for local-data ownership; unlike offline access it may be expired. */
+export const getRetainedOfflineAuthIdentity = () => retainedSnapshot
+
+/** Persist a revoked refresh session without discarding the offline identity. */
+export const markOfflineAuthRequiresSignIn = async (
+  snapshot: OfflineAuthSnapshot,
+): Promise<OfflineAuthSnapshot> => {
+  const marked = { ...snapshot, reauthRequired: true }
+  await writeOfflineAuthSnapshot(marked)
+  return marked
+}
 
 export const isSnapshotValid = (
   snapshot: OfflineAuthSnapshot | null,
@@ -187,9 +206,33 @@ export const writeOfflineAuthSnapshot = async (
 ): Promise<boolean> => {
   if (loggingOut) return false
   const validated = snapshotSchema.parse(snapshot)
+  const previousRetained = retainedSnapshot
   retainedSnapshot = validated
   const revision = authRevision
   const write = pendingWrite.then(async () => {
+    if (loggingOut || revision !== authRevision) return
+    let previous = previousRetained
+    try {
+      const stored = await authStorage.getItem(OFFLINE_AUTH_KEY)
+      if (stored != null) {
+        const parsed = snapshotSchema.safeParse(JSON.parse(stored))
+        if (parsed.success) previous = parsed.data
+      }
+    } catch {
+      // Keep the last in-memory identity if storage reads are temporarily down.
+    }
+    // This must reach durable storage before the new snapshot. A sentinel on a
+    // first login prevents the new identity from proving ownership of legacy
+    // local records when no prior identity is known.
+    const existingOwnerHint = await authStorage.getItem(
+      OFFLINE_DATA_OWNER_HINT_KEY,
+    )
+    if (existingOwnerHint == null) {
+      await authStorage.setItem(
+        OFFLINE_DATA_OWNER_HINT_KEY,
+        previous?.userId ?? UNKNOWN_DATA_OWNER_HINT,
+      )
+    }
     if (loggingOut || revision !== authRevision) return
     await authStorage.setItem(OFFLINE_AUTH_KEY, JSON.stringify(validated))
   })
@@ -208,6 +251,29 @@ export const writeOfflineAuthSnapshot = async (
 /** Unbounded by design: successful logout means durable identity is gone. */
 export const deleteOfflineAuthSnapshot = async () => {
   await pendingWrite
+  const stored = await authStorage.getItem(OFFLINE_AUTH_KEY)
+  if (stored != null) {
+    let parsed: ReturnType<typeof snapshotSchema.safeParse>
+    try {
+      parsed = snapshotSchema.safeParse(JSON.parse(stored))
+    } catch {
+      parsed = snapshotSchema.safeParse(null)
+    }
+    if (parsed.success) {
+      // Logout removes offline login authority, but local rows still need an
+      // owner hint so the next account cannot silently adopt them. Preserve an
+      // earlier unresolved owner hint until the DB transaction records a winner.
+      const existingOwnerHint = await authStorage.getItem(
+        OFFLINE_DATA_OWNER_HINT_KEY,
+      )
+      if (existingOwnerHint == null) {
+        await authStorage.setItem(
+          OFFLINE_DATA_OWNER_HINT_KEY,
+          parsed.data.userId,
+        )
+      }
+    }
+  }
   await authStorage.removeItem(OFFLINE_AUTH_KEY)
   // Web storage may swallow deletion errors; do not report success on faith.
   if ((await authStorage.getItem(OFFLINE_AUTH_KEY)) != null) {
@@ -257,6 +323,7 @@ export const snapshotFromSession = (
         : timestamp,
     lastSuccessfulSessionRefreshAt: timestamp,
     offlineAccessUntil: new Date(now + OFFLINE_ACCESS_MS).toISOString(),
+    reauthRequired: false,
   }
 }
 

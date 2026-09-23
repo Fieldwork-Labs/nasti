@@ -43,6 +43,7 @@ describe("useSyncStatus", () => {
     expect(result.current.status).toEqual({
       queuedRows: 3,
       queuedMedia: 2,
+      requiresSignIn: false,
       waitingForAuthentication: true,
       activelyUploading: true,
       permanentRowFailures: 1,

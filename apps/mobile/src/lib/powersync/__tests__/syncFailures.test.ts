@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { spawnSync } from "node:child_process"
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const mocks = vi.hoisted(() => ({ captureMessage: vi.fn() }))
 vi.mock("@sentry/react", () => ({ captureMessage: mocks.captureMessage }))
@@ -15,6 +19,7 @@ function database() {
   let failurePresent = true
   let localRowPresent = true
   let failureRetryCount = 0
+  let localRow: Record<string, unknown> | null = { id: "trip-1", name: "Field trip", metadata: { note: "private payload" } }
   const execute = vi.fn(async (sql: string, parameters: unknown[] = []) => {
     if (failWrite) throw new Error("transaction failed")
     statements.push({ sql, parameters })
@@ -22,6 +27,7 @@ function database() {
   })
   const getAll = vi.fn(async (sql: string, _parameters?: unknown[]): Promise<unknown[]> => {
     if (sql.includes("FROM row_delete_retry_jobs j")) return []
+    if (sql.includes("SELECT * FROM trip")) return localRow ? [localRow] : []
     if (sql.includes("SELECT id FROM trip")) return localRowPresent ? [{ id: "trip-1" }] : []
     if (sql.includes("SELECT id, retry_count FROM sync_failures WHERE")) return failurePresent ? [{ id: "failure-1", retry_count: failureRetryCount }] : []
     if (sql.includes("SELECT id FROM sync_failures WHERE")) return failurePresent ? [{ id: "failure-1" }] : []
@@ -41,6 +47,7 @@ function database() {
     setFailWrite: (value: boolean) => { failWrite = value },
     setLocalRowPresent: (value: boolean) => { localRowPresent = value },
     setFailureRetryCount: (value: number) => { failureRetryCount = value },
+    setLocalRow: (value: Record<string, unknown> | null) => { localRow = value },
   }
   return db
 }
@@ -70,6 +77,70 @@ describe("sync failure recovery", () => {
       parameters: ["Field trip", '{"note":"private payload"}', "trip-1"],
     })
     expect(db.statements[1]).toMatchObject({ sql: "DELETE FROM sync_failures WHERE id = ?", parameters: ["failure-1"] })
+  })
+
+  it("retries a PATCH with the current local value after a later edit", async () => {
+    const db = database()
+    db.setLocalRow({ id: "trip-1", name: "Current trip name", metadata: { note: "private payload" } })
+    await retrySyncFailure({ ...rowFailure, failureKind: "row" }, { database: db })
+    expect(db.statements[0]).toMatchObject({
+      sql: "UPDATE trip SET name = ?, metadata = ? WHERE id = ?",
+      parameters: ["Current trip name", '{"note":"private payload"}', "trip-1"],
+    })
+  })
+
+  it("keeps a PUT failure visible when the local row has disappeared", async () => {
+    const db = database()
+    db.setLocalRow(null)
+    const failure = { ...rowFailure, op_type: "PUT" as const, op_data: JSON.stringify({ name: "Stored name", metadata: { note: "saved" } }) }
+    await expect(retrySyncFailure({ ...failure, failureKind: "row" }, { database: db })).rejects.toThrow(/local row/)
+    expect(db.statements).toEqual([])
+  })
+
+  it("replays a stale PUT from the current local SQLite row", async (context) => {
+    if (spawnSync("sqlite3", ["--version"], { encoding: "utf8" }).error) {
+      context.skip()
+      return
+    }
+    const directory = mkdtempSync(join(tmpdir(), "nasti-sync-failure-"))
+    const file = join(directory, "recovery.sqlite")
+    const sqlValue = (value: unknown) => value == null
+      ? "NULL"
+      : typeof value === "number"
+        ? String(value)
+        : `'${String(value).replace(/'/g, "''")}'`
+    const run = (sql: string) => {
+      const result = spawnSync("sqlite3", ["-json", file], { input: sql, encoding: "utf8" })
+      if (result.status !== 0) throw new Error(result.stderr || "sqlite3 failed")
+      return result.stdout ? JSON.parse(result.stdout) as unknown[] : []
+    }
+    try {
+      run("CREATE TABLE trip (id TEXT PRIMARY KEY, name TEXT, metadata TEXT); CREATE TABLE sync_failures (id TEXT PRIMARY KEY, retry_count INTEGER);")
+      run("INSERT INTO trip VALUES ('trip-1', 'Edited later', '{\"note\":\"latest\"}'); INSERT INTO sync_failures VALUES ('failure-1', 0);")
+      const db = {
+        execute: async (sql: string, parameters: unknown[] = []) => {
+          let index = 0
+          run(sql.replace(/\?/g, () => sqlValue(parameters[index++])))
+        },
+        getAll: async (sql: string, parameters: unknown[] = []) => {
+          let index = 0
+          return run(sql.replace(/\?/g, () => sqlValue(parameters[index++])))
+        },
+        writeTransaction: async (callback: (tx: { execute: (sql: string, parameters?: unknown[]) => Promise<unknown>; getAll: (sql: string, parameters?: unknown[]) => Promise<unknown[]> }) => Promise<void>) => callback(db),
+      }
+      const staleFailure = {
+        ...rowFailure,
+        op_type: "PUT" as const,
+        op_data: JSON.stringify({ name: "Old value", metadata: { note: "old" } }),
+      }
+      await retrySyncFailure({ ...staleFailure, failureKind: "row" }, { database: db })
+      expect(run("SELECT id, name, metadata FROM trip WHERE id='trip-1'" )).toEqual([
+        { id: "trip-1", name: "Edited later", metadata: '{"note":"latest"}' },
+      ])
+      expect(run("SELECT id FROM sync_failures")).toEqual([])
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
   })
 
   it("queues a DELETE by failure ID without touching the absent local target", async () => {

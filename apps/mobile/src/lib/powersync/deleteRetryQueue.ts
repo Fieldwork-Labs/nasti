@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/react"
 import { liveUploadCredentials } from "../auth/liveSession"
 import { powerSyncDb } from "./db"
+import { confirmMediaRowDelete } from "./attachments"
 import { setQueueAuthBlocked } from "./queueAuthState"
 
 const DELETE_TABLES = new Set([
@@ -13,6 +14,8 @@ const RETRY_MAX_MS = 5 * 60_000
 const POLL_MS = 5_000
 const LEASE_MS = 5 * 60_000
 const LEASE_HEARTBEAT_MS = 30_000
+const DELETE_REQUEST_TIMEOUT_MS = 30_000
+const MEDIA_TABLES = new Set(["collection_photo", "collection_audio", "scouting_notes_photos", "scouting_notes_audio"])
 
 type Database = {
   execute(sql: string, parameters?: unknown[]): Promise<unknown>
@@ -76,17 +79,61 @@ export async function deleteRowWithToken(
   transport: DeleteTransport = fetch,
   signal?: AbortSignal,
 ): Promise<number | null> {
-  const response = await transport(endpointFor(table, id), {
-    method: "DELETE",
-    signal,
-    headers: {
-      apikey: import.meta.env.VITE_SB_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${accessToken}`,
-      Accept: "application/json",
-    },
-  })
-  if (response.ok || response.status === 404) return response.status
-  throw Object.assign(new Error(safeError(response.status)), { status: response.status })
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  if (signal?.aborted) abort()
+  else signal?.addEventListener("abort", abort, { once: true })
+  const timeout = setTimeout(abort, DELETE_REQUEST_TIMEOUT_MS)
+  try {
+    const response = await transport(endpointFor(table, id), {
+      method: "DELETE",
+      signal: controller.signal,
+      headers: {
+        apikey: import.meta.env.VITE_SB_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    })
+    if (response.ok || response.status === 404) return response.status
+    throw Object.assign(new Error(safeError(response.status)), { status: response.status })
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener("abort", abort)
+  }
+}
+
+async function rowAbsentWithToken(
+  table: string,
+  id: string,
+  accessToken: string,
+  transport: DeleteTransport,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  if (signal?.aborted) abort()
+  else signal?.addEventListener("abort", abort, { once: true })
+  const timeout = setTimeout(abort, DELETE_REQUEST_TIMEOUT_MS)
+  try {
+    const url = new URL(endpointFor(table, id))
+    url.searchParams.set("select", "id")
+    const response = await transport(url.toString(), {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        apikey: import.meta.env.VITE_SB_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    })
+    if (!response.ok) throw Object.assign(new Error(safeError(response.status)), { status: response.status })
+    const rows: unknown = await response.json()
+    if (!Array.isArray(rows)) throw new Error("Server row check returned invalid data")
+    return rows.length === 0
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener("abort", abort)
+  }
 }
 
 export class RowDeleteRetryQueue {
@@ -136,6 +183,13 @@ export class RowDeleteRetryQueue {
     this.lifecycleGeneration += 1
     this.activeRequest?.abort()
     this.activeRequest = undefined
+    const pausedJobId = this.activeJobId
+    if (pausedJobId) {
+      void this.database.execute(
+        "UPDATE row_delete_retry_jobs SET status = 'pending', next_attempt_at = ?, lease_expires_at = NULL WHERE id = ? AND status = 'sending'",
+        [this.now().toISOString(), pausedJobId],
+      ).catch(() => undefined)
+    }
     if (this.leaseTimer) clearInterval(this.leaseTimer)
     this.leaseTimer = undefined
     this.activeJobId = undefined
@@ -149,10 +203,11 @@ export class RowDeleteRetryQueue {
 
   async recoverInFlight(): Promise<void> {
     const now = this.now().toISOString()
+    const implausiblyFuture = new Date(this.now().getTime() + LEASE_MS + 60_000).toISOString()
     await this.database.execute(
       `UPDATE row_delete_retry_jobs SET status = 'pending', next_attempt_at = ?, lease_expires_at = NULL
-       WHERE status = 'sending' AND (lease_expires_at IS NULL OR lease_expires_at <= ?)`,
-      [now, now],
+       WHERE status = 'sending' AND (lease_expires_at IS NULL OR lease_expires_at <= ? OR lease_expires_at > ?)`,
+      [now, now, implausiblyFuture],
     )
   }
 
@@ -160,10 +215,11 @@ export class RowDeleteRetryQueue {
     if (!this.online()) return false
     const generation = this.lifecycleGeneration
     const now = this.now().toISOString()
+    const implausiblyFuture = new Date(this.now().getTime() + RETRY_MAX_MS + 60_000).toISOString()
     const [candidate] = await this.database.getAll(
       `SELECT id, target_table, entity_id, status, attempt_count, next_attempt_at, created_at, last_error, notice_dismissed, lease_expires_at
-       FROM row_delete_retry_jobs WHERE status = 'pending' AND next_attempt_at <= ?
-       ORDER BY created_at ASC, id ASC LIMIT 1`, [now],
+       FROM row_delete_retry_jobs WHERE status = 'pending' AND (next_attempt_at <= ? OR next_attempt_at > ?)
+       ORDER BY created_at ASC, id ASC LIMIT 1`, [now, implausiblyFuture],
     ) as RowDeleteRetryJob[]
     if (!candidate) return false
 
@@ -196,6 +252,13 @@ export class RowDeleteRetryQueue {
     this.leaseTimer = setInterval(() => void this.renewLease(job.id), LEASE_HEARTBEAT_MS)
     try {
       const status = await deleteRowWithToken(job.target_table, job.entity_id, credentials.accessToken, this.transport, controller.signal)
+      if (generation !== this.lifecycleGeneration) return false
+      const absent = await rowAbsentWithToken(job.target_table, job.entity_id, credentials.accessToken, this.transport, controller.signal)
+      if (generation !== this.lifecycleGeneration) return false
+      if (!absent) throw Object.assign(new Error("Server row still present"), { status: 409 })
+      if (MEDIA_TABLES.has(job.target_table)) {
+        await confirmMediaRowDelete(job.target_table, job.entity_id, this.database)
+      }
       await this.database.writeTransaction(async (tx) => {
         await tx.execute("DELETE FROM row_delete_retry_jobs WHERE id = ?", [job.id])
         await tx.execute("DELETE FROM sync_failures WHERE id = ?", [job.id])
@@ -203,6 +266,7 @@ export class RowDeleteRetryQueue {
       emit(job, "success", status)
       setQueueAuthBlocked("deleteRetries", false)
     } catch (error) {
+      if (generation !== this.lifecycleGeneration) return false
       const status = error && typeof error === "object" && "status" in error && typeof error.status === "number" ? error.status : null
       const authWasConfirmed = (status === 401 || status === 403)
         ? await this.credentials.confirm(credentials).catch(() => false)
@@ -211,7 +275,7 @@ export class RowDeleteRetryQueue {
         "deleteRetries",
         (status === 401 || status === 403) && !authWasConfirmed,
       )
-      const terminal = status !== null && status >= 400 && status < 500 && (status !== 401 && status !== 403 || authWasConfirmed) && status !== 408 && status !== 429
+      const terminal = status !== null && status >= 400 && status < 500 && (status !== 401 && status !== 403 || authWasConfirmed) && status !== 408 && status !== 409 && status !== 429
       const due = new Date(this.now().getTime() + retryDelay(job.attempt_count)).toISOString()
       const message = (status === 401 || status === 403) && authWasConfirmed
         ? `Server rejected this delete (${status}).`
@@ -262,10 +326,11 @@ export class RowDeleteRetryQueue {
   private async pump(): Promise<void> {
     if (!this.running || this.pumping || !this.online()) return
     this.pumping = true
+    const generation = this.lifecycleGeneration
     try {
       await this.recoverInFlight()
       // Bound each pass so the worker remains responsive to lifecycle changes.
-      for (let count = 0; count < 20 && this.running; count += 1) {
+      for (let count = 0; count < 20 && this.running && generation === this.lifecycleGeneration; count += 1) {
         if (!await this.processNext()) break
       }
     } finally { this.pumping = false }

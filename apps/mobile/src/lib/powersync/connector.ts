@@ -7,6 +7,7 @@ import {
 import { createNastiSupabaseClientForToken } from "@nasti/common/supabase"
 import type { Database } from "@nasti/common/types/database"
 import * as Sentry from "@sentry/react"
+import { confirmMediaRowDelete } from "./attachments"
 import {
   liveUploadCredentials,
   type RequestCredentials,
@@ -44,7 +45,7 @@ const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
 }
 
 const DEPENDENCY_ERROR_CODES = new Set(["23503"])
-const PERMANENT_ERROR_CODES = new Set(["23514"])
+const PERMANENT_ERROR_CODES = new Set(["PGRST204", "PGRST205", "42703", "42804", "42883"])
 const MAX_NON_TRANSIENT_RETRIES = 3
 const NON_TRANSIENT_RETRY_DELAY_MS = 2000
 const DEPENDENCY_RETRY_STORAGE_PREFIX = "nasti-powersync-dependency-retries-v1:"
@@ -103,6 +104,11 @@ function errorField(error: unknown, field: string): string | null {
   return null
 }
 
+function isPermanentErrorCode(code: string | null): boolean {
+  if (!code || code === "23503") return false
+  return PERMANENT_ERROR_CODES.has(code) || code.startsWith("22") || code.startsWith("23")
+}
+
 function classifyPgCode(code: string | undefined): string {
   if (!code) return "internal"
   if (code.startsWith("23") || code.startsWith("42")) return "validation"
@@ -124,6 +130,7 @@ async function saveFailedTransaction(
   transaction: CrudTransaction,
   error: unknown,
   retryCount = 0,
+  operations = transaction.crud,
 ): Promise<void> {
   const pgCode = errorField(error, "code")
   const errorInfo = JSON.stringify({
@@ -132,8 +139,8 @@ async function saveFailedTransaction(
   const failedAt = new Date().toISOString()
 
   await database.writeTransaction(async (writeTransaction) => {
-    for (const op of transaction.crud) {
-      const failureId = `sync-failure:${encodeURIComponent(JSON.stringify([op.table, op.id, op.op]))}`
+    for (const op of operations) {
+      const failureId = `sync-failure:${op.clientId}`
       await writeTransaction.execute(
         `INSERT OR IGNORE INTO sync_failures (id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification, retry_count)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -271,8 +278,11 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     }
     setQueueAuthBlocked("rows", false)
     const client = this.clientFor(credentials)
+    let unconfirmedRlsDenial = false
 
     try {
+      const permanentFailures: Array<{ op: CrudTransaction["crud"][number]; error: unknown }> = []
+      const confirmedMediaDeletes: Array<{ table: string; id: string }> = []
       const sortedOps = [...transaction.crud].sort(
         (a, b) =>
           (TABLE_UPLOAD_PRIORITY[a.table] ?? 10) -
@@ -283,6 +293,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         const table = op.table as TableName
         const id = op.id
 
+        try {
         switch (op.op) {
           case UpdateType.PUT: {
             const data = prepareForSupabase(op.table, op.opData ?? {})
@@ -302,24 +313,64 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
             break
           }
           case UpdateType.DELETE: {
-            const { error } = await client
+            const deleteResult = await client
               .from(table)
-              .delete()
+              .delete({ count: "exact" })
               .eq("id" as never, id)
-            if (error) throw error
+            if (deleteResult.error) throw deleteResult.error
+            if (typeof deleteResult.count === "number" && deleteResult.count > 0) {
+              confirmedMediaDeletes.push({ table: op.table, id })
+            } else {
+              const { data: remainingRow, error: probeError } = await client
+                .from(table)
+                .select("id" as never)
+                .eq("id" as never, id)
+                .maybeSingle()
+              if (probeError) throw probeError
+              if (!remainingRow) confirmedMediaDeletes.push({ table: op.table, id })
+            }
             break
           }
         }
+        } catch (error) {
+          const code = errorField(error, "code")
+          if (code === "42501") {
+            if (!await liveUploadCredentials.confirm(credentials)) {
+              unconfirmedRlsDenial = true
+              throw error
+            }
+          } else if (!isPermanentErrorCode(code)) {
+            throw error
+          }
+          permanentFailures.push({ op, error })
+        }
       }
 
-      await transaction.complete()
+      const failuresByCode = new Map<string, { error: unknown; ops: CrudTransaction["crud"][number][] }>()
+      for (const failure of permanentFailures) {
+        const code = errorField(failure.error, "code") ?? "unknown"
+        const group = failuresByCode.get(code) ?? { error: failure.error, ops: [] }
+        group.ops.push(failure.op)
+        failuresByCode.set(code, group)
+      }
+      for (const group of failuresByCode.values()) {
+        recordDiagnostic(transaction, group.error, "preserved_validation_error", 0)
+        await saveFailedTransaction(database, transaction, group.error, 0, group.ops)
+      }
+
+      const completed = await safeComplete(transaction)
       setQueueAuthBlocked("rows", false)
-      clearDependencyRetryCount(key)
+      if (completed) {
+        clearDependencyRetryCount(key)
+        for (const { table, id } of confirmedMediaDeletes) {
+          await confirmMediaRowDelete(table, id, database)
+        }
+      }
     } catch (error) {
       const pgCode = errorField(error, "code")
 
       if (pgCode === "42501") {
-        const confirmed = await liveUploadCredentials.confirm(credentials)
+        const confirmed = !unconfirmedRlsDenial && await liveUploadCredentials.confirm(credentials)
         if (!confirmed) {
           setQueueAuthBlocked("rows", true)
           recordDiagnostic(transaction, error, "retry_unconfirmed_rls_denial", 0)
@@ -332,7 +383,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         return
       }
 
-      if (pgCode && PERMANENT_ERROR_CODES.has(pgCode)) {
+      if (isPermanentErrorCode(pgCode)) {
         setQueueAuthBlocked("rows", false)
         recordDiagnostic(transaction, error, "preserved_validation_error", 0)
         await saveFailedTransaction(database, transaction, error)

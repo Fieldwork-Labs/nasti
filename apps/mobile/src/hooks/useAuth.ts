@@ -126,6 +126,7 @@ export const useAuth = ({
   return {
     session: authState.session,
     mode: authState.mode,
+    requiresSignIn: authState.reauthRequired,
     user: authState.user,
     role: authState.claims?.role ?? null,
     organisation: authState.claims?.organisation ?? null,

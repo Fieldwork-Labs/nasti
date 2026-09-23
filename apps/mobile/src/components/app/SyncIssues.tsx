@@ -61,7 +61,9 @@ export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange
         <AlertDialogHeader className="text-left">
           <AlertDialogTitle>Sync issues</AlertDialogTitle>
           <AlertDialogDescription>
-            {status.terminalDeleteRetries > 0
+            {status.requiresSignIn
+              ? "Sign in again to sync. Your saved local work is still on this device."
+              : status.terminalDeleteRetries > 0
               ? `${status.terminalDeleteRetries} delete ${status.terminalDeleteRetries === 1 ? "retry needs" : "retries need"} attention.`
               : status.waitingForAuthentication
               ? "Sync is paused until live authentication is available. Your local work is safe."

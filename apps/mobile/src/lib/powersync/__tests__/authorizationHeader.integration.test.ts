@@ -11,6 +11,7 @@ vi.mock("../../auth/liveSession", () => ({
   liveUploadCredentials: { acquire: acquireMock, confirm: confirmMock },
 }))
 vi.mock("@sentry/react", () => ({ captureMessage: captureMessageMock }))
+vi.mock("../attachments", () => ({ confirmMediaRowDelete: vi.fn() }))
 
 describe("Supabase row request authorization adapter", () => {
   beforeEach(() => {

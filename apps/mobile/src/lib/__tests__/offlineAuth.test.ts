@@ -10,6 +10,7 @@ import {
   getAuthStateWithOfflineFallback,
   OFFLINE_ACCESS_MS,
   OFFLINE_AUTH_KEY,
+  OFFLINE_DATA_OWNER_HINT_KEY,
   readOfflineAuthSnapshot,
   snapshotFromSession,
   writeOfflineAuthSnapshot,
@@ -76,7 +77,14 @@ describe("bounded auth bootstrap", () => {
       mode: "live",
       session,
     })
-    const stored = JSON.parse(vi.mocked(authStorage.setItem).mock.calls[0]![1])
+    let snapshotWrite: [string, string] | undefined
+    await vi.waitFor(() => {
+      snapshotWrite = vi.mocked(authStorage.setItem).mock.calls.find(
+        ([key]) => key === OFFLINE_AUTH_KEY,
+      )
+      expect(snapshotWrite).toBeDefined()
+    })
+    const stored = JSON.parse(snapshotWrite![1])
     expect(Date.parse(stored.offlineAccessUntil)).toBe(now + OFFLINE_ACCESS_MS)
     expect(stored).not.toHaveProperty("access_token")
     expect(stored).not.toHaveProperty("refresh_token")
@@ -180,6 +188,44 @@ describe("offline auth storage", () => {
       OFFLINE_AUTH_KEY,
       JSON.stringify(refreshed),
     )
+  })
+
+  it("stores A as the prior data owner before replacing A's snapshot with B's", async () => {
+    const sessionB: Session = {
+      ...session,
+      user: { ...session.user, id: "user-b", email: "b@example.com" },
+    }
+    const snapshotB = snapshotFromSession(sessionB, null, true, now + 1_000)!
+    vi.mocked(authStorage.getItem).mockImplementation(async (key) =>
+      key === OFFLINE_AUTH_KEY ? JSON.stringify(snapshot) : null,
+    )
+    const writes: Array<[string, string]> = []
+    vi.mocked(authStorage.setItem).mockImplementation(async (key, value) => {
+      writes.push([key, value])
+    })
+
+    await expect(writeOfflineAuthSnapshot(snapshotB)).resolves.toBe(true)
+
+    expect(writes).toEqual([
+      [OFFLINE_DATA_OWNER_HINT_KEY, "user-1"],
+      [OFFLINE_AUTH_KEY, JSON.stringify(snapshotB)],
+    ])
+  })
+
+  it("preserves the previous owner hint before deleting the offline snapshot", async () => {
+    const storage = new Map([[OFFLINE_AUTH_KEY, JSON.stringify(snapshot)]])
+    vi.mocked(authStorage.getItem).mockImplementation(async (key) => storage.get(key) ?? null)
+    const writes: Array<[string, string]> = []
+    vi.mocked(authStorage.setItem).mockImplementation(async (key, value) => {
+      writes.push([key, value])
+      storage.set(key, value)
+    })
+    vi.mocked(authStorage.removeItem).mockImplementation(async (key) => { storage.delete(key) })
+
+    await deleteOfflineAuthSnapshot()
+
+    expect(writes).toEqual([[OFFLINE_DATA_OWNER_HINT_KEY, "user-1"]])
+    expect(authStorage.removeItem).toHaveBeenCalledWith(OFFLINE_AUTH_KEY)
   })
 
   it("never reports a stalled explicit deletion as complete", async () => {

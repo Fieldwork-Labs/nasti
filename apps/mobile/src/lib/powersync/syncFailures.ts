@@ -196,15 +196,20 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
         } else {
           const entries = Object.entries(data).filter(([key]) => key !== "id")
           if (entries.some(([key]) => !columns.has(key))) throw new Error("Stored operation contains an unsupported field")
+          const [currentRow] = await transaction.getAll(`SELECT * FROM ${table} WHERE id = ?`, [failure.entity_id]) as Array<Record<string, unknown>>
           if (failure.op_type === "PUT") {
-            const names = ["id", ...entries.map(([key]) => key)]
-            const values = [failure.entity_id, ...entries.map(([, value]) => toSqlValue(value))]
+            if (!currentRow) throw new Error("The local row required for this insert is unavailable")
+            const currentEntries = Object.entries(currentRow).filter(([key]) => columns.has(key))
+            const names = ["id", ...currentEntries.map(([key]) => key)]
+            const values = [failure.entity_id, ...currentEntries.map(([, value]) => toSqlValue(value))]
             await transaction.execute(`INSERT OR REPLACE INTO ${table} (${names.join(", ")}) VALUES (${names.map(() => "?").join(", ")})`, values)
           } else {
             if (!entries.length) throw new Error("Stored update has no fields to retry")
-            const existing = await transaction.getAll(`SELECT id FROM ${table} WHERE id = ?`, [failure.entity_id])
-            if (!existing.length) throw new Error("The local row required for this update is unavailable")
-            await transaction.execute(`UPDATE ${table} SET ${entries.map(([key]) => `${key} = ?`).join(", ")} WHERE id = ?`, [...entries.map(([, value]) => toSqlValue(value)), failure.entity_id])
+            if (!currentRow) throw new Error("The local row required for this update is unavailable")
+            if (entries.some(([key]) => !(key in currentRow))) {
+              throw new Error("The current local value required for this update is unavailable")
+            }
+            await transaction.execute(`UPDATE ${table} SET ${entries.map(([key]) => `${key} = ?`).join(", ")} WHERE id = ?`, [...entries.map(([key]) => toSqlValue(currentRow[key])), failure.entity_id])
           }
         }
         await transaction.execute("DELETE FROM sync_failures WHERE id = ?", [failure.id])

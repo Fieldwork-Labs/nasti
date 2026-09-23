@@ -47,10 +47,10 @@ export const SettingsMenuModal = ({
           <button
             type="button"
             className="w-full rounded-md border px-4 py-2 text-left"
-            aria-label={failureCount ? `Sync issues, ${failureCount} failures` : "Sync issues"}
+            aria-label={status.requiresSignIn ? "Sign in again to sync" : failureCount ? `Sync issues, ${failureCount} failures` : "Sync issues"}
             onClick={() => setSyncIssuesOpen(true)}
           >
-            <span>Sync issues</span>
+            <span>{status.requiresSignIn ? "Sign in again to sync" : "Sync issues"}</span>
             {failureCount > 0 && <span className="ml-2 rounded-full bg-destructive px-2 py-0.5 text-xs text-white">{failureCount}</span>}
           </button>
           <AlertDialogAction

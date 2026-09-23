@@ -319,6 +319,16 @@ const media_migrations = new Table(
   { localOnly: true },
 )
 
+// A durable, transactionally claimed owner for the device's shared local DB.
+// The row's fixed id makes ownership a single-writer claim across app tabs.
+const local_data_owner = new Table(
+  {
+    owner_id: column.text,
+    created_at: column.text,
+  },
+  { localOnly: true },
+)
+
 export const AppSchema = new Schema({
   trip,
   trip_member,
@@ -337,6 +347,7 @@ export const AppSchema = new Schema({
   media_upload_jobs,
   media_upload_failures,
   media_migrations,
+  local_data_owner,
 })
 
 export type PowerSyncAppDatabase = (typeof AppSchema)["types"]

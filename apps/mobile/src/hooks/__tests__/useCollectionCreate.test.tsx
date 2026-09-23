@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useCollectionCreate } from "../useCollectionCreate"
 import type { Collection } from "@nasti/common/types"
 import { getMutationKey } from "../useEntityCreate"
@@ -33,6 +33,7 @@ describe("useCollectionCreate · mutateAsync", () => {
   let queryClient: QueryClient
 
   beforeEach(() => {
+    onlineManager.setOnline(true)
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -63,6 +64,22 @@ describe("useCollectionCreate · mutateAsync", () => {
 
     expect(returned).toEqual(mockCollection)
     expect(psInsertMock).toHaveBeenCalledWith("collection", mockCollection)
+  })
+
+  it("inserts a new collection while offline", async () => {
+    onlineManager.setOnline(false)
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => useCollectionCreate({ tripId: mockCollection.trip_id }), { wrapper })
+    try {
+      await act(async () => {
+        await result.current.mutateAsync(mockCollection)
+      })
+      expect(psInsertMock).toHaveBeenCalledWith("collection", mockCollection)
+    } finally {
+      onlineManager.setOnline(true)
+    }
   })
 
   it("mutateAsync should surface PowerSync insert errors", async () => {

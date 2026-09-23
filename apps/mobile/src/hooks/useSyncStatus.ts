@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { powerSyncDb } from "@/lib/powersync/db"
+import { useAuth } from "@/hooks/useAuth"
 import {
   isQueueAuthBlocked,
   setQueueAuthBlocked,
@@ -9,6 +10,7 @@ export type SyncStatusSummary = {
   queuedRows: number
   queuedMedia: number
   waitingForAuthentication: boolean
+  requiresSignIn: boolean
   activelyUploading: boolean
   permanentRowFailures: number
   permanentMediaFailures: number
@@ -19,6 +21,7 @@ export type SyncStatusSummary = {
 }
 
 export function useSyncStatus() {
+  const { requiresSignIn } = useAuth()
   const query = useQuery({
     queryKey: ["sync", "status-summary"],
     queryFn: async (): Promise<SyncStatusSummary> => {
@@ -54,6 +57,7 @@ export function useSyncStatus() {
       return {
         queuedRows,
         queuedMedia,
+        requiresSignIn: false,
         waitingForAuthentication:
           (queuedRows > 0 && isQueueAuthBlocked("rows")) ||
           (queuedMedia > 0 && isQueueAuthBlocked("media")) ||
@@ -74,18 +78,28 @@ export function useSyncStatus() {
 
   return {
     ...query,
-    status: query.data ?? {
-      queuedRows: 0,
-      queuedMedia: 0,
-      waitingForAuthentication: false,
-      activelyUploading: Boolean(powerSyncDb.currentStatus.dataFlowStatus.uploading),
-      permanentRowFailures: 0,
-      permanentMediaFailures: 0,
-      queuedDeleteRetries: 0,
-      terminalDeleteRetries: 0,
-      lastSafeError: null,
-      lastDisposition: null,
-    },
+    status: (() => {
+      const status = query.data ?? {
+        queuedRows: 0,
+        queuedMedia: 0,
+        waitingForAuthentication: false,
+        requiresSignIn: false,
+        activelyUploading: Boolean(powerSyncDb.currentStatus.dataFlowStatus.uploading),
+        permanentRowFailures: 0,
+        permanentMediaFailures: 0,
+        queuedDeleteRetries: 0,
+        terminalDeleteRetries: 0,
+        lastSafeError: null,
+        lastDisposition: null,
+      }
+      return {
+        ...status,
+        requiresSignIn,
+        waitingForAuthentication:
+          (requiresSignIn && status.queuedRows + status.queuedMedia + status.queuedDeleteRetries > 0) ||
+          status.waitingForAuthentication,
+      }
+    })(),
   }
 }
 

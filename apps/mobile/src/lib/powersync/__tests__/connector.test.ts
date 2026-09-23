@@ -16,6 +16,9 @@ const {
   updateMock,
   deleteMock,
   eqMock,
+  selectMock,
+  maybeSingleMock,
+  confirmMediaRowDeleteMock,
 } = vi.hoisted(() => ({
   acquireMock: vi.fn(),
   confirmMock: vi.fn(),
@@ -27,6 +30,9 @@ const {
   updateMock: vi.fn(),
   deleteMock: vi.fn(),
   eqMock: vi.fn(),
+  selectMock: vi.fn(),
+  maybeSingleMock: vi.fn(),
+  confirmMediaRowDeleteMock: vi.fn(),
 }))
 
 vi.mock("@nasti/common/supabase", () => ({
@@ -39,6 +45,7 @@ vi.mock("../../auth/liveSession", () => ({
 }))
 
 vi.mock("@sentry/react", () => ({ captureMessage: captureMessageMock }))
+vi.mock("../attachments", () => ({ confirmMediaRowDelete: confirmMediaRowDeleteMock }))
 
 const TOKEN = "access-token-test-value"
 const rowError = (code: string) => ({ code, message: "row request failed" })
@@ -49,8 +56,10 @@ function makeOp(
   op: UpdateType,
   opData: Record<string, unknown> = { name: "value" },
 ): CrudEntry {
-  return { table, id, op, opData } as CrudEntry
+  return { table, id, op, opData, clientId: ++clientId } as CrudEntry
 }
+
+let clientId = 0
 
 function makeTransaction(crud: CrudEntry[], onComplete?: () => void) {
   const transaction = {
@@ -95,10 +104,14 @@ describe("PowerSync row upload connector", () => {
     updateMock.mockReturnValue({ eq: eqMock })
     deleteMock.mockReturnValue({ eq: eqMock })
     eqMock.mockResolvedValue({ error: null })
+    eqMock.mockResolvedValue({ error: null, count: 1 })
+    selectMock.mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: maybeSingleMock }) })
+    maybeSingleMock.mockResolvedValue({ data: { id: "row" }, error: null })
     tokenClientFromMock.mockReturnValue({
       upsert: upsertMock,
       update: updateMock,
       delete: deleteMock,
+      select: selectMock,
     })
     createTokenClientMock.mockImplementation((token: string) => {
       expect(token).toBe(TOKEN)
@@ -108,11 +121,13 @@ describe("PowerSync row upload connector", () => {
 
   it("binds one acquired token to PUT, PATCH, and DELETE requests", async () => {
     const SupabaseConnector = await connectorClass()
+    const completionOrder: string[] = []
     const transaction = makeTransaction([
       makeOp("species", "put-1", UpdateType.PUT),
       makeOp("collection", "patch-1", UpdateType.PATCH, { name: "updated" }),
       makeOp("collection_photo", "delete-1", UpdateType.DELETE),
-    ])
+    ], () => { completionOrder.push("complete") })
+    confirmMediaRowDeleteMock.mockImplementationOnce(async () => { completionOrder.push("confirm-delete") })
     const { database } = makeDatabase([transaction])
 
     await new SupabaseConnector().uploadData(database as never)
@@ -123,6 +138,9 @@ describe("PowerSync row upload connector", () => {
     expect(upsertMock).toHaveBeenCalledWith({ id: "put-1", name: "value" })
     expect(updateMock).toHaveBeenCalledWith({ name: "updated" })
     expect(deleteMock).toHaveBeenCalledOnce()
+    expect(deleteMock).toHaveBeenCalledWith({ count: "exact" })
+    expect(confirmMediaRowDeleteMock).toHaveBeenCalledWith("collection_photo", "delete-1", database)
+    expect(completionOrder).toEqual(["complete", "confirm-delete"])
     expect(eqMock).toHaveBeenNthCalledWith(1, "id", "patch-1")
     expect(eqMock).toHaveBeenNthCalledWith(2, "id", "delete-1")
     expect(sharedFromMock).not.toHaveBeenCalled()
@@ -242,13 +260,31 @@ describe("PowerSync row upload connector", () => {
     expect(JSON.stringify(savedRows)).not.toContain(TOKEN)
   })
 
-  it("saves every operation from a failed transaction atomically before completion", async () => {
+  it("continues later rows after a confirmed RLS denial on one operation", async () => {
+    upsertMock.mockResolvedValueOnce({ error: rowError("42501") }).mockResolvedValue({ error: null })
+    confirmMock.mockResolvedValue(true)
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("species", "denied-row", UpdateType.PUT),
+      makeOp("trip", "allowed-row", UpdateType.PUT),
+    ])
+    const { database, savedRows } = makeDatabase([transaction])
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(upsertMock).toHaveBeenCalledTimes(2)
+    expect(savedRows).toHaveLength(1)
+    expect(savedRows[0]?.[2]).toBe("denied-row")
+    expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("saves failed operations atomically after continuing through the transaction", async () => {
     upsertMock.mockResolvedValue({ error: rowError("23514") })
     const SupabaseConnector = await connectorClass()
     let savedCountAtCompletion = 0
     const transaction = makeTransaction(
       [makeOp("species", "row-5a", UpdateType.PUT), makeOp("trip", "row-5b", UpdateType.PATCH)],
-      () => expect(savedCountAtCompletion).toBe(2),
+      () => expect(savedCountAtCompletion).toBe(1),
     )
     const { database } = makeDatabase([transaction])
     database.execute.mockImplementation(async (_sql, args) => {
@@ -259,17 +295,15 @@ describe("PowerSync row upload connector", () => {
     await new SupabaseConnector().uploadData(database as never)
 
     expect(database.writeTransaction).toHaveBeenCalledOnce()
-    expect(database.execute).toHaveBeenCalledTimes(2)
+    expect(database.execute).toHaveBeenCalledOnce()
+    expect(updateMock).toHaveBeenCalledWith({ name: "value" })
     expect(transaction.complete).toHaveBeenCalledOnce()
   })
 
   it("does not advance when an atomic failure-record transaction rolls back", async () => {
     upsertMock.mockResolvedValue({ error: rowError("23514") })
     const SupabaseConnector = await connectorClass()
-    const transaction = makeTransaction([
-      makeOp("species", "row-5c", UpdateType.PUT),
-      makeOp("trip", "row-5d", UpdateType.PATCH),
-    ])
+    const transaction = makeTransaction([makeOp("species", "row-5c", UpdateType.PUT)])
     const { database, savedRows } = makeDatabase([transaction])
     database.writeTransaction.mockImplementationOnce(async (
       callback: (transaction: { execute: (sql: string, args: unknown[]) => Promise<unknown> }) => Promise<void>,
@@ -277,8 +311,8 @@ describe("PowerSync row upload connector", () => {
       const pending: unknown[][] = []
       await callback({
         execute: async (_sql, args) => {
-          if (pending.length === 1) throw new Error("write failed")
           pending.push(args)
+          throw new Error("write failed")
         },
       })
       savedRows.push(...pending)
@@ -307,6 +341,59 @@ describe("PowerSync row upload connector", () => {
 
     expect(database.execute).toHaveBeenCalledOnce()
     expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("parks common permanent database errors and completes the transaction", async () => {
+    for (const code of ["23502", "23505", "22P02", "22001", "PGRST204"]) {
+      vi.resetModules()
+      upsertMock.mockResolvedValueOnce({ error: rowError(code) })
+      const SupabaseConnector = await connectorClass()
+      const transaction = makeTransaction([makeOp("species", `permanent-${code}`, UpdateType.PUT)])
+      const { database, savedRows } = makeDatabase([transaction])
+      await new SupabaseConnector().uploadData(database as never)
+      expect(savedRows[0]?.[0]).toBe(`sync-failure:${transaction.crud[0]?.clientId}`)
+      expect(transaction.complete).toHaveBeenCalledOnce()
+    }
+  })
+
+  it("continues uploading later operations after parking one permanent row error", async () => {
+    upsertMock
+      .mockResolvedValueOnce({ error: rowError("23502") })
+      .mockResolvedValueOnce({ error: null })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("species", "invalid-row", UpdateType.PUT),
+      makeOp("species", "valid-row", UpdateType.PUT),
+    ])
+    const { database, savedRows } = makeDatabase([transaction])
+    await new SupabaseConnector().uploadData(database as never)
+    expect(upsertMock).toHaveBeenCalledTimes(2)
+    expect(savedRows.map((row) => row[0])).toEqual([`sync-failure:${transaction.crud[0]?.clientId}`])
+    expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("uses distinct stable failure IDs for repeated operations on one entity", async () => {
+    upsertMock.mockResolvedValue({ error: rowError("23514") })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("species", "same-row", UpdateType.PUT),
+      makeOp("species", "same-row", UpdateType.PUT),
+    ])
+    const { database, savedRows } = makeDatabase([transaction])
+    await new SupabaseConnector().uploadData(database as never)
+    const ids = savedRows.map((row) => row[0])
+    expect(new Set(ids).size).toBe(2)
+    expect(ids).toEqual(transaction.crud.map((op) => `sync-failure:${op.clientId}`))
+  })
+
+  it("keeps a media delete waiting when the server still returns the row", async () => {
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([makeOp("collection_photo", "still-there", UpdateType.DELETE)])
+    const { database } = makeDatabase([transaction])
+    eqMock.mockResolvedValueOnce({ error: null, count: 0 })
+    maybeSingleMock.mockResolvedValueOnce({ data: { id: "still-there" }, error: null })
+    await new SupabaseConnector().uploadData(database as never)
+    expect(confirmMediaRowDeleteMock).not.toHaveBeenCalled()
   })
 
   it("replays a preserved transaction when completion fails", async () => {

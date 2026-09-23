@@ -22,6 +22,7 @@ import {
   isExplicitLogoutInProgress,
   snapshotFromSession,
   OFFLINE_AUTH_KEY,
+  OFFLINE_DATA_OWNER_HINT_KEY,
   OFFLINE_ACCESS_MS,
 } from "@/lib/offlineAuth"
 import {
@@ -299,6 +300,8 @@ describe("auth subscription", () => {
     await waitFor(() => expect(result.current.mode).toBe("offline"))
     expect(result.current.session).toBeNull()
     expect(authStorage.removeItem).not.toHaveBeenCalled()
+    await waitFor(() => expect(result.current.requiresSignIn).toBe(true))
+    expect(JSON.parse(stored.get(OFFLINE_AUTH_KEY)!).reauthRequired).toBe(true)
   })
 
   it("does not let a delayed bootstrap overwrite a newer auth event", async () => {
@@ -384,7 +387,8 @@ describe("explicit logout", () => {
     await waitFor(() => expect(result.current.mode).toBe("offline"))
     await act(() => result.current.logout.mutateAsync())
     expect(supabase.auth.signOut).toHaveBeenCalledTimes(2)
-    expect(stored.size).toBe(0)
+    expect(stored.size).toBe(1)
+    expect(stored.get(OFFLINE_DATA_OWNER_HINT_KEY)).toBe(session.user.id)
   })
 
   it("does not complete or navigate while snapshot deletion is stalled", async () => {
@@ -453,7 +457,8 @@ describe("explicit logout", () => {
     })
     await act(() => vi.advanceTimersByTimeAsync(10_000))
     await logout
-    expect(stored.size).toBe(0)
+    expect(stored.size).toBe(1)
+    expect(stored.get(OFFLINE_DATA_OWNER_HINT_KEY)).toBe(session.user.id)
   })
 
   it("blocks late refresh events and writes after logout, then re-enables explicit login", async () => {
@@ -467,7 +472,8 @@ describe("explicit logout", () => {
       JSON.stringify(session),
     )
     emit("TOKEN_REFRESHED", session)
-    expect(stored.size).toBe(0)
+    expect(stored.size).toBe(1)
+    expect(stored.get(OFFLINE_DATA_OWNER_HINT_KEY)).toBe(session.user.id)
     await waitFor(() => expect(result.current.mode).toBe("logged_out"))
     vi.mocked(supabase.auth.signInWithPassword).mockImplementation(async () => {
       await gatedStorage.setItem(

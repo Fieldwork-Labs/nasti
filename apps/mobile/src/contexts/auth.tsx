@@ -13,6 +13,7 @@ import {
   isExplicitLogoutInProgress,
   isSnapshotValid,
   loggedOutAuthState,
+  markOfflineAuthRequiresSignIn,
   readOfflineAuthSnapshot,
   snapshotFromSession,
   writeOfflineAuthSnapshot,
@@ -91,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (snapshot) await writeOfflineAuthSnapshot(snapshot)
         })
       } else {
-        void readOfflineAuthSnapshot().then((snapshot) => {
+        void readOfflineAuthSnapshot().then(async (snapshot) => {
           if (
             disposed ||
             version !== eventVersion ||
@@ -99,7 +100,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             revision !== getAuthRevision()
           )
             return
-          const retained = snapshot ?? getRetainedOfflineAuthSnapshot()
+          let retained = snapshot ?? getRetainedOfflineAuthSnapshot()
+          if (event === "SIGNED_OUT" && isSnapshotValid(retained)) {
+            retained = await markOfflineAuthRequiresSignIn(retained)
+            if (
+              disposed ||
+              version !== eventVersion ||
+              isExplicitLogoutInProgress() ||
+              revision !== getAuthRevision()
+            )
+              return
+          }
           setAuthState(
             queryClient,
             isSnapshotValid(retained)

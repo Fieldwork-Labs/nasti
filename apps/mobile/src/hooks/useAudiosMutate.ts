@@ -63,6 +63,7 @@ export const useAudiosMutate = ({
     UploadAudioVariables
   >({
     mutationKey: ["audios", "create", entityType, entityId],
+    networkMode: "always",
     mutationFn: async ({
       id: audioId,
       caption,
@@ -114,6 +115,7 @@ export const useAudiosMutate = ({
   })
 
   const deleteAudioMutation = useMutation({
+    networkMode: "always",
     mutationFn: async (audioId: string) => deleteQueuedMediaRecord({
       id: audioId,
       kind: "audio",
@@ -140,6 +142,7 @@ export const useAudiosMutate = ({
     Error,
     UpdateCaptionPayload
   >({
+    networkMode: "always",
     mutationFn: async ({ audioId, caption }) => {
       const row = await powerSyncDb.getOptional<PowerSyncCollectionAudioRow>(
         "SELECT * FROM collection_audio WHERE id = ?",
@@ -157,6 +160,7 @@ export const useAudiosMutate = ({
     Error,
     UpdateCaptionPayload
   >({
+    networkMode: "always",
     mutationFn: async ({ audioId, caption }) => {
       const row =
         await powerSyncDb.getOptional<PowerSyncScoutingNoteAudioRow>(
