@@ -246,6 +246,27 @@ const sync_failures = new Table(
   },
 )
 
+// Retry jobs for failed remote row deletes. These never enter PowerSync CRUD:
+// the target row may already be absent locally after the original DELETE.
+const row_delete_retry_jobs = new Table(
+  {
+    target_table: column.text,
+    entity_id: column.text,
+    status: column.text,
+    attempt_count: column.integer,
+    next_attempt_at: column.text,
+    created_at: column.text,
+    last_error: column.text,
+  },
+  {
+    localOnly: true,
+    indexes: {
+      status_due: ["status", "next_attempt_at"],
+      entity: ["target_table", "entity_id"],
+    },
+  },
+)
+
 // Local-only work records: media bytes remain in the legacy image/audio stores
 // until the user or an explicit retention policy deletes them.
 const media_upload_jobs = new Table(
@@ -310,6 +331,7 @@ export const AppSchema = new Schema({
   species_photo,
   person,
   sync_failures,
+  row_delete_retry_jobs,
   media_upload_jobs,
   media_upload_failures,
   media_migrations,

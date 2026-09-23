@@ -71,23 +71,23 @@ describe("sync failure recovery", () => {
     expect(db.statements[1]).toMatchObject({ sql: "DELETE FROM sync_failures WHERE id = ?", parameters: ["failure-1"] })
   })
 
-  it("retries DELETE only when the original local row exists, without recreating it", async () => {
+  it("queues a DELETE by failure ID without touching the absent local target", async () => {
     const failure = { ...rowFailure, op_type: "DELETE" as const, op_data: "{}" }
     const db = database()
     await retrySyncFailure({ ...failure, failureKind: "row" }, { database: db })
-    expect(db.statements.map(({ sql }) => sql)).toEqual([
-      "DELETE FROM trip WHERE id = ?",
-      "DELETE FROM sync_failures WHERE id = ?",
-    ])
+    expect(db.statements).toHaveLength(2)
+    expect(db.statements[0]?.sql).toContain("INSERT OR IGNORE INTO row_delete_retry_jobs")
+    expect(db.statements[1]?.sql).toContain("UPDATE row_delete_retry_jobs")
+    expect(db.statements.every(({ sql }) => !/DELETE FROM trip\b/.test(sql))).toBe(true)
   })
 
-  it("preserves the issue when a DELETE row is absent locally", async () => {
+  it("registers a DELETE retry even when the local target row is absent", async () => {
     const failure = { ...rowFailure, op_type: "DELETE" as const, op_data: "{}" }
     const db = database()
     db.setLocalRowPresent(false)
-    await expect(retrySyncFailure({ ...failure, failureKind: "row" }, { database: db })).rejects.toThrow(/local row is unavailable/)
+    await expect(retrySyncFailure({ ...failure, failureKind: "row" }, { database: db })).resolves.toBeUndefined()
     expect(db.writeTransaction).toHaveBeenCalledOnce()
-    expect(db.execute).not.toHaveBeenCalled()
+    expect(db.statements[0]?.sql).toContain("row_delete_retry_jobs")
     await expect(db.getAll("SELECT id FROM sync_failures WHERE id = ?", [failure.id])).resolves.toEqual([{ id: "failure-1" }])
   })
 

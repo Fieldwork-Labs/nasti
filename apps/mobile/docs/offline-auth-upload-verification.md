@@ -21,6 +21,8 @@ bucket. Record these values at each checkpoint:
 - Visible app state, elapsed cold-start time, and user-facing safe messages.
 - Local `sync_failures` and `media_upload_failures` counts, plus whether the
   photo/audio bytes remain in the device cache.
+- Local `row_delete_retry_jobs` counts by status (`pending`, `sending`,
+  `failed`) and confirm that dismissing a notice does not remove its job.
 
 Never copy access tokens, request headers, captions, filenames, coordinates,
 or captured payloads into the run record. Use only synthetic field values.
@@ -36,9 +38,11 @@ or captured payloads into the run record. Use only synthetic field values.
 | 5 | Inject an anonymous or expired-token `42501` for a row upload. | The row failure is not classified as permanent unless the exact request's credentials and denial are confirmed. It stays queued after ambiguous authorization failure. | No row is silently discarded. Safe telemetry records the retry disposition without request or row data. |
 | 6 | Inject a confirmed RLS denial for a row and make a later queued row valid. | The failed operation is saved in `sync_failures` before queue advancement; the next operation progresses. Both rows remain represented locally. | The denied row is absent remotely; the later valid row appears once. Settings shows a Sync issues badge. |
 | 7 | Inject one terminal media response (for example, a sanitized 413) followed by a valid media job. | The failure is saved in `media_upload_failures`; captured bytes remain in the photo/audio cache; later media progresses. | The failed object is absent and the later object exists once. The safe message contains no filename, caption, or token. |
-| 8 | Open Settings → Sync issues. Retry the row and media failures after correcting the injected server condition. | Each retry creates or requeues exactly one job, removes its notice only after the local write/queue registration succeeds, and retains bytes until normal media lifecycle cleanup. | The rows/objects appear once. No duplicate retry clicks create duplicate remote objects. |
+| 8 | Open Settings → Sync issues. Retry the row and media failures after correcting the injected server condition. | PUT/PATCH and media notices clear only after local write or queue registration. DELETE retries create or requeue one job and keep the failure visible until remote success. Media bytes remain until normal lifecycle cleanup. | The rows/objects appear once. No duplicate retry clicks create duplicate remote objects. |
 | 9 | Dismiss a remaining failure and confirm the prompt. | Only the failure notice is removed. The record/media remains in normal local views and preserved media bytes are not deleted. | No remote delete occurs as a result of dismissing. |
 | 10 | Block network, log out, force-close, and cold-start. | Logout clears local offline identity and persisted session. App remains logged out after restart. | No logout request is required to complete the local transition. |
+| 11 | Cause a confirmed terminal failure for a DELETE whose target row is already absent locally; retry twice, dismiss the notice, and restart before restoring the endpoint. | Exactly one job exists under the failure ID; no target row is inserted, updated, or locally deleted by retry. The failure remains visible until success, and dismissing the notice leaves the queued job. A `sending` job returns to `pending` after restart. | The outgoing request is `DELETE /rest/v1/<allowlisted-table>?id=eq.<id>` with the acquired bearer token. No PUT/POST is emitted. A terminal job remains inspectable while the next due job progresses. |
+| 12 | Restore credentials/network and retry the terminal server condition. | On remote success (including already absent/404), the job and matching failure are removed atomically. Failed terminal jobs remain visible until a later successful attempt. | Remote row is absent; only the allowlisted DELETE request was sent, with no payload or token in logs. |
 
 ## Run record
 
@@ -49,4 +53,3 @@ have evidence and the unresolved outcomes are documented.
 |---|---|---|---|---|
 | Android Capacitor | Not run | — | — | — |
 | PWA browser profile | Not run | — | — | — |
-

@@ -7,7 +7,6 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   retry: vi.fn(),
   dismiss: vi.fn(),
-  deleteRetryUnavailableMessage: "This delete cannot be retried automatically because its local row is unavailable. The issue is still saved on this device.",
   status: {
     queuedRows: 0, queuedMedia: 0, waitingForAuthentication: false,
     activelyUploading: false, permanentRowFailures: 0,
@@ -20,7 +19,6 @@ vi.mock("@tanstack/react-query", () => ({
 }))
 vi.mock("@/hooks/useSyncStatus", () => ({ useSyncStatus: () => ({ status: mocks.status }) }))
 vi.mock("@/lib/powersync/syncFailures", () => ({
-  DELETE_RETRY_UNAVAILABLE_MESSAGE: mocks.deleteRetryUnavailableMessage,
   listSyncFailures: mocks.list,
   retrySyncFailure: mocks.retry,
   dismissSyncFailure: mocks.dismiss,
@@ -97,16 +95,14 @@ describe("SyncIssues", () => {
     await waitFor(() => expect(screen.getByText("Retry failed. This issue is still saved.")).toBeDefined())
   })
 
-  it("shows the safe unavailable-row message when DELETE retry cannot be registered", async () => {
-    const failedDelete = { ...row, op_type: "DELETE" as const, op_data: "{}" }
+  it("shows a queued DELETE retry while keeping its issue visible", () => {
+    const failedDelete = { ...row, op_type: "DELETE" as const, op_data: "{}", delete_retry_status: "pending" as const }
     mocks.useQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => queryKey[1] === "failures"
       ? { data: [failedDelete], isLoading: false }
       : { data: mocks.status })
-    mocks.retry.mockRejectedValue(new Error(mocks.deleteRetryUnavailableMessage))
     renderIssues()
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
-    await waitFor(() => expect(screen.getByText(mocks.deleteRetryUnavailableMessage)).toBeDefined())
-    expect(screen.getByText("Retry failed. This issue is still saved.")).toBeDefined()
+    expect(screen.getByText("Delete retry queued. This issue will stay visible until the server confirms it.")).toBeDefined()
+    expect(screen.getByRole("button", { name: "Retry queued" }).hasAttribute("disabled")).toBe(true)
   })
 
   it("retries successfully and requires confirmation before dismissal", async () => {
@@ -117,7 +113,7 @@ describe("SyncIssues", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry" }))
     await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith(row))
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }))
-    expect(screen.getByText("This hides the issue notice only. It does not delete the captured record or media from your normal local views.")).toBeDefined()
+    expect(screen.getByText("This hides the issue notice only. It does not remove preserved local data. Any queued delete retry continues until the server confirms it.")).toBeDefined()
     fireEvent.click(screen.getByRole("button", { name: "Hide issue" }))
     await waitFor(() => expect(mocks.dismiss).toHaveBeenCalledWith(row))
   })

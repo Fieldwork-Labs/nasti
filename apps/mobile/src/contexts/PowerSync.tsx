@@ -5,6 +5,7 @@ import { SupabaseConnector } from "@/lib/powersync/connector"
 import { useAuth } from "@/hooks/useAuth"
 import { useAppIsActive } from "@/hooks/useAppIsActive"
 import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
+import { rowDeleteRetryQueue } from "@/lib/powersync/deleteRetryQueue"
 
 function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (connectedRef.current) return
@@ -75,10 +76,12 @@ export function PowerSyncProvider({
   useEffect(() => {
     if (isLoggedIn) {
       mediaAttachmentQueue.start()
+      rowDeleteRetryQueue.start()
       connectPowerSync(connectedRef)
       return
     }
     mediaAttachmentQueue.stop()
+    rowDeleteRetryQueue.stop()
     if (connectedRef.current) {
       disconnectPowerSync(connectedRef)
     }

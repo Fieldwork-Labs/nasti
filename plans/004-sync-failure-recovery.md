@@ -36,16 +36,18 @@ work stays quietly queued.
 
 | Purpose | Command | Expected |
 |---|---|---|
-| Tests | `pnpm --filter nasti-mobile exec vitest run src/lib/powersync/__tests__/syncFailures.test.ts src/components/app/__tests__/SyncIssues.test.tsx` | all pass |
+| Tests | `pnpm --filter nasti-mobile exec vitest run src/lib/powersync/__tests__/syncFailures.test.ts src/lib/powersync/__tests__/deleteRetryQueue.test.ts src/components/app/__tests__/SyncIssues.test.tsx` | all pass |
 | Auth/sync regression | `pnpm --filter nasti-mobile exec vitest run src/lib/__tests__/offlineAuth.test.ts src/lib/powersync/__tests__/connector.test.ts src/lib/powersync/__tests__/attachments.test.ts` | all pass |
 | Typecheck | `pnpm --filter nasti-mobile exec tsc --noEmit --pretty false` | exit 0 |
-| Lint | `pnpm --filter nasti-mobile exec eslint src/lib/powersync/syncFailures.ts src/components/app/SyncIssues.tsx src/hooks/useSyncStatus.ts` | exit 0 |
+| Lint | `pnpm --filter nasti-mobile exec eslint src/lib/powersync/syncFailures.ts src/lib/powersync/deleteRetryQueue.ts src/components/app/SyncIssues.tsx src/hooks/useSyncStatus.ts` | exit 0 |
 
 ## Scope
 
 **In scope**:
 
 - Create `apps/mobile/src/lib/powersync/syncFailures.ts` and tests.
+- Add a local-only durable queue for absent-row DELETE retries; do not replay
+  these through PowerSync local CRUD.
 - Create a sync-status hook and an app-level issues UI reachable from settings.
 - Integrate row and media failure retry/dismiss behavior.
 - Add safe telemetry and a manual device verification runbook under
@@ -73,10 +75,17 @@ table/column names into SQL. Validate `target_table` against an explicit NASTI
 table allowlist and validate operation payload keys against the table's known
 columns before constructing a local write.
 
-Row retry must reconstruct the original PUT/PATCH/DELETE as a new PowerSync
-local write and remove the failure record only after that write succeeds.
-DELETE retry is meaningful and should be idempotent. Dismiss removes only the
-failure notice, not unrelated local data.
+PUT/PATCH retry reconstructs the original write as a new PowerSync local write
+and removes the failure record only after that write succeeds. An absent-row
+DELETE is the explicit exception: PowerSync local writes cannot safely
+reconstruct its remote intent because doing so may recreate the target row or
+turn the intent into a PUT. Register a local-only `row_delete_retry_jobs` row,
+keyed by the `sync_failures.id`, atomically with the retry action. The queue
+stores only the allowlisted table and entity ID, never touches the target row,
+and leaves the `sync_failures` row visible until a direct authenticated REST
+DELETE succeeds. Dismiss removes only the notice; it does not cancel a queued
+delete job. A terminal remote error remains visible and does not block later
+jobs.
 
 Media retry reads the preserved canonical bytes and creates a fresh durable
 queue job; it removes the failure record only after queue registration succeeds.
@@ -190,4 +199,3 @@ Required end-to-end invariants:
 Version stored failure payloads if table schemas evolve. Review migrations for
 whether old failure records remain retryable; when they do not, keep export or
 manual-recovery visibility rather than silently discarding them.
-

@@ -3,6 +3,7 @@ import { getAudio } from "../persistAudio"
 import { getImage } from "../persistFiles"
 import { powerSyncDb } from "./db"
 import { mediaAttachmentQueue, type MediaKind } from "./attachments"
+import { rowDeleteRetryQueue } from "./deleteRetryQueue"
 
 export type RowFailure = {
   id: string
@@ -14,6 +15,7 @@ export type RowFailure = {
   failed_at: string
   classification: string | null
   retry_count?: number | null
+  delete_retry_status?: "pending" | "sending" | "failed" | null
 }
 
 export type MediaFailure = {
@@ -34,9 +36,6 @@ type RecoveryDatabase = {
   getAll(sql: string, parameters?: unknown[]): Promise<unknown[]>
   writeTransaction(callback: (transaction: Pick<RecoveryDatabase, "execute" | "getAll">) => Promise<void>): Promise<void>
 }
-
-export const DELETE_RETRY_UNAVAILABLE_MESSAGE =
-  "This delete cannot be retried automatically because its local row is unavailable. The issue is still saved on this device."
 
 const rowColumns: Record<string, ReadonlySet<string>> = {
   trip: new Set(["created_at", "created_by", "end_date", "location_coordinate", "location_name", "metadata", "name", "organisation_id", "start_date"]),
@@ -111,7 +110,9 @@ function safeCode(errorInfo: string | null): string | null {
 
 export async function listSyncFailures(db: RecoveryDatabase = powerSyncDb): Promise<SyncFailure[]> {
   const [rows, media] = await Promise.all([
-    db.getAll("SELECT id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification, retry_count FROM sync_failures ORDER BY failed_at DESC") as Promise<RowFailure[]>,
+    db.getAll(`SELECT sf.id, sf.target_table, sf.entity_id, sf.op_type, sf.op_data, sf.error_info, sf.failed_at, sf.classification, sf.retry_count,
+      (SELECT status FROM row_delete_retry_jobs WHERE id = sf.id) AS delete_retry_status
+      FROM sync_failures sf ORDER BY sf.failed_at DESC`) as Promise<RowFailure[]>,
     db.getAll("SELECT id, kind, status_code, safe_message, failed_at, app_version FROM media_upload_failures ORDER BY failed_at DESC") as Promise<MediaFailure[]>,
   ])
   return [
@@ -123,6 +124,7 @@ export async function listSyncFailures(db: RecoveryDatabase = powerSyncDb): Prom
 export async function retrySyncFailure(failure: SyncFailure, dependencies: {
   database?: RecoveryDatabase
   queue?: Pick<typeof mediaAttachmentQueue, "retry">
+  deleteQueue?: Pick<typeof rowDeleteRetryQueue, "enqueue" | "wake">
   getImage?: typeof getImage
   getAudio?: typeof getAudio
 } = {}): Promise<void> {
@@ -141,6 +143,7 @@ const retriesInFlight = new Map<string, Promise<void>>()
 async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
   database?: RecoveryDatabase
   queue?: Pick<typeof mediaAttachmentQueue, "retry">
+  deleteQueue?: Pick<typeof rowDeleteRetryQueue, "enqueue" | "wake">
   getImage?: typeof getImage
   getAudio?: typeof getAudio
 }): Promise<void> {
@@ -160,9 +163,12 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
         const persistedRetryCount = (savedFailure[0] as { retry_count?: number | null }).retry_count ?? 0
         retryAttemptCount = persistedRetryCount + 1
         if (failure.op_type === "DELETE") {
-          const localRow = await transaction.getAll(`SELECT id FROM ${table} WHERE id = ?`, [failure.entity_id])
-          if (!localRow.length) throw new Error(DELETE_RETRY_UNAVAILABLE_MESSAGE)
-          await transaction.execute(`DELETE FROM ${table} WHERE id = ?`, [failure.entity_id])
+          await (dependencies.deleteQueue ?? rowDeleteRetryQueue).enqueue(
+            { id: failure.id, target_table: table, entity_id: failure.entity_id },
+            transaction,
+          )
+          retried = true
+          return
         } else {
           const entries = Object.entries(data).filter(([key]) => key !== "id")
           if (entries.some(([key]) => !columns.has(key))) throw new Error("Stored operation contains an unsupported field")
@@ -180,7 +186,8 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
         await transaction.execute("DELETE FROM sync_failures WHERE id = ?", [failure.id])
         retried = true
       })
-      emitRecoveryEvent("retry", failure, retried ? "success" : "already_retried", retried ? retryAttemptCount : Math.max(0, retryAttemptCount - 1))
+      if (failure.op_type === "DELETE" && retried) (dependencies.deleteQueue ?? rowDeleteRetryQueue).wake()
+      emitRecoveryEvent("retry", failure, failure.op_type === "DELETE" && retried ? "queued" : retried ? "success" : "already_retried", retried ? retryAttemptCount : Math.max(0, retryAttemptCount - 1))
       return
     } else {
       const [job] = (await db.getAll("SELECT id, kind, operation, table_name, bucket, path, mime_type, attempt_count FROM media_upload_jobs WHERE id = ?", [failure.id])) as Array<{ id: string; kind: MediaKind; operation: "upload" | "delete"; table_name: string; bucket: string; path: string; mime_type: string; attempt_count: number }>

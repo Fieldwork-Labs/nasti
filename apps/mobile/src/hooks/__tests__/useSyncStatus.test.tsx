@@ -26,7 +26,7 @@ describe("useSyncStatus", () => {
   beforeEach(() => {
     mocks.mode = "offline"
     mocks.getUploadQueueStats.mockResolvedValue({ count: 3 })
-    mocks.getAll.mockResolvedValue([{ queuedMedia: 2, activeMedia: 0, rowFailures: 1, mediaFailures: 1, rowError: '{"code":"23514"}', rowDisposition: "validation", mediaError: null }])
+    mocks.getAll.mockResolvedValue([{ queuedMedia: 2, activeMedia: 0, rowFailures: 1, mediaFailures: 1, queuedDeleteRetries: 1, terminalDeleteRetries: 2, rowError: '{"code":"23514"}', rowDisposition: "validation", mediaError: null }])
     mocks.currentStatus = { dataFlowStatus: { uploading: true } }
   })
   afterEach(() => { cleanup(); queryClient.clear() })
@@ -41,6 +41,8 @@ describe("useSyncStatus", () => {
       activelyUploading: true,
       permanentRowFailures: 1,
       permanentMediaFailures: 1,
+      queuedDeleteRetries: 1,
+      terminalDeleteRetries: 2,
       lastSafeError: "Server rejected a change (23514)",
       lastDisposition: "validation",
     })

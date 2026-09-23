@@ -9,6 +9,8 @@ export type SyncStatusSummary = {
   activelyUploading: boolean
   permanentRowFailures: number
   permanentMediaFailures: number
+  queuedDeleteRetries: number
+  terminalDeleteRetries: number
   lastSafeError: string | null
   lastDisposition: string | null
 }
@@ -25,11 +27,13 @@ export function useSyncStatus() {
             (SELECT COUNT(*) FROM media_upload_jobs WHERE status IN ('pending', 'uploading', 'deleting')) AS queuedMedia,
             (SELECT COUNT(*) FROM media_upload_jobs WHERE status = 'uploading') AS activeMedia,
             (SELECT COUNT(*) FROM sync_failures) AS rowFailures,
+            (SELECT COUNT(*) FROM row_delete_retry_jobs WHERE status IN ('pending', 'sending')) AS queuedDeleteRetries,
+            (SELECT COUNT(*) FROM row_delete_retry_jobs WHERE status = 'failed') AS terminalDeleteRetries,
             (SELECT COUNT(*) FROM media_upload_failures) AS mediaFailures,
             (SELECT error_info FROM sync_failures ORDER BY failed_at DESC LIMIT 1) AS rowError,
             (SELECT classification FROM sync_failures ORDER BY failed_at DESC LIMIT 1) AS rowDisposition,
             (SELECT safe_message FROM media_upload_failures ORDER BY failed_at DESC LIMIT 1) AS mediaError`,
-          ) as Promise<Array<{ queuedMedia: number; activeMedia: number; rowFailures: number; mediaFailures: number; rowError: string | null; rowDisposition: string | null; mediaError: string | null }>>,
+          ) as Promise<Array<{ queuedMedia: number; activeMedia: number; rowFailures: number; mediaFailures: number; queuedDeleteRetries: number; terminalDeleteRetries: number; rowError: string | null; rowDisposition: string | null; mediaError: string | null }>>,
       ])
       const [counts] = local
       return {
@@ -39,6 +43,8 @@ export function useSyncStatus() {
         activelyUploading: Boolean(powerSyncDb.currentStatus.dataFlowStatus.uploading) || (counts?.activeMedia ?? 0) > 0,
         permanentRowFailures: counts?.rowFailures ?? 0,
         permanentMediaFailures: counts?.mediaFailures ?? 0,
+        queuedDeleteRetries: counts?.queuedDeleteRetries ?? 0,
+        terminalDeleteRetries: counts?.terminalDeleteRetries ?? 0,
         lastSafeError: safeLastError(counts?.rowError, counts?.mediaError),
         lastDisposition: counts?.mediaError ? "permanent_media_failure" : counts?.rowDisposition ?? null,
       }
@@ -57,6 +63,8 @@ export function useSyncStatus() {
       activelyUploading: Boolean(powerSyncDb.currentStatus.dataFlowStatus.uploading),
       permanentRowFailures: 0,
       permanentMediaFailures: 0,
+      queuedDeleteRetries: 0,
+      terminalDeleteRetries: 0,
       lastSafeError: null,
       lastDisposition: null,
     },

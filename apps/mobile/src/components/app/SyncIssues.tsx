@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@nasti/ui/alert-dialog"
-import { DELETE_RETRY_UNAVAILABLE_MESSAGE, dismissSyncFailure, listSyncFailures, retrySyncFailure, type SyncFailure } from "@/lib/powersync/syncFailures"
+import { dismissSyncFailure, listSyncFailures, retrySyncFailure, type SyncFailure } from "@/lib/powersync/syncFailures"
 import { useSyncStatus } from "@/hooks/useSyncStatus"
 
 export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -35,9 +35,7 @@ export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange
       ])
       return true
     } catch (error) {
-      setActionError(error instanceof Error && error.message === DELETE_RETRY_UNAVAILABLE_MESSAGE
-        ? DELETE_RETRY_UNAVAILABLE_MESSAGE
-        : "Retry could not be queued. The issue is still saved on this device.")
+      setActionError("Retry could not be queued. The issue is still saved on this device.")
       return false
     }
   }
@@ -65,8 +63,8 @@ export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange
           <AlertDialogDescription>
             {status.waitingForAuthentication
               ? "Sync is paused until live authentication is available. Your local work is safe."
-              : status.queuedRows + status.queuedMedia > 0
-                ? `${status.queuedRows + status.queuedMedia} item${status.queuedRows + status.queuedMedia === 1 ? " is" : "s are"} waiting to sync.`
+              : status.queuedRows + status.queuedMedia + status.queuedDeleteRetries > 0
+                ? `${status.queuedRows + status.queuedMedia + status.queuedDeleteRetries} item${status.queuedRows + status.queuedMedia + status.queuedDeleteRetries === 1 ? " is" : "s are"} waiting to sync.`
                 : "Your local changes are up to date."}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -86,7 +84,7 @@ export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange
         <AlertDialogHeader className="text-left">
           <AlertDialogTitle>Hide this sync issue?</AlertDialogTitle>
           <AlertDialogDescription>
-            This hides the issue notice only. It does not delete the captured record or media from your normal local views.
+            This hides the issue notice only. It does not remove preserved local data. Any queued delete retry continues until the server confirms it.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -110,15 +108,17 @@ function FailureRow({ failure, onRetry, onDismiss }: { failure: SyncFailure; onR
   const message = failure.failureKind === "media"
     ? failure.safe_message
     : rowMessage(failure)
+  const deleteQueued = failure.failureKind === "row" && failure.op_type === "DELETE" && (failure.delete_retry_status === "pending" || failure.delete_retry_status === "sending")
+  const deleteTerminal = failure.failureKind === "row" && failure.op_type === "DELETE" && failure.delete_retry_status === "failed"
   return <li className="rounded-md border p-3 text-sm">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="font-medium">{label}</p>
-        <p className="text-muted-foreground">{message}</p>
+        <p className="text-muted-foreground">{deleteQueued ? "Delete retry queued. This issue will stay visible until the server confirms it." : deleteTerminal ? `${failure.delete_retry_status === "failed" ? "Delete retry needs attention. " : ""}${message}` : message}</p>
         <time className="text-muted-foreground" dateTime={failure.failed_at}>{new Date(failure.failed_at).toLocaleString()}</time>
       </div>
       <div className="flex shrink-0 gap-2">
-        <button type="button" disabled={retrying} onClick={() => void retry()}>{retrying ? "Retrying…" : "Retry"}</button>
+        <button type="button" disabled={retrying || deleteQueued} onClick={() => void retry()}>{deleteQueued ? "Retry queued" : retrying ? "Retrying…" : "Retry"}</button>
         <button type="button" onClick={onDismiss}>Dismiss</button>
       </div>
     </div>
