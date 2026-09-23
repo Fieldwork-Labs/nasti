@@ -49,6 +49,7 @@ const NON_TRANSIENT_RETRY_DELAY_MS = 2000
 const DEPENDENCY_RETRY_STORAGE_PREFIX = "nasti-powersync-dependency-retries-v1:"
 
 type TokenClient = ReturnType<typeof createNastiSupabaseClientForToken>
+type TokenClientFactory = (accessToken: string) => TokenClient
 
 function prepareForSupabase(
   table: string,
@@ -212,9 +213,14 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
   private tokenClient: TokenClient | undefined
   private tokenClientAccessToken: string | undefined
 
+  constructor(
+    private readonly tokenClientFactory: TokenClientFactory =
+      createNastiSupabaseClientForToken,
+  ) {}
+
   private clientFor(credentials: RequestCredentials): TokenClient {
     if (this.tokenClientAccessToken !== credentials.accessToken) {
-      this.tokenClient = createNastiSupabaseClientForToken(credentials.accessToken)
+      this.tokenClient = this.tokenClientFactory(credentials.accessToken)
       this.tokenClientAccessToken = credentials.accessToken
     }
     return this.tokenClient!

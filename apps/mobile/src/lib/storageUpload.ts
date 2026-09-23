@@ -1,4 +1,4 @@
-import { Upload } from "tus-js-client"
+import { Upload, type HttpStack } from "tus-js-client"
 import { createNastiSupabaseClientForToken } from "@nasti/common/supabase"
 import type { RequestCredentials } from "./auth/liveSession"
 import { sanitizeUploadError } from "./powersync/attachmentErrors"
@@ -13,6 +13,16 @@ export type StorageUploadInput = {
   onProgress?: (percentage: number) => void
 }
 
+/** Injectable HTTP transport used by adapter-level tests. */
+export type StorageUploadOptions = {
+  httpStack?: HttpStack
+  urlStorage?: {
+    findUploadsByFingerprint: (fingerprint: string) => Promise<unknown[]>
+    addUpload: (fingerprint: string, upload: unknown) => Promise<string>
+    removeUpload: (key: string) => Promise<void>
+  }
+}
+
 export async function uploadToStorage({
   bucket,
   path,
@@ -21,7 +31,7 @@ export async function uploadToStorage({
   credentials,
   metadata = {},
   onProgress,
-}: StorageUploadInput): Promise<void> {
+}: StorageUploadInput, options: StorageUploadOptions = {}): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const upload = new Upload(file, {
       endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
@@ -40,6 +50,8 @@ export async function uploadToStorage({
         ...metadata,
       },
       chunkSize: 6 * 1024 * 1024,
+      ...(options.httpStack ? { httpStack: options.httpStack } : {}),
+      ...(options.urlStorage ? { urlStorage: options.urlStorage as never } : {}),
       onError: (error: unknown) => reject(sanitizeUploadError(error)),
       onProgress: (uploaded: number, total: number) => {
         if (total > 0) onProgress?.((uploaded / total) * 100)
