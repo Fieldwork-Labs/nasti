@@ -36,7 +36,7 @@ work stays quietly queued.
 
 | Purpose | Command | Expected |
 |---|---|---|
-| Tests | `pnpm --filter nasti-mobile exec vitest run src/lib/powersync/__tests__/syncFailures.test.ts src/lib/powersync/__tests__/deleteRetryQueue.test.ts src/components/app/__tests__/SyncIssues.test.tsx` | all pass |
+| Tests | `pnpm --filter nasti-mobile exec vitest run src/lib/powersync/__tests__/syncFailures.test.ts src/lib/powersync/__tests__/deleteRetryQueue.test.ts src/hooks/__tests__/useSyncStatus.test.tsx src/components/app/__tests__/SyncIssues.test.tsx src/components/app/__tests__/SettingsMenu.test.tsx` | all pass |
 | Auth/sync regression | `pnpm --filter nasti-mobile exec vitest run src/lib/__tests__/offlineAuth.test.ts src/lib/powersync/__tests__/connector.test.ts src/lib/powersync/__tests__/attachments.test.ts` | all pass |
 | Typecheck | `pnpm --filter nasti-mobile exec tsc --noEmit --pretty false` | exit 0 |
 | Lint | `pnpm --filter nasti-mobile exec eslint src/lib/powersync/syncFailures.ts src/lib/powersync/deleteRetryQueue.ts src/components/app/SyncIssues.tsx src/hooks/useSyncStatus.ts` | exit 0 |
@@ -84,8 +84,11 @@ keyed by the `sync_failures.id`, atomically with the retry action. The queue
 stores only the allowlisted table and entity ID, never touches the target row,
 and leaves the `sync_failures` row visible until a direct authenticated REST
 DELETE succeeds. Dismiss removes only the notice; it does not cancel a queued
-delete job. A terminal remote error remains visible and does not block later
-jobs.
+delete job. If a dismissed job later fails terminally, synthesize a retryable
+issue from the retained job and surface it again with a Settings badge. Only an
+explicit dismissal of that terminal issue hides it again. A terminal remote
+error does not block later jobs. Sending jobs carry expiring leases so another
+tab cannot reclaim active work; expired leases recover after restart.
 
 Media retry reads the preserved canonical bytes and creates a fresh durable
 queue job; it removes the failure record only after queue registration succeeds.

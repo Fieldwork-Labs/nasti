@@ -257,6 +257,8 @@ const row_delete_retry_jobs = new Table(
     next_attempt_at: column.text,
     created_at: column.text,
     last_error: column.text,
+    notice_dismissed: column.integer,
+    lease_expires_at: column.text,
   },
   {
     localOnly: true,

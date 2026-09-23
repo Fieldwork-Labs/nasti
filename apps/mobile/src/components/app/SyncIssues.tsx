@@ -61,7 +61,9 @@ export function SyncIssues({ open, onOpenChange }: { open: boolean; onOpenChange
         <AlertDialogHeader className="text-left">
           <AlertDialogTitle>Sync issues</AlertDialogTitle>
           <AlertDialogDescription>
-            {status.waitingForAuthentication
+            {status.terminalDeleteRetries > 0
+              ? `${status.terminalDeleteRetries} delete ${status.terminalDeleteRetries === 1 ? "retry needs" : "retries need"} attention.`
+              : status.waitingForAuthentication
               ? "Sync is paused until live authentication is available. Your local work is safe."
               : status.queuedRows + status.queuedMedia + status.queuedDeleteRetries > 0
                 ? `${status.queuedRows + status.queuedMedia + status.queuedDeleteRetries} item${status.queuedRows + status.queuedMedia + status.queuedDeleteRetries === 1 ? " is" : "s are"} waiting to sync.`
@@ -104,17 +106,21 @@ function FailureRow({ failure, onRetry, onDismiss }: { failure: SyncFailure; onR
     setRetryError(false)
     try { setRetryError(!(await onRetry())) } finally { setRetrying(false) }
   }
-  const label = failure.failureKind === "media" ? `${failure.kind} upload` : `${failure.target_table.replace(/_/g, " ")} change`
+  const label = failure.failureKind === "media"
+    ? `${failure.kind} upload`
+    : `${failure.target_table.replace(/_/g, " ")} ${failure.op_type === "DELETE" ? "delete" : "change"}`
   const message = failure.failureKind === "media"
     ? failure.safe_message
-    : rowMessage(failure)
+    : failure.op_type === "DELETE" && failure.delete_retry_message
+      ? failure.delete_retry_message
+      : rowMessage(failure)
   const deleteQueued = failure.failureKind === "row" && failure.op_type === "DELETE" && (failure.delete_retry_status === "pending" || failure.delete_retry_status === "sending")
   const deleteTerminal = failure.failureKind === "row" && failure.op_type === "DELETE" && failure.delete_retry_status === "failed"
   return <li className="rounded-md border p-3 text-sm">
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="font-medium">{label}</p>
-        <p className="text-muted-foreground">{deleteQueued ? "Delete retry queued. This issue will stay visible until the server confirms it." : deleteTerminal ? `${failure.delete_retry_status === "failed" ? "Delete retry needs attention. " : ""}${message}` : message}</p>
+        <p className="text-muted-foreground">{deleteQueued ? "Delete retry queued. This issue will stay visible until the server confirms it." : deleteTerminal ? `Delete retry needs attention. ${message}` : message}</p>
         <time className="text-muted-foreground" dateTime={failure.failed_at}>{new Date(failure.failed_at).toLocaleString()}</time>
       </div>
       <div className="flex shrink-0 gap-2">

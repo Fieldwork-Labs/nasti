@@ -10,19 +10,23 @@ function fakeDatabase(initial: Array<Record<string, unknown>> = []) {
     writes.push({ sql, params })
     const [id] = params as [string]
     if (sql.includes("INSERT OR IGNORE INTO row_delete_retry_jobs")) {
-      if (!jobs.has(id)) jobs.set(id, { id, target_table: params[1], entity_id: params[2], status: "pending", attempt_count: 0, next_attempt_at: params[3], created_at: params[4], last_error: null })
+      if (!jobs.has(id)) jobs.set(id, { id, target_table: params[1], entity_id: params[2], status: "pending", attempt_count: 0, next_attempt_at: params[3], created_at: params[4], last_error: null, notice_dismissed: 0, lease_expires_at: null })
     } else if (sql.startsWith("UPDATE row_delete_retry_jobs SET status = 'sending'")) {
-      const job = jobs.get(id)
-      if (job) job.status = "sending"
+      const job = jobs.get(String(params[1]))
+      if (job) Object.assign(job, { status: "sending", lease_expires_at: params[0] })
     } else if (sql.startsWith("UPDATE row_delete_retry_jobs SET status = 'pending'")) {
-      for (const job of jobs.values()) if (job.status === "sending") Object.assign(job, { status: "pending", next_attempt_at: params[0] })
+      for (const job of jobs.values()) if (job.status === "sending" && (!job.lease_expires_at || String(job.lease_expires_at) <= String(params[1]))) Object.assign(job, { status: "pending", next_attempt_at: params[0], lease_expires_at: null })
     } else if (sql.startsWith("UPDATE row_delete_retry_jobs SET status =")) {
-      const job = jobs.get(String(params[4]))
-      if (job) Object.assign(job, { status: params[0], attempt_count: params[1], next_attempt_at: params[2], last_error: params[3] })
+      const job = jobs.get(String(params[5]))
+      if (job) Object.assign(job, { status: params[0], attempt_count: params[1], next_attempt_at: params[2], last_error: params[3], lease_expires_at: null, ...(params[4] === "failed" ? { notice_dismissed: 0 } : {}) })
     } else if (sql.startsWith("UPDATE row_delete_retry_jobs SET attempt_count")) {
       const job = jobs.get(String(params[3]))
       if (job) Object.assign(job, { attempt_count: params[0], next_attempt_at: params[1], last_error: params[2] })
     } else if (sql === "DELETE FROM row_delete_retry_jobs WHERE id = ?") jobs.delete(id)
+    else if (sql.startsWith("UPDATE row_delete_retry_jobs SET notice_dismissed = 1")) {
+      const job = jobs.get(id)
+      if (job) job.notice_dismissed = 1
+    }
     else if (sql === "DELETE FROM sync_failures WHERE id = ?") failures.delete(id)
     else if (sql.includes("UPDATE sync_failures SET retry_count")) { /* failure remains present */ }
   })
@@ -58,8 +62,8 @@ describe("durable row DELETE retries", () => {
   })
 
   it("recovers in-flight jobs after restart and defers cleanly offline or without credentials", async () => {
-    const db = fakeDatabase([{ id: "failure-1", target_table: "trip", entity_id: "trip-1", status: "sending", attempt_count: 1, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00.000Z" }])
-    const queue = new RowDeleteRetryQueue(db as never, vi.fn() as never, { acquire: vi.fn().mockResolvedValue(null) } as never, () => false)
+    const db = fakeDatabase([{ id: "failure-1", target_table: "trip", entity_id: "trip-1", status: "sending", attempt_count: 1, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00.000Z", lease_expires_at: "2026-01-01T00:00:00.000Z" }])
+    const queue = new RowDeleteRetryQueue(db as never, vi.fn() as never, { acquire: vi.fn().mockResolvedValue(null) } as never, () => false, () => new Date("2026-01-02T00:00:00.000Z"))
     await queue.recoverInFlight()
     expect(db.jobs.get("failure-1")?.status).toBe("pending")
     expect(await queue.processNext()).toBe(false)
@@ -69,6 +73,13 @@ describe("durable row DELETE retries", () => {
     expect(await onlineQueue.processNext()).toBe(true)
     expect(db.jobs.get("failure-1")?.status).toBe("pending")
     expect(db.jobs.get("failure-1")?.attempt_count).toBe(2)
+  })
+
+  it("does not reclaim a fresh sending lease from another tab", async () => {
+    const db = fakeDatabase([{ id: "failure-1", target_table: "trip", entity_id: "trip-1", status: "sending", attempt_count: 1, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00.000Z", lease_expires_at: "2026-01-02T00:01:00.000Z" }])
+    const queue = new RowDeleteRetryQueue(db as never, vi.fn() as never, { acquire: vi.fn().mockResolvedValue(null) } as never, () => true, () => new Date("2026-01-02T00:00:00.000Z"))
+    await queue.recoverInFlight()
+    expect(db.jobs.get("failure-1")?.status).toBe("sending")
   })
 
   it("binds the acquired exact token to an allowlisted direct DELETE request", async () => {
@@ -88,7 +99,7 @@ describe("durable row DELETE retries", () => {
 
   it("keeps terminal failures visible and advances to a later job", async () => {
     const db = fakeDatabase([
-      { id: "failure-1", target_table: "trip", entity_id: "trip-1", status: "pending", attempt_count: 0, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00.000Z" },
+      { id: "failure-1", target_table: "trip", entity_id: "trip-1", status: "pending", attempt_count: 0, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00.000Z", notice_dismissed: 1 },
       { id: "failure-2", target_table: "person", entity_id: "person-2", status: "pending", attempt_count: 0, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:01.000Z" },
     ])
     const transport = vi.fn()
@@ -97,6 +108,7 @@ describe("durable row DELETE retries", () => {
     const queue = new RowDeleteRetryQueue(db as never, transport, { acquire: vi.fn().mockResolvedValue({ accessToken: "live-token" }) } as never, () => true, () => new Date("2026-01-02T00:00:00.000Z"))
     await queue.processNext()
     expect(db.jobs.get("failure-1")?.status).toBe("failed")
+    expect(db.jobs.get("failure-1")?.notice_dismissed).toBe(0)
     expect(db.failures.has("failure-1")).toBe(true)
     await queue.processNext()
     expect(db.jobs.has("failure-2")).toBe(false)
@@ -106,10 +118,13 @@ describe("durable row DELETE retries", () => {
   it("backs off an unconfirmed authorization failure without hiding the failure", async () => {
     const db = fakeDatabase([{ id: "failure-1", target_table: "trip", entity_id: "trip-1", status: "pending", attempt_count: 0, next_attempt_at: "2026-01-01T00:00:00.000Z", created_at: "2026-01-01T00:00:00.000Z" }])
     const transport = vi.fn().mockResolvedValue(new Response(null, { status: 403 }))
-    const credentials = { acquire: vi.fn().mockResolvedValue({ accessToken: "unconfirmed-token" }), confirm: vi.fn().mockResolvedValue(false) }
+    const acquired = { accessToken: "unconfirmed-token" }
+    const credentials = { acquire: vi.fn().mockResolvedValue(acquired), confirm: vi.fn().mockResolvedValue(false) }
     const queue = new RowDeleteRetryQueue(db as never, transport, credentials as never, () => true, () => new Date("2026-01-02T00:00:00.000Z"))
     await queue.processNext()
-    expect(credentials.confirm).toHaveBeenCalledWith({ accessToken: "unconfirmed-token" })
+    expect(new Headers((transport.mock.calls[0]?.[1] as RequestInit).headers).get("Authorization")).toBe("Bearer unconfirmed-token")
+    expect(credentials.confirm).toHaveBeenCalledOnce()
+    expect(credentials.confirm.mock.calls[0]?.[0]).toBe(acquired)
     expect(db.jobs.get("failure-1")?.status).toBe("pending")
     expect(db.failures.has("failure-1")).toBe(true)
     expect(db.jobs.get("failure-1")?.next_attempt_at).toBe("2026-01-02T00:00:02.000Z")

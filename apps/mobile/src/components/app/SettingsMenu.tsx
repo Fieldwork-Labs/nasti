@@ -24,7 +24,7 @@ export const SettingsMenuModal = ({
   const router = useRouter()
   const [syncIssuesOpen, setSyncIssuesOpen] = useState(false)
   const { status } = useSyncStatus()
-  const failureCount = status.permanentRowFailures + status.permanentMediaFailures
+  const failureCount = status.permanentRowFailures + status.permanentMediaFailures + status.terminalDeleteRetries
   const { logout } = useAuth({
     onLogout: async () => {
       await router.invalidate()

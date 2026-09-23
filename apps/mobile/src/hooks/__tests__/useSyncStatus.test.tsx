@@ -44,7 +44,7 @@ describe("useSyncStatus", () => {
       queuedDeleteRetries: 1,
       terminalDeleteRetries: 2,
       lastSafeError: "Server rejected a change (23514)",
-      lastDisposition: "validation",
+      lastDisposition: "retry_terminal",
     })
   })
 
@@ -56,5 +56,15 @@ describe("useSyncStatus", () => {
     expect(result.current.status.waitingForAuthentication).toBe(false)
     expect(result.current.status.lastSafeError).toBe("Storage rejected the file as too large")
     expect(result.current.status.lastDisposition).toBe("permanent_media_failure")
+  })
+
+  it("surfaces visible orphaned terminal DELETE retries in status counts and safe error", async () => {
+    mocks.mode = "live"
+    mocks.getAll.mockResolvedValue([{ queuedMedia: 0, activeMedia: 0, rowFailures: 0, mediaFailures: 0, queuedDeleteRetries: 0, terminalDeleteRetries: 1, rowError: null, rowDisposition: null, deleteRetryError: "Server rejected this delete (422).", mediaError: null }])
+    const { result } = renderHook(() => useSyncStatus(), { wrapper })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.status.terminalDeleteRetries).toBe(1)
+    expect(result.current.status.lastSafeError).toBe("Server rejected this delete (422).")
+    expect(result.current.status.lastDisposition).toBe("retry_terminal")
   })
 })

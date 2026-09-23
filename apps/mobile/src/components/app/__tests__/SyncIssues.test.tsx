@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   status: {
     queuedRows: 0, queuedMedia: 0, waitingForAuthentication: false,
     activelyUploading: false, permanentRowFailures: 0,
-    permanentMediaFailures: 0, lastSafeError: null as string | null,
+    permanentMediaFailures: 0, queuedDeleteRetries: 0, terminalDeleteRetries: 0,
+    lastSafeError: null as string | null,
   },
 }))
 vi.mock("@tanstack/react-query", () => ({
@@ -53,7 +54,7 @@ function renderIssues() {
 describe("SyncIssues", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.status = { queuedRows: 0, queuedMedia: 0, waitingForAuthentication: false, activelyUploading: false, permanentRowFailures: 0, permanentMediaFailures: 0, lastSafeError: null }
+    mocks.status = { queuedRows: 0, queuedMedia: 0, waitingForAuthentication: false, activelyUploading: false, permanentRowFailures: 0, permanentMediaFailures: 0, queuedDeleteRetries: 0, terminalDeleteRetries: 0, lastSafeError: null }
     mocks.useQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => queryKey[1] === "failures"
       ? { data: [], isLoading: false }
       : { data: mocks.status })
@@ -103,6 +104,21 @@ describe("SyncIssues", () => {
     renderIssues()
     expect(screen.getByText("Delete retry queued. This issue will stay visible until the server confirms it.")).toBeDefined()
     expect(screen.getByRole("button", { name: "Retry queued" }).hasAttribute("disabled")).toBe(true)
+  })
+
+  it("shows and retries a terminal DELETE recovered from a dismissed queue job", async () => {
+    const orphanedDelete = {
+      ...row, op_type: "DELETE" as const, op_data: "{}", delete_retry_status: "failed" as const,
+      delete_retry_message: "Server rejected this delete (422).",
+    }
+    mocks.status = { ...mocks.status, terminalDeleteRetries: 1 }
+    mocks.useQuery.mockImplementation(({ queryKey }: { queryKey: string[] }) => queryKey[1] === "failures"
+      ? { data: [orphanedDelete], isLoading: false }
+      : { data: mocks.status })
+    renderIssues()
+    expect(screen.getByText(/delete retry needs attention\. Server rejected this delete \(422\)/i)).toBeDefined()
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+    await waitFor(() => expect(mocks.retry).toHaveBeenCalledWith(orphanedDelete))
   })
 
   it("retries successfully and requires confirmation before dismissal", async () => {

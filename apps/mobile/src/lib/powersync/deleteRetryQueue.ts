@@ -10,6 +10,8 @@ const DELETE_TABLES = new Set([
 const RETRY_BASE_MS = 2_000
 const RETRY_MAX_MS = 5 * 60_000
 const POLL_MS = 5_000
+const LEASE_MS = 5 * 60_000
+const LEASE_HEARTBEAT_MS = 30_000
 
 type Database = {
   execute(sql: string, parameters?: unknown[]): Promise<unknown>
@@ -26,6 +28,8 @@ export type RowDeleteRetryJob = {
   next_attempt_at: string
   created_at: string
   last_error: string | null
+  notice_dismissed?: number | null
+  lease_expires_at?: string | null
 }
 
 export type DeleteTransport = (url: string, init: RequestInit) => Promise<Response>
@@ -90,6 +94,8 @@ export class RowDeleteRetryQueue {
   private running = false
   private activeRequest: AbortController | undefined
   private lifecycleGeneration = 0
+  private leaseTimer: ReturnType<typeof setInterval> | undefined
+  private activeJobId: string | undefined
 
   constructor(
     private readonly database: Database = powerSyncDb,
@@ -104,12 +110,13 @@ export class RowDeleteRetryQueue {
     const now = this.now().toISOString()
     await (transaction ?? this.database).execute(
       `INSERT OR IGNORE INTO row_delete_retry_jobs
-       (id, target_table, entity_id, status, attempt_count, next_attempt_at, created_at, last_error)
-       VALUES (?, ?, ?, 'pending', 0, ?, ?, NULL)`,
+       (id, target_table, entity_id, status, attempt_count, next_attempt_at, created_at, last_error, notice_dismissed, lease_expires_at)
+       VALUES (?, ?, ?, 'pending', 0, ?, ?, NULL, 0, NULL)`,
       [failure.id, failure.target_table, failure.entity_id, now, now],
     )
     await (transaction ?? this.database).execute(
-      `UPDATE row_delete_retry_jobs SET status = 'pending', next_attempt_at = ?, last_error = NULL
+      `UPDATE row_delete_retry_jobs SET status = 'pending', next_attempt_at = ?, last_error = NULL,
+         notice_dismissed = 0, lease_expires_at = NULL
        WHERE id = ? AND status = 'failed'`,
       [now, failure.id],
     )
@@ -128,6 +135,9 @@ export class RowDeleteRetryQueue {
     this.lifecycleGeneration += 1
     this.activeRequest?.abort()
     this.activeRequest = undefined
+    if (this.leaseTimer) clearInterval(this.leaseTimer)
+    this.leaseTimer = undefined
+    this.activeJobId = undefined
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
     if (typeof window !== "undefined") window.removeEventListener("online", this.handleOnline)
@@ -138,8 +148,9 @@ export class RowDeleteRetryQueue {
   async recoverInFlight(): Promise<void> {
     const now = this.now().toISOString()
     await this.database.execute(
-      "UPDATE row_delete_retry_jobs SET status = 'pending', next_attempt_at = ? WHERE status = 'sending'",
-      [now],
+      `UPDATE row_delete_retry_jobs SET status = 'pending', next_attempt_at = ?, lease_expires_at = NULL
+       WHERE status = 'sending' AND (lease_expires_at IS NULL OR lease_expires_at <= ?)`,
+      [now, now],
     )
   }
 
@@ -148,7 +159,7 @@ export class RowDeleteRetryQueue {
     const generation = this.lifecycleGeneration
     const now = this.now().toISOString()
     const [candidate] = await this.database.getAll(
-      `SELECT id, target_table, entity_id, status, attempt_count, next_attempt_at, created_at, last_error
+      `SELECT id, target_table, entity_id, status, attempt_count, next_attempt_at, created_at, last_error, notice_dismissed, lease_expires_at
        FROM row_delete_retry_jobs WHERE status = 'pending' AND next_attempt_at <= ?
        ORDER BY created_at ASC, id ASC LIMIT 1`, [now],
     ) as RowDeleteRetryJob[]
@@ -167,7 +178,8 @@ export class RowDeleteRetryQueue {
         "SELECT id FROM row_delete_retry_jobs WHERE id = ? AND status = 'pending'", [candidate.id],
       )
       if (!stillPending) return
-      await tx.execute("UPDATE row_delete_retry_jobs SET status = 'sending' WHERE id = ?", [candidate.id])
+      const leaseExpiresAt = new Date(this.now().getTime() + LEASE_MS).toISOString()
+      await tx.execute("UPDATE row_delete_retry_jobs SET status = 'sending', lease_expires_at = ? WHERE id = ?", [leaseExpiresAt, candidate.id])
       claimed = true
     })
     if (!claimed) return true
@@ -176,6 +188,8 @@ export class RowDeleteRetryQueue {
     const job = { ...candidate, status: "sending" as const, attempt_count: candidate.attempt_count + 1 }
     const controller = new AbortController()
     this.activeRequest = controller
+    this.activeJobId = job.id
+    this.leaseTimer = setInterval(() => void this.renewLease(job.id), LEASE_HEARTBEAT_MS)
     try {
       const status = await deleteRowWithToken(job.target_table, job.entity_id, credentials.accessToken, this.transport, controller.signal)
       await this.database.writeTransaction(async (tx) => {
@@ -195,8 +209,10 @@ export class RowDeleteRetryQueue {
         : safeError(status)
       await this.database.writeTransaction(async (tx) => {
         await tx.execute(
-          "UPDATE row_delete_retry_jobs SET status = ?, attempt_count = ?, next_attempt_at = ?, last_error = ? WHERE id = ?",
-          [terminal ? "failed" : "pending", job.attempt_count, due, message, job.id],
+          `UPDATE row_delete_retry_jobs SET status = ?, attempt_count = ?, next_attempt_at = ?, last_error = ?,
+           lease_expires_at = NULL, notice_dismissed = CASE WHEN ? = 'failed' THEN 0 ELSE notice_dismissed END
+           WHERE id = ?`,
+          [terminal ? "failed" : "pending", job.attempt_count, due, message, terminal ? "failed" : "pending", job.id],
         )
         await tx.execute(
           "UPDATE sync_failures SET retry_count = ?, error_info = ?, classification = ? WHERE id = ?",
@@ -206,6 +222,9 @@ export class RowDeleteRetryQueue {
       emit(job, terminal ? "terminal_failure" : "retry", status)
     } finally {
       if (this.activeRequest === controller) this.activeRequest = undefined
+      if (this.activeJobId === job.id) this.activeJobId = undefined
+      if (this.leaseTimer) clearInterval(this.leaseTimer)
+      this.leaseTimer = undefined
     }
     return true
   }
@@ -222,10 +241,20 @@ export class RowDeleteRetryQueue {
     emit({ ...job, attempt_count: attempt }, disposition, status)
   }
 
+  private async renewLease(jobId: string): Promise<void> {
+    if (!this.running || this.activeJobId !== jobId) return
+    const expiresAt = new Date(this.now().getTime() + LEASE_MS).toISOString()
+    await this.database.execute(
+      "UPDATE row_delete_retry_jobs SET lease_expires_at = ? WHERE id = ? AND status = 'sending'",
+      [expiresAt, jobId],
+    ).catch(() => undefined)
+  }
+
   private async pump(): Promise<void> {
     if (!this.running || this.pumping || !this.online()) return
     this.pumping = true
     try {
+      await this.recoverInFlight()
       // Bound each pass so the worker remains responsive to lifecycle changes.
       for (let count = 0; count < 20 && this.running; count += 1) {
         if (!await this.processNext()) break

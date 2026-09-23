@@ -16,6 +16,7 @@ export type RowFailure = {
   classification: string | null
   retry_count?: number | null
   delete_retry_status?: "pending" | "sending" | "failed" | null
+  delete_retry_message?: string | null
 }
 
 export type MediaFailure = {
@@ -109,14 +110,23 @@ function safeCode(errorInfo: string | null): string | null {
 }
 
 export async function listSyncFailures(db: RecoveryDatabase = powerSyncDb): Promise<SyncFailure[]> {
-  const [rows, media] = await Promise.all([
+  const [rows, media, orphanedDeleteJobs] = await Promise.all([
     db.getAll(`SELECT sf.id, sf.target_table, sf.entity_id, sf.op_type, sf.op_data, sf.error_info, sf.failed_at, sf.classification, sf.retry_count,
-      (SELECT status FROM row_delete_retry_jobs WHERE id = sf.id) AS delete_retry_status
+      (SELECT status FROM row_delete_retry_jobs WHERE id = sf.id) AS delete_retry_status,
+      (SELECT last_error FROM row_delete_retry_jobs WHERE id = sf.id) AS delete_retry_message
       FROM sync_failures sf ORDER BY sf.failed_at DESC`) as Promise<RowFailure[]>,
     db.getAll("SELECT id, kind, status_code, safe_message, failed_at, app_version FROM media_upload_failures ORDER BY failed_at DESC") as Promise<MediaFailure[]>,
+    db.getAll(`SELECT j.id, j.target_table, j.entity_id, 'DELETE' AS op_type, '{}' AS op_data,
+      '{}' AS error_info, j.created_at AS failed_at, 'retry_terminal' AS classification,
+      j.attempt_count AS retry_count, 'failed' AS delete_retry_status,
+      j.last_error AS delete_retry_message
+      FROM row_delete_retry_jobs j
+      WHERE j.status = 'failed' AND j.notice_dismissed = 0
+        AND NOT EXISTS (SELECT 1 FROM sync_failures sf WHERE sf.id = j.id)`) as Promise<RowFailure[]>,
   ])
   return [
     ...rows.map((failure) => ({ ...failure, failureKind: "row" as const })),
+    ...orphanedDeleteJobs.map((failure) => ({ ...failure, failureKind: "row" as const })),
     ...media.map((failure) => ({ ...failure, failureKind: "media" as const })),
   ].sort((a, b) => b.failed_at.localeCompare(a.failed_at))
 }
@@ -159,7 +169,21 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
           "SELECT id, retry_count FROM sync_failures WHERE id = ?",
           [failure.id],
         )
-        if (!savedFailure.length) return
+        if (!savedFailure.length) {
+          if (failure.op_type !== "DELETE") return
+          const [job] = await transaction.getAll(
+            "SELECT id, attempt_count FROM row_delete_retry_jobs WHERE id = ? AND status = 'failed'",
+            [failure.id],
+          ) as Array<{ id: string; attempt_count: number }>
+          if (!job) return
+          retryAttemptCount = job.attempt_count + 1
+          await (dependencies.deleteQueue ?? rowDeleteRetryQueue).enqueue(
+            { id: failure.id, target_table: table, entity_id: failure.entity_id },
+            transaction,
+          )
+          retried = true
+          return
+        }
         const persistedRetryCount = (savedFailure[0] as { retry_count?: number | null }).retry_count ?? 0
         retryAttemptCount = persistedRetryCount + 1
         if (failure.op_type === "DELETE") {
@@ -210,7 +234,12 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
 }
 
 export async function dismissSyncFailure(failure: SyncFailure, db: RecoveryDatabase = powerSyncDb): Promise<void> {
-  if (failure.failureKind === "row") {
+  if (failure.failureKind === "row" && failure.op_type === "DELETE") {
+    await db.writeTransaction(async (transaction) => {
+      await transaction.execute("DELETE FROM sync_failures WHERE id = ?", [failure.id])
+      await transaction.execute("UPDATE row_delete_retry_jobs SET notice_dismissed = 1 WHERE id = ?", [failure.id])
+    })
+  } else if (failure.failureKind === "row") {
     await db.execute("DELETE FROM sync_failures WHERE id = ?", [failure.id])
   } else {
     await db.execute("DELETE FROM media_upload_failures WHERE id = ?", [failure.id])

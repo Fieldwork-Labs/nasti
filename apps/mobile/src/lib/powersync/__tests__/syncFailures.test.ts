@@ -21,6 +21,7 @@ function database() {
     if (sql === "DELETE FROM sync_failures WHERE id = ?") failurePresent = false
   })
   const getAll = vi.fn(async (sql: string, _parameters?: unknown[]): Promise<unknown[]> => {
+    if (sql.includes("FROM row_delete_retry_jobs j")) return []
     if (sql.includes("SELECT id FROM trip")) return localRowPresent ? [{ id: "trip-1" }] : []
     if (sql.includes("SELECT id, retry_count FROM sync_failures WHERE")) return failurePresent ? [{ id: "failure-1", retry_count: failureRetryCount }] : []
     if (sql.includes("SELECT id FROM sync_failures WHERE")) return failurePresent ? [{ id: "failure-1" }] : []
@@ -55,7 +56,7 @@ describe("sync failure recovery", () => {
 
   it("lists row and media failures without changing their records", async () => {
     const db = database()
-    db.getAll.mockImplementation(async (sql: string): Promise<unknown[]> => sql.includes("FROM sync_failures") ? [rowFailure] : [{ id: "media-1", kind: "audio", status_code: 413, safe_message: "File too large", failed_at: "2026-09-21T00:00:00.000Z", app_version: "v1" }])
+    db.getAll.mockImplementation(async (sql: string): Promise<unknown[]> => sql.includes("FROM row_delete_retry_jobs j") ? [] : sql.includes("FROM sync_failures") ? [rowFailure] : [{ id: "media-1", kind: "audio", status_code: 413, safe_message: "File too large", failed_at: "2026-09-21T00:00:00.000Z", app_version: "v1" }])
     const failures = await listSyncFailures(db)
     expect(failures.map(({ failureKind }) => failureKind)).toEqual(["row", "media"])
     expect(db.execute).not.toHaveBeenCalled()
@@ -152,5 +153,56 @@ describe("sync failure recovery", () => {
     expect(JSON.stringify(mocks.captureMessage.mock.calls)).not.toContain("Field trip")
     expect(JSON.stringify(mocks.captureMessage.mock.calls)).not.toContain("secret-token")
     expect(JSON.stringify(mocks.captureMessage.mock.calls)).toContain('"retryCount":0')
+  })
+
+  it("resurfaces a dismissed pending DELETE as a retryable issue if it later fails terminally", async () => {
+    let syncFailurePresent = true
+    let jobStatus = "pending"
+    let noticeDismissed = 0
+    let jobError: string | null = null
+    const statements: string[] = []
+    const db = {
+      execute: vi.fn(async (sql: string) => {
+        statements.push(sql)
+        if (sql === "DELETE FROM sync_failures WHERE id = ?") syncFailurePresent = false
+        if (sql === "UPDATE row_delete_retry_jobs SET notice_dismissed = 1 WHERE id = ?") noticeDismissed = 1
+      }),
+      getAll: vi.fn(async (sql: string) => {
+        if (sql.includes("FROM sync_failures sf ORDER")) return syncFailurePresent ? [{ ...rowFailure, op_type: "DELETE", op_data: "{}", delete_retry_status: jobStatus }] : []
+        if (sql.includes("FROM media_upload_failures")) return []
+        if (sql.includes("FROM row_delete_retry_jobs j")) {
+          return jobStatus === "failed" && noticeDismissed === 0
+            ? [{ id: "failure-1", target_table: "trip", entity_id: "trip-1", op_type: "DELETE", op_data: "{}", error_info: "{}", failed_at: "2026-09-22T00:00:00.000Z", classification: "retry_terminal", retry_count: 1, delete_retry_status: "failed", delete_retry_message: jobError }]
+            : []
+        }
+        if (sql.includes("SELECT id, retry_count FROM sync_failures")) return syncFailurePresent ? [{ id: "failure-1", retry_count: 0 }] : []
+        if (sql.includes("SELECT id, attempt_count FROM row_delete_retry_jobs")) return jobStatus === "failed" ? [{ id: "failure-1", attempt_count: 1 }] : []
+        return []
+      }),
+      writeTransaction: vi.fn(async (callback: (transaction: typeof db) => Promise<void>) => callback(db)),
+    }
+    const dismissedFailure = { ...rowFailure, failureKind: "row" as const, op_type: "DELETE" as const, op_data: "{}", delete_retry_status: "pending" as const }
+    await dismissSyncFailure(dismissedFailure, db)
+    expect(jobStatus).toBe("pending")
+    expect(noticeDismissed).toBe(1)
+    expect(statements).toContain("UPDATE row_delete_retry_jobs SET notice_dismissed = 1 WHERE id = ?")
+
+    // The queue terminal transition clears notice_dismissed so the unresolved
+    // job becomes visible again even though its original failure row was hidden.
+    jobStatus = "failed"
+    jobError = "Server rejected this delete (422)."
+    noticeDismissed = 0
+    const [synthetic] = await listSyncFailures(db)
+    expect(synthetic).toMatchObject({ failureKind: "row", id: "failure-1", op_type: "DELETE", delete_retry_message: jobError })
+
+    const enqueue = vi.fn(async (_failure: unknown, transaction?: { execute(sql: string, params?: unknown[]): Promise<unknown> }) => {
+      await transaction?.execute("UPDATE row_delete_retry_jobs SET status = 'pending' WHERE id = ?", ["failure-1"])
+      jobStatus = "pending"
+    })
+    const wake = vi.fn()
+    await retrySyncFailure(synthetic!, { database: db, deleteQueue: { enqueue, wake } })
+    expect(enqueue).toHaveBeenCalledOnce()
+    expect(wake).toHaveBeenCalledOnce()
+    expect(jobStatus).toBe("pending")
   })
 })
