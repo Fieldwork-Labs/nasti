@@ -8,9 +8,9 @@ import { deleteAudio, putAudio } from "@/lib/persistAudio"
 import { mimeToExtension } from "@/lib/audio"
 
 import { powerSyncDb } from "@/lib/powersync/db"
-import { psInsert, psUpdate } from "@/lib/powersync/crud"
-import { mediaAttachmentQueue, validateMediaUploadIds } from "@/lib/powersync/attachments"
-import { powerSyncQueryClient } from "@/lib/powersync/query"
+import { psUpdate } from "@/lib/powersync/crud"
+import { validateMediaUploadIds } from "@/lib/powersync/attachments"
+import { createQueuedMediaRecord, deleteQueuedMediaRecord } from "@/lib/powersync/mediaMutations"
 import type {
   PowerSyncCollectionAudioRow,
   PowerSyncScoutingNoteAudioRow,
@@ -100,54 +100,28 @@ export const useAudiosMutate = ({
       await putAudio(audioId, file, mime_type)
 
       const table = entityType === "collection" ? "collection_audio" : "scouting_notes_audio"
-      await powerSyncDb.writeTransaction(async (transaction) => {
-        await mediaAttachmentQueue.enqueue(
-          {
-            id: audioId,
-            kind: "audio",
-            table,
-            bucket: "collection-audio",
-            path: filePath,
-            mimeType: mime_type,
-          },
-          transaction,
-        )
-        await psInsert(table, audio, transaction)
+      await createQueuedMediaRecord({
+        id: audioId,
+        kind: "audio",
+        table,
+        bucket: "collection-audio",
+        path: filePath,
+        mimeType: mime_type,
+        record: audio,
       })
-
-      await powerSyncQueryClient.invalidateQueries()
-      mediaAttachmentQueue.wake()
       return audio
     },
   })
 
-  const deleteAudioMutationCollectionAudio = useMutation({
-    mutationFn: async (audioId: string) => {
-      const audio = await powerSyncDb.getOptional<PowerSyncCollectionAudioRow>(
-        "SELECT * FROM collection_audio WHERE id = ?",
-        [audioId],
-      )
-      if (!audio) throw new Error(`Collection audio ${audioId} not found`)
-      if (!audio.url) throw new Error(`Collection audio ${audioId} has no URL`)
-
-      await powerSyncDb.writeTransaction(async (transaction) => {
-        await mediaAttachmentQueue.enqueueDelete(
-          {
-            id: audioId,
-            kind: "audio",
-            table: "collection_audio",
-            bucket: "collection-audio",
-            path: audio.url!,
-            mimeType: audio.mime_type ?? "audio/mpeg",
-          },
-          transaction,
-        )
-        await transaction.execute("DELETE FROM collection_audio WHERE id = ?", [audioId])
-      })
-      await powerSyncQueryClient.invalidateQueries()
-      mediaAttachmentQueue.wake()
-      return audioId
-    },
+  const deleteAudioMutation = useMutation({
+    mutationFn: async (audioId: string) => deleteQueuedMediaRecord({
+      id: audioId,
+      kind: "audio",
+      table: entityType === "collection" ? "collection_audio" : "scouting_notes_audio",
+      bucket: "collection-audio",
+      entityLabel: entityType === "collection" ? "Collection audio" : "Scouting note audio",
+      fallbackMimeType: "audio/mpeg",
+    }),
     onError: (error) => {
       console.log("error deleting audio", error)
     },
@@ -156,48 +130,6 @@ export const useAudiosMutate = ({
       await deleteAudio(id)
     },
   })
-
-  const deleteAudioMutationScoutingNotesAudio = useMutation({
-    mutationFn: async (audioId: string) => {
-      const audio =
-        await powerSyncDb.getOptional<PowerSyncScoutingNoteAudioRow>(
-          "SELECT * FROM scouting_notes_audio WHERE id = ?",
-          [audioId],
-        )
-      if (!audio) throw new Error(`Scouting note audio ${audioId} not found`)
-      if (!audio.url) throw new Error(`Scouting note audio ${audioId} has no URL`)
-
-      await powerSyncDb.writeTransaction(async (transaction) => {
-        await mediaAttachmentQueue.enqueueDelete(
-          {
-            id: audioId,
-            kind: "audio",
-            table: "scouting_notes_audio",
-            bucket: "collection-audio",
-            path: audio.url!,
-            mimeType: audio.mime_type ?? "audio/mpeg",
-          },
-          transaction,
-        )
-        await transaction.execute("DELETE FROM scouting_notes_audio WHERE id = ?", [audioId])
-      })
-      await powerSyncQueryClient.invalidateQueries()
-      mediaAttachmentQueue.wake()
-      return audioId
-    },
-    onError: (error) => {
-      console.log("error deleting audio", error)
-    },
-    onSettled: async (id) => {
-      if (!id) return
-      await deleteAudio(id)
-    },
-  })
-
-  const deleteAudioMutation =
-    entityType === "collection"
-      ? deleteAudioMutationCollectionAudio
-      : deleteAudioMutationScoutingNotesAudio
 
   type UpdateCaptionPayload = {
     caption?: string | null

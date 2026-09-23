@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/react"
 import { liveUploadCredentials } from "../auth/liveSession"
 import { powerSyncDb } from "./db"
+import { setQueueAuthBlocked } from "./queueAuthState"
 
 const DELETE_TABLES = new Set([
   "trip", "trip_member", "species", "trip_species", "collection",
@@ -141,6 +142,7 @@ export class RowDeleteRetryQueue {
     if (this.timer) clearInterval(this.timer)
     this.timer = undefined
     if (typeof window !== "undefined") window.removeEventListener("online", this.handleOnline)
+    setQueueAuthBlocked("deleteRetries", false)
   }
 
   wake(): void { if (this.running) void this.pump() }
@@ -168,9 +170,11 @@ export class RowDeleteRetryQueue {
     const credentials = await this.credentials.acquire().catch(() => null)
     if (generation !== this.lifecycleGeneration) return false
     if (!credentials) {
+      setQueueAuthBlocked("deleteRetries", true)
       await this.defer(candidate, null, "waiting_for_authentication")
       return true
     }
+    setQueueAuthBlocked("deleteRetries", false)
 
     let claimed = false
     await this.database.writeTransaction(async (tx) => {
@@ -197,11 +201,16 @@ export class RowDeleteRetryQueue {
         await tx.execute("DELETE FROM sync_failures WHERE id = ?", [job.id])
       })
       emit(job, "success", status)
+      setQueueAuthBlocked("deleteRetries", false)
     } catch (error) {
       const status = error && typeof error === "object" && "status" in error && typeof error.status === "number" ? error.status : null
       const authWasConfirmed = (status === 401 || status === 403)
         ? await this.credentials.confirm(credentials).catch(() => false)
         : false
+      setQueueAuthBlocked(
+        "deleteRetries",
+        (status === 401 || status === 403) && !authWasConfirmed,
+      )
       const terminal = status !== null && status >= 400 && status < 500 && (status !== 401 && status !== 403 || authWasConfirmed) && status !== 408 && status !== 429
       const due = new Date(this.now().getTime() + retryDelay(job.attempt_count)).toISOString()
       const message = (status === 401 || status === 403) && authWasConfirmed

@@ -215,18 +215,19 @@ async function performRetrySyncFailure(failure: SyncFailure, dependencies: {
       return
     } else {
       const [job] = (await db.getAll("SELECT id, kind, operation, table_name, bucket, path, mime_type, attempt_count FROM media_upload_jobs WHERE id = ?", [failure.id])) as Array<{ id: string; kind: MediaKind; operation: "upload" | "delete"; table_name: string; bucket: string; path: string; mime_type: string; attempt_count: number }>
-      if (!job || job.operation !== "upload") throw new Error("Media upload job is unavailable")
+      if (!job) throw new Error("Media upload job is unavailable")
       retryAttemptCount = job.attempt_count + 1
-      const bytes = failure.kind === "photo"
-        ? await (dependencies.getImage ?? getImage)(failure.id)
-        : await (dependencies.getAudio ?? getAudio)(failure.id)
-      if (!bytes) throw new Error("Preserved media bytes are unavailable")
+      if (job.operation === "upload") {
+        const bytes = failure.kind === "photo"
+          ? await (dependencies.getImage ?? getImage)(failure.id)
+          : await (dependencies.getAudio ?? getAudio)(failure.id)
+        if (!bytes) throw new Error("Preserved media bytes are unavailable")
+      }
       const queue = dependencies.queue ?? mediaAttachmentQueue
       await queue.retry(job.id)
       emitRecoveryEvent("retry", failure, "success", retryAttemptCount)
       return
     }
-    emitRecoveryEvent("retry", failure, "success")
   } catch (error) {
     emitRecoveryEvent("retry", failure, "failed", retryAttemptCount)
     throw error

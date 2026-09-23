@@ -92,6 +92,18 @@ describe("bounded auth bootstrap", () => {
     expect(await bootstrap).toMatchObject({ mode: "logged_out", session: null })
   })
 
+  it("retries a snapshot read that timed out before resolving", async () => {
+    vi.mocked(authStorage.getItem)
+      .mockReturnValueOnce(new Promise(() => undefined))
+      .mockResolvedValueOnce(JSON.stringify(snapshot))
+    const bootstrap = getAuthStateWithOfflineFallback()
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(await bootstrap).toMatchObject({
+      mode: "offline",
+      user: { id: "user-1" },
+    })
+  })
+
   it("consumes a credential rejection after the timeout", async () => {
     let rejectLookup!: (error: Error) => void
     vi.mocked(supabase.auth.getSession).mockReturnValue(

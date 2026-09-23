@@ -160,13 +160,22 @@ export const readOfflineAuthSnapshot =
   async (): Promise<OfflineAuthSnapshot | null> => {
     const revision = authRevision
     try {
-      const stored = await withTimeout(
-        Promise.resolve().then(() => authStorage.getItem(OFFLINE_AUTH_KEY)),
-      )
-      if (stored === TIMED_OUT || stored == null) return null
-      const parsed = snapshotSchema.safeParse(JSON.parse(stored))
-      if (parsed.success && revision === authRevision && !loggingOut) retainedSnapshot = parsed.data
-      return parsed.success ? parsed.data : null
+      const read = Promise.resolve()
+        .then(() => authStorage.getItem(OFFLINE_AUTH_KEY))
+        .then((stored) => {
+          if (stored == null) return null
+          const parsed = snapshotSchema.safeParse(JSON.parse(stored))
+          if (parsed.success && revision === authRevision && !loggingOut)
+            retainedSnapshot = parsed.data
+          return parsed.success ? parsed.data : null
+        })
+      // A storage adapter may resolve after our bound. Keep its eventual result
+      // available to this bootstrap (and later auth events) without extending
+      // the caller's wait.
+      void read.catch(() => undefined)
+      const parsed = await withTimeout(read)
+      if (parsed === TIMED_OUT || parsed == null) return null
+      return parsed
     } catch {
       // A failed/slow read must never destroy a potentially valid identity.
       return null
@@ -263,16 +272,24 @@ export const getAuthStateWithOfflineFallback = async (): Promise<AuthState> => {
   const lookup = Promise.resolve()
     .then(() => supabase.auth.getSession())
     .catch(() => null)
-  const result = await withTimeout(lookup)
+  // Retry storage alongside the credential lookup. Secure storage can stall
+  // transiently during device startup; one bounded retry avoids treating a
+  // delayed but valid offline identity as a logout.
+  const [result, retriedSnapshot] = await Promise.all([
+    withTimeout(lookup),
+    readOfflineAuthSnapshot(),
+  ])
   if (loggingOut || revision !== authRevision) return loggedOutAuthState
   if (result !== TIMED_OUT && result && !result.error && result.data.session) {
     const session = result.data.session
     const refreshed = snapshotFromSession(session, snapshot)
-    if (refreshed) await writeOfflineAuthSnapshot(refreshed)
+    if (refreshed) void writeOfflineAuthSnapshot(refreshed)
     return loggingOut || revision !== authRevision
       ? loggedOutAuthState
       : getAuthStateFromSession(session)
   }
-  const discovered = getRetainedOfflineAuthSnapshot()
+  const discovered =
+    (isSnapshotValid(retriedSnapshot) ? retriedSnapshot : null) ??
+    getRetainedOfflineAuthSnapshot()
   return discovered ? getAuthStateFromSnapshot(discovered) : loggedOutAuthState
 }

@@ -43,7 +43,9 @@ function safeErrorMessage(statusCode: number | null): string {
 
 export function sanitizeUploadError(error: unknown): SanitizedUploadError {
   const statusCode = responseStatus(error)
-  const terminalValidationStatuses = new Set([400, 413, 415, 422])
+  // Storage also uses HTTP 400 for expired or invalid JWTs. Treat ambiguous
+  // responses as transient so a fresh request credential can retry the upload.
+  const terminalValidationStatuses = new Set([413, 415, 422])
   const retryable = statusCode === null || !terminalValidationStatuses.has(statusCode)
   const safeMessage = safeErrorMessage(statusCode)
   return Object.assign(new Error(safeMessage), {

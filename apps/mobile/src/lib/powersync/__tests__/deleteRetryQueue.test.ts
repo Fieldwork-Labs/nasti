@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("../db", () => ({ powerSyncDb: {} }))
 import { RowDeleteRetryQueue } from "../deleteRetryQueue"
+import {
+  isQueueAuthBlocked,
+  resetQueueAuthBlockedState,
+} from "../queueAuthState"
 
 function fakeDatabase(initial: Array<Record<string, unknown>> = []) {
   const jobs = new Map(initial.map((job) => [String(job.id), { ...job }]))
@@ -50,7 +54,10 @@ function fakeDatabase(initial: Array<Record<string, unknown>> = []) {
 }
 
 describe("durable row DELETE retries", () => {
-  beforeEach(() => { vi.restoreAllMocks() })
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    resetQueueAuthBlockedState()
+  })
 
   it("registers duplicate clicks as one local job without target row SQL", async () => {
     const db = fakeDatabase()
@@ -73,6 +80,9 @@ describe("durable row DELETE retries", () => {
     expect(await onlineQueue.processNext()).toBe(true)
     expect(db.jobs.get("failure-1")?.status).toBe("pending")
     expect(db.jobs.get("failure-1")?.attempt_count).toBe(2)
+    expect(isQueueAuthBlocked("deleteRetries")).toBe(true)
+    onlineQueue.stop()
+    expect(isQueueAuthBlocked("deleteRetries")).toBe(false)
   })
 
   it("does not reclaim a fresh sending lease from another tab", async () => {
@@ -95,6 +105,7 @@ describe("durable row DELETE retries", () => {
     expect(new Headers(init.headers).get("Authorization")).toBe("Bearer fresh-live-token")
     expect(init.body).toBeUndefined()
     expect(transport).toHaveBeenCalledOnce()
+    expect(isQueueAuthBlocked("deleteRetries")).toBe(false)
   })
 
   it("keeps terminal failures visible and advances to a later job", async () => {

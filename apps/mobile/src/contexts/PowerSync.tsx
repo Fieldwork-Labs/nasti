@@ -74,7 +74,7 @@ export function PowerSyncProvider({
   const isAppActive = useAppIsActive()
 
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && isAppActive) {
       mediaAttachmentQueue.start()
       rowDeleteRetryQueue.start()
       connectPowerSync(connectedRef)
@@ -85,7 +85,7 @@ export function PowerSyncProvider({
     if (connectedRef.current) {
       disconnectPowerSync(connectedRef)
     }
-  }, [isLoggedIn, organisationId])
+  }, [isLoggedIn, isAppActive, organisationId])
 
   return (
     <PowerSyncContext.Provider value={powerSyncDb}>

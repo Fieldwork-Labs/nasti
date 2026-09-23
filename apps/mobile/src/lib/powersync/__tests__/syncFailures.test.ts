@@ -117,6 +117,24 @@ describe("sync failure recovery", () => {
     await expect(retrySyncFailure(failure, { database: db, queue: { retry }, getImage: vi.fn().mockResolvedValue(undefined) })).rejects.toThrow(/bytes/)
   })
 
+  it("retries a failed media delete without requiring local bytes", async () => {
+    const failure: SyncFailure = { failureKind: "media", id: "media-1", kind: "photo", status_code: 422, safe_message: "Storage rejected deletion", failed_at: "2026-09-22T00:00:00.000Z", app_version: "v1" }
+    const db = database()
+    db.getAll.mockImplementation(async (sql: string): Promise<unknown[]> =>
+      sql.includes("FROM media_upload_jobs")
+        ? [{ id: "media-1", kind: "photo", operation: "delete", attempt_count: 2 }]
+        : [],
+    )
+    const retry = vi.fn().mockResolvedValue(undefined)
+    const getImage = vi.fn()
+    await retrySyncFailure(failure, { database: db, queue: { retry }, getImage })
+    expect(retry).toHaveBeenCalledWith("media-1")
+    expect(getImage).not.toHaveBeenCalled()
+    expect(mocks.captureMessage).toHaveBeenCalledWith("Sync issue recovery", expect.objectContaining({
+      extra: expect.objectContaining({ disposition: "success", retryCount: 3 }),
+    }))
+  })
+
   it("makes duplicate row retries converge on one local write", async () => {
     const db = database()
     await Promise.all([

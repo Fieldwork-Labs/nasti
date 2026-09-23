@@ -7,9 +7,9 @@ import { useCallback } from "react"
 import { deleteImage } from "@/lib/persistFiles"
 import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { powerSyncDb } from "@/lib/powersync/db"
-import { psInsert, psUpdate } from "@/lib/powersync/crud"
-import { mediaAttachmentQueue, validateMediaUploadIds } from "@/lib/powersync/attachments"
-import { powerSyncQueryClient } from "@/lib/powersync/query"
+import { psUpdate } from "@/lib/powersync/crud"
+import { validateMediaUploadIds } from "@/lib/powersync/attachments"
+import { createQueuedMediaRecord, deleteQueuedMediaRecord } from "@/lib/powersync/mediaMutations"
 import type {
   PowerSyncCollectionPhotoRow,
   PowerSyncScoutingNotePhotoRow,
@@ -92,55 +92,28 @@ export const usePhotosMutate = ({
             } satisfies ScoutingNotePhoto)
 
       const table = entityType === "collection" ? "collection_photo" : "scouting_notes_photos"
-      await powerSyncDb.writeTransaction(async (transaction) => {
-        await mediaAttachmentQueue.enqueue(
-          {
-            id: photoId,
-            kind: "photo",
-            table,
-            bucket: "collection-photos",
-            path: filePath,
-            mimeType: file.type || "image/jpeg",
-          },
-          transaction,
-        )
-        await psInsert(table, photo, transaction)
+      await createQueuedMediaRecord({
+        id: photoId,
+        kind: "photo",
+        table,
+        bucket: "collection-photos",
+        path: filePath,
+        mimeType: file.type || "image/jpeg",
+        record: photo,
       })
-      await powerSyncQueryClient.invalidateQueries()
-      mediaAttachmentQueue.wake()
       return photo
     },
   })
 
-  // Delete photo mutation
-  const deletePhotoMutationCollectionPhoto = useMutation({
-    mutationFn: async (photoId: string) => {
-      const photo = await powerSyncDb.getOptional<PowerSyncCollectionPhotoRow>(
-        "SELECT * FROM collection_photo WHERE id = ?",
-        [photoId],
-      )
-      if (!photo) throw new Error(`Collection photo ${photoId} not found`)
-      if (!photo.url) throw new Error(`Collection photo ${photoId} has no URL`)
-
-      await powerSyncDb.writeTransaction(async (transaction) => {
-        await mediaAttachmentQueue.enqueueDelete(
-          {
-            id: photoId,
-            kind: "photo",
-            table: "collection_photo",
-            bucket: "collection-photos",
-            path: photo.url!,
-            mimeType: "image/jpeg",
-          },
-          transaction,
-        )
-        await transaction.execute("DELETE FROM collection_photo WHERE id = ?", [photoId])
-      })
-      await powerSyncQueryClient.invalidateQueries()
-      mediaAttachmentQueue.wake()
-
-      return photoId
-    },
+  const deletePhotoMutation = useMutation({
+    mutationFn: async (photoId: string) => deleteQueuedMediaRecord({
+      id: photoId,
+      kind: "photo",
+      table: entityType === "collection" ? "collection_photo" : "scouting_notes_photos",
+      bucket: "collection-photos",
+      entityLabel: entityType === "collection" ? "Collection photo" : "Scouting note photo",
+      fallbackMimeType: "image/jpeg",
+    }),
     onError: (error) => {
       console.log("error deleting photo", error)
     },
@@ -149,50 +122,6 @@ export const usePhotosMutate = ({
       await deleteImage(id)
     },
   })
-
-  const deletePhotoMutationScoutingNotesPhoto = useMutation({
-    mutationFn: async (photoId: string) => {
-      const photo =
-        await powerSyncDb.getOptional<PowerSyncScoutingNotePhotoRow>(
-          "SELECT * FROM scouting_notes_photos WHERE id = ?",
-          [photoId],
-        )
-      if (!photo) throw new Error(`Scouting note photo ${photoId} not found`)
-      if (!photo.url)
-        throw new Error(`Scouting note photo ${photoId} has no URL`)
-
-      await powerSyncDb.writeTransaction(async (transaction) => {
-        await mediaAttachmentQueue.enqueueDelete(
-          {
-            id: photoId,
-            kind: "photo",
-            table: "scouting_notes_photos",
-            bucket: "collection-photos",
-            path: photo.url!,
-            mimeType: "image/jpeg",
-          },
-          transaction,
-        )
-        await transaction.execute("DELETE FROM scouting_notes_photos WHERE id = ?", [photoId])
-      })
-      await powerSyncQueryClient.invalidateQueries()
-      mediaAttachmentQueue.wake()
-
-      return photoId
-    },
-    onError: (error) => {
-      console.log("error deleting photo", error)
-    },
-    onSettled: async (id) => {
-      if (!id) return
-      await deleteImage(id)
-    },
-  })
-
-  const deletePhotoMutation =
-    entityType === "collection"
-      ? deletePhotoMutationCollectionPhoto
-      : deletePhotoMutationScoutingNotesPhoto
 
   type UpdateCaptionPayload = {
     caption?: string | null

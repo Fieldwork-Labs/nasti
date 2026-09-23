@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { UpdateType, type CrudEntry, type CrudTransaction } from "@powersync/web"
+import {
+  isQueueAuthBlocked,
+  resetQueueAuthBlockedState,
+} from "../queueAuthState"
 
 const {
   acquireMock,
@@ -82,6 +86,7 @@ async function connectorClass() {
 describe("PowerSync row upload connector", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetQueueAuthBlockedState()
     localStorage.clear()
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
     acquireMock.mockResolvedValue({ accessToken: TOKEN })
@@ -135,6 +140,7 @@ describe("PowerSync row upload connector", () => {
     expect(tokenClientFromMock).not.toHaveBeenCalled()
     expect(database.execute).not.toHaveBeenCalled()
     expect(transaction.complete).not.toHaveBeenCalled()
+    expect(isQueueAuthBlocked("rows")).toBe(true)
   })
 
   it("returns immediately when offline without acquiring credentials or touching the row", async () => {
@@ -231,6 +237,7 @@ describe("PowerSync row upload connector", () => {
     expect(savedBeforeComplete).toBe(true)
     expect(database.execute).toHaveBeenCalledOnce()
     expect(transaction.complete).toHaveBeenCalledOnce()
+    expect(isQueueAuthBlocked("rows")).toBe(false)
     expect(savedRows[0]?.[8]).toBe(0)
     expect(JSON.stringify(savedRows)).not.toContain(TOKEN)
   })
@@ -319,6 +326,22 @@ describe("PowerSync row upload connector", () => {
     expect(transaction.complete).toHaveBeenCalledTimes(2)
   })
 
+  it("uses stable failure IDs when completion failure causes a replay", async () => {
+    upsertMock.mockResolvedValue({ error: rowError("23514") })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([makeOp("species", "row-stable", UpdateType.PUT)])
+    transaction.complete.mockRejectedValueOnce(new Error("completion failed"))
+    const { database, savedRows } = makeDatabase([transaction])
+    database.getNextCrudTransaction.mockResolvedValue(transaction)
+    const connector = new SupabaseConnector()
+
+    await connector.uploadData(database as never)
+    await connector.uploadData(database as never)
+
+    expect(savedRows).toHaveLength(2)
+    expect(savedRows[0]?.[0]).toBe(savedRows[1]?.[0])
+  })
+
   it("persists dependency retries across reloads and unblocks the next row", async () => {
     const setTimeoutSpy = vi
       .spyOn(globalThis, "setTimeout")
@@ -353,6 +376,33 @@ describe("PowerSync row upload connector", () => {
         expect(nextTx.complete).toHaveBeenCalledOnce()
       }
     }
+    setTimeoutSpy.mockRestore()
+  })
+
+  it("bounds dependency retries when localStorage writes are blocked", async () => {
+    const setTimeoutSpy = vi
+      .spyOn(globalThis, "setTimeout")
+      .mockImplementation(((callback: TimerHandler) => {
+        if (typeof callback === "function") queueMicrotask(() => callback())
+        return 1 as unknown as ReturnType<typeof setTimeout>
+      }) as unknown as typeof setTimeout)
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Storage blocked", "SecurityError")
+    })
+    upsertMock.mockResolvedValue({ error: rowError("23503") })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([makeOp("collection", "blocked-storage-row", UpdateType.PUT)])
+    const { database, savedRows } = makeDatabase([transaction])
+    database.getNextCrudTransaction.mockResolvedValue(transaction)
+    const connector = new SupabaseConnector()
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await connector.uploadData(database as never)
+    }
+
+    expect(savedRows).toHaveLength(1)
+    expect(savedRows[0]?.[8]).toBe(4)
+    expect(transaction.complete).toHaveBeenCalledOnce()
     setTimeoutSpy.mockRestore()
   })
 

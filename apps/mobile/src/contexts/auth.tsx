@@ -112,11 +112,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     const version = eventVersion
+    const revision = getAuthRevision()
     void getAuthStateWithOfflineFallback().then((state) => {
       if (disposed) return
-      if (version === eventVersion && !isExplicitLogoutInProgress()) {
+      if (
+        version === eventVersion &&
+        revision === getAuthRevision() &&
+        !isExplicitLogoutInProgress()
+      ) {
         setAuthState(queryClient, state)
         setReady(true)
+        if (state.mode === "logged_out") {
+          // If both bounded startup reads raced a temporarily stalled secure
+          // storage adapter, make one final bounded read after unlocking the
+          // app. Restore only while no newer auth event or explicit logout has
+          // superseded this bootstrap.
+          void readOfflineAuthSnapshot().then((snapshot) => {
+            if (
+              disposed ||
+              version !== eventVersion ||
+              revision !== getAuthRevision() ||
+              isExplicitLogoutInProgress() ||
+              !areAuthSessionEventsAllowed() ||
+              !isSnapshotValid(snapshot)
+            )
+              return
+            setAuthState(queryClient, getAuthStateFromSnapshot(snapshot))
+          })
+        }
       }
     })
     return () => {
@@ -128,5 +151,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isRestoring, queryClient])
 
   // Old persisted query caches are not an authority for local access.
-  return ready && !isRestoring ? children : null
+  return ready && !isRestoring ? (
+    children
+  ) : (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex min-h-screen items-center justify-center text-sm text-muted-foreground"
+    >
+      Restoring your session…
+    </div>
+  )
 }

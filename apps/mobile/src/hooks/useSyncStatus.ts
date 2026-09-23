@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query"
-import { useAuth } from "@/hooks/useAuth"
 import { powerSyncDb } from "@/lib/powersync/db"
+import {
+  isQueueAuthBlocked,
+  setQueueAuthBlocked,
+} from "@/lib/powersync/queueAuthState"
 
 export type SyncStatusSummary = {
   queuedRows: number
@@ -16,7 +19,6 @@ export type SyncStatusSummary = {
 }
 
 export function useSyncStatus() {
-  const { mode } = useAuth()
   const query = useQuery({
     queryKey: ["sync", "status-summary"],
     queryFn: async (): Promise<SyncStatusSummary> => {
@@ -40,14 +42,26 @@ export function useSyncStatus() {
           ) as Promise<Array<{ queuedMedia: number; activeMedia: number; rowFailures: number; mediaFailures: number; queuedDeleteRetries: number; terminalDeleteRetries: number; rowError: string | null; rowDisposition: string | null; deleteRetryError: string | null; mediaError: string | null }>>,
       ])
       const [counts] = local
+      const queuedRows = queue.count
+      const queuedMedia = counts?.queuedMedia ?? 0
+      const queuedDeleteRetries = counts?.queuedDeleteRetries ?? 0
+      // Worker signals only mean something while the corresponding queue has
+      // pending work. Clear stale process-local signals as queues drain.
+      if (queuedRows === 0) setQueueAuthBlocked("rows", false)
+      if (queuedMedia === 0) setQueueAuthBlocked("media", false)
+      if (queuedDeleteRetries === 0)
+        setQueueAuthBlocked("deleteRetries", false)
       return {
-        queuedRows: queue.count,
-        queuedMedia: counts?.queuedMedia ?? 0,
-        waitingForAuthentication: mode !== "live",
+        queuedRows,
+        queuedMedia,
+        waitingForAuthentication:
+          (queuedRows > 0 && isQueueAuthBlocked("rows")) ||
+          (queuedMedia > 0 && isQueueAuthBlocked("media")) ||
+          (queuedDeleteRetries > 0 && isQueueAuthBlocked("deleteRetries")),
         activelyUploading: Boolean(powerSyncDb.currentStatus.dataFlowStatus.uploading) || (counts?.activeMedia ?? 0) > 0,
         permanentRowFailures: counts?.rowFailures ?? 0,
         permanentMediaFailures: counts?.mediaFailures ?? 0,
-        queuedDeleteRetries: counts?.queuedDeleteRetries ?? 0,
+        queuedDeleteRetries,
         terminalDeleteRetries: counts?.terminalDeleteRetries ?? 0,
         lastSafeError: safeLastError(counts?.rowError, counts?.mediaError, counts?.deleteRetryError),
         lastDisposition: counts?.mediaError ? "permanent_media_failure" : (counts?.terminalDeleteRetries ?? 0) > 0 ? "retry_terminal" : counts?.rowDisposition ?? null,
@@ -63,7 +77,7 @@ export function useSyncStatus() {
     status: query.data ?? {
       queuedRows: 0,
       queuedMedia: 0,
-      waitingForAuthentication: mode !== "live",
+      waitingForAuthentication: false,
       activelyUploading: Boolean(powerSyncDb.currentStatus.dataFlowStatus.uploading),
       permanentRowFailures: 0,
       permanentMediaFailures: 0,

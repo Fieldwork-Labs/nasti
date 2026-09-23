@@ -1,7 +1,8 @@
 import { liveUploadCredentials } from "../auth/liveSession"
 import { getAllAudios, getAudio } from "../persistAudio"
-import { getAllImages, getImage } from "../persistFiles"
+import { getImage } from "../persistFiles"
 import { deleteFromStorage, uploadToStorage } from "../storageUpload"
+import { setQueueAuthBlocked } from "./queueAuthState"
 import type { SanitizedUploadError } from "./attachmentErrors"
 import { powerSyncDb } from "./db"
 
@@ -58,7 +59,6 @@ type QueueDependencies = {
   upload: typeof uploadToStorage
   getImage: typeof getImage
   getAudio: typeof getAudio
-  getAllImages: typeof getAllImages
   getAllAudios: typeof getAllAudios
   deleteRemote: (accessToken: string, bucket: string, path: string) => Promise<void>
   now: () => Date
@@ -71,10 +71,15 @@ const TABLES = [
   "collection_audio",
   "scouting_notes_audio",
 ] as const
+// The photo cache also receives synced downloads, so its entries cannot prove
+// which user created the media. The audio cache is written only on capture.
+const RECONCILABLE_LEGACY_TABLES = ["collection_audio", "scouting_notes_audio"] as const
 
 const DEFAULT_RETRY_MS = 1_000
 const MAX_RETRY_MS = 5 * 60_000
 const LOOP_INTERVAL_MS = 5_000
+const JOB_LEASE_MS = 5 * 60_000
+const JOB_LEASE_RENEW_MS = 60_000
 
 function isAudioTable(table: string): boolean {
   return table.endsWith("_audio")
@@ -95,6 +100,7 @@ function dataUrlBlob(dataUrl: string, mimeType: string): Blob {
 }
 
 export class LocalAttachmentQueue {
+  private readonly leaseOwner = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
   private timer: ReturnType<typeof setInterval> | undefined
   private pumping = false
   private rerunRequested = false
@@ -108,7 +114,6 @@ export class LocalAttachmentQueue {
       upload: uploadToStorage,
       getImage,
       getAudio,
-      getAllImages,
       getAllAudios,
       deleteRemote: (accessToken, bucket, path) =>
         deleteFromStorage(bucket, path, { accessToken }),
@@ -140,16 +145,23 @@ export class LocalAttachmentQueue {
     transaction?: QueueTransaction,
   ): Promise<void> {
     const now = this.dependencies.now().toISOString()
-    await (transaction ?? this.dependencies.database).execute(
-      `INSERT INTO media_upload_jobs
-       (id, kind, operation, table_name, bucket, path, mime_type, status, attempt_count, next_attempt_at, created_at)
-       VALUES (?, ?, 'delete', ?, ?, ?, ?, 'deleting', 0, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET operation = 'delete', status = 'deleting',
-         attempt_count = 0, next_attempt_at = excluded.next_attempt_at,
-         table_name = excluded.table_name, bucket = excluded.bucket, path = excluded.path,
-         mime_type = excluded.mime_type`,
-      [job.id, job.kind, job.table, job.bucket, job.path, job.mimeType, now, now],
-    )
+    const upsert = async (target: QueueTransaction) => {
+      // PowerSync exposes localOnly tables as views, which reject SQLite UPSERT.
+      await target.execute(
+        `UPDATE media_upload_jobs SET operation = 'delete', status = 'deleting',
+         attempt_count = 0, next_attempt_at = ?, table_name = ?, bucket = ?, path = ?, mime_type = ?
+         WHERE id = ?`,
+        [now, job.table, job.bucket, job.path, job.mimeType, job.id],
+      )
+      await target.execute(
+        `INSERT OR IGNORE INTO media_upload_jobs
+         (id, kind, operation, table_name, bucket, path, mime_type, status, attempt_count, next_attempt_at, created_at)
+         VALUES (?, ?, 'delete', ?, ?, ?, ?, 'deleting', 0, ?, ?)`,
+        [job.id, job.kind, job.table, job.bucket, job.path, job.mimeType, now, now],
+      )
+    }
+    if (transaction) await upsert(transaction)
+    else await this.dependencies.database.writeTransaction(upsert)
   }
 
   wake(): void {
@@ -176,6 +188,7 @@ export class LocalAttachmentQueue {
     if (typeof window !== "undefined") {
       window.removeEventListener("online", this.handleOnline)
     }
+    setQueueAuthBlocked("media", false)
   }
 
   private handleOnline = () => {
@@ -185,8 +198,8 @@ export class LocalAttachmentQueue {
   private async recoverSendingJobs(): Promise<void> {
     await this.dependencies.database.execute(
       `UPDATE media_upload_jobs SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
-       next_attempt_at = ? WHERE status = 'uploading'`,
-      [this.dependencies.now().toISOString()],
+       next_attempt_at = ? WHERE status = 'uploading' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)`,
+      [this.dependencies.now().toISOString(), this.dependencies.now().toISOString()],
     )
   }
 
@@ -197,21 +210,18 @@ export class LocalAttachmentQueue {
       [migrationVersion],
     )
     if (completed.length) return
-    const [images, audios] = await Promise.all([
-      this.dependencies.getAllImages(),
-      this.dependencies.getAllAudios(),
-    ])
-    const cachedIds = new Set([...images.map(({ id }) => id), ...audios.map(({ id }) => id)])
-    const union = TABLES.map((table) => {
-      const mimeColumn = isAudioTable(table) ? "mime_type" : "NULL"
-      return `SELECT id, url, ${mimeColumn} AS mime_type, uploaded_at, '${table}' AS table_name FROM ${table}`
+    const audios = await this.dependencies.getAllAudios()
+    const cachedIds = new Set(audios.map(({ id }) => id))
+    const union = RECONCILABLE_LEGACY_TABLES.map((table) => {
+      return `SELECT media.id, media.url, media.mime_type, media.uploaded_at,
+        '${table}' AS table_name FROM ${table} media WHERE media.uploaded_at IS NULL`
     }).join(" UNION ALL ")
     const rows = (await this.dependencies.database.getAll(union)) as Array<
       MediaSourceRow & { table_name: string }
     >
     for (const row of rows) {
       if (!TABLES.some((table) => table === row.table_name)) continue
-      if (!row.url || !cachedIds.has(row.id)) continue
+      if (!row.url || row.uploaded_at !== null || !cachedIds.has(row.id)) continue
       const job = {
         id: row.id,
         kind: isAudioTable(row.table_name) ? "audio" as const : "photo" as const,
@@ -262,6 +272,7 @@ export class LocalAttachmentQueue {
     }
     this.pumping = true
     try {
+      await this.recoverSendingJobs()
       const attempted = new Set<string>()
       while (this.running) {
         const now = this.dependencies.now().toISOString()
@@ -277,6 +288,20 @@ export class LocalAttachmentQueue {
         if (!job) break
         attempted.add(job.id)
         try {
+          const leaseUntil = `${new Date(this.dependencies.now().getTime() + JOB_LEASE_MS).toISOString()}~${this.leaseOwner}`
+          await this.dependencies.database.execute(
+            `UPDATE media_upload_jobs SET status = 'uploading', next_attempt_at = ?
+             WHERE id = ? AND status IN ('pending', 'deleting')
+             AND (next_attempt_at IS NULL OR next_attempt_at <= ?)`,
+            [leaseUntil, job.id, now],
+          )
+          // INSTEAD OF triggers on PowerSync localOnly views may report zero
+          // affected rows even when their backing local row changed.
+          const [claimed] = (await this.dependencies.database.getAll(
+            "SELECT status, next_attempt_at FROM media_upload_jobs WHERE id = ?",
+            [job.id],
+          )) as Array<{ status: string; next_attempt_at: string | null }>
+          if (claimed?.status !== "uploading" || claimed.next_attempt_at !== leaseUntil) continue
           await this.process(job)
         } catch {
           // A local database write can also fail while recording an upload
@@ -288,8 +313,9 @@ export class LocalAttachmentQueue {
               this.dependencies.now().getTime() + DEFAULT_RETRY_MS,
             ).toISOString()
             await this.dependencies.database.execute(
-              `UPDATE media_upload_jobs SET status = ?, attempt_count = ?, next_attempt_at = ? WHERE id = ?`,
-              [job.operation === "delete" ? "deleting" : "pending", attempt, nextAttemptAt, job.id],
+              `UPDATE media_upload_jobs SET status = ?, attempt_count = ?, next_attempt_at = ?
+               WHERE id = ? AND status = 'uploading' AND next_attempt_at LIKE ?`,
+              [job.operation === "delete" ? "deleting" : "pending", attempt, nextAttemptAt, job.id, `%~${this.leaseOwner}`],
             )
           } catch {
             // Preserve the original local state for restart recovery.
@@ -306,25 +332,55 @@ export class LocalAttachmentQueue {
   }
 
   private async process(job: MediaUploadJob): Promise<void> {
-    await this.dependencies.database.execute(
-      "UPDATE media_upload_jobs SET status = 'uploading' WHERE id = ? AND status IN ('pending', 'deleting')",
+    let activeLease = ""
+    const current = (await this.dependencies.database.getAll(
+      "SELECT next_attempt_at FROM media_upload_jobs WHERE id = ? AND status = 'uploading'",
       [job.id],
-    )
+    )) as Array<{ next_attempt_at: string | null }>
+    activeLease = current[0]?.next_attempt_at ?? ""
+    const ownsLease = async () => {
+      if (!activeLease) return false
+      const [row] = (await this.dependencies.database.getAll(
+        "SELECT status, next_attempt_at FROM media_upload_jobs WHERE id = ?",
+        [job.id],
+      )) as Array<{ status: string; next_attempt_at: string | null }>
+      return row?.status === "uploading" && row.next_attempt_at === activeLease
+    }
+    let renewing = false
+    const leaseTimer = setInterval(() => {
+      if (renewing || !activeLease) return
+      renewing = true
+      void (async () => {
+        const nextLease = `${new Date(this.dependencies.now().getTime() + JOB_LEASE_MS).toISOString()}~${this.leaseOwner}`
+        await this.dependencies.database.execute(
+          "UPDATE media_upload_jobs SET next_attempt_at = ? WHERE id = ? AND status = 'uploading' AND next_attempt_at = ?",
+          [nextLease, job.id, activeLease],
+        )
+        const [renewed] = (await this.dependencies.database.getAll(
+          "SELECT next_attempt_at FROM media_upload_jobs WHERE id = ? AND status = 'uploading'",
+          [job.id],
+        )) as Array<{ next_attempt_at: string | null }>
+        if (renewed?.next_attempt_at === nextLease) activeLease = nextLease
+      })().catch(() => undefined).finally(() => { renewing = false })
+    }, JOB_LEASE_RENEW_MS)
     try {
       const credentials = await this.dependencies.credentials.acquire()
       if (!this.running) return
       if (!credentials) {
+        setQueueAuthBlocked("media", true)
         throw Object.assign(new Error("Upload credentials unavailable"), {
           retryable: true,
           statusCode: null,
           safeMessage: "Upload credentials unavailable",
         })
       }
+      setQueueAuthBlocked("media", false)
       if (job.operation === "delete") {
         await this.dependencies.deleteRemote(credentials.accessToken, job.bucket, job.path)
+        if (!(await ownsLease())) return
         await this.dependencies.database.execute(
-          "UPDATE media_upload_jobs SET status = 'complete', next_attempt_at = NULL WHERE id = ?",
-          [job.id],
+          "UPDATE media_upload_jobs SET status = 'complete', next_attempt_at = NULL WHERE id = ? AND status = 'uploading' AND next_attempt_at = ?",
+          [job.id, activeLease],
         )
         return
       }
@@ -353,16 +409,18 @@ export class LocalAttachmentQueue {
         mimeType: job.mime_type,
         credentials,
       })
+      if (!(await ownsLease())) return
       const uploadedAt = this.dependencies.now().toISOString()
       await this.dependencies.database.execute(
         `UPDATE ${job.table_name} SET uploaded_at = ? WHERE id = ?`,
         [uploadedAt, job.id],
       )
       await this.dependencies.database.execute(
-        "UPDATE media_upload_jobs SET status = 'uploaded', next_attempt_at = NULL WHERE id = ? AND operation = 'upload'",
-        [job.id],
+        "UPDATE media_upload_jobs SET status = 'uploaded', next_attempt_at = NULL WHERE id = ? AND operation = 'upload' AND status = 'uploading' AND next_attempt_at = ?",
+        [job.id, activeLease],
       )
     } catch (error) {
+      if (!(await ownsLease())) return
       const [currentJob] = (await this.dependencies.database.getAll(
         "SELECT operation FROM media_upload_jobs WHERE id = ?",
         [job.id],
@@ -391,8 +449,8 @@ export class LocalAttachmentQueue {
           ],
         )
         await this.dependencies.database.execute(
-          "UPDATE media_upload_jobs SET status = 'failed', attempt_count = attempt_count + 1 WHERE id = ?",
-          [job.id],
+          "UPDATE media_upload_jobs SET status = 'failed', attempt_count = attempt_count + 1 WHERE id = ? AND status = 'uploading' AND next_attempt_at = ?",
+          [job.id, activeLease],
         )
         return
       }
@@ -404,9 +462,11 @@ export class LocalAttachmentQueue {
       await this.dependencies.database.execute(
         `UPDATE media_upload_jobs
          SET status = CASE WHEN operation = 'delete' THEN 'deleting' ELSE 'pending' END,
-             attempt_count = ?, next_attempt_at = ? WHERE id = ?`,
-        [attempt, nextAttemptAt, job.id],
+             attempt_count = ?, next_attempt_at = ? WHERE id = ? AND status = 'uploading' AND next_attempt_at = ?`,
+        [attempt, nextAttemptAt, job.id, activeLease],
       )
+    } finally {
+      clearInterval(leaseTimer)
     }
   }
 }

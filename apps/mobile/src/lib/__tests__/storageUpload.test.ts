@@ -57,6 +57,7 @@ describe("storageUpload", () => {
     })
     expect(safe.message).not.toContain("secret-token")
     expect(sanitizeUploadError(new Error("network")).retryable).toBe(true)
+    expect(sanitizeUploadError(Object.assign(new Error("exp claim timestamp check failed"), { status: 400 })).retryable).toBe(true)
     expect(sanitizeUploadError(Object.assign(new Error(), { status: 413 })).retryable).toBe(false)
   })
 

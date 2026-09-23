@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
+import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react"
 import {
   onlineManager,
   QueryClient,
@@ -236,6 +236,34 @@ describe("useAuth", () => {
 })
 
 describe("auth subscription", () => {
+  it("recovers a snapshot with a bounded late read after startup storage timeouts", async () => {
+    vi.useFakeTimers()
+    const snapshotValue = JSON.stringify(snapshotFromSession(session))
+    vi.mocked(authStorage.getItem)
+      .mockReturnValueOnce(new Promise(() => undefined))
+      .mockReturnValueOnce(new Promise(() => undefined))
+      .mockResolvedValueOnce(snapshotValue)
+
+    render(
+      <AuthProvider>
+        <span>Protected content</span>
+      </AuthProvider>,
+      { wrapper },
+    )
+    await act(async () => {
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(5_000)
+      await vi.advanceTimersByTimeAsync(5_000)
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText("Protected content")).toBeDefined()
+    expect(client.getQueryData(authStateQueryKey)).toMatchObject({
+      mode: "offline",
+      user: { id: session.user.id },
+    })
+  })
+
   it("maintains one active listener with multiple consumers and StrictMode", async () => {
     const { result, unmount } = renderHook(() => [useAuth(), useAuth()], {
       wrapper: providerWrapper,

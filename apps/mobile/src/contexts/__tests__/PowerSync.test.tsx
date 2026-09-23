@@ -1,11 +1,12 @@
 import { act, render } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { connectMock, disconnectMock, startQueueMock, stopQueueMock } = vi.hoisted(() => ({
+const { connectMock, disconnectMock, startQueueMock, stopQueueMock, activity } = vi.hoisted(() => ({
   connectMock: vi.fn(),
   disconnectMock: vi.fn(),
   startQueueMock: vi.fn(),
   stopQueueMock: vi.fn(),
+  activity: { active: true },
 }))
 
 vi.mock("@powersync/react", () => ({
@@ -26,15 +27,33 @@ vi.mock("@/lib/powersync/attachments", () => ({
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ organisation: { id: "org-1" } }),
 }))
-vi.mock("@/hooks/useAppIsActive", () => ({ useAppIsActive: () => true }))
+vi.mock("@/hooks/useAppIsActive", () => ({ useAppIsActive: () => activity.active }))
 
 import { PowerSyncProvider } from "../PowerSync"
 
 describe("PowerSyncProvider media runtime", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    activity.active = true
     connectMock.mockResolvedValue(undefined)
     disconnectMock.mockResolvedValue(undefined)
+  })
+
+  it("disconnects and pauses the queues while the app is inactive", async () => {
+    const view = render(<PowerSyncProvider isLoggedIn>{null}</PowerSyncProvider>)
+    activity.active = false
+    await act(async () => {
+      view.rerender(<PowerSyncProvider isLoggedIn>{null}</PowerSyncProvider>)
+    })
+    expect(disconnectMock).toHaveBeenCalledOnce()
+    expect(stopQueueMock).toHaveBeenCalledOnce()
+
+    activity.active = true
+    await act(async () => {
+      view.rerender(<PowerSyncProvider isLoggedIn>{null}</PowerSyncProvider>)
+    })
+    expect(connectMock).toHaveBeenCalledTimes(2)
+    expect(startQueueMock).toHaveBeenCalledTimes(2)
   })
 
   it("starts the queue and PowerSync for an offline local identity, then stops on logout", async () => {
