@@ -12,6 +12,7 @@ import { SwStatusProvider } from "@/contexts/swStatus"
 import { PowerSyncProvider } from "./contexts/PowerSync"
 import * as Sentry from "@sentry/react"
 import { appShell } from "@/platform"
+import { AuthProvider } from "./contexts/auth"
 
 // Create a new router instance
 const router = createRouter({
@@ -27,7 +28,6 @@ const router = createRouter({
   ),
   context: {
     isLoggedIn: false,
-    getSession: undefined,
   },
 })
 
@@ -47,16 +47,13 @@ declare module "@tanstack/react-router" {
 }
 
 export const App = () => {
-  const { isLoggedIn, getSession } = useAuth()
+  const { isLoggedIn } = useAuth()
 
   return (
     <ThemeProvider>
       <SwStatusProvider>
         <PowerSyncProvider isLoggedIn={isLoggedIn}>
-          <RouterProvider
-            router={router}
-            context={{ isLoggedIn, getSession }}
-          />
+          <RouterProvider router={router} context={{ isLoggedIn }} />
         </PowerSyncProvider>
       </SwStatusProvider>
     </ThemeProvider>
@@ -72,7 +69,9 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <NastiPersistQueryClientProvider>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </NastiPersistQueryClientProvider>
     </StrictMode>,
   )

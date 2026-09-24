@@ -5,67 +5,50 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
-import { isAuthRetryableFetchError, type Session } from "@supabase/supabase-js"
-import { getAppMeta } from "@nasti/common/authClaims"
-import { ROLE, type Role } from "@nasti/common/types"
+import { isAuthRetryableFetchError } from "@supabase/supabase-js"
+import {
+  type AuthState,
+  allowExplicitLogin,
+  beginExplicitLogout,
+  closeFailedLoginPersistence,
+  deleteOfflineAuthSnapshot,
+  deletePersistedSupabaseSession,
+  finishExplicitLogout,
+  getAuthRevision,
+  getAuthStateFromSession,
+  getAuthStateWithOfflineFallback,
+  isExplicitLogoutInProgress,
+  loggedOutAuthState,
+  prepareExplicitLogin,
+  readOfflineAuthSnapshot,
+  snapshotFromSession,
+  writeOfflineAuthSnapshot,
+} from "@/lib/offlineAuth"
+import { withTimeout } from "@/lib/withTimeout"
 
-type Claims = {
-  organisation: { id: string; name: string }
-  orgId: string
-  role: Role | null
-  isAdmin: boolean
-} | null
-
-type AuthState = {
-  session: Session | null
-  user: Session["user"] | null
-  claims: Claims
-  isLoggedIn: boolean
-}
+export {
+  getAuthStateFromSession,
+  getAuthStateFromSnapshot,
+} from "@/lib/offlineAuth"
 
 export const authStateQueryKey = ["auth", "state"] as const
 
-const loggedOutAuthState: AuthState = {
-  session: null,
-  user: null,
-  claims: null,
-  isLoggedIn: false,
-}
-
-// Given a session, derive the portion of auth state that comes from JWT
-// claims. Returns null if the session has no access-token-hook claims.
-const deriveFromClaims = (session: Session | null): Claims => {
-  const meta = getAppMeta(session)
-  if (!meta.org_id) return null
-  return {
-    organisation: { id: meta.org_id, name: meta.org_name ?? "" },
-    orgId: meta.org_id,
-    role: meta.role ?? null,
-    isAdmin: meta.role === ROLE.ADMIN,
-  }
-}
-
-export const getAuthStateFromSession = (
-  session: Session | null,
-): AuthState => ({
-  session,
-  user: session?.user ?? null,
-  claims: deriveFromClaims(session),
-  isLoggedIn: Boolean(session?.user),
-})
-
-export const setAuthState = (
-  queryClient: QueryClient,
-  session: Session | null,
-) => {
-  queryClient.setQueryData(authStateQueryKey, getAuthStateFromSession(session))
+export const setAuthState = (queryClient: QueryClient, state: AuthState) => {
+  // A stale bootstrap must not overwrite a newer subscription event/logout.
+  void queryClient.cancelQueries({ queryKey: authStateQueryKey, exact: true })
+  queryClient.setQueryDefaults(authStateQueryKey, {
+    meta: { persisted: false },
+  })
+  queryClient.setQueryData(authStateQueryKey, state)
   queryClient.removeQueries({ queryKey: ["auth", "user"], exact: true })
   queryClient.removeQueries({ queryKey: ["auth", "organisation"], exact: true })
   queryClient.removeQueries({ queryKey: ["auth", "claims"], exact: true })
   queryClient.removeQueries({ queryKey: ["auth", "loggedIn"], exact: true })
 }
 
-export const useAuth = () => {
+export const useAuth = ({
+  onLogout,
+}: { onLogout?: () => Promise<void> } = {}) => {
   const queryClient = useQueryClient()
   const login = useMutation({
     mutationFn: async ({
@@ -75,6 +58,10 @@ export const useAuth = () => {
       email: string
       password: string
     }) => {
+      if (isExplicitLogoutInProgress())
+        throw new Error("Please wait for logout to finish")
+      const revision = getAuthRevision()
+      prepareExplicitLogin()
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -84,46 +71,65 @@ export const useAuth = () => {
           throw new Error("Unable to connect to server")
         else throw error
       }
-      return data
+      return { ...data, revision }
     },
     networkMode: "online",
     retry: false,
+    onError: closeFailedLoginPersistence,
     onSuccess: async (data) => {
-      setAuthState(queryClient, data.session)
+      if (isExplicitLogoutInProgress() || data.revision !== getAuthRevision())
+        return
+      allowExplicitLogin()
+      setAuthState(queryClient, getAuthStateFromSession(data.session))
+      if (data.session) {
+        const previous = await readOfflineAuthSnapshot()
+        if (isExplicitLogoutInProgress() || data.revision !== getAuthRevision())
+          return
+        const snapshot = snapshotFromSession(data.session, previous, true)
+        if (snapshot) await writeOfflineAuthSnapshot(snapshot)
+      }
     },
   })
 
   const logout = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut()
-
-      if (error) throw error
+      beginExplicitLogout()
+      setAuthState(queryClient, loggedOutAuthState)
+      try {
+        await deleteOfflineAuthSnapshot()
+        // Both scopes can contact the server. Neither may block local logout.
+        for (const scope of ["global", "local"] as const) {
+          await withTimeout(
+            Promise.resolve()
+              .then(() => supabase.auth.signOut({ scope }))
+              .catch(() => null),
+          )
+        }
+        await deletePersistedSupabaseSession()
+        await onLogout?.()
+      } finally {
+        finishExplicitLogout()
+      }
     },
-    onMutate: () => {
-      // Regardless of online state, clear local auth state immediately.
-      setAuthState(queryClient, null)
-    },
-    networkMode: "online",
+    networkMode: "always",
+    retry: false,
   })
 
   const { data: authState = loggedOutAuthState } = useQuery({
     queryKey: authStateQueryKey,
-    queryFn: async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      return getAuthStateFromSession(session)
-    },
-    networkMode: "online",
-    staleTime: 60 * 60 * 1000, // 1 hour
+    queryFn: getAuthStateWithOfflineFallback,
+    networkMode: "always",
+    staleTime: Infinity,
+    meta: { persisted: false },
   })
 
   return {
     session: authState.session,
+    mode: authState.mode,
+    requiresSignIn: authState.reauthRequired,
     user: authState.user,
     role: authState.claims?.role ?? null,
     organisation: authState.claims?.organisation ?? null,
-    getSession: () => supabase.auth.getSession(),
     login,
     logout,
     isLoggedIn: authState.isLoggedIn,

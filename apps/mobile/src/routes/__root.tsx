@@ -5,7 +5,6 @@ import { SettingsMenuModal } from "@/components/app/SettingsMenu"
 import { Button } from "@nasti/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import React from "react"
-import { SupabaseAuthClient } from "@supabase/supabase-js/dist/module/lib/SupabaseAuthClient"
 import { useAuth } from "@/hooks/useAuth"
 import { useNetwork } from "@/hooks/useNetwork"
 import { useSwStatus } from "@/contexts/swStatus"
@@ -93,7 +92,6 @@ const RootComponent = () => {
 
 export const Route = createRootRouteWithContext<{
   isLoggedIn: boolean
-  getSession?: SupabaseAuthClient["getSession"]
 }>()({
   component: RootComponent,
 })

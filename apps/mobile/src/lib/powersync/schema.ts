@@ -235,6 +235,7 @@ const sync_failures = new Table(
     error_info: column.text,
     failed_at: column.text,
     classification: column.text,
+    retry_count: column.integer,
   },
   {
     localOnly: true,
@@ -243,6 +244,89 @@ const sync_failures = new Table(
       table_entity: ["target_table", "entity_id"],
     },
   },
+)
+
+// Retry jobs for failed remote row deletes. These never enter PowerSync CRUD:
+// the target row may already be absent locally after the original DELETE.
+const row_delete_retry_jobs = new Table(
+  {
+    target_table: column.text,
+    entity_id: column.text,
+    status: column.text,
+    attempt_count: column.integer,
+    next_attempt_at: column.text,
+    created_at: column.text,
+    last_error: column.text,
+    notice_dismissed: column.integer,
+    lease_expires_at: column.text,
+  },
+  {
+    localOnly: true,
+    indexes: {
+      status_due: ["status", "next_attempt_at"],
+      entity: ["target_table", "entity_id"],
+    },
+  },
+)
+
+// Local-only work records: media bytes remain in the legacy image/audio stores
+// until the user or an explicit retention policy deletes them.
+const media_upload_jobs = new Table(
+  {
+    kind: column.text,
+    operation: column.text,
+    table_name: column.text,
+    bucket: column.text,
+    path: column.text,
+    mime_type: column.text,
+    status: column.text,
+    attempt_count: column.integer,
+    next_attempt_at: column.text,
+    created_at: column.text,
+  },
+  {
+    localOnly: true,
+    indexes: {
+      status_due: ["status", "next_attempt_at"],
+      kind: ["kind"],
+    },
+  },
+)
+
+const media_upload_failures = new Table(
+  {
+    kind: column.text,
+    bucket: column.text,
+    path: column.text,
+    status_code: column.integer,
+    safe_message: column.text,
+    failed_at: column.text,
+    app_version: column.text,
+  },
+  {
+    localOnly: true,
+    indexes: {
+      kind: ["kind"],
+      failed_at: ["failed_at"],
+    },
+  },
+)
+
+const media_migrations = new Table(
+  {
+    completed_at: column.text,
+  },
+  { localOnly: true },
+)
+
+// A durable, transactionally claimed owner for the device's shared local DB.
+// The row's fixed id makes ownership a single-writer claim across app tabs.
+const local_data_owner = new Table(
+  {
+    owner_id: column.text,
+    created_at: column.text,
+  },
+  { localOnly: true },
 )
 
 export const AppSchema = new Schema({
@@ -259,6 +343,11 @@ export const AppSchema = new Schema({
   species_photo,
   person,
   sync_failures,
+  row_delete_retry_jobs,
+  media_upload_jobs,
+  media_upload_failures,
+  media_migrations,
+  local_data_owner,
 })
 
 export type PowerSyncAppDatabase = (typeof AppSchema)["types"]
@@ -278,3 +367,5 @@ export type PowerSyncScoutingNoteAudioRow =
   PowerSyncAppDatabase["scouting_notes_audio"]
 export type PowerSyncSpeciesPhotoRow = PowerSyncAppDatabase["species_photo"]
 export type PowerSyncPersonRow = PowerSyncAppDatabase["person"]
+export type PowerSyncMediaUploadJobRow =
+  PowerSyncAppDatabase["media_upload_jobs"]

@@ -1,7 +1,10 @@
 import { GeoLocationProvider } from "@/contexts/location"
 import { setAuthState, useAuth } from "@/hooks/useAuth"
 import { queryClient } from "@/lib/queryClient"
-import { supabase } from "@nasti/common/supabase"
+import {
+  getAuthStateWithOfflineFallback,
+  isExplicitLogoutInProgress,
+} from "@/lib/offlineAuth"
 import { Spinner } from "@nasti/ui/spinner"
 import {
   Outlet,
@@ -22,12 +25,12 @@ function AuthLayout() {
   const tripId = location.pathname.match(/^\/trips\/([^/]+)/)?.[1]
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && !isExplicitLogoutInProgress()) {
       navigate({
         to: "/auth/login",
       })
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, navigate])
 
   return (
     <GeoLocationProvider>
@@ -40,10 +43,9 @@ function AuthLayout() {
 export const Route = createFileRoute("/_private")({
   beforeLoad: async ({ context, location }) => {
     if (!context.isLoggedIn) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
+      const state = await getAuthStateWithOfflineFallback()
+      setAuthState(queryClient, state)
+      if (!state.isLoggedIn) {
         throw redirect({
           to: "/auth/login",
           search: {
@@ -51,7 +53,6 @@ export const Route = createFileRoute("/_private")({
           },
         })
       } else {
-        setAuthState(queryClient, session)
         return {
           isLoggedIn: true,
         }

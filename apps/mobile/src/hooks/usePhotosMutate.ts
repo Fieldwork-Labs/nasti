@@ -1,16 +1,15 @@
 import { useMutation, useMutationState } from "@tanstack/react-query"
-import { supabase } from "@nasti/common/supabase"
 
 import { useAuth } from "./useAuth"
 import { queryClient } from "@/lib/queryClient"
 import { CollectionPhoto, ScoutingNotePhoto } from "@nasti/common/types"
 import { useCallback } from "react"
 import { deleteImage } from "@/lib/persistFiles"
-
-import { Upload } from "tus-js-client"
-import { Session } from "@supabase/supabase-js"
+import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { powerSyncDb } from "@/lib/powersync/db"
-import { psDelete, psInsert, psUpdate } from "@/lib/powersync/crud"
+import { psUpdate } from "@/lib/powersync/crud"
+import { validateMediaUploadIds } from "@/lib/powersync/attachments"
+import { createQueuedMediaRecord, deleteQueuedMediaRecord } from "@/lib/powersync/mediaMutations"
 import type {
   PowerSyncCollectionPhotoRow,
   PowerSyncScoutingNotePhotoRow,
@@ -31,57 +30,6 @@ export type PendingCollectionPhoto = Omit<UploadPhotoVariables, "file"> & {
 export type PendingScoutingNotePhoto = Omit<UploadPhotoVariables, "file"> & {
   scouting_notes_id: string
   url: string
-}
-
-async function uploadFile(
-  bucketName: string,
-  fileName: string,
-  file: File,
-  metadata: Record<string, string> = {},
-  session: Session,
-  onProgressUpdate?: (percentageComplete: number) => void,
-) {
-  return new Promise(async (resolve, reject) => {
-    if (!session) throw new Error("No session")
-
-    const upload = new Upload(file, {
-      endpoint: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/upload/resumable`,
-      retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: {
-        authorization: `Bearer ${session.access_token}`,
-        "x-upsert": "true", // optionally set upsert to true to overwrite existing files
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true, // Important if you want to allow re-uploading the same file https://github.com/tus/tus-js-client/blob/main/docs/api.md#removefingerprintonsuccess
-      metadata: {
-        bucketName: bucketName,
-        objectName: fileName,
-        contentType: "image/png",
-        cacheControl: "3600",
-        ...metadata,
-      },
-      chunkSize: 6 * 1024 * 1024, // NOTE: it must be set to 6MB (for now) do not change it
-      onError: function (error) {
-        console.log("Failed because: " + error)
-        reject(error)
-      },
-      onProgress: function (bytesUploaded, bytesTotal) {
-        const percentage = (bytesUploaded / bytesTotal) * 100
-        onProgressUpdate?.(percentage)
-      },
-      onSuccess: function () {
-        resolve(upload.file)
-      },
-    })
-
-    // Check if there are any previous uploads to continue.
-    const previousUploads = await upload.findPreviousUploads()
-    // Found previous uploads so we select the first one.
-    if (previousUploads.length) {
-      upload.resumeFromPreviousUpload(previousUploads[0])
-    }
-    upload.start()
-  })
 }
 
 export const getUploadProgressQueryKey = (photoId: string) => [
@@ -111,40 +59,27 @@ export const usePhotosMutate = ({
     [organisation, entityId, entityType],
   )
 
-  const updateUploadProgress = (photoId: string, percentage: number) => {
-    const queryKey = getUploadProgressQueryKey(photoId)
-    if (percentage !== 100)
-      queryClient.setQueryData<number>(queryKey, percentage)
-    else
-      queryClient.removeQueries({
-        queryKey,
-      })
-  }
-
-  const clearUploadProgress = (photoId: string) => {
-    queryClient.removeQueries({
-      queryKey: getUploadProgressQueryKey(photoId),
-    })
-  }
-
   const createPhotoMutation = useMutation<
     CollectionPhoto | ScoutingNotePhoto,
     Error,
     UploadPhotoVariables
   >({
     mutationKey: ["photos", "create", entityType, entityId],
+    networkMode: "always",
     mutationFn: async ({ id: photoId, caption, file }) => {
       if (!entityType || !entityId)
         throw new Error("No entityId or entityType specified")
 
       if (!file) throw new Error(`No file found for ${photoId}`)
+      validateMediaUploadIds(photoId, entityId, organisation?.id)
 
       const filePath = getFilePath(file, photoId)
+      await putImage(photoId, (await fileToBase64(file)) as Base64URLString)
       const photoBase = {
         id: photoId,
         url: filePath,
         caption: caption || null,
-        uploaded_at: new Date().toISOString(),
+        uploaded_at: null,
       }
       const photo =
         entityType === "collection"
@@ -157,80 +92,30 @@ export const usePhotosMutate = ({
               scouting_notes_id: entityId,
             } satisfies ScoutingNotePhoto)
 
-      if (entityType === "collection") {
-        await psInsert("collection_photo", photo)
-      } else {
-        await psInsert("scouting_notes_photos", photo)
-      }
-
-      // Get a fresh session before starting operations
-      // This is critical when resuming from offline mode
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (sessionError) {
-        console.error(
-          `[Photos] Saved ${entityType} photo locally, but could not get a session for storage upload:`,
-          sessionError,
-        )
-        return photo
-      }
-
-      if (!session) {
-        console.error(
-          `[Photos] Saved ${entityType} photo locally, but no active session was available for storage upload.`,
-        )
-        return photo
-      }
-
-      try {
-        await uploadFile(
-          "collection-photos",
-          filePath,
-          file,
-          {
-            entityType,
-            entityId,
-            photoId,
-          },
-          session,
-          (percentage) => updateUploadProgress(photoId, percentage),
-        )
-        return photo
-      } catch (error) {
-        clearUploadProgress(photoId)
-        console.error(
-          `[Photos] Saved ${entityType} photo locally, but storage upload failed:`,
-          error,
-        )
-        return photo
-      }
+      const table = entityType === "collection" ? "collection_photo" : "scouting_notes_photos"
+      await createQueuedMediaRecord({
+        id: photoId,
+        kind: "photo",
+        table,
+        bucket: "collection-photos",
+        path: filePath,
+        mimeType: file.type || "image/jpeg",
+        record: photo,
+      })
+      return photo
     },
   })
 
-  // Delete photo mutation
-  const deletePhotoMutationCollectionPhoto = useMutation({
-    mutationFn: async (photoId: string) => {
-      const photo = await powerSyncDb.getOptional<PowerSyncCollectionPhotoRow>(
-        "SELECT * FROM collection_photo WHERE id = ?",
-        [photoId],
-      )
-      if (!photo) throw new Error(`Collection photo ${photoId} not found`)
-      if (!photo.url) throw new Error(`Collection photo ${photoId} has no URL`)
-
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("collection-photos")
-        .remove([photo.url])
-
-      if (storageError) throw storageError
-
-      await psDelete("collection_photo", photoId)
-
-      return photoId
-    },
+  const deletePhotoMutation = useMutation({
+    networkMode: "always",
+    mutationFn: async (photoId: string) => deleteQueuedMediaRecord({
+      id: photoId,
+      kind: "photo",
+      table: entityType === "collection" ? "collection_photo" : "scouting_notes_photos",
+      bucket: "collection-photos",
+      entityLabel: entityType === "collection" ? "Collection photo" : "Scouting note photo",
+      fallbackMimeType: "image/jpeg",
+    }),
     onError: (error) => {
       console.log("error deleting photo", error)
     },
@@ -239,42 +124,6 @@ export const usePhotosMutate = ({
       await deleteImage(id)
     },
   })
-
-  const deletePhotoMutationScoutingNotesPhoto = useMutation({
-    mutationFn: async (photoId: string) => {
-      const photo =
-        await powerSyncDb.getOptional<PowerSyncScoutingNotePhotoRow>(
-          "SELECT * FROM scouting_notes_photos WHERE id = ?",
-          [photoId],
-        )
-      if (!photo) throw new Error(`Scouting note photo ${photoId} not found`)
-      if (!photo.url)
-        throw new Error(`Scouting note photo ${photoId} has no URL`)
-
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("collection-photos")
-        .remove([photo.url])
-
-      if (storageError) throw storageError
-
-      await psDelete("scouting_notes_photos", photoId)
-
-      return photoId
-    },
-    onError: (error) => {
-      console.log("error deleting photo", error)
-    },
-    onSettled: async (id) => {
-      if (!id) return
-      await deleteImage(id)
-    },
-  })
-
-  const deletePhotoMutation =
-    entityType === "collection"
-      ? deletePhotoMutationCollectionPhoto
-      : deletePhotoMutationScoutingNotesPhoto
 
   type UpdateCaptionPayload = {
     caption?: string | null
@@ -286,6 +135,7 @@ export const usePhotosMutate = ({
     Error,
     UpdateCaptionPayload
   >({
+    networkMode: "always",
     mutationFn: async ({ photoId, caption }) => {
       const row = await powerSyncDb.getOptional<PowerSyncCollectionPhotoRow>(
         "SELECT * FROM collection_photo WHERE id = ?",
@@ -303,6 +153,7 @@ export const usePhotosMutate = ({
     Error,
     UpdateCaptionPayload
   >({
+    networkMode: "always",
     mutationFn: async ({ photoId, caption }) => {
       const row = await powerSyncDb.getOptional<PowerSyncScoutingNotePhotoRow>(
         "SELECT * FROM scouting_notes_photos WHERE id = ?",

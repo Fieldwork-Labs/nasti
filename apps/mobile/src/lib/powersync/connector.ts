@@ -4,9 +4,15 @@ import {
   type PowerSyncBackendConnector,
   UpdateType,
 } from "@powersync/web"
-import { supabase } from "@nasti/common/supabase"
+import { createNastiSupabaseClientForToken } from "@nasti/common/supabase"
 import type { Database } from "@nasti/common/types/database"
 import * as Sentry from "@sentry/react"
+import { confirmMediaRowDelete } from "./attachments"
+import {
+  liveUploadCredentials,
+  type RequestCredentials,
+} from "../auth/liveSession"
+import { setQueueAuthBlocked } from "./queueAuthState"
 
 type TableName = keyof Database["public"]["Tables"]
 
@@ -39,9 +45,14 @@ const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
 }
 
 const DEPENDENCY_ERROR_CODES = new Set(["23503"])
-const PERMANENT_ERROR_CODES = new Set(["23514", "42501"])
+const PERMANENT_ERROR_CODES = new Set(["PGRST204", "PGRST205", "42703", "42804", "42883"])
 const MAX_NON_TRANSIENT_RETRIES = 3
 const NON_TRANSIENT_RETRY_DELAY_MS = 2000
+const DEPENDENCY_RETRY_STORAGE_PREFIX = "nasti-powersync-dependency-retries-v1:"
+const dependencyRetryCounts = new Map<string, number>()
+
+type TokenClient = ReturnType<typeof createNastiSupabaseClientForToken>
+type TokenClientFactory = (accessToken: string) => TokenClient
 
 function prepareForSupabase(
   table: string,
@@ -81,11 +92,8 @@ function prepareForSupabase(
   return result
 }
 
-function waitForOnline(): Promise<void> {
-  if (navigator.onLine) return Promise.resolve()
-  return new Promise((resolve) => {
-    window.addEventListener("online", () => resolve(), { once: true })
-  })
+function ensureOnline(): void {
+  if (!navigator.onLine) throw new Error("Device is offline")
 }
 
 function errorField(error: unknown, field: string): string | null {
@@ -96,9 +104,9 @@ function errorField(error: unknown, field: string): string | null {
   return null
 }
 
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return errorField(error, "message") ?? String(error)
+function isPermanentErrorCode(code: string | null): boolean {
+  if (!code || code === "23503") return false
+  return PERMANENT_ERROR_CODES.has(code) || code.startsWith("22") || code.startsWith("23")
 }
 
 function classifyPgCode(code: string | undefined): string {
@@ -107,12 +115,13 @@ function classifyPgCode(code: string | undefined): string {
   return "internal"
 }
 
-async function safeComplete(transaction: CrudTransaction): Promise<void> {
+async function safeComplete(transaction: CrudTransaction): Promise<boolean> {
   try {
     await transaction.complete()
-  } catch (error) {
-    console.error("[PowerSync] transaction.complete() failed:", error)
-    Sentry.captureException(error)
+    return true
+  } catch {
+    recordDiagnostic(transaction, null, "completion_failed", 0)
+    return false
   }
 }
 
@@ -120,40 +129,96 @@ async function saveFailedTransaction(
   database: AbstractPowerSyncDatabase,
   transaction: CrudTransaction,
   error: unknown,
+  retryCount = 0,
+  operations = transaction.crud,
 ): Promise<void> {
   const pgCode = errorField(error, "code")
   const errorInfo = JSON.stringify({
-    message: errorMessage(error),
     code: pgCode,
-    hint: errorField(error, "hint"),
-    details: errorField(error, "details"),
   })
   const failedAt = new Date().toISOString()
 
-  for (const op of transaction.crud) {
-    await database.execute(
-      `INSERT INTO sync_failures (id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        crypto.randomUUID(),
-        op.table,
-        op.id,
-        op.op,
-        JSON.stringify(op.opData ?? {}),
-        errorInfo,
-        failedAt,
-        classifyPgCode(pgCode ?? undefined),
-      ],
-    )
-  }
+  await database.writeTransaction(async (writeTransaction) => {
+    for (const op of operations) {
+      const failureId = `sync-failure:${op.clientId}`
+      await writeTransaction.execute(
+        `INSERT OR IGNORE INTO sync_failures (id, target_table, entity_id, op_type, op_data, error_info, failed_at, classification, retry_count)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          failureId,
+          op.table,
+          op.id,
+          op.op,
+          JSON.stringify(op.opData ?? {}),
+          errorInfo,
+          failedAt,
+          classifyPgCode(pgCode ?? undefined),
+          retryCount,
+        ],
+      )
+    }
+  })
 }
 
 function transactionKey(transaction: CrudTransaction): string {
-  const first = transaction.crud[0]
-  return first ? `${first.table}:${first.id}` : "unknown"
+  const operations = transaction.crud
+    .map(({ table, id, op }) => [table, id, op])
+    .sort(([aTable, aId, aOp], [bTable, bId, bOp]) =>
+      JSON.stringify([aTable, aId, aOp]).localeCompare(
+        JSON.stringify([bTable, bId, bOp]),
+      ),
+    )
+  return `${DEPENDENCY_RETRY_STORAGE_PREFIX}${encodeURIComponent(JSON.stringify(operations))}`
 }
 
-const retryCountMap = new Map<string, number>()
+function getDependencyRetryCount(key: string): number {
+  const inMemoryCount = dependencyRetryCounts.get(key) ?? 0
+  try {
+    const value = Number.parseInt(localStorage.getItem(key) ?? "0", 10)
+    return Math.max(inMemoryCount, Number.isFinite(value) && value > 0 ? value : 0)
+  } catch {
+    return inMemoryCount
+  }
+}
+
+function setDependencyRetryCount(key: string, count: number): void {
+  dependencyRetryCounts.set(key, count)
+  try {
+    localStorage.setItem(key, String(count))
+  } catch {
+    // Keep retries bounded in this runtime when browser storage is unavailable.
+  }
+}
+
+function clearDependencyRetryCount(key: string): void {
+  dependencyRetryCounts.delete(key)
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Clearing the in-memory count is sufficient when browser storage is unavailable.
+  }
+}
+
+function recordDiagnostic(
+  transaction: CrudTransaction,
+  error: unknown,
+  disposition: string,
+  retryCount: number,
+): void {
+  const summary = transaction.crud.map(({ table, op }) => `${table}:${op}`)
+  const pgCode = errorField(error, "code")
+  Sentry.captureMessage("PowerSync row upload disposition", {
+    level: disposition.startsWith("retry") ? "warning" : "error",
+    extra: {
+      operationCount: transaction.crud.length,
+      operations: summary,
+      pgCode,
+      disposition,
+      retryCount,
+      appVersion: typeof __BUILD_ID__ === "string" ? __BUILD_ID__ : "unknown",
+    },
+  })
+}
 
 function getPowerSyncEndpoint(): string {
   const endpoint = POWERSYNC_URL?.trim().replace(/\/+$/, "")
@@ -166,33 +231,58 @@ function getPowerSyncEndpoint(): string {
 }
 
 export class SupabaseConnector implements PowerSyncBackendConnector {
-  async fetchCredentials() {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession()
+  private tokenClient: TokenClient | undefined
+  private tokenClientAccessToken: string | undefined
 
-    if (!session || error) {
+  constructor(
+    private readonly tokenClientFactory: TokenClientFactory =
+      createNastiSupabaseClientForToken,
+  ) {}
+
+  private clientFor(credentials: RequestCredentials): TokenClient {
+    if (this.tokenClientAccessToken !== credentials.accessToken) {
+      this.tokenClient = this.tokenClientFactory(credentials.accessToken)
+      this.tokenClientAccessToken = credentials.accessToken
+    }
+    return this.tokenClient!
+  }
+
+  async fetchCredentials() {
+    const credentials = await liveUploadCredentials.acquire()
+    if (!credentials) {
+      setQueueAuthBlocked("rows", true)
       throw new Error("Not authenticated - cannot connect to PowerSync")
     }
+    setQueueAuthBlocked("rows", false)
 
     return {
       endpoint: getPowerSyncEndpoint(),
-      token: session.access_token,
-      expiresAt: session.expires_at
-        ? new Date(session.expires_at * 1000)
-        : undefined,
+      token: credentials.accessToken,
     }
   }
 
   async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
     const transaction = await database.getNextCrudTransaction()
-    if (!transaction) return
+    if (!transaction) {
+      setQueueAuthBlocked("rows", false)
+      return
+    }
 
-    await waitForOnline()
+    ensureOnline()
     const key = transactionKey(transaction)
+    const credentials = await liveUploadCredentials.acquire()
+    if (!credentials) {
+      setQueueAuthBlocked("rows", true)
+      recordDiagnostic(transaction, null, "retry_no_credentials", 0)
+      throw new Error("Upload credentials unavailable")
+    }
+    setQueueAuthBlocked("rows", false)
+    const client = this.clientFor(credentials)
+    let unconfirmedRlsDenial = false
 
     try {
+      const permanentFailures: Array<{ op: CrudTransaction["crud"][number]; error: unknown }> = []
+      const confirmedMediaDeletes: Array<{ table: string; id: string }> = []
       const sortedOps = [...transaction.crud].sort(
         (a, b) =>
           (TABLE_UPLOAD_PRIORITY[a.table] ?? 10) -
@@ -203,10 +293,11 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         const table = op.table as TableName
         const id = op.id
 
+        try {
         switch (op.op) {
           case UpdateType.PUT: {
             const data = prepareForSupabase(op.table, op.opData ?? {})
-            const { error } = await supabase
+            const { error } = await client
               .from(table)
               .upsert({ id, ...data } as never)
             if (error) throw error
@@ -214,7 +305,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
           }
           case UpdateType.PATCH: {
             const data = prepareForSupabase(op.table, op.opData ?? {})
-            const { error } = await supabase
+            const { error } = await client
               .from(table)
               .update(data as never)
               .eq("id" as never, id)
@@ -222,38 +313,94 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
             break
           }
           case UpdateType.DELETE: {
-            const { error } = await supabase
+            const deleteResult = await client
               .from(table)
-              .delete()
+              .delete({ count: "exact" })
               .eq("id" as never, id)
-            if (error) throw error
+            if (deleteResult.error) throw deleteResult.error
+            if (typeof deleteResult.count === "number" && deleteResult.count > 0) {
+              confirmedMediaDeletes.push({ table: op.table, id })
+            } else {
+              const { data: remainingRow, error: probeError } = await client
+                .from(table)
+                .select("id" as never)
+                .eq("id" as never, id)
+                .maybeSingle()
+              if (probeError) throw probeError
+              if (!remainingRow) confirmedMediaDeletes.push({ table: op.table, id })
+            }
             break
           }
         }
+        } catch (error) {
+          const code = errorField(error, "code")
+          if (code === "42501") {
+            if (!await liveUploadCredentials.confirm(credentials)) {
+              unconfirmedRlsDenial = true
+              throw error
+            }
+          } else if (!isPermanentErrorCode(code)) {
+            throw error
+          }
+          permanentFailures.push({ op, error })
+        }
       }
 
-      retryCountMap.delete(key)
-      await transaction.complete()
+      const failuresByCode = new Map<string, { error: unknown; ops: CrudTransaction["crud"][number][] }>()
+      for (const failure of permanentFailures) {
+        const code = errorField(failure.error, "code") ?? "unknown"
+        const group = failuresByCode.get(code) ?? { error: failure.error, ops: [] }
+        group.ops.push(failure.op)
+        failuresByCode.set(code, group)
+      }
+      for (const group of failuresByCode.values()) {
+        recordDiagnostic(transaction, group.error, "preserved_validation_error", 0)
+        await saveFailedTransaction(database, transaction, group.error, 0, group.ops)
+      }
+
+      const completed = await safeComplete(transaction)
+      setQueueAuthBlocked("rows", false)
+      if (completed) {
+        clearDependencyRetryCount(key)
+        for (const { table, id } of confirmedMediaDeletes) {
+          await confirmMediaRowDelete(table, id, database)
+        }
+      }
     } catch (error) {
       const pgCode = errorField(error, "code")
 
-      if (pgCode && PERMANENT_ERROR_CODES.has(pgCode)) {
-        Sentry.captureException(error)
+      if (pgCode === "42501") {
+        const confirmed = !unconfirmedRlsDenial && await liveUploadCredentials.confirm(credentials)
+        if (!confirmed) {
+          setQueueAuthBlocked("rows", true)
+          recordDiagnostic(transaction, error, "retry_unconfirmed_rls_denial", 0)
+          throw new Error("RLS denial could not be confirmed")
+        }
+        setQueueAuthBlocked("rows", false)
+        recordDiagnostic(transaction, error, "preserved_confirmed_rls_denial", 0)
         await saveFailedTransaction(database, transaction, error)
-        retryCountMap.delete(key)
-        await safeComplete(transaction)
+        if (await safeComplete(transaction)) clearDependencyRetryCount(key)
+        return
+      }
+
+      if (isPermanentErrorCode(pgCode)) {
+        setQueueAuthBlocked("rows", false)
+        recordDiagnostic(transaction, error, "preserved_validation_error", 0)
+        await saveFailedTransaction(database, transaction, error)
+        if (await safeComplete(transaction)) clearDependencyRetryCount(key)
         return
       }
 
       if (pgCode && DEPENDENCY_ERROR_CODES.has(pgCode)) {
-        const count = (retryCountMap.get(key) ?? 0) + 1
-        retryCountMap.set(key, count)
+        setQueueAuthBlocked("rows", false)
+        const count = getDependencyRetryCount(key) + 1
+        setDependencyRetryCount(key, count)
+        recordDiagnostic(transaction, error, "retry_dependency", count)
 
         if (count > MAX_NON_TRANSIENT_RETRIES) {
-          Sentry.captureException(error)
-          await saveFailedTransaction(database, transaction, error)
-          retryCountMap.delete(key)
-          await safeComplete(transaction)
+          recordDiagnostic(transaction, error, "preserved_dependency_error", count)
+          await saveFailedTransaction(database, transaction, error, count)
+          if (await safeComplete(transaction)) clearDependencyRetryCount(key)
           return
         }
 
@@ -263,7 +410,8 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         return
       }
 
-      console.error("[PowerSync] Upload failed:", error)
+      setQueueAuthBlocked("rows", false)
+      recordDiagnostic(transaction, error, "retry", 0)
       throw error
     }
   }
