@@ -10,22 +10,6 @@ import { useAuth } from "@/hooks/useAuth"
 
 const PowerSyncSyncEnabledContext = createContext(false)
 
-function connectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
-  if (connectedRef.current) return
-  connectedRef.current = true
-  powerSyncDb
-    .connect(new SupabaseConnector(), {
-      appMetadata: {
-        app: "nasti-mobile",
-        target: __NASTI_TARGET__,
-      },
-    })
-    .catch(() => {
-      connectedRef.current = false
-      console.error("[PowerSync] Failed to connect")
-    })
-}
-
 function disconnectPowerSync(connectedRef: React.MutableRefObject<boolean>) {
   if (!connectedRef.current) return
   connectedRef.current = false
@@ -73,6 +57,8 @@ export function PowerSyncProvider({
   isLoggedIn: boolean
 }) {
   const connectedRef = useRef(false)
+  const connectionAttemptRef = useRef(0)
+  const runtimeActiveRef = useRef(false)
   const { organisation, user, mode, logout } = useAuth()
   const organisationId = organisation?.id ?? undefined
   const isAppActive = useAppIsActive()
@@ -109,16 +95,47 @@ export function PowerSyncProvider({
     isLoggedIn && mode === "live" && hasLocalDataAccess && isAppActive
 
   useLayoutEffect(() => {
+    let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    const stopRuntime = () => {
+      connectionAttemptRef.current += 1
+      if (runtimeActiveRef.current) {
+        mediaAttachmentQueue.stop()
+        rowDeleteRetryQueue.stop()
+        runtimeActiveRef.current = false
+      }
+      disconnectPowerSync(connectedRef)
+    }
+    const connect = () => {
+      if (cancelled || connectedRef.current) return
+      const attempt = ++connectionAttemptRef.current
+      connectedRef.current = true
+      void powerSyncDb.connect(new SupabaseConnector(), {
+        appMetadata: {
+          app: "nasti-mobile",
+          target: __NASTI_TARGET__,
+        },
+      }).catch(() => {
+        if (connectionAttemptRef.current !== attempt) return
+        connectedRef.current = false
+        console.error("[PowerSync] Failed to connect")
+        if (!cancelled) retryTimer = setTimeout(connect, 2_000)
+      })
+    }
+
     if (shouldRunSync) {
       mediaAttachmentQueue.start()
       rowDeleteRetryQueue.start()
-      connectPowerSync(connectedRef)
-      return
+      runtimeActiveRef.current = true
+      connect()
+    } else {
+      stopRuntime()
     }
-    mediaAttachmentQueue.stop()
-    rowDeleteRetryQueue.stop()
-    if (connectedRef.current) {
-      disconnectPowerSync(connectedRef)
+
+    return () => {
+      cancelled = true
+      if (retryTimer) clearTimeout(retryTimer)
+      if (shouldRunSync) stopRuntime()
     }
   }, [shouldRunSync, organisationId, user?.id])
 

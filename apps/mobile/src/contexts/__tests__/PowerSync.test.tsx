@@ -59,7 +59,7 @@ describe("PowerSyncProvider media runtime", () => {
       view.rerender(<PowerSyncProvider isLoggedIn>{null}</PowerSyncProvider>)
     })
     expect(disconnectMock).toHaveBeenCalledOnce()
-    expect(stopQueueMock).toHaveBeenCalledTimes(4)
+    expect(stopQueueMock).toHaveBeenCalledTimes(2)
 
     activity.active = true
     await act(async () => {
@@ -67,6 +67,36 @@ describe("PowerSyncProvider media runtime", () => {
     })
     expect(connectMock).toHaveBeenCalledTimes(2)
     expect(startQueueMock).toHaveBeenCalledTimes(4)
+    view.unmount()
+  })
+
+  it("retries a failed initial connection while sync remains enabled", async () => {
+    let rejectConnection!: (error: Error) => void
+    connectMock
+      .mockImplementationOnce(() => new Promise<void>((_, reject) => {
+        rejectConnection = reject
+      }))
+      .mockResolvedValue(undefined)
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    try {
+      const view = render(<PowerSyncProvider isLoggedIn>{null}</PowerSyncProvider>)
+      await waitFor(() => expect(connectMock).toHaveBeenCalledOnce())
+
+      vi.useFakeTimers()
+      await act(async () => {
+        rejectConnection(new Error("temporary connection failure"))
+        await Promise.resolve()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_000)
+      })
+
+      expect(connectMock).toHaveBeenCalledTimes(2)
+      view.unmount()
+    } finally {
+      vi.useRealTimers()
+      errorLog.mockRestore()
+    }
   })
 
   it("keeps the queue and PowerSync stopped for an offline local identity", async () => {
@@ -75,16 +105,17 @@ describe("PowerSyncProvider media runtime", () => {
 
     expect(startQueueMock).not.toHaveBeenCalled()
     expect(connectMock).not.toHaveBeenCalled()
-    expect(stopQueueMock).toHaveBeenCalled()
+    expect(stopQueueMock).not.toHaveBeenCalled()
     expect(disconnectMock).not.toHaveBeenCalled()
 
     await act(async () => {
       view.rerender(<PowerSyncProvider isLoggedIn={false}>{null}</PowerSyncProvider>)
     })
 
-    expect(stopQueueMock).toHaveBeenCalledTimes(2)
+    expect(stopQueueMock).not.toHaveBeenCalled()
     expect(disconnectMock).not.toHaveBeenCalled()
     expect(streamMock).not.toHaveBeenCalled()
+    view.unmount()
   })
 
   it("hides local children and streams when the saved database belongs to another user", async () => {
@@ -97,5 +128,6 @@ describe("PowerSyncProvider media runtime", () => {
     expect(streamMock).not.toHaveBeenCalled()
     expect(connectMock).not.toHaveBeenCalled()
     expect(startQueueMock).not.toHaveBeenCalled()
+    view.unmount()
   })
 })

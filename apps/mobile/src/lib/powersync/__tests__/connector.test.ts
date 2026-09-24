@@ -356,6 +356,26 @@ describe("PowerSync row upload connector", () => {
     }
   })
 
+  it("preserves the rejected schema column for a collection upload", async () => {
+    upsertMock.mockResolvedValueOnce({
+      error: {
+        code: "PGRST204",
+        message: "Could not find the 'material_type' column of 'collection' in the schema cache",
+      },
+    })
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([makeOp("collection", "new-collection", UpdateType.PUT)])
+    const { database, savedRows } = makeDatabase([transaction])
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(JSON.parse(savedRows[0]?.[5] as string)).toEqual({
+      code: "PGRST204",
+      column: "material_type",
+      table: "collection",
+    })
+  })
+
   it("continues uploading later operations after parking one permanent row error", async () => {
     upsertMock
       .mockResolvedValueOnce({ error: rowError("23502") })

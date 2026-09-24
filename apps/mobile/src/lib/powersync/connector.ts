@@ -133,8 +133,15 @@ async function saveFailedTransaction(
   operations = transaction.crud,
 ): Promise<void> {
   const pgCode = errorField(error, "code")
+  const message = pgCode === "PGRST204" ? errorField(error, "message") : null
+  const missingColumn = message?.match(
+    /Could not find the '([a-z_][a-z0-9_]*)' column of '([a-z_][a-z0-9_]*)' in the schema cache/i,
+  )
   const errorInfo = JSON.stringify({
     code: pgCode,
+    ...(missingColumn
+      ? { column: missingColumn[1], table: missingColumn[2] }
+      : {}),
   })
   const failedAt = new Date().toISOString()
 
