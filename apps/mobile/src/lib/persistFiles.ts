@@ -77,6 +77,11 @@ export const getImages = async (ids: string[]) => {
   return results.filter((image) => image !== undefined)
 }
 
+export const getAllImages = async () => {
+  const db = await imageDB
+  return db.getAll("images")
+}
+
 export const putImage = async (id: string, image: Base64URLString) => {
   const db = await imageDB
   await db.put("images", { image, id, timestamp: Date.now() })

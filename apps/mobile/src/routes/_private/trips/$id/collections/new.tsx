@@ -35,7 +35,6 @@ import { PhotosForm } from "@/components/common/PhotosForm"
 import { AudiosForm } from "@/components/common/AudiosForm"
 import { UploadAudioVariables, useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { stringToNumber } from "@nasti/common/utils"
-import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
@@ -208,11 +207,6 @@ function AddCollection() {
       }
       await createCollection(newCollection)
       await saveCollectionContainers(collectionIdRef.current, containers)
-      await Promise.all(
-        photos.map(async (photo) =>
-          putImage(photo.id, await fileToBase64(photo.file)),
-        ),
-      )
       await Promise.all(
         photos.map((photo) =>
           createPhotoMutation.mutateAsync(photo, { onError: console.error }),

@@ -8,6 +8,8 @@ unless their dependency notes say otherwise. Each executor must read its plan
 fully, honor its STOP conditions, run every verification command, and update
 the status row when finished.
 
+Offline authentication and upload reliability have their own [plan overview](./README-offline-auth-and-upload.md).
+
 ## Execution order and status
 
 | Plan | Title | Priority | Effort | Depends on | Status |

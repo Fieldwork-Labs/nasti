@@ -128,7 +128,7 @@ const ScoutingNotesDetail = () => {
             <td>
               {user?.id === scoutingNote.created_by
                 ? "You"
-                : user?.user_metadata.name || "Unknown Person"}
+                : user?.displayName || "Unknown Person"}
             </td>
           </tr>
         </tbody>

@@ -41,6 +41,7 @@ export function useEntityCreate<
 
   return useMutation<TEntity, unknown, TNewEntity>({
     mutationKey: getMutationKey(tableName, tripId),
+    networkMode: "always",
     mutationFn: (createdItem) =>
       createEntity<TEntity, TNewEntity>(createdItem, tableName),
   })

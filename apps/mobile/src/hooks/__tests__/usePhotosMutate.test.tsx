@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ROLE } from "@nasti/common/types"
 import { usePhotosMutate } from "../usePhotosMutate"
@@ -11,7 +11,11 @@ const {
   psUpdateMock,
   removeMock,
   getSessionMock,
-  uploadStartMock,
+  enqueueMock,
+  enqueueDeleteMock,
+  wakeMock,
+  putImageMock,
+  writeTransactionMock,
 } = vi.hoisted(() => ({
   getOptionalMock: vi.fn(),
   psDeleteMock: vi.fn(),
@@ -19,7 +23,11 @@ const {
   psUpdateMock: vi.fn(),
   removeMock: vi.fn(),
   getSessionMock: vi.fn(),
-  uploadStartMock: vi.fn(),
+  enqueueMock: vi.fn(),
+  enqueueDeleteMock: vi.fn(),
+  wakeMock: vi.fn(),
+  putImageMock: vi.fn(),
+  writeTransactionMock: vi.fn(),
 }))
 
 const toBase64Url = (value: unknown) =>
@@ -45,7 +53,7 @@ const mockAccessToken = createJwt({
 
 vi.mock("../useAuth", () => ({
   useAuth: vi.fn(() => ({
-    organisation: { id: "org-1", name: "Test Organisation" },
+    organisation: { id: "00000000-0000-4000-8000-000000000001", name: "Test Organisation" },
     role: ROLE.ADMIN,
   })),
 }))
@@ -53,6 +61,7 @@ vi.mock("../useAuth", () => ({
 vi.mock("@/lib/powersync/db", () => ({
   powerSyncDb: {
     getOptional: getOptionalMock,
+    writeTransaction: writeTransactionMock,
   },
 }))
 
@@ -64,6 +73,13 @@ vi.mock("@/lib/powersync/crud", () => ({
 
 vi.mock("@/lib/persistFiles", () => ({
   deleteImage: vi.fn(),
+  putImage: putImageMock,
+  fileToBase64: vi.fn().mockResolvedValue("data:image/jpeg;base64,YQ=="),
+}))
+
+vi.mock("@/lib/powersync/attachments", () => ({
+  mediaAttachmentQueue: { enqueue: enqueueMock, enqueueDelete: enqueueDeleteMock, wake: wakeMock },
+  validateMediaUploadIds: vi.fn(),
 }))
 
 vi.mock("@nasti/common/supabase", () => ({
@@ -77,16 +93,6 @@ vi.mock("@nasti/common/supabase", () => ({
       })),
     },
   },
-}))
-
-vi.mock("tus-js-client", () => ({
-  Upload: vi.fn().mockImplementation((_file, options) => ({
-    file: _file,
-    findPreviousUploads: vi.fn(() => Promise.resolve([])),
-    start: vi.fn(() => {
-      uploadStartMock(options)
-    }),
-  })),
 }))
 
 const createWrapper = () => {
@@ -103,6 +109,7 @@ const createWrapper = () => {
 
 describe("usePhotosMutate", () => {
   beforeEach(() => {
+    onlineManager.setOnline(true)
     vi.clearAllMocks()
     getSessionMock.mockResolvedValue({
       data: { session: { access_token: mockAccessToken } },
@@ -111,19 +118,18 @@ describe("usePhotosMutate", () => {
     psInsertMock.mockResolvedValue(undefined)
     psUpdateMock.mockResolvedValue(undefined)
     psDeleteMock.mockResolvedValue(undefined)
+    writeTransactionMock.mockImplementation(async (callback) => callback({ execute: vi.fn() }))
     removeMock.mockResolvedValue({ error: null })
-    uploadStartMock.mockImplementation((options) => {
-      options.onProgress?.(1, 2)
-      options.onProgress?.(2, 2)
-      options.onSuccess?.()
-    })
+    enqueueMock.mockResolvedValue(undefined)
+    enqueueDeleteMock.mockResolvedValue(undefined)
+    putImageMock.mockResolvedValue(undefined)
   })
 
-  it("creates collection photo metadata through PowerSync after storage upload", async () => {
+  it("persists collection photo bytes and pending metadata before returning", async () => {
     const { result } = renderHook(
       () =>
         usePhotosMutate({
-          entityId: "collection-1",
+          entityId: "00000000-0000-4000-8000-000000000002",
           entityType: "collection",
           tripId: "trip-1",
         }),
@@ -132,7 +138,7 @@ describe("usePhotosMutate", () => {
 
     await act(async () => {
       await result.current.createPhotoMutation.mutateAsync({
-        id: "photo-1",
+        id: "00000000-0000-4000-8000-000000000003",
         caption: "Leaf",
         file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
       })
@@ -141,27 +147,74 @@ describe("usePhotosMutate", () => {
     expect(psInsertMock).toHaveBeenCalledWith(
       "collection_photo",
       expect.objectContaining({
-        id: "photo-1",
-        collection_id: "collection-1",
-        url: "org-1/collections/collection-1/photo-1.jpg",
+        id: "00000000-0000-4000-8000-000000000003",
+        collection_id: "00000000-0000-4000-8000-000000000002",
+        url: "00000000-0000-4000-8000-000000000001/collections/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
         caption: "Leaf",
+        uploaded_at: null,
       }),
+      expect.any(Object),
     )
+    expect(putImageMock).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000003", "data:image/jpeg;base64,YQ==")
+    expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({
+      id: "00000000-0000-4000-8000-000000000003",
+      kind: "photo",
+      table: "collection_photo",
+      path: "00000000-0000-4000-8000-000000000001/collections/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
+    }), expect.any(Object))
+    expect(wakeMock).toHaveBeenCalledOnce()
+    expect(getSessionMock).not.toHaveBeenCalled()
   })
 
-  it("keeps local collection photo metadata when storage upload fails", async () => {
-    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {})
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {})
-    uploadStartMock.mockImplementation((options) => {
-      options.onError?.(new Error("storage unavailable"))
-    })
+  it("persists a photo and registers its upload while offline", async () => {
+    onlineManager.setOnline(false)
+    const { result } = renderHook(
+      () => usePhotosMutate({ entityId: "collection-1", entityType: "collection", tripId: "trip-1" }),
+      { wrapper: createWrapper() },
+    )
+
+    try {
+      await act(async () => {
+        await result.current.createPhotoMutation.mutateAsync({
+          id: "photo-offline",
+          file: new File(["data"], "offline.jpg", { type: "image/jpeg" }),
+        })
+      })
+
+      expect(putImageMock).toHaveBeenCalledWith("photo-offline", "data:image/jpeg;base64,YQ==")
+      expect(enqueueMock).toHaveBeenCalledWith(expect.objectContaining({ id: "photo-offline" }), expect.any(Object))
+      expect(psInsertMock).toHaveBeenCalledWith("collection_photo", expect.objectContaining({ id: "photo-offline" }), expect.any(Object))
+      expect(enqueueMock.mock.invocationCallOrder[0]).toBeLessThan(psInsertMock.mock.invocationCallOrder[0])
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  it("applies photo deletion and caption edits while offline", async () => {
+    onlineManager.setOnline(false)
+    getOptionalMock.mockResolvedValue({ id: "photo-1", collection_id: "collection-1", url: "photo.jpg", caption: null, uploaded_at: null })
+    const { result } = renderHook(
+      () => usePhotosMutate({ entityId: "collection-1", entityType: "collection", tripId: "trip-1" }),
+      { wrapper: createWrapper() },
+    )
+    try {
+      await act(async () => {
+        await result.current.updateCaptionMutation.mutateAsync({ photoId: "photo-1", caption: "Offline caption" })
+        await result.current.deletePhotoMutation.mutateAsync("photo-1")
+      })
+      expect(psUpdateMock).toHaveBeenCalledWith("collection_photo", "photo-1", { caption: "Offline caption" })
+      expect(enqueueDeleteMock).toHaveBeenCalledWith(expect.objectContaining({ id: "photo-1" }), expect.any(Object))
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  it("registers the durable queue job before inserting metadata", async () => {
 
     const { result } = renderHook(
       () =>
         usePhotosMutate({
-          entityId: "collection-1",
+          entityId: "00000000-0000-4000-8000-000000000002",
           entityType: "collection",
           tripId: "trip-1",
         }),
@@ -170,7 +223,7 @@ describe("usePhotosMutate", () => {
 
     await act(async () => {
       await result.current.createPhotoMutation.mutateAsync({
-        id: "photo-1",
+        id: "00000000-0000-4000-8000-000000000003",
         caption: "Leaf",
         file: new File(["data"], "leaf.jpg", { type: "image/jpeg" }),
       })
@@ -179,14 +232,16 @@ describe("usePhotosMutate", () => {
     expect(psInsertMock).toHaveBeenCalledWith(
       "collection_photo",
       expect.objectContaining({
-        id: "photo-1",
-        collection_id: "collection-1",
-        url: "org-1/collections/collection-1/photo-1.jpg",
+        id: "00000000-0000-4000-8000-000000000003",
+        collection_id: "00000000-0000-4000-8000-000000000002",
+        url: "00000000-0000-4000-8000-000000000001/collections/00000000-0000-4000-8000-000000000002/00000000-0000-4000-8000-000000000003.jpg",
         caption: "Leaf",
       }),
+      expect.any(Object),
     )
-    consoleLogSpy.mockRestore()
-    consoleErrorSpy.mockRestore()
+    expect(enqueueMock.mock.invocationCallOrder[0]).toBeLessThan(
+      psInsertMock.mock.invocationCallOrder[0],
+    )
   })
 
   it("updates collection photo captions through PowerSync", async () => {
@@ -220,7 +275,7 @@ describe("usePhotosMutate", () => {
     })
   })
 
-  it("deletes collection photo metadata through PowerSync after storage delete", async () => {
+  it("hides a collection photo locally and queues remote deletion", async () => {
     getOptionalMock.mockResolvedValue({
       id: "photo-1",
       collection_id: "collection-1",
@@ -243,7 +298,14 @@ describe("usePhotosMutate", () => {
       await result.current.deletePhotoMutation.mutateAsync("photo-1")
     })
 
-    expect(removeMock).toHaveBeenCalledWith(["photo.jpg"])
-    expect(psDeleteMock).toHaveBeenCalledWith("collection_photo", "photo-1")
+    expect(enqueueDeleteMock).toHaveBeenCalledWith(expect.objectContaining({
+      id: "photo-1",
+      kind: "photo",
+      table: "collection_photo",
+      path: "photo.jpg",
+    }), expect.any(Object))
+    expect(removeMock).not.toHaveBeenCalled()
+    expect(psDeleteMock).not.toHaveBeenCalled()
+    expect(wakeMock).toHaveBeenCalledOnce()
   })
 })

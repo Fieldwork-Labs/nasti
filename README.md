@@ -14,6 +14,11 @@ mobile app work offline.
 See [RELEASING.md](RELEASING.md) for the mobile app's Changesets and
 tag-based semantic release flow.
 
+## Releasing
+
+See [RELEASING.md](RELEASING.md) for the mobile app's Changesets and
+tag-based semantic release flow.
+
 Currently, two official plugins are available:
 
 ## Repo layout

@@ -10,7 +10,6 @@ import { FullCollection, useCollection } from "@/hooks/useCollection"
 import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useCollectionUpdate } from "@/hooks/useCollectionUpdate"
 import { useNetwork } from "@/hooks/useNetwork"
-import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   MATERIAL_TYPES,
@@ -303,11 +302,6 @@ function CollectionFormReady({
     const updatePromise = updateCollection(payload)
     if (isOnline) await updatePromise
     await saveCollectionContainers(collectionIdRef.current, containers)
-    await Promise.all(
-      photoChanges.add.map(async (photo) =>
-        putImage(photo.id, await fileToBase64(photo.file)),
-      ),
-    )
     await Promise.all(
       photoChanges.add.map((photo) =>
         createPhotoMutation.mutateAsync(photo, { onError: console.error }),

@@ -7,7 +7,6 @@ import { usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { useAudiosMutate } from "@/hooks/useAudiosMutate"
 import { FullScoutingNote, useScoutingNote } from "@/hooks/useScoutingNote"
 import { useScoutingNoteUpdate } from "@/hooks/useScoutingNoteUpdate"
-import { fileToBase64, putImage } from "@/lib/persistFiles"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ROLE, UpdateScoutingNote } from "@nasti/common/types"
 import { Button } from "@nasti/ui/button"
@@ -263,11 +262,6 @@ function ScoutingNoteFormReady({
 
     const updatePromise = updateScoutingNote(payload)
     if (isOnline) await updatePromise
-    await Promise.all(
-      photoChanges.add.map(async (photo) =>
-        putImage(photo.id, await fileToBase64(photo.file)),
-      ),
-    )
     await Promise.all(
       photoChanges.add.map((photo) =>
         createPhotoMutation.mutateAsync(photo, { onError: console.error }),

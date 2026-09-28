@@ -71,6 +71,11 @@ export const getAudio = (id: string) => {
   })
 }
 
+export const getAllAudios = async () => {
+  const db = await audioDB
+  return db.getAll("audios")
+}
+
 export const putAudio = async (
   id: string,
   blob: Blob,
