@@ -77,11 +77,12 @@ export type BatchWithCurrentLocationAndSpecies = BatchWithStatus & {
     id: string
     name: string
   } | null
+  /** Null for a combined batch, which has no single collection of its own. */
   collection: {
     id: string
     field_name: string
     code: string
-  }
+  } | null
   weights?: {
     original_weight: number
     current_weight: number
@@ -101,17 +102,15 @@ export const useBatchesByFilter = (
     queryKey: ["batches", "byFilter", batchFilter],
     enabled,
     queryFn: async () => {
+      // The species is not embedded through the collection: a combined batch
+      // has none, and takes its species from the batch itself. The view resolves
+      // either way into species_id and species_name.
       let q = supabase.from("active_batches").select(`*,
           collection:collection_id(
             id,
             field_name,
             code
-          ),
-          species:collection_id!inner(...species(
-            id,
-            name
-          )
-        )`)
+          )`)
 
       if (batchFilter.status === "unprocessed") {
         q = q.is("is_treated", false).is("is_cleaned", false)
@@ -132,13 +131,13 @@ export const useBatchesByFilter = (
       }
       let sort = batchFilter.sort
       if (batchFilter.sort === "species_id") {
-        sort = "species(name)"
+        sort = "species_name"
       }
       const { data, error } = await q
         .order(sort, { ascending: batchFilter.order === "asc" })
         .overrideTypes<
           Array<
-            Omit<BatchWithCurrentLocationAndSpecies, "weights"> & {
+            Omit<BatchWithCurrentLocationAndSpecies, "weights" | "species"> & {
               original_weight: number
               current_weight: number
             }
@@ -147,9 +146,13 @@ export const useBatchesByFilter = (
 
       if (error) throw new Error(error.message)
 
-      // Transform original_weight and current_weight into weights object
+      // Transform original_weight and current_weight into weights object, and
+      // the species columns into a species object
       return data.map((batch) => ({
         ...batch,
+        species: batch.species_id
+          ? { id: batch.species_id, name: batch.species_name ?? "" }
+          : null,
         weights: {
           original_weight: batch.original_weight,
           current_weight: batch.current_weight,
@@ -199,6 +202,33 @@ export const useBatchDetail = (batchId: string) => {
 
       if (error) throw new Error(error.message)
       return data
+    },
+  })
+}
+
+export type CombinedSource = {
+  id: string
+  code: string | null
+  collection_id: string | null
+}
+
+// Query: the batches a combined batch was pooled from. Sources are consumed by
+// the combine, so they no longer appear in the inventory, but they still exist.
+export const useCombinedSources = (batchId: string | undefined) => {
+  return useQuery({
+    queryKey: ["batches", "combinedSources", batchId],
+    enabled: Boolean(batchId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("batch_merges")
+        .select(
+          "source:batches!batch_merges_source_batch_id_fkey(id, code, collection_id)",
+        )
+        .eq("merged_batch_id", batchId!)
+        .overrideTypes<Array<{ source: CombinedSource }>>()
+
+      if (error) throw new Error(error.message)
+      return data.map(({ source }) => source)
     },
   })
 }

@@ -691,6 +691,7 @@ export type Database = {
           id: string
           notes: string | null
           organisation_id: string
+          species_id: string | null
           weight_grams: number | null
         }
         Insert: {
@@ -700,6 +701,7 @@ export type Database = {
           id?: string
           notes?: string | null
           organisation_id: string
+          species_id?: string | null
           weight_grams?: number | null
         }
         Update: {
@@ -709,6 +711,7 @@ export type Database = {
           id?: string
           notes?: string | null
           organisation_id?: string
+          species_id?: string | null
           weight_grams?: number | null
         }
         Relationships: [
@@ -731,6 +734,13 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_species_id_fkey"
+            columns: ["species_id"]
+            isOneToOne: false
+            referencedRelation: "species"
             referencedColumns: ["id"]
           },
         ]
@@ -2194,6 +2204,7 @@ export type Database = {
           organisation_id: string | null
           original_weight: number | null
           species_id: string | null
+          species_name: string | null
           weight_grams: number | null
         }
         Relationships: [
@@ -2223,13 +2234,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "collection_species_id_fkey"
-            columns: ["species_id"]
-            isOneToOne: false
-            referencedRelation: "species"
             referencedColumns: ["id"]
           },
         ]
@@ -2774,6 +2778,10 @@ export type Database = {
           p_sub_batch_id: string
           p_worker_ids?: string[]
         }
+        Returns: string
+      }
+      fn_combine_batches: {
+        Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
       }
       fn_create_quality_test: {

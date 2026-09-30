@@ -32,7 +32,11 @@ import {
   type BatchCleaningPhotoSignedUrl,
   type StagedCleaningPhoto,
 } from "@/hooks/useBatchCleaningPhotos"
-import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import { BatchContainerBadges } from "@/components/inventory/BatchContainerBadges"
+import {
+  useCombinedSources,
+  type BatchWithCurrentLocationAndSpecies,
+} from "@/hooks/useBatches"
 import { MATERIAL_SUBTYPES_BY_TYPE } from "@nasti/common/types"
 import { TaxonName } from "@nasti/common"
 import { usePersons } from "@/hooks/usePersons"
@@ -151,6 +155,10 @@ export const BatchCleaningForm = ({
   const { user } = useUserStore()
   const { data: persons } = usePersons()
   const isEditing = Boolean(instance)
+  // A batch with no collection of its own is a combined one, cleaned as a lot
+  const { data: combinedSources } = useCombinedSources(
+    batch.collection_id === null ? batch.id : undefined,
+  )
   const isPending = isCreating || isUpdating
   const [subtypeOpen, setSubtypeOpen] = useState(false)
   // LQ is collapsed by default once cleaned — most cleaning runs don't produce
@@ -390,6 +398,16 @@ export const BatchCleaningForm = ({
               {batch.collection.code || "No code"}
             </p>
           )}
+          {combinedSources && combinedSources.length > 0 && (
+            <p>
+              <span className="font-medium">
+                Combined from {combinedSources.length} collections:
+              </span>{" "}
+              {combinedSources
+                .map((source) => source.code || "No code")
+                .join(", ")}
+            </p>
+          )}
           {batch.species && (
             <p>
               <span className="font-medium">Species:</span>{" "}
@@ -400,12 +418,10 @@ export const BatchCleaningForm = ({
               )}
             </p>
           )}
-          <p>
-            <span className="font-medium">Collection size:</span>{" "}
-            {(batch.collection && "amount_description" in batch.collection
-              ? String(batch.collection.amount_description)
-              : null) || "Not specified"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">Containers:</span>
+            <BatchContainerBadges batch={batch} />
+          </div>
         </div>
       </div>
 

@@ -143,11 +143,14 @@ export const useAssignedBagsByFilter = (
         ]),
       )
 
-      // Parent metadata for context: what species, which collection.
+      // Parent metadata for context: what species, which collection. A batch
+      // with no collection of its own (cleaned from a combined batch) carries
+      // its species itself.
       const { data: parents, error: parentError } = await supabase
         .from("batches")
         .select(
-          `id, code, collection_id,
+          `id, code, collection_id, species_id,
+           species:species_id(id, name),
            collection:collection_id(id, code, species_id, species:species_id(id, name))`,
         )
         .in(
@@ -165,6 +168,10 @@ export const useAssignedBagsByFilter = (
             species_id: string | null
             species: { id: string; name: string } | null
           } | null
+          const batchSpecies = parent.species as {
+            id: string
+            name: string
+          } | null
 
           return [
             parent.id,
@@ -173,8 +180,9 @@ export const useAssignedBagsByFilter = (
               code: parent.code,
               collection_id: parent.collection_id,
               collection_code: collection?.code ?? null,
-              species_id: collection?.species_id ?? null,
-              species_name: collection?.species?.name ?? null,
+              species_id: collection?.species_id ?? parent.species_id ?? null,
+              species_name:
+                collection?.species?.name ?? batchSpecies?.name ?? null,
             } satisfies AssignedBagParent,
           ]
         }),

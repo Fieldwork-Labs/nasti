@@ -58,7 +58,7 @@ interface BatchTableRowProps extends BaseBatchTableRowProps {
     subBatchId?: string,
   ) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onCombine?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
 
   combineMode?: CombineMode
@@ -176,7 +176,7 @@ interface NormalModeActionsProps {
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onMix?: (batch: BatchWithCurrentLocationAndSpecies) => void
+  onCombine?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
   onOpenQualityTest?: () => void
@@ -188,7 +188,7 @@ const NormalModeActions = ({
   canDelete,
   hasActiveAssignment,
   onClean,
-  onMix,
+  onCombine,
   onAssignForTesting,
   onDelete,
   onOpenQualityTest,
@@ -206,12 +206,12 @@ const NormalModeActions = ({
       </Button>
     )}
 
-    {onMix && (
+    {onCombine && (
       <Button
         variant="ghost"
         size="sm"
         disabled={mergeDisabled}
-        onClick={() => onMix(batch)}
+        onClick={() => onCombine(batch)}
         title="Combine"
       >
         <Combine className="h-4 w-4" />
@@ -276,7 +276,7 @@ export const BatchTableRow = ({
   onDelete,
   onSplit,
   onClean,
-  onMix,
+  onCombine,
   onAssignForTesting,
   onSubBatchStorageMove,
   className,
@@ -339,7 +339,9 @@ export const BatchTableRow = ({
           canDelete={canDelete}
           hasActiveAssignment={hasActiveAssignment}
           onClean={onClean}
-          onMix={onMix}
+          // a combined batch (no collection of its own) is cleaned, not
+          // combined again
+          onCombine={batch.collection_id ? onCombine : undefined}
           onDelete={onDelete}
         />
       )

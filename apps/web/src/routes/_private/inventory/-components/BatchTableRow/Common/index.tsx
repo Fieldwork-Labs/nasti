@@ -26,6 +26,7 @@ import {
 import { useState, type ReactNode } from "react"
 
 import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
+import { BatchContainerBadges } from "@/components/inventory/BatchContainerBadges"
 import { BatchCleaningPhotos } from "@/components/batches/BatchCleaningPhotos"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import {
@@ -37,6 +38,7 @@ import {
   useBatchDetail,
   useBatchHistory,
   useCanDeleteBatch,
+  useCombinedSources,
 } from "@/hooks/useBatches"
 import { useBatchTests } from "@/hooks/useBatchTests"
 import useUserStore from "@/store/userStore"
@@ -438,10 +440,7 @@ export const BatchExpandedDetails = ({
   return (
     <div className="space-y-4">
       <h4 className="text-lg">Batch Details</h4>
-      <div className="flex flex-col gap-2">
-        <span className="font-semibold">Collection</span>
-        <BatchCollectionDetails batch={batch} />
-      </div>
+      <BatchCollectionDetails batch={batch} />
       {detailLoading ? (
         <BatchDetailsSkeleton />
       ) : (
@@ -467,13 +466,46 @@ const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {
   const { organisation } = useUserStore()
   const isTesting = organisation?.is_testing_provider
 
-  if (!batch.collection_id) return null
   // don't show the collection modal for testing orgs
-  if (isTesting) return
+  if (isTesting) return null
+  if (!batch.collection_id) return <CombinedSources batch={batch} />
   return (
-    <span className="lg:max-w-1/2">
-      <CollectionListItemWithModal id={batch.collection_id} />
-    </span>
+    <div className="flex flex-col gap-2">
+      <span className="font-semibold">Collection</span>
+      <span className="lg:max-w-1/2">
+        <CollectionListItemWithModal id={batch.collection_id} />
+      </span>
+    </div>
+  )
+}
+
+/**
+ * The collections a combined batch was pooled from. An unprocessed batch with
+ * no collection of its own is a combined one; anything else without a
+ * collection (what cleaning a combined batch produces) has no sources to show.
+ */
+const CombinedSources = ({ batch }: { batch: BatchType }) => {
+  const isUnprocessed = batch.weight_grams === null
+  const { data: sources } = useCombinedSources(
+    isUnprocessed ? batch.id : undefined,
+  )
+  const collectionIds = (sources ?? [])
+    .map((source) => source.collection_id)
+    .filter((id): id is string => Boolean(id))
+
+  if (collectionIds.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="font-semibold">
+        Combined from {collectionIds.length} collections
+      </span>
+      <div className="lg:max-w-1/2 flex flex-col gap-2">
+        {collectionIds.map((id) => (
+          <CollectionListItemWithModal key={id} id={id} />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -512,6 +544,15 @@ const BatchDetailsContent = ({
             ) : (
               batch.weight_grams && <div>{batch.weight_grams}g</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {batch.weight_grams === null && (
+        <div>
+          <span className="font-medium">Containers:</span>
+          <div className="mt-1">
+            <BatchContainerBadges batch={batch} />
           </div>
         </div>
       )}

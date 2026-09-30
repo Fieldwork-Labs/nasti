@@ -12,7 +12,7 @@ import { BatchTableRow } from "./BatchTableRow/General"
 import {
   BatchEditModal,
   BatchMergeModal,
-  BatchMixModal,
+  BatchCombineModal,
   BatchSplitModal,
   BatchStorageModal,
 } from "@/components/inventory/modals"
@@ -196,16 +196,23 @@ export function InventoryPageGeneral() {
     batch: BatchWithCurrentLocationAndSpecies,
   ) => {
     if (!combineState) return undefined
-    const batchCodePrefix = batch.code?.split("-")[0]
-    const initiatingBatchCodePrefix =
-      combineState.initiatingBatch.code?.split("-")[0]
-    const isSameCodePrefix = batchCodePrefix === initiatingBatchCodePrefix
+    // Combining pools raw collections before they are cleaned, so only
+    // unprocessed batches (no weight yet) of the same species can join. Matching
+    // on species rather than the code prefix: an abbreviation can collide, and
+    // the database rejects mixed species anyway. A batch with no collection is
+    // itself a combined one, which cannot be combined again.
+    const speciesId = batch.species?.id
+    const canCombine =
+      batch.weight_grams === null &&
+      batch.collection_id !== null &&
+      speciesId !== undefined &&
+      speciesId === combineState.initiatingBatch.species?.id
 
     return {
       isActive: combineState.isActive,
       isInitiating: batch.id === combineState.initiatingBatch.id,
       isSelected: combineState.selectedBatchIds.includes(batch.id),
-      canCombine: isSameCodePrefix,
+      canCombine,
       onAddToCombine: () => handleAddToCombine(batch.id),
       onRemoveFromCombine: () => handleRemoveFromCombine(batch.id),
       onCancelCombine: handleCancelCombine,
@@ -346,7 +353,7 @@ export function InventoryPageGeneral() {
                           onDelete={handleDelete}
                           onSplit={handleSplit}
                           onClean={setCleaningBatch}
-                          onMix={handleCombine}
+                          onCombine={handleCombine}
                           onSubBatchStorageMove={(batch, subBatchId) =>
                             setSubBatchStorageMove({ batch, subBatchId })
                           }
@@ -432,7 +439,7 @@ export function InventoryPageGeneral() {
         )}
 
         {showCombineModal && selectedBatchesForCombine.length > 0 && (
-          <BatchMixModal
+          <BatchCombineModal
             isOpen={showCombineModal}
             onClose={() => {
               setShowCombineModal(false)

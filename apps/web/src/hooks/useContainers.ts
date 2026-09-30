@@ -7,6 +7,7 @@ import type {
 import { queryClient } from "@nasti/common/utils"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
+import { useCombinedSources } from "@/hooks/useBatches"
 import useUserStore from "@/store/userStore"
 
 const sortContainers = (containers: Container[]) =>
@@ -177,6 +178,52 @@ export const useCollectionContainers = (collectionId?: string) =>
       return data
     },
   })
+
+// Query: the containers several collections were collected into, in one round trip
+export const useCollectionsContainers = (collectionIds: string[]) => {
+  const sortedIds = [...collectionIds].sort()
+
+  return useQuery({
+    queryKey: ["collections", "containers", "byIds", sortedIds],
+    enabled: sortedIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("collection_containers")
+        .select("*, container:containers(*)")
+        .in("collection_id", sortedIds)
+        .overrideTypes<CollectionContainerWithContainer[]>()
+
+      if (error) throw new Error(error.message)
+      return data
+    },
+  })
+}
+
+// Query: the containers an unprocessed batch holds. A batch made by a
+// collection holds what that collection was collected into; a combined batch
+// holds what all of its sources did.
+export const useBatchContainers = (batch: {
+  id: string
+  collection_id: string | null
+}) => {
+  const { data: sources, isLoading: sourcesLoading } = useCombinedSources(
+    batch.collection_id === null ? batch.id : undefined,
+  )
+
+  const collectionIds = batch.collection_id
+    ? [batch.collection_id]
+    : (sources ?? [])
+        .map((source) => source.collection_id)
+        .filter((id): id is string => Boolean(id))
+
+  const { data, isLoading: containersLoading } =
+    useCollectionsContainers(collectionIds)
+
+  return {
+    data: data ?? [],
+    isLoading: sourcesLoading || containersLoading,
+  }
+}
 
 // Query: complete collection and storage usage for every organisation container
 export const useContainerUsage = () =>
