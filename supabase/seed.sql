@@ -100,7 +100,10 @@ INSERT INTO "public"."person" ("id", "organisation_id", "source_type", "user_id"
 INSERT INTO "public"."collection" ("id", "species_id", "species_uncertain", "field_name", "specimen_collected", "organisation_id", "location", "created_by", "created_at", "trip_id", "description", "code", "collected_on", "collected_by", "phenology_start", "phenology_peak", "phenology_end", "person_ids", "duration", "material_type") VALUES
 	('50d59d29-0eed-4f79-acd6-2a62c995bc45', 'd2b02f1c-905e-46d0-a3e0-4b253d2a1349', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000508D976E12635E40D50968226CA83FC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 08:47:18.690457+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', 'CHAUNC-CO.COO.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', 20, 60, 85, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], '00:45:00', '{seed}'),
 	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '9c5d25d7-a230-4591-8861-7e9d3a590f04', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E61000006DE7FBA9F1A25D4085EB51B81E1540C0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:40:55.681459+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '', 'ALOSPGER (R.Davis 3487)-CO.MAL.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', NULL, NULL, NULL, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], NULL, '{seed,capsules_pods_fruit}'),
-	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000051C967762A95C40CA08D12760CB3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:39:18.702834+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '-28.794435967000744, 114.64663495692373', 'DIPGER-CO.GES.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', -10, 25, 60, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], '01:30:00', '{branches_stems}');
+	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000051C967762A95C40CA08D12760CB3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2025-09-29 09:39:18.702834+00', 'a2a3535f-1f84-4e65-957c-cdc544948d94', '-28.794435967000744, 114.64663495692373', 'DIPGER-CO.GES.25', '2025-09-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', -10, 25, 60, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], '01:30:00', '{branches_stems}'),
+	('683acb6d-41ff-4a17-9f8b-dad822ce4f36', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E61000000AD7A3703DAA5C40CDCCCCCCCCCC3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2026-07-29 04:12:58.004795+00', NULL, '', 'DIPGER-CO.GES.26-1', '2026-07-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', NULL, NULL, NULL, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], NULL, '{seed}'),
+	('9ea3cc1c-d812-4044-b099-fe519736e3cb', 'd2b02f1c-905e-46d0-a3e0-4b253d2a1349', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000D7A3703D0AF75C403333333333F33FC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2026-07-29 07:06:53.276788+00', NULL, '', 'CHAUNC-CO.SWA.26-1', '2026-07-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', NULL, NULL, NULL, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], NULL, '{seed,capsules_pods_fruit}'),
+	('468a2b6d-bf7f-47fd-bf17-47f793bf3055', 'bbe4a97f-c05d-4cb6-b07b-560c1cbf305f', false, '', false, '02aba5b9-6c46-406d-831a-4f51851599f2', '0101000020E6100000CDCCCCCCCCAC5C408FC2F5285CCF3CC0', 'e18b3927-87a9-4dcc-8d59-148461504a02', '2026-07-29 07:09:46.094775+00', NULL, '', 'DIPGER-CO.GES.26-2', '2026-07-29', 'e18b3927-87a9-4dcc-8d59-148461504a02', NULL, NULL, NULL, ARRAY['b52fb44d-8cab-4e52-9962-80fc41de6804']::uuid[], NULL, '{seed}');
 
 
 --
@@ -120,7 +123,11 @@ INSERT INTO "public"."containers" ("id", "organisation_id", "name", "purpose", "
 INSERT INTO "public"."collection_containers" ("collection_id", "container_id", "amount") VALUES
 	('50d59d29-0eed-4f79-acd6-2a62c995bc45', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1001', 1),
 	('f9c2b54c-58cc-434b-aae4-3e79e17f3b31', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 1),
-	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 1);
+	('7bf4d772-d79b-4b6d-8608-4b80a9cf314a', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 1),
+	('683acb6d-41ff-4a17-9f8b-dad822ce4f36', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 2),
+	('9ea3cc1c-d812-4044-b099-fe519736e3cb', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1001', 3),
+	('468a2b6d-bf7f-47fd-bf17-47f793bf3055', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1001', 1),
+	('468a2b6d-bf7f-47fd-bf17-47f793bf3055', '4f5e5b9e-3a2f-4f0c-9c3d-9f4b1a7c1002', 2);
 
 
 --
