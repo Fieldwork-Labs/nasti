@@ -271,10 +271,15 @@ CREATE OR REPLACE FUNCTION public.is_org_member(user_id uuid, org_id uuid)
  SET search_path TO 'public', 'pg_temp'
 AS $function$
   SELECT EXISTS (
-    SELECT 1 FROM org_user WHERE org_user.user_id = user_id AND org_user.organisation_id = org_id
+    SELECT 1
+    FROM org_user ou
+    WHERE ou.user_id = is_org_member.user_id
+      AND ou.organisation_id = is_org_member.org_id
+      AND ou.is_active = true
   );
 $function$
 ;
+
 
 create or replace view "public"."obfuscated_collection_data" as  SELECT c.id,
     c.organisation_id,
