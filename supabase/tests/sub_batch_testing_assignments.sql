@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(138);
+select plan(141);
 
 -- The fixture deliberately has several bags in one parent batch.  The
 -- assignment contract is bag-grained even when the parent remains shared.
@@ -1839,6 +1839,41 @@ select is(
   ),
   1::bigint,
   'over-consumption writes no second adjustment'
+);
+
+-- X-Ray is non-destructive: the repeat weights describe the seed imaged, not
+-- seed consumed, so even more than the bag holds is accepted and nothing is
+-- deducted.
+select lives_ok(
+  $$
+    select public.fn_create_quality_test(
+      'd2000000-0000-0000-0000-000000000004',
+      'd3000000-0000-0000-0000-000000000006',
+      '{"test_type":"x-ray","repeats":[{"weight_grams":41}]}'::jsonb,
+      'd1000000-0000-0000-0000-000000000002'
+    )
+  $$,
+  'an X-Ray test may image more seed than the bag holds'
+);
+
+select is(
+  (
+    select count(*)
+    from public.batch_weight_adjustments
+    where sub_batch_id = 'd3000000-0000-0000-0000-000000000006'
+  ),
+  1::bigint,
+  'an X-Ray test writes no weight adjustment'
+);
+
+select is(
+  (
+    select current_weight
+    from public.sub_batch_current_weight
+    where id = 'd3000000-0000-0000-0000-000000000006'
+  ),
+  40::numeric,
+  'an X-Ray test leaves the bag weight unchanged'
 );
 
 select lives_ok(

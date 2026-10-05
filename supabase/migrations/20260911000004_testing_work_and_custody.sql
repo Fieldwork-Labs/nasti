@@ -543,6 +543,25 @@ END;
 $function$
 ;
 
+-- An X-Ray test images the seed and hands the same seed back, so it consumes
+-- nothing from the bag. Every other quality test type (cut test, TZ,
+-- germination) destroys the seed it is run on.
+CREATE OR REPLACE FUNCTION public.fn_quality_test_consumed_weight(p_result jsonb)
+ RETURNS numeric
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO ''
+AS $function$
+  SELECT CASE
+    WHEN p_result ->> 'test_type' = 'x-ray' THEN 0
+    ELSE COALESCE((
+      SELECT sum(COALESCE((repeat_item ->> 'weight_grams')::numeric, 0))
+      FROM jsonb_array_elements(p_result -> 'repeats') repeat_item
+    ), 0)
+  END
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.fn_create_quality_test(p_batch_id uuid, p_sub_batch_id uuid, p_result jsonb, p_performed_by_organisation_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -636,7 +655,6 @@ DECLARE
   v_test_id UUID;
   v_total_weight NUMERIC := 0;
   v_current_weight NUMERIC;
-  v_repeat JSONB;
   v_sub_batch_batch_id UUID;
   v_user_organisation_id UUID;
   v_user_id UUID := (SELECT auth.uid());
@@ -689,11 +707,8 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  -- Calculate total weight consumed from repeats
-  FOR v_repeat IN SELECT * FROM jsonb_array_elements(p_result -> 'repeats')
-  LOOP
-    v_total_weight := v_total_weight + COALESCE((v_repeat ->> 'weight_grams')::NUMERIC, 0);
-  END LOOP;
+  -- Weight consumed by the test: nothing for a non-destructive X-Ray
+  v_total_weight := public.fn_quality_test_consumed_weight(p_result);
 
   SELECT sbcw.current_weight
     INTO v_current_weight
@@ -779,7 +794,6 @@ DECLARE
   v_test_id UUID;
   v_prior_adjustment_ids UUID[];
   v_total_weight NUMERIC := 0;
-  v_repeat JSONB;
   v_classified_count INTEGER;
 BEGIN
   SELECT COALESCE(array_agg(adjustment.id), '{}'::UUID[])
@@ -787,11 +801,7 @@ BEGIN
   FROM public.batch_weight_adjustments adjustment
   WHERE adjustment.sub_batch_id = p_sub_batch_id;
 
-  FOR v_repeat IN SELECT * FROM jsonb_array_elements(p_result -> 'repeats')
-  LOOP
-    v_total_weight := v_total_weight
-      + COALESCE((v_repeat ->> 'weight_grams')::NUMERIC, 0);
-  END LOOP;
+  v_total_weight := public.fn_quality_test_consumed_weight(p_result);
 
   v_test_id :=
     public.fn_create_quality_test_without_adjustment_classification(
