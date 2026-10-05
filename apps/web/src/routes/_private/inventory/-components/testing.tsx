@@ -116,12 +116,12 @@ export function InventoryPageTesting() {
                             onClick={() => handleSort("species_id")}
                             className="font-semibold"
                           >
-                            Collection
+                            Species
                             {getSortIcon("species_id")}
                           </Button>
                         </th>
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
-                          Assignment
+                          Status
                         </th>
                         <th className="text-foreground px-4 py-3 text-left font-semibold">
                           Bag

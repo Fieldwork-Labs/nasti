@@ -30,7 +30,7 @@ type BagTableRowTestingProps = {
  * is a bag that was split off before being sent, so by the time it arrives here
  * it is simply a bag.
  */
-const AssignmentCell = ({ bag }: { bag: AssignedBag }) => (
+const StatusCell = ({ bag }: { bag: AssignedBag }) => (
   <div className="flex flex-col gap-1">
     <Badge
       variant="outline"
@@ -54,12 +54,7 @@ const AssignmentCell = ({ bag }: { bag: AssignedBag }) => (
  * sender's storage location is deliberately not shown, and is not readable.
  */
 const BagCell = ({ bag }: { bag: AssignedBag }) => (
-  <div className="flex flex-col text-sm">
-    <span>{bag.containerName ?? "Unlabelled container"}</span>
-    <span className="text-muted-foreground font-mono text-xs">
-      {bag.subBatchId.slice(0, 8)}
-    </span>
-  </div>
+  <span className="text-sm">{bag.containerName ?? "Unlabelled container"}</span>
 )
 
 const AssignmentDatesCell = ({ bag }: { bag: AssignedBag }) => (
@@ -114,7 +109,7 @@ export const BagTableRow = ({ bag, className }: BagTableRowTestingProps) => {
           </div>
         </td>
         <td className="px-4 py-3">
-          <AssignmentCell bag={bag} />
+          <StatusCell bag={bag} />
         </td>
         <td className="px-4 py-3">
           <BagCell bag={bag} />
