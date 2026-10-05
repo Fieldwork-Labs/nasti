@@ -2708,6 +2708,80 @@ FROM authenticated;
 
 REVOKE UPDATE ON TABLE public.sub_batches FROM authenticated;
 
+-- Function privileges
+--
+-- Restores the EXECUTE privileges the pre-squash migrations set. A function
+-- created here starts out executable by PUBLIC, anon and authenticated, so
+-- each restriction has to be restated.
+
+-- Internal steps of the public RPCs. They skip the caller checks the RPC
+-- performs, so nobody may call them directly.
+REVOKE ALL ON FUNCTION public.fn_bag_cleaning_outputs_unclassified(uuid, jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_clean_sub_batch_without_lineage(uuid, interval, text, text, text, boolean, text, uuid[], jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_merge_sub_batches_without_adjustment_classification(uuid[], uuid, uuid, text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_split_sub_batch_without_lineage(uuid, jsonb) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_create_quality_test_without_adjustment_classification(uuid, uuid, jsonb, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_create_quality_test_without_work_completion(uuid, uuid, jsonb, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_return_bags_from_testing_without_final_variance(jsonb, text, text) FROM PUBLIC, anon, authenticated;
+
+-- The auth hook is called by Supabase Auth alone.
+REVOKE ALL ON FUNCTION public.custom_access_token_hook(jsonb) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) TO supabase_auth_admin;
+
+-- Callable by signed-in users only.
+REVOKE ALL ON FUNCTION public.batch_has_externally_held_bags(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.can_read_batch(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.can_read_sub_batch(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_create_origin_batch_for_collection() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_merge_batches(uuid[], text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_mix_batches(uuid[], text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_split_sub_batch(uuid, jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.holds_any_bag_of_batch(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_batch_custodian_or_past(uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_batch_owner(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_current_bag_custodian(uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.is_current_custodian(uuid, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_assign_bags_for_testing(uuid, jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_create_quality_test(uuid, uuid, jsonb, uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_return_bag_from_testing(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_return_bags_from_testing(jsonb, text, text, boolean, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_set_testing_assignment_work_status(uuid, text, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.auth_org_permissions() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_organisation_users() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.get_user_organisation_id() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.has_org_permission(text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.set_org_user_permissions(uuid, public.org_permission[]) FROM PUBLIC, anon;
+
+-- Also callable by signed-in users only. Before the squash these were revoked
+-- from PUBLIC alone, which left anon its explicit default grant.
+REVOKE ALL ON FUNCTION public.fn_bag_and_store_cleaning_outputs(uuid, jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_clean_sub_batch(uuid, interval, text, text, text, boolean, text, uuid[], jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_default_sub_batch_holder() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_get_container_usage() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_merge_sub_batches(uuid[], uuid, uuid, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_remove_storage_location(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_set_sub_batch_storage(uuid, uuid, timestamp with time zone, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_update_batch_cleaning(uuid, interval, text, text, text, text, uuid[]) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.prevent_container_purpose_change() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.validate_active_storage_location() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.validate_sub_batch_storage_container() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_resolve_testing_assignments_for_sub_batch(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_clean_batch(uuid, interval, text, text, text, boolean, text, uuid[], jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_split_batch(uuid, numeric, text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.auth_org_role() FROM PUBLIC, anon;
+
+-- Column privileges on sub_batches
+--
+-- Table-wide UPDATE is revoked above. Restore the columns a member may edit
+-- directly; custody, holder and lineage columns stay writable only through the
+-- RPCs.
+GRANT UPDATE (id, batch_id, weight_grams, notes, created_at, container_id)
+  ON public.sub_batches TO authenticated;
+
+-- Tables created later must not be readable by anon either.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE SELECT ON TABLES FROM anon;
+
 ALTER VIEW public.obfuscated_collection_data SET (security_invoker = true);
 ALTER VIEW public.active_batches SET (security_invoker = true);
 ALTER VIEW public.active_sub_batches SET (security_invoker = true);

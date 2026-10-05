@@ -270,7 +270,7 @@ select is(
     select count(*)
     from public.batch_merges
     where merged_batch_id = (select id from combine_result)
-      and source_batch_id = any ((select ids from combo where name = 'happy'))
+      and source_batch_id = any ((select ids from combo where name = 'happy')::uuid[])
   ),
   3::bigint,
   'every source is recorded against the combined batch'
@@ -280,7 +280,7 @@ select is(
   (
     select count(*)
     from public.batch_current_weight
-    where id = any ((select ids from combo where name = 'happy'))
+    where id = any ((select ids from combo where name = 'happy')::uuid[])
       and current_weight = 0
   ),
   3::bigint,
@@ -301,7 +301,7 @@ select is(
   (
     select count(*)
     from public.active_batches
-    where id = any ((select ids from combo where name = 'happy'))
+    where id = any ((select ids from combo where name = 'happy')::uuid[])
   ),
   0::bigint,
   'the sources are no longer active batches'
