@@ -37,6 +37,29 @@ values
 -- Collections 1-3 are the ones that get combined. The earliest year (25) and,
 -- within it, the first number (1) belong to the last one inserted, so the
 -- expected code is neither the first collection's nor the highest-numbered.
+create temporary table fixture_collection (
+  n integer,
+  species_id uuid,
+  organisation_id uuid,
+  code text,
+  point_name text,
+  created_at timestamptz
+);
+insert into fixture_collection
+  values
+    (1, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-2',  'a',     '2026-03-01 00:00:00+00'::timestamptz),
+    (2, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.25-3',  'a',     '2025-05-01 00:00:00+00'::timestamptz),
+    (3, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.25-1',  'a',     '2025-02-01 00:00:00+00'::timestamptz),
+    (4, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-4',  'a',     '2026-04-01 00:00:00+00'::timestamptz),
+    (5, 'c1000000-0000-0000-0000-000000000002'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.BBB.26-1',  'a',     '2026-04-02 00:00:00+00'::timestamptz),
+    (6, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-5',  'a',     '2026-04-03 00:00:00+00'::timestamptz),
+    (7, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.CCC.26-6',  'b',     '2026-04-04 00:00:00+00'::timestamptz),
+    (8, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-7',  'a',     '2026-04-05 00:00:00+00'::timestamptz),
+    (9, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-8',  'a',     '2026-04-06 00:00:00+00'::timestamptz),
+    (10, 'c1000000-0000-0000-0000-000000000001'::uuid, 'c2000000-0000-0000-0000-000000000001'::uuid, 'CMBTST-OTHER.AAA.26-1', 'a',   '2026-04-07 00:00:00+00'::timestamptz),
+    (11, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.UNK.26-9',  'ocean', '2026-04-08 00:00:00+00'::timestamptz),
+    (12, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-10', 'a',     '2026-04-09 00:00:00+00'::timestamptz);
+
 insert into public.collection (
   id,
   species_id,
@@ -56,21 +79,7 @@ select
   fixture.code,
   (select p.location from fixture_point p where p.name = fixture.point_name),
   fixture.created_at
-from (
-  values
-    (1, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-2',  'a',     '2026-03-01 00:00:00+00'::timestamptz),
-    (2, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.25-3',  'a',     '2025-05-01 00:00:00+00'::timestamptz),
-    (3, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.25-1',  'a',     '2025-02-01 00:00:00+00'::timestamptz),
-    (4, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-4',  'a',     '2026-04-01 00:00:00+00'::timestamptz),
-    (5, 'c1000000-0000-0000-0000-000000000002'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.BBB.26-1',  'a',     '2026-04-02 00:00:00+00'::timestamptz),
-    (6, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-5',  'a',     '2026-04-03 00:00:00+00'::timestamptz),
-    (7, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.CCC.26-6',  'b',     '2026-04-04 00:00:00+00'::timestamptz),
-    (8, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-7',  'a',     '2026-04-05 00:00:00+00'::timestamptz),
-    (9, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-8',  'a',     '2026-04-06 00:00:00+00'::timestamptz),
-    (10, 'c1000000-0000-0000-0000-000000000001'::uuid, 'c2000000-0000-0000-0000-000000000001'::uuid, 'CMBTST-OTHER.AAA.26-1', 'a',   '2026-04-07 00:00:00+00'::timestamptz),
-    (11, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.UNK.26-9',  'ocean', '2026-04-08 00:00:00+00'::timestamptz),
-    (12, 'c1000000-0000-0000-0000-000000000001'::uuid, '02aba5b9-6c46-406d-831a-4f51851599f2'::uuid, 'CMBTST-CO.AAA.26-10', 'a',     '2026-04-09 00:00:00+00'::timestamptz)
-) as fixture (n, species_id, organisation_id, code, point_name, created_at);
+from fixture_collection fixture;
 
 -- Inserting a collection creates its origin batch: the unprocessed batch that
 -- combining works on.
@@ -78,6 +87,19 @@ create temporary table origin_batch as
 select collection_id, id as batch_id
 from public.batches
 where collection_id::text like 'c3000000-%';
+
+-- The collection code trigger replaces any code given on insert, and the origin
+-- batch copies the generated one. Put the fixture codes back on both, so the
+-- expected codes below do not depend on how species and regions abbreviate.
+update public.collection collection
+set code = fixture.code
+from fixture_collection fixture
+where collection.id = ('c3000000-0000-0000-0000-' || lpad(fixture.n::text, 12, '0'))::uuid;
+
+update public.batches batch
+set code = fixture.code
+from fixture_collection fixture
+where batch.collection_id = ('c3000000-0000-0000-0000-' || lpad(fixture.n::text, 12, '0'))::uuid;
 
 create function pg_temp.origin(n integer)
 returns uuid
