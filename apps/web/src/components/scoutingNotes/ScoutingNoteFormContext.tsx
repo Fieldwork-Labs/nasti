@@ -252,8 +252,9 @@ export const ScoutingNoteFormProvider = ({
   } = useScoutingNoteForm({
     tripId,
     instance,
+    // when editing, the footer buttons decide what happens next
     onSuccess: (_) => {
-      setStage("photos")
+      if (!instance) setStage("photos")
     },
   })
 

@@ -4,7 +4,7 @@ import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parseWkbPoint } from "@nasti/common/utils"
 import { SpeciesListItem } from "@/components/species/SpeciesListItem"
-import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
+import { PencilIcon, ShoppingBag, TrashIcon, XIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
@@ -185,12 +185,14 @@ export const CollectionDetailModal = ({
         title={
           <div className="flex justify-between">
             <span>Collection</span>
-            {isAdmin && (
-              <EditButtons
-                openUpdateModal={openUpdateModal}
-                openDeleteModal={openDeleteModal}
-              />
-            )}
+            <Button
+              size={"icon"}
+              onClick={onClose}
+              title="Close"
+              variant={"ghost"}
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
           </div>
         }
       >
@@ -391,9 +393,14 @@ export const CollectionDetailModal = ({
             </TabsContent>
           </Tabs>
         </div>
-        <div className="flex justify-end">
-          <Button onClick={onClose}>Close</Button>
-        </div>
+        {isAdmin && (
+          <div className="flex justify-end">
+            <EditButtons
+              openUpdateModal={openUpdateModal}
+              openDeleteModal={openDeleteModal}
+            />
+          </div>
+        )}
       </Modal>
       {isOpenUpdateModal && (
         <UpdateCollectionWizardModal

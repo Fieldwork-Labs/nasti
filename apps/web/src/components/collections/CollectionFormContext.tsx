@@ -311,8 +311,9 @@ const CollectionFormProviderInner = ({
     tripId,
     instance,
     initialContainers,
+    // when editing, the footer buttons decide what happens next
     onSuccess: (_) => {
-      setStage("photos")
+      if (!instance) setStage("photos")
     },
   })
 

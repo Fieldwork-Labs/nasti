@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl"
 import { parseWkbPoint } from "@nasti/common/utils"
 import { ScoutingNote } from "@nasti/common/types"
 import { SpeciesListItem } from "@/components/species/SpeciesListItem"
-import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
+import { PencilIcon, ShoppingBag, TrashIcon, XIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
@@ -60,6 +60,34 @@ const PhotosTab = ({
     </div>
   )
 }
+
+const EditButtons = ({
+  openUpdateModal,
+  openDeleteModal,
+}: {
+  openUpdateModal: () => void
+  openDeleteModal: () => void
+}) => (
+  <span className="inline-flex space-x-2">
+    <Button
+      size={"icon"}
+      onClick={openUpdateModal}
+      title="Edit Scouting Note"
+      variant={"ghost"}
+    >
+      <PencilIcon className="h-4 w-4" />
+    </Button>
+    <Button
+      size={"icon"}
+      onClick={openDeleteModal}
+      title="Delete Scouting Note"
+      className="dark:text-primary-foreground cursor-pointer bg-transparent text-black"
+      variant={"destructive"}
+    >
+      <TrashIcon className="h-4 w-4" />
+    </Button>
+  </span>
+)
 
 export const ScoutingNoteDetailModal = ({
   scoutingNote,
@@ -129,27 +157,6 @@ export const ScoutingNoteDetailModal = ({
     scoutingNote?.person_ids?.includes(person.id),
   )
 
-  const EditButtons = () => (
-    <span className="inline-flex space-x-2">
-      <Button
-        size={"icon"}
-        onClick={openUpdateModal}
-        title="Edit ScoutingNote"
-        className="bg-transparent"
-      >
-        <PencilIcon className="h-4 w-4 text-white" />
-      </Button>
-      <Button
-        size={"icon"}
-        onClick={openDeleteModal}
-        title="Delete ScoutingNote"
-        className="bg-transparent"
-        variant={"destructive"}
-      >
-        <TrashIcon className="h-4 w-4" />
-      </Button>
-    </span>
-  )
   if (!scoutingNote) return null
 
   return (
@@ -161,7 +168,14 @@ export const ScoutingNoteDetailModal = ({
         title={
           <div className="flex justify-between">
             <span>Scouting Note</span>
-            {isAdmin && <EditButtons />}
+            <Button
+              size={"icon"}
+              onClick={onClose}
+              title="Close"
+              variant={"ghost"}
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
           </div>
         }
       >
@@ -324,9 +338,14 @@ export const ScoutingNoteDetailModal = ({
             </TabsContent>
           </Tabs>
         </div>
-        <div className="flex justify-end">
-          <Button onClick={onClose}>Close</Button>
-        </div>
+        {isAdmin && (
+          <div className="flex justify-end">
+            <EditButtons
+              openUpdateModal={openUpdateModal}
+              openDeleteModal={openDeleteModal}
+            />
+          </div>
+        )}
       </Modal>
       {isOpenUpdateModal && (
         <UpdateScoutingNoteWizardModal

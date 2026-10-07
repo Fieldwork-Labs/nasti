@@ -198,10 +198,20 @@ const UpdateCollectionFormModal = () => {
     async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault()
 
-      if (!form.formState.isDirty) return setStage("photos")
-      await onSubmit()
+      if (form.formState.isDirty) await onSubmit()
+      setStage("photos")
     },
     [form.formState.isDirty, setStage, onSubmit],
+  )
+
+  const handleSave = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      // prevent the dialog closing before the save has completed
+      e.preventDefault()
+      await onSubmit()
+      close()
+    },
+    [onSubmit, close],
   )
 
   const goToPhotosText = useMemo(() => {
@@ -245,7 +255,7 @@ const UpdateCollectionFormModal = () => {
           {isPending && <Spinner />}
         </AlertDialogAction>
         <AlertDialogAction
-          onClick={onSubmit}
+          onClick={handleSave}
           className="w-full cursor-pointer"
           disabled={
             isPending || !form.formState.isValid || !form.formState.isDirty
