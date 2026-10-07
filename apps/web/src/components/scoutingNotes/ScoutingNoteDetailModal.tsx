@@ -157,6 +157,7 @@ export const ScoutingNoteDetailModal = ({
       <Modal
         open={open}
         onOpenChange={onClose}
+        className="max-h-[90vh] overflow-y-auto"
         title={
           <div className="flex justify-between">
             <span>Scouting Note</span>
@@ -180,9 +181,10 @@ export const ScoutingNoteDetailModal = ({
             </div>
           )}
           <Tabs defaultValue="details">
-            <TabsList className="bg-secondary-background grid w-full grid-cols-2">
+            <TabsList className="bg-secondary-background grid w-full auto-cols-fr grid-flow-col">
               <TabsTrigger value="details">Details</TabsTrigger>
-              {photos?.length && photos.length > 0 && (
+              {coordinates && <TabsTrigger value="map">Map</TabsTrigger>}
+              {photos && photos.length > 0 && (
                 <TabsTrigger value="photos">Photos</TabsTrigger>
               )}
             </TabsList>
@@ -289,31 +291,30 @@ export const ScoutingNoteDetailModal = ({
                     </div>
                   </div>
                 )}
-                {/* Map */}
-                {coordinates && (
-                  <div className="h-[300px] w-full">
-                    <Map
-                      mapLib={mapboxgl as never}
-                      mapboxAccessToken={
-                        import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
-                      }
-                      mapStyle="mapbox://styles/mapbox/satellite-v9"
-                      {...viewState}
-                      onMove={(evt) => setViewState(evt.viewState)}
-                      style={{ width: "100%", height: "100%" }}
-                    >
-                      <Marker
-                        longitude={coordinates.longitude}
-                        latitude={coordinates.latitude}
-                      >
-                        <div className="rounded-full bg-white/50 p-2">
-                          <ShoppingBag className="text-primary h-5 w-5" />
-                        </div>
-                      </Marker>
-                    </Map>
-                  </div>
-                )}
               </div>
+            </TabsContent>
+            <TabsContent value="map">
+              {coordinates && (
+                <div className="h-[350px] w-full">
+                  <Map
+                    mapLib={mapboxgl as never}
+                    mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+                    mapStyle="mapbox://styles/mapbox/satellite-v9"
+                    {...viewState}
+                    onMove={(evt) => setViewState(evt.viewState)}
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <Marker
+                      longitude={coordinates.longitude}
+                      latitude={coordinates.latitude}
+                    >
+                      <div className="rounded-full bg-white/50 p-2">
+                        <ShoppingBag className="text-primary h-5 w-5" />
+                      </div>
+                    </Marker>
+                  </Map>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="photos">
               <PhotosTab
