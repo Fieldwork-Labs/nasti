@@ -16,6 +16,7 @@ import {
   Microscope,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { queryClient } from "@nasti/common/utils"
 
 import { Badge } from "@nasti/ui/badge"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
@@ -292,6 +293,16 @@ export const BatchTableRow = ({
     batch.id,
   )
 
+  // Opening a row refetches its tests, so refresh the list too: the row's
+  // latest quality statistics come from the list, and a test recorded
+  // elsewhere (e.g. by a testing lab) would otherwise leave them stale.
+  const handleToggleExpand = () => {
+    if (!isExpanded) {
+      queryClient.invalidateQueries({ queryKey: ["batches", "byFilter"] })
+    }
+    setIsExpanded(!isExpanded)
+  }
+
   // Collapse row when entering merge or assignment mode
   useEffect(() => {
     if (combineMode?.isActive || assignmentMode?.isActive) {
@@ -376,7 +387,7 @@ export const BatchTableRow = ({
       <BatchTableRowContainer
         batch={batch}
         isExpanded={isExpanded}
-        onToggleExpand={() => setIsExpanded(!isExpanded)}
+        onToggleExpand={handleToggleExpand}
         className={className}
         rowClassName={rowClassName}
         statusBadge={statusBadge}
