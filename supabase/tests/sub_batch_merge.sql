@@ -388,7 +388,9 @@ select is(
     from public.batch_current_weight
     where id = '92000000-0000-0000-0000-000000000001'
   ),
-  189.75::numeric,
+  -- 189.75 from the explicit-container merge plus the 15 held by the
+  -- no-container merge sources (7 + 8), which stay in the same batch.
+  204.75::numeric,
   'merge preserves the batch current weight'
 );
 

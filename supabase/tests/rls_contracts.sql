@@ -138,17 +138,33 @@ select results_eq(
 );
 
 -- Asserted as an invariant rather than a row count: the seed grows, and a
--- hard-coded count goes stale every time a collection is added to it.
+-- hard-coded count goes stale every time a collection is added to it. Scoped
+-- to the seed's own collection ids so collections created by hand in a dev
+-- database (which may predate person_ids) cannot fail it.
 select ok(
   (
     select count(*)
     from public.collection
-    where organisation_id = '02aba5b9-6c46-406d-831a-4f51851599f2'
+    where id in (
+      '50d59d29-0eed-4f79-acd6-2a62c995bc45',
+      'f9c2b54c-58cc-434b-aae4-3e79e17f3b31',
+      '7bf4d772-d79b-4b6d-8608-4b80a9cf314a',
+      '683acb6d-41ff-4a17-9f8b-dad822ce4f36',
+      '9ea3cc1c-d812-4044-b099-fe519736e3cb',
+      '468a2b6d-bf7f-47fd-bf17-47f793bf3055'
+    )
   ) > 0
   and not exists (
     select 1
     from public.collection
-    where organisation_id = '02aba5b9-6c46-406d-831a-4f51851599f2'
+    where id in (
+      '50d59d29-0eed-4f79-acd6-2a62c995bc45',
+      'f9c2b54c-58cc-434b-aae4-3e79e17f3b31',
+      '7bf4d772-d79b-4b6d-8608-4b80a9cf314a',
+      '683acb6d-41ff-4a17-9f8b-dad822ce4f36',
+      '9ea3cc1c-d812-4044-b099-fe519736e3cb',
+      '468a2b6d-bf7f-47fd-bf17-47f793bf3055'
+    )
       and coalesce(cardinality(person_ids), 0) = 0
   ),
   'seeded collections identify their collector'
