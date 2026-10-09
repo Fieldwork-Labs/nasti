@@ -30,6 +30,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@nasti/ui/carousel"
+import { AudioTab } from "@/components/common/AudioTab"
+import { useScoutingNoteAudio } from "@/hooks/useEntityAudio"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 
@@ -148,6 +150,8 @@ export const ScoutingNoteDetailModal = ({
     [setModalImage, photos],
   )
 
+  const { data: audio } = useScoutingNoteAudio(scoutingNote?.id)
+
   const { data: people } = usePeople()
   const creator = people?.find(
     (person) => person.id === scoutingNote?.created_by,
@@ -200,6 +204,9 @@ export const ScoutingNoteDetailModal = ({
               {coordinates && <TabsTrigger value="map">Map</TabsTrigger>}
               {photos && photos.length > 0 && (
                 <TabsTrigger value="photos">Photos</TabsTrigger>
+              )}
+              {audio && audio.length > 0 && (
+                <TabsTrigger value="audio">Audio</TabsTrigger>
               )}
             </TabsList>
             <TabsContent value="details">
@@ -335,6 +342,9 @@ export const ScoutingNoteDetailModal = ({
                 photos={photos ?? []}
                 onClickPhoto={handleClickPhoto}
               />
+            </TabsContent>
+            <TabsContent value="audio">
+              <AudioTab audio={audio ?? []} />
             </TabsContent>
           </Tabs>
         </div>
