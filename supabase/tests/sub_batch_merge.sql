@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(29);
+select plan(31);
 
 -- Isolated fixtures use the seeded admin as the current custodian.
 insert into public.organisation (id, name, owner_id)
@@ -186,6 +186,20 @@ values
     '93000000-0000-0000-0000-000000000001',
     5,
     'Zero-weight validation source'
+  ),
+  (
+    '95000000-0000-0000-0000-000000000009',
+    '92000000-0000-0000-0000-000000000001',
+    '93000000-0000-0000-0000-000000000001',
+    7,
+    'No-container merge source A'
+  ),
+  (
+    '95000000-0000-0000-0000-00000000000a',
+    '92000000-0000-0000-0000-000000000001',
+    '93000000-0000-0000-0000-000000000002',
+    8,
+    'No-container merge source B'
   );
 
 insert into public.batch_weight_adjustments (
@@ -340,7 +354,8 @@ values
 
 create temporary table merge_result (id uuid);
 create temporary table optional_merge_result (id uuid);
-grant insert, select on merge_result, optional_merge_result to authenticated;
+create temporary table no_container_merge_result (id uuid);
+grant insert, select on merge_result, optional_merge_result, no_container_merge_result to authenticated;
 
 select set_config(
   'request.jwt.claims',
@@ -749,6 +764,34 @@ select is(
   ),
   0::bigint,
   'unstored merge destination has no batch_storage row'
+);
+
+set local role authenticated;
+
+select lives_ok(
+  $$
+    insert into no_container_merge_result (id)
+    select public.fn_merge_sub_batches(
+      array[
+        '95000000-0000-0000-0000-000000000009',
+        '95000000-0000-0000-0000-00000000000a'
+      ]::uuid[]
+    )
+  $$,
+  'sub-batches can be merged without a destination container'
+);
+
+reset role;
+
+select is(
+  (
+    select sb.weight_grams
+    from public.sub_batches sb
+    join no_container_merge_result result on result.id = sb.id
+    where sb.container_id is null
+  ),
+  15::numeric,
+  'container-less merge destination has the summed weight and no container'
 );
 
 select results_eq(

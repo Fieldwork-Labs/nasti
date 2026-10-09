@@ -44,20 +44,29 @@ const fetchContainerUsage = async (): Promise<ContainerUsageById> => {
   }, {})
 }
 
-// Query: every container belonging to the user's organisation
-export const useContainers = () =>
-  useQuery({
+// Query: every container belonging to the user's organisation. RLS also lets
+// a Testing organisation read the containers holding bags assigned to it, so
+// the org filter is needed to keep another organisation's containers out of
+// pickers. Those containers still show up on the bags themselves via the
+// embedded `container` join.
+export const useContainers = () => {
+  const { organisation } = useUserStore()
+
+  return useQuery({
     queryKey: ["containers"],
+    enabled: Boolean(organisation?.id),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("containers")
         .select("*")
+        .eq("organisation_id", organisation!.id)
         .order("name")
 
       if (error) throw new Error(error.message)
       return data
     },
   })
+}
 
 // Query: only the containers usable for new records of a given purpose
 export const useActiveContainers = (purpose: ContainerPurpose) => {

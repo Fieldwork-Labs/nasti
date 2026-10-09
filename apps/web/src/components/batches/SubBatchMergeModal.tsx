@@ -25,6 +25,7 @@ import {
 } from "@/hooks/useSubBatches"
 import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
 
+const NO_CONTAINER = "__none__"
 const NO_LOCATION = "__none__"
 
 type SubBatchMergeModalProps = {
@@ -124,25 +125,16 @@ export const SubBatchMergeModal = ({
   const isLoading = containersLoading
   const hasCatalogueError = containersFailed
   const cannotSubmit =
-    isLoading ||
-    hasCatalogueError ||
-    containers.length === 0 ||
-    !containerId ||
-    mergeSubBatches.isPending
+    isLoading || hasCatalogueError || mergeSubBatches.isPending
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setSubmissionError(undefined)
 
-    if (!containerId) {
-      setSubmissionError("Select a destination container.")
-      return
-    }
-
     try {
       await mergeSubBatches.mutateAsync({
         subBatchIds: subBatches.map((subBatch) => subBatch.id),
-        containerId,
+        containerId: containerId || undefined,
         locationId,
         notes: notes.trim() || undefined,
       })
@@ -191,26 +183,21 @@ export const SubBatchMergeModal = ({
               {locationsError?.message ? `: ${locationsError.message}` : "."}
             </p>
           )}
-          {!isLoading && !containersFailed && containers.length === 0 && (
-            <p className="text-destructive text-sm">
-              Add an active storage container type in organisation settings
-              before merging.
-            </p>
-          )}
           <div className="space-y-2">
-            <Label>Destination container</Label>
+            <Label>Destination container (optional)</Label>
             <Select
-              value={containerId}
+              value={containerId || NO_CONTAINER}
               onValueChange={(value) => {
-                setContainerId(value)
+                setContainerId(value === NO_CONTAINER ? "" : value)
                 setSubmissionError(undefined)
               }}
               disabled={containersLoading || containersFailed}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select container type" />
+                <SelectValue placeholder="No container" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={NO_CONTAINER}>No container</SelectItem>
                 {containers.map((container) => (
                   <SelectItem key={container.id} value={container.id}>
                     {container.name}

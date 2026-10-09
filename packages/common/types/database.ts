@@ -2816,7 +2816,7 @@ export type Database = {
       }
       fn_merge_sub_batches: {
         Args: {
-          p_container_id: string
+          p_container_id?: string
           p_location_id?: string
           p_notes?: string
           p_sub_batch_ids: string[]
@@ -2825,7 +2825,7 @@ export type Database = {
       }
       fn_merge_sub_batches_without_adjustment_classification: {
         Args: {
-          p_container_id: string
+          p_container_id?: string
           p_location_id?: string
           p_notes?: string
           p_sub_batch_ids: string[]
