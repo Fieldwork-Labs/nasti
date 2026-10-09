@@ -176,6 +176,12 @@ export const BatchCleaningPhotos = ({
           </Button>
         </div>
 
+        {cleaning?.cleaning_notes && (
+          <div className="text-muted-foreground whitespace-pre-wrap text-xs">
+            {cleaning.cleaning_notes}
+          </div>
+        )}
+
         {arePhotosLoading && (
           <div className="flex gap-2">
             <Skeleton className="h-16 w-16" />
