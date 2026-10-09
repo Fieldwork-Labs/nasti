@@ -50,7 +50,8 @@ type SplitFormInput = z.input<typeof splitSchema>
 type SplitFormOutput = z.output<typeof splitSchema>
 
 type BatchSplitFormProps = {
-  parentBatch: BatchWithCurrentLocationAndSpecies
+  /** Only the identity is read, so a Testing row can pass its parent too. */
+  parentBatch: Pick<BatchWithCurrentLocationAndSpecies, "id" | "code">
   initialSubBatchId?: string
   onSuccess?: () => void
   onCancel?: () => void

@@ -15,12 +15,14 @@ export type AssignedBagParent = {
 }
 
 /**
- * One bag as a Testing organisation sees it: through the assignment that sent
- * it. One of these per assignment, never per parent batch — two bags of one
- * batch are two rows.
+ * One bag as a Testing organisation sees it: a bag it holds, and the open
+ * assignment(s) its seed came from. A bag that was sent is its own assignment's
+ * bag; a split child carries its parent's assignment, and a merged bag carries
+ * every assignment its sources did. Two bags of one batch are two rows.
  */
 export type AssignedBag = {
-  assignment: BatchAssignmentWithOrg
+  /** Never empty: a held bag with no open assignment is not testing work. */
+  assignments: BatchAssignmentWithOrg[]
   subBatchId: string
   weights: {
     original_weight: number | null
@@ -30,6 +32,25 @@ export type AssignedBag = {
   currentLocationId: string | null
   parent: AssignedBagParent
 }
+
+/** The organisation that sent the seed. One batch, so one owner. */
+export const getAssignedBagSender = (bag: AssignedBag) =>
+  bag.assignments[0]?.assigned_by_org?.name ?? null
+
+/** When the earliest of the bag's seed arrived. */
+export const getAssignedBagAssignedAt = (bag: AssignedBag) =>
+  bag.assignments.reduce(
+    (earliest, assignment) =>
+      assignment.assigned_at < earliest ? assignment.assigned_at : earliest,
+    bag.assignments[0].assigned_at,
+  )
+
+/**
+ * Tested once every assignment the bag carries has been tested. A merged bag
+ * whose sources were tested separately is only done when all of them were.
+ */
+export const isAssignedBagTested = (bag: AssignedBag) =>
+  bag.assignments.every((assignment) => Boolean(assignment.completed_at))
 
 export type AssignmentInventoryFilter = {
   status?: InventoryStatusFilter
@@ -53,33 +74,33 @@ const compareAssignedBags = (
         b.parent.species_name ?? "",
       )
     case "organisation_id":
-      return (a.assignment.assigned_by_org?.name ?? "").localeCompare(
-        b.assignment.assigned_by_org?.name ?? "",
+      return (getAssignedBagSender(a) ?? "").localeCompare(
+        getAssignedBagSender(b) ?? "",
       )
     default:
       return (
-        new Date(a.assignment.assigned_at).getTime() -
-        new Date(b.assignment.assigned_at).getTime()
+        new Date(getAssignedBagAssignedAt(a)).getTime() -
+        new Date(getAssignedBagAssignedAt(b)).getTime()
       )
   }
 }
 
 /**
- * The Testing organisation's inventory: one row per open assignment.
+ * The Testing organisation's inventory: one row per bag it holds that carries
+ * seed from an open assignment.
  *
- * Assignments are the source of truth, not the General inventory filter — a
- * laboratory holds whatever has been sent to it and not yet closed. Closed
- * assignments appear in no list, because the seed is no longer its business.
+ * Bags rather than assignments, because a laboratory may split and merge what
+ * it was sent: an assignment's seed can end up in several bags, and one merged
+ * bag can carry several assignments' seed. fn_testing_held_bags follows lineage
+ * to pair each held bag with its assignments. An assignment closes once the
+ * laboratory holds none of its seed, so closed work appears in no list.
  *
- * Three queries, none of them per row: the assignments, the exact bags they
- * name, and the parent batches for context. Deliberately not `active_batches`:
- * that view aggregates every bag of a batch and drops rows at zero weight, so a
- * consumed bag would vanish from the list while its assignment was still open,
- * and two bags of one batch would collapse into a single entry.
+ * Four queries, none of them per row: the bag/assignment pairs, the
+ * assignments, the bags, and their parent batches for context.
  *
  * Filtering and sorting happen here rather than in the database because the
- * list is assembled from three sources and is small — a laboratory's open
- * assignments, not an entire inventory.
+ * list is assembled from several sources and is small — a laboratory's open
+ * work, not an entire inventory.
  */
 export const useAssignedBagsByFilter = (
   filter: AssignmentInventoryFilter,
@@ -93,7 +114,23 @@ export const useAssignedBagsByFilter = (
     queryFn: async () => {
       if (!organisation?.id) throw new Error("No organisation found")
 
-      let assignmentQuery = supabase
+      const { data: pairs, error: pairError } = await supabase.rpc(
+        "fn_testing_held_bags",
+      )
+
+      if (pairError) throw new Error(pairError.message)
+      if (!pairs || pairs.length === 0) return []
+
+      const assignmentIdsByBag = new Map<string, string[]>()
+      for (const pair of pairs) {
+        assignmentIdsByBag.set(pair.sub_batch_id, [
+          ...(assignmentIdsByBag.get(pair.sub_batch_id) ?? []),
+          pair.assignment_id,
+        ])
+      }
+      const subBatchIds = [...assignmentIdsByBag.keys()]
+
+      const { data: assignments, error: assignmentError } = await supabase
         .from("batch_testing_assignment")
         .select(
           `
@@ -102,46 +139,31 @@ export const useAssignedBagsByFilter = (
           assigned_by_org:organisation!assigned_by_org_id(name)
         `,
         )
-        .eq("assigned_to_org_id", organisation.id)
-        .is("closed_at", null)
-
-      if (filter.status === "pending") {
-        assignmentQuery = assignmentQuery.is("completed_at", null)
-      } else if (filter.status === "completed") {
-        assignmentQuery = assignmentQuery.not("completed_at", "is", null)
-      }
-
-      const { data: assignments, error: assignmentError } =
-        await assignmentQuery.order("assigned_at", { ascending: false })
+        .in("id", [...new Set(pairs.map((pair) => pair.assignment_id))])
 
       if (assignmentError) throw new Error(assignmentError.message)
-      if (!assignments || assignments.length === 0) return []
 
-      const rows = assignments as BatchAssignmentWithOrg[]
+      const assignmentById = new Map(
+        (assignments as BatchAssignmentWithOrg[]).map((assignment) => [
+          assignment.id,
+          assignment,
+        ]),
+      )
 
-      // The exact bags, by sub_batch_id. RLS already limits these to bags this
-      // organisation may see, so a missing row means the bag went away rather
-      // than that the filter was too broad.
+      // The held bags themselves. fn_testing_held_bags only returns bags with
+      // seed in them, which is also what active_sub_batches shows the holder.
       const { data: bags, error: bagError } = await supabase
         .from("active_sub_batches")
         .select(
           "*, container:containers!sub_batches_container_id_fkey(id, name)",
         )
-        .in(
-          "id",
-          rows.map((assignment) => assignment.sub_batch_id),
-        )
+        .in("id", subBatchIds)
 
       if (bagError) throw new Error(bagError.message)
 
-      const bagById = new Map(
-        (bags ?? []).map((bag) => [
-          bag.id as string,
-          bag as (typeof bags)[number] & {
-            container: { id: string; name: string } | null
-          },
-        ]),
-      )
+      const typedBags = (bags ?? []) as ((typeof bags)[number] & {
+        container: { id: string; name: string } | null
+      })[]
 
       // Parent metadata for context: what species, which collection. A batch
       // with no collection of its own (cleaned from a combined batch) carries
@@ -153,10 +175,11 @@ export const useAssignedBagsByFilter = (
            species:species_id(id, name),
            collection:collection_id(id, code, species_id, species:species_id(id, name))`,
         )
-        .in(
-          "id",
-          rows.map((assignment) => assignment.batch_id),
-        )
+        .in("id", [
+          ...new Set(
+            typedBags.flatMap((bag) => (bag.batch_id ? [bag.batch_id] : [])),
+          ),
+        ])
 
       if (parentError) throw new Error(parentError.message)
 
@@ -188,25 +211,29 @@ export const useAssignedBagsByFilter = (
         }),
       )
 
-      const assembled = rows.flatMap<AssignedBag>((assignment) => {
-        const bag = bagById.get(assignment.sub_batch_id)
-        const parent = parentById.get(assignment.batch_id)
+      const assembled = typedBags.flatMap<AssignedBag>((bag) => {
+        if (!bag.id || !bag.batch_id) return []
 
-        // A bag consumed to zero leaves active_sub_batches while its assignment
-        // is still open. Keep the row: the assignment is what the laboratory
-        // acts on, and it still needs closing.
-        if (!parent) return []
+        const parent = parentById.get(bag.batch_id)
+        const bagAssignments = (assignmentIdsByBag.get(bag.id) ?? []).flatMap(
+          (id) => {
+            const assignment = assignmentById.get(id)
+            return assignment ? [assignment] : []
+          },
+        )
+
+        if (!parent || bagAssignments.length === 0) return []
 
         return [
           {
-            assignment,
-            subBatchId: assignment.sub_batch_id,
+            assignments: bagAssignments,
+            subBatchId: bag.id,
             weights: {
-              original_weight: bag?.original_weight ?? null,
-              current_weight: bag?.current_weight ?? 0,
+              original_weight: bag.original_weight ?? null,
+              current_weight: bag.current_weight ?? 0,
             },
-            containerName: bag?.container?.name ?? null,
-            currentLocationId: bag?.current_location_id ?? null,
+            containerName: bag.container?.name ?? null,
+            currentLocationId: bag.current_location_id ?? null,
             parent,
           },
         ]
@@ -215,6 +242,12 @@ export const useAssignedBagsByFilter = (
       const search = filter.search.trim().toLowerCase()
 
       const filtered = assembled.filter((row) => {
+        if (filter.status === "pending" && isAssignedBagTested(row)) {
+          return false
+        }
+        if (filter.status === "completed" && !isAssignedBagTested(row)) {
+          return false
+        }
         if (search && !(row.parent.code ?? "").toLowerCase().includes(search)) {
           return false
         }
@@ -242,19 +275,20 @@ export const useAssignedBagsByFilter = (
 /**
  * Hand a bag back to the organisation that sent it.
  *
- * No retained-subsample arguments: a laboratory keeping part of the seed splits
- * the bag first through the ordinary split, and the child is theirs without an
- * assignment of its own.
+ * By bag, not by assignment: after a split or merge one assignment's seed may
+ * be in several bags. Each assignment the bag carries closes once the
+ * laboratory holds none of its seed. To keep part of a bag, split it first and
+ * return the rest; what is kept stays on the list until returned or used up.
  */
 export const useReturnBagFromTesting = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ assignmentId }: { assignmentId: string }) => {
+    mutationFn: async ({ subBatchId }: { subBatchId: string }) => {
       const { error, data } = await supabase.functions.invoke(
         "return_batch_from_testing",
         {
-          body: { assignment_id: assignmentId },
+          body: { sub_batch_id: subBatchId },
         },
       )
 

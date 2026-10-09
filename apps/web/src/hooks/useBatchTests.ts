@@ -9,6 +9,7 @@ import type {
 } from "@nasti/common/types"
 import useUserStore from "@/store/userStore"
 import { Json } from "@nasti/common/types/database"
+import { TESTING_TEST_HISTORY_KEY } from "@/hooks/useTestingTestHistory"
 
 ///////
 
@@ -287,6 +288,9 @@ export const useCreateQualityTest = () => {
         queryKey: ["batches", "tests", newTest.batch_id],
       })
 
+      // A Testing organisation lists the tests it has performed
+      queryClient.invalidateQueries({ queryKey: TESTING_TEST_HISTORY_KEY })
+
       // Invalidate batch detail cache
       queryClient.invalidateQueries({
         queryKey: ["batches", "detail", newTest.batch_id],
@@ -389,6 +393,8 @@ export const useUpdateQualityTest = () => {
       }
 
       if (!data) throw new Error("Test not found")
+
+      queryClient.invalidateQueries({ queryKey: TESTING_TEST_HISTORY_KEY })
 
       // Update in quality tests cache
       queryClient.setQueryData<QualityTest[]>(

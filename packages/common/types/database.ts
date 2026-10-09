@@ -2867,6 +2867,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fn_return_held_bag_from_testing: {
+        Args: { p_sub_batch_id: string }
+        Returns: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          batch_id: string
+          closed_at: string | null
+          completed_at: string | null
+          id: string
+          outbound_transfer_item_id: string
+          outcome: string | null
+          sub_batch_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "batch_testing_assignment"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       fn_set_sub_batch_storage: {
         Args: {
           p_effective_at?: string
@@ -2906,6 +2927,37 @@ export type Database = {
       fn_split_sub_batch_without_lineage: {
         Args: { p_outputs: Json; p_sub_batch_id: string }
         Returns: string[]
+      }
+      fn_testing_held_bag_tests: {
+        Args: never
+        Returns: {
+          sub_batch_id: string
+          test_id: string
+        }[]
+      }
+      fn_testing_held_bags: {
+        Args: never
+        Returns: {
+          assignment_id: string
+          sub_batch_id: string
+        }[]
+      }
+      fn_testing_test_history: {
+        Args: never
+        Returns: {
+          batch_code: string
+          batch_id: string
+          collection_code: string
+          owner_org_name: string
+          performed_by_organisation_id: string
+          result: Json
+          species_name: string
+          statistics: Json
+          sub_batch_id: string
+          test_id: string
+          tested_at: string
+          tested_by: string
+        }[]
       }
       fn_update_batch_cleaning: {
         Args: {

@@ -1,5 +1,8 @@
-import type { AssignedBag } from "@/hooks/useTestingOrgAssignments"
-import { useReturnBagFromTesting } from "@/hooks/useTestingOrgAssignments"
+import {
+  getAssignedBagSender,
+  useReturnBagFromTesting,
+  type AssignedBag,
+} from "@/hooks/useTestingOrgAssignments"
 import { useBatchFiltersContext } from "@/routes/_private/inventory/-components/BatchFiltersContext"
 import { Button } from "@nasti/ui/button"
 import {
@@ -30,12 +33,12 @@ export const ReturnBatchModal = ({
 
   const returnBag = useReturnBagFromTesting()
 
-  const ownerName = bag.assignment.assigned_by_org?.name ?? "the owner"
+  const ownerName = getAssignedBagSender(bag) ?? "the owner"
   const remainingWeight = bag.weights.current_weight ?? 0
 
   const handleReturnBag = async () => {
     try {
-      await returnBag.mutateAsync({ assignmentId: bag.assignment.id })
+      await returnBag.mutateAsync({ subBatchId: bag.subBatchId })
       toast({ description: `Bag returned to ${ownerName}` })
       invalidateBatchesCacheByFilter()
       onClose()
@@ -74,8 +77,9 @@ export const ReturnBatchModal = ({
           </dl>
 
           <p className="text-muted-foreground">
-            The whole bag goes back. To keep some of the seed, split it first —
-            what you split off stays with your organisation.
+            The whole bag goes back. To keep some of the seed, split it first
+            and return the rest — what you keep stays on your list until it is
+            returned or used in testing.
           </p>
         </div>
 

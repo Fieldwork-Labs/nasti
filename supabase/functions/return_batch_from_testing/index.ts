@@ -1,16 +1,21 @@
 // Edge Function: Return Bag from Testing
 // Testing organisation hands a bag back to the organisation that sent it.
 //
-// A transport wrapper only. fn_return_bag_from_testing owns the rules — Admin
-// role, ownership of the assignment, not already closed, not consumed — and
-// closes the assignment, takes the bag off the laboratory's shelf and moves
-// custody back in one transaction.
+// A transport wrapper only. fn_return_held_bag_from_testing owns the rules —
+// Admin role, the bag is held by the caller and carries seed from one of its
+// open assignments — and takes the bag off the laboratory's shelf, moves
+// custody back and closes every assignment the laboratory no longer holds seed
+// for, in one transaction.
 //
-// There are no retained-subsample parameters any more. A laboratory that wants
-// to keep part of the seed splits the bag first, through the ordinary split RPC;
-// the child is theirs and needs no assignment of its own. Return is now a single
-// identifier, and the deployed path keeps its old name so existing clients keep
-// resolving.
+// Return is by bag because a laboratory may split and merge what it was sent:
+// one assignment's seed can sit in several bags, and one merged bag can carry
+// several assignments. A laboratory that wants to keep part of the seed splits
+// the bag first and returns the rest.
+//
+// `assignment_id` is still accepted, through fn_return_bag_from_testing, so a
+// client deployed before this change keeps working. It returns only the bag
+// the assignment named. The deployed path keeps its old name so existing
+// clients keep resolving.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -73,6 +78,7 @@ Deno.serve((r) =>
       )
 
       let body: {
+        sub_batch_id?: string
         assignment_id?: string
       }
 
@@ -82,33 +88,44 @@ Deno.serve((r) =>
         return returnErrorResponse("Request body must be valid JSON", 400)
       }
 
-      const { assignment_id } = body
+      const { sub_batch_id, assignment_id } = body
 
-      if (!assignment_id || typeof assignment_id !== "string") {
-        return returnErrorResponse("Missing required field: assignment_id", 400)
+      const bySubBatch = typeof sub_batch_id === "string" && sub_batch_id !== ""
+
+      if (
+        !bySubBatch &&
+        (typeof assignment_id !== "string" || assignment_id === "")
+      ) {
+        return returnErrorResponse("Missing required field: sub_batch_id", 400)
       }
 
-      const { data, error } = await supabaseClient.rpc(
-        "fn_return_bag_from_testing",
-        {
-          p_assignment_id: assignment_id,
-        },
-      )
+      const rpcName = bySubBatch
+        ? "fn_return_held_bag_from_testing"
+        : "fn_return_bag_from_testing"
+
+      const { data, error } = bySubBatch
+        ? await supabaseClient.rpc("fn_return_held_bag_from_testing", {
+            p_sub_batch_id: sub_batch_id,
+          })
+        : await supabaseClient.rpc("fn_return_bag_from_testing", {
+            p_assignment_id: assignment_id,
+          })
 
       if (error) {
         const status = STATUS_BY_PG_CODE[error.code ?? ""]
         if (!status) {
-          console.error("fn_return_bag_from_testing failed", error)
+          console.error(`${rpcName} failed`, error)
           return returnErrorResponse("Internal server error", 500)
         }
         return returnErrorResponse(error.message, status)
       }
 
       return new Response(
-        JSON.stringify({
-          message: "Bag returned successfully",
-          assignment: data,
-        }),
+        JSON.stringify(
+          bySubBatch
+            ? { message: "Bag returned successfully", assignments: data }
+            : { message: "Bag returned successfully", assignment: data },
+        ),
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -8,6 +8,8 @@ import type {
 } from "@nasti/common/types"
 import { useMemo } from "react"
 
+import { TESTING_TEST_HISTORY_KEY } from "@/hooks/useTestingTestHistory"
+
 type SubBatchContainer = Pick<Container, "id" | "name" | "purpose" | "active">
 
 type ActiveSubBatchWithContainer = ActiveSubBatch & {
@@ -104,6 +106,10 @@ export const useSplitSubBatch = () => {
       queryClient.invalidateQueries({ queryKey: ["subBatches"] })
       queryClient.invalidateQueries({ queryKey: ["batches"] })
       queryClient.invalidateQueries({ queryKey: ["containers"] })
+      // A Testing organisation's inventory lists the bags it holds
+      queryClient.invalidateQueries({ queryKey: ["assignments"] })
+      // New bags carry the tests of the bags they came from
+      queryClient.invalidateQueries({ queryKey: TESTING_TEST_HISTORY_KEY })
     },
   })
 }
@@ -134,6 +140,9 @@ export const useMergeSubBatches = () => {
       queryClient.invalidateQueries({ queryKey: ["batches"] })
       queryClient.invalidateQueries({ queryKey: ["storageLocations"] })
       queryClient.invalidateQueries({ queryKey: ["containers"] })
+      queryClient.invalidateQueries({ queryKey: ["assignments"] })
+      // New bags carry the tests of the bags they came from
+      queryClient.invalidateQueries({ queryKey: TESTING_TEST_HISTORY_KEY })
     },
   })
 }

@@ -6,7 +6,7 @@ type BatchSplitModalProps = {
   isOpen: boolean
   onClose: () => void
   onSuccess?: () => void
-  batch: BatchWithCurrentLocationAndSpecies
+  batch: Pick<BatchWithCurrentLocationAndSpecies, "id" | "code">
   subBatchId?: string
 }
 
