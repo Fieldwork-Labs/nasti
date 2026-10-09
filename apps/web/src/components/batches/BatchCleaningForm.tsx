@@ -2,20 +2,12 @@ import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, ChevronDown, Check, Plus } from "lucide-react"
+import { Loader2, Plus } from "lucide-react"
 import { Button } from "@nasti/ui/button"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
 import { Textarea } from "@nasti/ui/textarea"
 import { Checkbox } from "@nasti/ui/checkbox"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@nasti/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@nasti/ui/popover"
 import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
 import { MultiSelect, type Option } from "@nasti/ui/multi-select"
@@ -32,12 +24,19 @@ import {
   type BatchCleaningPhotoSignedUrl,
   type StagedCleaningPhoto,
 } from "@/hooks/useBatchCleaningPhotos"
+import { useCollection } from "@/hooks/useCollection"
 import { BatchContainerBadges } from "@/components/inventory/BatchContainerBadges"
 import {
   useCombinedSources,
   type BatchWithCurrentLocationAndSpecies,
 } from "@/hooks/useBatches"
-import { MATERIAL_SUBTYPES_BY_TYPE } from "@nasti/common/types"
+import {
+  MATERIAL_TYPE_OPTIONS,
+  MATERIAL_TYPES,
+  isMaterialType,
+  toMaterialTypes,
+  type CollectionMaterialType,
+} from "@nasti/common/types"
 import { TaxonName } from "@nasti/common"
 import { usePersons } from "@/hooks/usePersons"
 import useUserStore from "@/store/userStore"
@@ -49,7 +48,7 @@ import { CleaningPhotoDropzone } from "./CleaningPhotoDropzone"
 const cleaningOutputSchema = z.object({
   enabled: z.boolean(),
   quality: z.enum(["ORG", "HQ", "LQ"]),
-  material_type: z.enum(["seed", "covering_structure"]),
+  material_type: z.enum(MATERIAL_TYPES),
   weight_grams: z.coerce.number().optional(),
 })
 
@@ -57,8 +56,7 @@ const cleaningOutputSchema = z.object({
 const batchCleaningSchema = z
   .object({
     // Initial material description
-    material_type: z.enum(["seed", "covering_structure"]).optional(),
-    material_subtype: z.string().optional(),
+    material_type: z.enum(MATERIAL_TYPES).optional(),
     material_notes: z.string().optional(),
     // Cleaning process
     is_cleaned: z.boolean(),
@@ -130,18 +128,19 @@ type BatchCleaningFormProps = {
   className?: string
 }
 
-const isMaterialType = (
-  value: string | null | undefined,
-): value is "seed" | "covering_structure" =>
-  value === "seed" || value === "covering_structure"
+type BatchCleaningFieldsProps = BatchCleaningFormProps & {
+  /** Pre-selects the initial material when cleaning, not when editing. */
+  defaultMaterialType?: CollectionMaterialType
+}
 
-export const BatchCleaningForm = ({
+const BatchCleaningFields = ({
   batch,
   instance,
   onSuccess,
   onCancel,
   className,
-}: BatchCleaningFormProps) => {
+  defaultMaterialType,
+}: BatchCleaningFieldsProps) => {
   const { toast } = useToast()
   const { mutateAsync: cleanBatchMutation, isPending: isCreating } =
     useCleanBatch()
@@ -160,7 +159,6 @@ export const BatchCleaningForm = ({
     batch.collection_id === null ? batch.id : undefined,
   )
   const isPending = isCreating || isUpdating
-  const [subtypeOpen, setSubtypeOpen] = useState(false)
   // LQ is collapsed by default once cleaned — most cleaning runs don't produce
   // a low quality output, so it's opt-in rather than always on screen.
   const [showLqOutput, setShowLqOutput] = useState(
@@ -179,9 +177,10 @@ export const BatchCleaningForm = ({
     return {
       enabled: output ? true : enabledByDefault,
       quality,
-      material_type: isMaterialType(output?.material_type)
-        ? output.material_type
-        : "seed",
+      material_type:
+        output?.material_type && isMaterialType(output.material_type)
+          ? output.material_type
+          : (defaultMaterialType ?? "seed"),
       weight_grams: output?.weight_grams ?? undefined,
     }
   }
@@ -189,10 +188,10 @@ export const BatchCleaningForm = ({
   const form = useForm<BatchCleaningFormData>({
     resolver: zodResolver(batchCleaningSchema),
     defaultValues: {
-      material_type: isMaterialType(instance?.material_type)
-        ? instance.material_type
-        : undefined,
-      material_subtype: instance?.material_subtype ?? "",
+      material_type:
+        instance?.material_type && isMaterialType(instance.material_type)
+          ? instance.material_type
+          : defaultMaterialType,
       material_notes: instance?.material_notes ?? "",
       is_cleaned: instance?.is_cleaned ?? false,
       cleaning_notes: instance?.cleaning_notes ?? "",
@@ -208,9 +207,6 @@ export const BatchCleaningForm = ({
 
   const isCleaned = form.watch("is_cleaned")
   const materialType = form.watch("material_type")
-  const subtypeOptions = materialType
-    ? MATERIAL_SUBTYPES_BY_TYPE[materialType]
-    : []
   const selectedWorkerIds = form.watch("worker_ids")
   const workerOptions: Option[] = useMemo(
     () =>
@@ -252,11 +248,9 @@ export const BatchCleaningForm = ({
   )
 
   const handleMaterialTypeChange = (
-    value: "seed" | "covering_structure" | undefined,
+    value: CollectionMaterialType | undefined,
   ) => {
     form.setValue("material_type", value)
-    // Subtypes belong to one material type only, so the old choice can't stand
-    form.setValue("material_subtype", "")
     // Auto-fill ORG output material type
     if (value && !isEditing) form.setValue("outputs.org.material_type", value)
   }
@@ -312,13 +306,12 @@ export const BatchCleaningForm = ({
         .filter((o) => o.enabled && o.weight_grams && o.weight_grams > 0)
         .map((o) => ({
           quality: o.quality as "ORG" | "HQ" | "LQ",
-          material_type: o.material_type as "seed" | "covering_structure",
+          material_type: o.material_type,
           weight_grams: o.weight_grams as number,
         }))
 
       const cleaningDetails = {
         materialType: data.material_type,
-        materialSubtype: data.material_subtype || undefined,
         materialNotes: data.material_notes || undefined,
         cleaningNotes:
           data.is_cleaned && data.cleaning_notes
@@ -429,92 +422,22 @@ export const BatchCleaningForm = ({
       <div className="space-y-4">
         <h3 className="text-sm font-semibold">Material description</h3>
 
-        {/* Seed / Covering Structure choice */}
         <div className="space-y-2">
           <Label>Material type</Label>
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={materialType === "seed"}
-                onCheckedChange={(checked) => {
-                  handleMaterialTypeChange(checked ? "seed" : undefined)
-                }}
-              />
-              Seed
-            </label>
-            <label className="flex items-center gap-2">
-              <Checkbox
-                checked={materialType === "covering_structure"}
-                onCheckedChange={(checked) => {
-                  handleMaterialTypeChange(
-                    checked ? "covering_structure" : undefined,
-                  )
-                }}
-              />
-              Covering structure
-            </label>
+          <div className="flex flex-wrap gap-6">
+            {MATERIAL_TYPE_OPTIONS.map((option) => (
+              <label key={option.value} className="flex items-center gap-2">
+                <Checkbox
+                  checked={materialType === option.value}
+                  onCheckedChange={(checked) => {
+                    handleMaterialTypeChange(checked ? option.value : undefined)
+                  }}
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
         </div>
-
-        {/* Material subtype dropdown — options follow the material type */}
-        {materialType && (
-          <div className="space-y-2">
-            <Label>
-              {materialType === "seed" ? "Type of seed" : "Type of structure"}
-            </Label>
-            <Controller
-              control={form.control}
-              name="material_subtype"
-              render={({ field }) => (
-                <Popover open={subtypeOpen} onOpenChange={setSubtypeOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className="w-full justify-between"
-                    >
-                      {field.value
-                        ? field.value.charAt(0).toUpperCase() +
-                          field.value.slice(1)
-                        : "Select type..."}
-                      <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
-                    <Command>
-                      <CommandList>
-                        <CommandEmpty>No type found.</CommandEmpty>
-                        <CommandGroup>
-                          {subtypeOptions.map((subtype) => (
-                            <CommandItem
-                              key={subtype}
-                              value={subtype}
-                              onSelect={() => {
-                                field.onChange(subtype)
-                                setSubtypeOpen(false)
-                              }}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  field.value === subtype
-                                    ? "opacity-100"
-                                    : "opacity-0",
-                                )}
-                              />
-                              {subtype.charAt(0).toUpperCase() +
-                                subtype.slice(1)}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              )}
-            />
-          </div>
-        )}
 
         {/* Notes */}
         <div className="space-y-2">
@@ -670,38 +593,29 @@ export const BatchCleaningForm = ({
 
                 {/* Material type checkboxes */}
                 <div className="space-y-1">
-                  <label className="flex items-center gap-1 text-sm">
-                    <Checkbox
-                      checked={
-                        form.watch(`outputs.${key}.material_type`) === "seed"
-                      }
-                      disabled={isDisabled || !isEnabled}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          form.setValue(`outputs.${key}.material_type`, "seed")
+                  {MATERIAL_TYPE_OPTIONS.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-1 text-sm"
+                    >
+                      <Checkbox
+                        checked={
+                          form.watch(`outputs.${key}.material_type`) ===
+                          option.value
                         }
-                      }}
-                    />
-                    Seed
-                  </label>
-                  <label className="flex items-center gap-1 text-sm">
-                    <Checkbox
-                      checked={
-                        form.watch(`outputs.${key}.material_type`) ===
-                        "covering_structure"
-                      }
-                      disabled={isDisabled || !isEnabled}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          form.setValue(
-                            `outputs.${key}.material_type`,
-                            "covering_structure",
-                          )
-                        }
-                      }}
-                    />
-                    Covering structure
-                  </label>
+                        disabled={isDisabled || !isEnabled}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            form.setValue(
+                              `outputs.${key}.material_type`,
+                              option.value,
+                            )
+                          }
+                        }}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
                 </div>
 
                 {/* Weight — grams, decimals allowed */}
@@ -773,5 +687,31 @@ export const BatchCleaningForm = ({
         </Button>
       </div>
     </form>
+  )
+}
+
+/**
+ * The collection records what was collected, so a new cleaning starts from it.
+ * A collection can list several types but a cleaning describes one, so the
+ * first is preselected. Combined batches have no collection and start blank.
+ */
+export const BatchCleaningForm = (props: BatchCleaningFormProps) => {
+  const { data: collection, isLoading } = useCollection(
+    props.instance ? undefined : props.batch.collection_id,
+  )
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <BatchCleaningFields
+      {...props}
+      defaultMaterialType={toMaterialTypes(collection?.material_type)[0]}
+    />
   )
 }

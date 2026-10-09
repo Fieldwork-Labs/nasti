@@ -221,8 +221,8 @@ INSERT INTO "public"."sub_batches" ("id", "batch_id", "weight_grams", "notes", "
 --
 
 INSERT INTO "public"."batch_cleaning" ("id", "input_batch_id", "input_sub_batch_id", "material_type", "material_subtype", "material_notes", "is_cleaned", "cleaning_notes", "created_at", "created_by", "organisation_id", "worker_ids", "duration") VALUES
-	('3252d806-ef3a-4c9d-ae90-2a6ca3d2aa62', 'a93057b9-b2aa-42c7-9fac-4c4bfbf88ab7', NULL, 'seed', 'achene', NULL, true, NULL, '2026-07-29 04:13:33.22348+00', 'e18b3927-87a9-4dcc-8d59-148461504a02', '02aba5b9-6c46-406d-831a-4f51851599f2', '{b52fb44d-8cab-4e52-9962-80fc41de6804}', '02:04:00'),
-	('a4e3a277-6c37-406d-9cbc-2d4cf278bc01', '0192919f-d8d1-4792-b04b-2268d3771972', NULL, 'covering_structure', 'capsule', NULL, true, NULL, '2026-07-29 07:12:05.522484+00', 'e18b3927-87a9-4dcc-8d59-148461504a02', '02aba5b9-6c46-406d-831a-4f51851599f2', '{b52fb44d-8cab-4e52-9962-80fc41de6804,4672c7d8-c371-42d1-82af-f972b00df32f}', '01:13:00');
+	('3252d806-ef3a-4c9d-ae90-2a6ca3d2aa62', 'a93057b9-b2aa-42c7-9fac-4c4bfbf88ab7', NULL, 'seed', NULL, NULL, true, NULL, '2026-07-29 04:13:33.22348+00', 'e18b3927-87a9-4dcc-8d59-148461504a02', '02aba5b9-6c46-406d-831a-4f51851599f2', '{b52fb44d-8cab-4e52-9962-80fc41de6804}', '02:04:00'),
+	('a4e3a277-6c37-406d-9cbc-2d4cf278bc01', '0192919f-d8d1-4792-b04b-2268d3771972', NULL, 'capsules_pods_fruit', NULL, NULL, true, NULL, '2026-07-29 07:12:05.522484+00', 'e18b3927-87a9-4dcc-8d59-148461504a02', '02aba5b9-6c46-406d-831a-4f51851599f2', '{b52fb44d-8cab-4e52-9962-80fc41de6804,4672c7d8-c371-42d1-82af-f972b00df32f}', '01:13:00');
 
 
 --

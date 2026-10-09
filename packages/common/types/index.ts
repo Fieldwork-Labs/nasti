@@ -172,39 +172,8 @@ export type BatchTreatType = Enums["batch_treatment_type"]
 export type BatchProcessType = BatchTreatType
 export type BatchQuality = Enums["batch_quality"]
 
-// Material types for cleaning
-export type MaterialType = "seed" | "covering_structure"
-
-// Subtypes are scoped to the material type they describe: a floret is a seed,
-// a pod is the structure covering one.
-export const SEED_SUBTYPES = [
-  "floret",
-  "achene",
-  "caryopsis",
-  "samara",
-] as const
-export const COVERING_STRUCTURE_SUBTYPES = [
-  "pod",
-  "capsule",
-  "drupe",
-  "berry",
-  "nut",
-  "other",
-] as const
-
-export const MATERIAL_SUBTYPES = [
-  ...SEED_SUBTYPES,
-  ...COVERING_STRUCTURE_SUBTYPES,
-] as const
-export type MaterialSubtype = (typeof MATERIAL_SUBTYPES)[number]
-
-export const MATERIAL_SUBTYPES_BY_TYPE: Record<
-  MaterialType,
-  readonly MaterialSubtype[]
-> = {
-  seed: SEED_SUBTYPES,
-  covering_structure: COVERING_STRUCTURE_SUBTYPES,
-}
+// Cleaning describes its material with the same types the collection form uses
+export type MaterialType = CollectionMaterialType
 
 // Test Types
 export type Test = Table<"tests">

@@ -25,7 +25,6 @@ type CleaningOutput = {
 type CleanBatchParams = {
   inputBatchId: string
   materialType?: MaterialType
-  materialSubtype?: string
   materialNotes?: string
   isCleaned: boolean
   cleaningNotes?: string
@@ -78,7 +77,6 @@ export const useCleanBatch = () => {
     mutationFn: async ({
       inputBatchId,
       materialType,
-      materialSubtype,
       materialNotes,
       isCleaned,
       cleaningNotes,
@@ -90,7 +88,6 @@ export const useCleanBatch = () => {
         p_input_batch_id: inputBatchId,
         p_duration: duration,
         p_material_type: materialType,
-        p_material_subtype: materialSubtype,
         p_material_notes: materialNotes,
         p_is_cleaned: isCleaned,
         p_cleaning_notes: cleaningNotes,
@@ -155,7 +152,6 @@ export const useUpdateBatchCleaning = () => {
     mutationFn: async ({
       cleaningId,
       materialType,
-      materialSubtype,
       materialNotes,
       cleaningNotes,
       workerIds,
@@ -165,7 +161,6 @@ export const useUpdateBatchCleaning = () => {
         p_cleaning_id: cleaningId,
         p_duration: duration,
         p_material_type: materialType,
-        p_material_subtype: materialSubtype,
         p_material_notes: materialNotes,
         p_cleaning_notes: cleaningNotes,
         p_worker_ids: workerIds,

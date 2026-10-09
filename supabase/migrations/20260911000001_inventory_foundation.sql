@@ -493,7 +493,7 @@ alter table "public"."batch_cleaning" add constraint "batch_cleaning_input_sub_b
 
 alter table "public"."batch_cleaning" validate constraint "batch_cleaning_input_sub_batch_id_fkey";
 
-alter table "public"."batch_cleaning" add constraint "batch_cleaning_material_type_check" CHECK ((material_type = ANY (ARRAY['seed'::text, 'covering_structure'::text]))) not valid;
+alter table "public"."batch_cleaning" add constraint "batch_cleaning_material_type_check" CHECK ((material_type = ANY (ARRAY['seed'::text, 'capsules_pods_fruit'::text, 'branches_stems'::text]))) not valid;
 
 alter table "public"."batch_cleaning" validate constraint "batch_cleaning_material_type_check";
 
@@ -505,7 +505,7 @@ alter table "public"."batch_cleaning_output" add constraint "batch_cleaning_outp
 
 alter table "public"."batch_cleaning_output" validate constraint "batch_cleaning_output_cleaning_id_fkey";
 
-alter table "public"."batch_cleaning_output" add constraint "batch_cleaning_output_material_type_check" CHECK ((material_type = ANY (ARRAY['seed'::text, 'covering_structure'::text]))) not valid;
+alter table "public"."batch_cleaning_output" add constraint "batch_cleaning_output_material_type_check" CHECK ((material_type = ANY (ARRAY['seed'::text, 'capsules_pods_fruit'::text, 'branches_stems'::text]))) not valid;
 
 alter table "public"."batch_cleaning_output" validate constraint "batch_cleaning_output_material_type_check";
 

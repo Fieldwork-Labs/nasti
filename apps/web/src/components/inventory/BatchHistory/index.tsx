@@ -2,6 +2,7 @@ import { useBatchHistory, useBatchSplit } from "@/hooks/useBatches"
 import { useCollection } from "@/hooks/useCollection"
 import { Badge } from "@nasti/ui/badge"
 import { CalendarIcon } from "lucide-react"
+import { isMaterialType, MATERIAL_TYPE_LABELS } from "@nasti/common/types"
 
 type BaseHistoryEvent = {
   batch_id: string
@@ -66,7 +67,10 @@ const CleaningEventComponent = ({ event }: { event: CleaningEvent }) => {
         </div>
         <Badge variant={"outline"}>Cleaning</Badge>
         <div className="text-sm">
-          {event.event_details.quality} - {event.event_details.material_type}
+          {event.event_details.quality} -{" "}
+          {isMaterialType(event.event_details.material_type)
+            ? MATERIAL_TYPE_LABELS[event.event_details.material_type]
+            : event.event_details.material_type}
         </div>
       </div>
     </div>
