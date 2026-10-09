@@ -49,7 +49,7 @@ Captured -> Persisting locally -> Queued -> WaitingForAuth -> Sending
                                   |                         | success
                                   |                         v
                                   +----------------------> Complete
-                                                            
+
 Sending -- auth/network/401/403 --> Queued
 Sending -- confirmed terminal --> FailedLocally -> queue advances
 FailedLocally -- user retry -----> Queued
@@ -244,4 +244,3 @@ Required scenarios:
 Treat local media stores as user data, not cache, until upload success and the
 retention policy are explicit. Any future media type must use the same queue
 and credential boundary rather than adding another foreground uploader.
-

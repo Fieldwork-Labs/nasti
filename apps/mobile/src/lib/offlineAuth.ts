@@ -1,12 +1,13 @@
 import { authStorage } from "@/platform"
 import { getAppMeta } from "@nasti/common/authClaims"
+import { parseOrgPermissions } from "@nasti/common/permissions"
 import { supabase } from "@nasti/common/supabase"
 import {
   setNastiSessionPersistenceEnabled,
   SUPABASE_AUTH_STORAGE_KEY,
   waitForNastiSessionWrites,
 } from "@nasti/common/supabaseClient"
-import { ROLE, type Role } from "@nasti/common/types"
+import { ROLE, type OrgPermission, type Role } from "@nasti/common/types"
 import type { Session } from "@supabase/supabase-js"
 import { z } from "zod"
 import { TIMED_OUT, withTimeout } from "./withTimeout"
@@ -23,6 +24,7 @@ export type OfflineAuthSnapshot = {
   orgId: string
   orgName?: string
   role?: Role
+  permissions?: OrgPermission[]
   lastSuccessfulLoginAt: string
   lastSuccessfulSessionRefreshAt: string
   offlineAccessUntil: string
@@ -39,6 +41,7 @@ export type AuthState = {
     orgId: string
     role: Role | null
     isAdmin: boolean
+    permissions: OrgPermission[]
   } | null
   isLoggedIn: boolean
   offlineAccessUntil: string | null
@@ -75,6 +78,7 @@ export const getAuthStateFromSession = (session: Session | null): AuthState => {
           orgId: meta.org_id,
           role: meta.role ?? null,
           isAdmin: meta.role === ROLE.ADMIN,
+          permissions: parseOrgPermissions(meta.permissions),
         }
       : null,
     isLoggedIn: true,
@@ -98,6 +102,7 @@ export const getAuthStateFromSnapshot = (
     orgId: snapshot.orgId,
     role: snapshot.role ?? null,
     isAdmin: snapshot.role === ROLE.ADMIN,
+    permissions: snapshot.permissions ?? [],
   },
   isLoggedIn: true,
   offlineAccessUntil: snapshot.offlineAccessUntil,
@@ -112,6 +117,7 @@ const snapshotSchema = z
     orgId: z.string().min(1),
     orgName: z.string().optional(),
     role: z.nativeEnum(ROLE).optional(),
+    permissions: z.array(z.string()).transform(parseOrgPermissions).optional(),
     lastSuccessfulLoginAt: z.string().datetime({ offset: true }),
     lastSuccessfulSessionRefreshAt: z.string().datetime({ offset: true }),
     offlineAccessUntil: z.string().datetime({ offset: true }),
@@ -317,6 +323,7 @@ export const snapshotFromSession = (
     orgId: meta.org_id,
     orgName: meta.org_name,
     role: meta.role,
+    permissions: parseOrgPermissions(meta.permissions),
     lastSuccessfulLoginAt:
       !isLogin && previous?.userId === session.user.id
         ? previous.lastSuccessfulLoginAt

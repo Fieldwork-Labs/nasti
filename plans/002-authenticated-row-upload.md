@@ -218,4 +218,3 @@ transactions/database, modeled on `crud.test.ts`. Required cases:
 
 Do not add auth errors to a generic fixed retry budget. Review any new
 “permanent” code by asking whether the exact request authentication is proven.
-

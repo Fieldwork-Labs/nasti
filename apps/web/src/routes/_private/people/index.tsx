@@ -5,13 +5,29 @@ import { useQueryClient } from "@tanstack/react-query"
 import useUserStore from "@/store/userStore"
 import { useToast } from "@nasti/ui/hooks"
 import { Button } from "@nasti/ui/button"
-import { PencilIcon, PlusIcon, RotateCcwIcon, TrashIcon } from "lucide-react"
+import {
+  KeyRoundIcon,
+  PencilIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  TrashIcon,
+} from "lucide-react"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { usePeople } from "@/hooks/usePeople"
 import { Modal } from "@nasti/ui/modal"
 import { Spinner } from "@nasti/ui/spinner"
 import { cn } from "@nasti/ui/utils"
-import { GetOrgUsers } from "@nasti/common/types"
+import {
+  GetOrgUsers,
+  ORG_PERMISSION_DESCRIPTIONS,
+  ORG_PERMISSION_LABELS,
+  ORG_PERMISSIONS,
+  OrganisationUser,
+  ROLE,
+  type OrgPermission,
+} from "@nasti/common/types"
+import { PermissionBadges } from "@/components/common/PermissionBadges"
+import { useUpdateUserPermissions } from "@/hooks/useUpdateUserPermissions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@nasti/ui/tabs"
 import { FormField } from "@nasti/ui/formField"
 import { Checkbox } from "@nasti/ui/checkbox"
@@ -219,6 +235,77 @@ const PersonnelList = () => {
   )
 }
 
+type PermissionsModalProps = {
+  user: OrganisationUser
+  onClose: () => void
+}
+
+// Rendered only while a user is selected, so the checkbox state starts from
+// that user's permissions without an effect to resynchronise it.
+const PermissionsModal = ({ user, onClose }: PermissionsModalProps) => {
+  const [permissions, setPermissions] = useState<OrgPermission[]>(
+    user.permissions ?? [],
+  )
+  const {
+    mutateAsync: updatePermissions,
+    isPending,
+    error,
+  } = useUpdateUserPermissions()
+  const { toast } = useToast()
+
+  const togglePermission = (permission: OrgPermission, checked: boolean) =>
+    setPermissions((current) =>
+      checked
+        ? [...current, permission]
+        : current.filter((value) => value !== permission),
+    )
+
+  const handleSubmit = async () => {
+    await updatePermissions({ userId: user.id, permissions })
+    toast({ description: `Updated access for ${user.name ?? user.email}` })
+    onClose()
+  }
+
+  return (
+    <Modal
+      open
+      onOpenChange={onClose}
+      title={`Access for ${user.name ?? user.email}`}
+      onCancel={onClose}
+      onSubmit={handleSubmit}
+      allowSubmit={!isPending}
+      isPending={isPending}
+    >
+      <div className="flex flex-col gap-3">
+        {ORG_PERMISSIONS.map((permission) => (
+          <div key={permission} className="flex items-start gap-2">
+            <Checkbox
+              id={`user-permission-${permission}`}
+              className="mt-1"
+              checked={permissions.includes(permission)}
+              onCheckedChange={(checked) =>
+                togglePermission(permission, Boolean(checked))
+              }
+            />
+            <div className="flex flex-col">
+              <Label htmlFor={`user-permission-${permission}`}>
+                {ORG_PERMISSION_LABELS[permission]}
+              </Label>
+              <span className="text-muted-foreground text-sm">
+                {ORG_PERMISSION_DESCRIPTIONS[permission]}
+              </span>
+            </div>
+          </div>
+        ))}
+        <p className="text-muted-foreground text-sm">
+          Changes apply the next time they sign in or their session refreshes.
+        </p>
+        {error && <p className="text-sm text-red-500">{error.message}</p>}
+      </div>
+    </Modal>
+  )
+}
+
 const PeopleList = () => {
   // TODO pagination
   // TODO search function
@@ -230,6 +317,8 @@ const PeopleList = () => {
   const { data, isLoading, isError, error } = usePeople()
   const [personToDelete, setPersonToDelete] = useState<string>()
   const [isDeleting, setIsDeleting] = useState<string>()
+  const [userToEditPermissions, setUserToEditPermissions] =
+    useState<OrganisationUser>()
 
   const activeUsers = useMemo(() => {
     return data?.filter((user) => user.is_active)
@@ -315,6 +404,7 @@ const PeopleList = () => {
                 <th className="px-4 py-2 text-left">Name</th>
                 <th className="px-4 py-2 text-left">Email</th>
                 <th className="px-4 py-2 text-left">Role</th>
+                <th className="px-4 py-2 text-left">Access</th>
                 <th className="px-4 py-2 text-left">Member Since</th>
                 {isAdmin && <th className="px-4 py-2">Actions</th>}
               </tr>
@@ -326,10 +416,24 @@ const PeopleList = () => {
                   <td className="px-4 py-2">{user.email}</td>
                   <td className="px-4 py-2">{user.role}</td>
                   <td className="px-4 py-2">
+                    <PermissionBadges
+                      role={user.role}
+                      permissions={user.permissions}
+                    />
+                  </td>
+                  <td className="px-4 py-2">
                     {new Date(user.joined_at).toLocaleString()}
                   </td>
                   {isAdmin && user.is_active && (
                     <td className="flex justify-center gap-2 px-4 py-2">
+                      <Button
+                        size="icon"
+                        title="Edit access"
+                        onClick={() => setUserToEditPermissions(user)}
+                        disabled={user.role === ROLE.ADMIN}
+                      >
+                        <KeyRoundIcon aria-label="Edit access" size={16} />
+                      </Button>
                       <Button
                         size="icon"
                         onClick={() => setPersonToDelete(user.id)}
@@ -350,6 +454,12 @@ const PeopleList = () => {
             </tbody>
           </table>
         </div>
+      )}
+      {userToEditPermissions && (
+        <PermissionsModal
+          user={userToEditPermissions}
+          onClose={() => setUserToEditPermissions(undefined)}
+        />
       )}
       {personToDelete && (
         <Modal

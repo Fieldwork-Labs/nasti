@@ -1,3 +1,9 @@
 @import "../../../packages/ui/styles/globals.css";
 
 @config "../tailwind.config.ts";
+
+/* Give the popup close (x) button more breathing room so it doesn't crowd
+   controls (e.g. pagination) near the top of the popup content. */
+.mapboxgl-popup-close-button {
+  padding: 4px 8px;
+}

@@ -7,6 +7,7 @@ import {
   allowExplicitLogin,
   beginExplicitLogout,
   finishExplicitLogout,
+  getAuthStateFromSnapshot,
   getAuthStateWithOfflineFallback,
   OFFLINE_ACCESS_MS,
   OFFLINE_AUTH_KEY,
@@ -39,6 +40,19 @@ const session = {
   },
 } satisfies Session
 const snapshot = snapshotFromSession(session, null, true, now)!
+
+it("retains permission claims for offline access without storing credentials", () => {
+  const permittedSession = {
+    ...session,
+    access_token: `header.${btoa(JSON.stringify({ app_metadata: { org_id: "org-1", role: "Member", permissions: ["collections"] } }))}.signature`,
+  }
+  const persisted = snapshotFromSession(permittedSession, null, true, now)!
+  expect(persisted.permissions).toEqual(["collections"])
+  expect(getAuthStateFromSnapshot(persisted).claims?.permissions).toEqual([
+    "collections",
+  ])
+  expect(JSON.stringify(persisted)).not.toContain("real-session-refresh")
+})
 
 beforeEach(() => {
   beginExplicitLogout()

@@ -1,4 +1,5 @@
 import { Spinner } from "@nasti/ui/spinner"
+import { ROLE } from "@nasti/common/types"
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { Suspense } from "react"
 
@@ -24,9 +25,16 @@ export const Route = createFileRoute("/_private")({
         })
     }
     let orgId = context.orgId
-    if (!orgId) {
+    let role = context.role
+    let permissions = context.permissions
+    // On a cold load the store is empty, so resolve membership here once and
+    // hand role and permissions down: the area guards underneath run in
+    // beforeLoad too and cannot wait on a component to fetch them.
+    if (!orgId || !role) {
       const authDetails = await context.getUser()
       orgId = authDetails?.organisation?.id ?? null
+      role = authDetails?.role ?? null
+      permissions = authDetails?.permissions ?? []
       if (!orgId)
         throw redirect({
           to: "/auth/login",
@@ -38,6 +46,9 @@ export const Route = createFileRoute("/_private")({
     return {
       orgId,
       session,
+      role,
+      permissions,
+      isAdmin: role === ROLE.ADMIN,
     }
   },
   component: () => (

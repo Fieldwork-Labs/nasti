@@ -103,11 +103,14 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Link user to organisation
+    // Link user to organisation. Admins hold every permission through
+    // their role, so only members carry the invitation's permissions over.
     const { error: linkError } = await supabaseClient.from("org_user").insert({
       user_id: authData.user.id,
       organisation_id: invitation.organisation_id,
       role: invitation.role,
+      permissions:
+        invitation.role === "Admin" ? [] : (invitation.permissions ?? []),
     })
 
     if (linkError) {

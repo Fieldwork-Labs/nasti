@@ -21,6 +21,7 @@ import { Badge } from "@nasti/ui/badge"
 import { TaxonName } from "@nasti/common"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
+import { useCollectionContainers, useContainers } from "@/hooks/useContainers"
 import { formatDuration } from "@/lib/duration"
 import { MATERIAL_TYPE_LABELS, toMaterialTypes } from "@nasti/common/types"
 
@@ -51,6 +52,16 @@ const CollectionDetail = () => {
   )
   const formattedDuration = formatDuration(collection?.duration)
   const materialTypes = toMaterialTypes(collection?.material_type)
+
+  const { data: collectionContainers } = useCollectionContainers(collectionId)
+  const { data: containers } = useContainers()
+  const containerSummary =
+    collectionContainers?.map(({ container_id, amount }) => {
+      const name =
+        containers?.find((container) => container.id === container_id)?.name ??
+        "Unknown container"
+      return amount === null ? name : `${amount} × ${name}`
+    }) ?? []
 
   if (!collection)
     return (
@@ -159,7 +170,7 @@ const CollectionDetail = () => {
         )}
       </table>
       {(Boolean(collection.description) ||
-        Boolean(collection.amount_quantity || collection.amount_units) ||
+        containerSummary.length > 0 ||
         Boolean(formattedDuration) ||
         materialTypes.length > 0 ||
         Boolean(collection.phenology_start)) && (
@@ -200,18 +211,16 @@ const CollectionDetail = () => {
                 </tbody>
               </>
             )}
-            {Boolean(collection.amount_quantity || collection.amount_units) && (
+            {containerSummary.length > 0 && (
               <>
                 <thead>
                   <tr className="text-muted-foreground text-left">
-                    <th>Amount Description</th>
+                    <th>Containers</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>
-                      {collection.amount_quantity} {collection.amount_units}
-                    </td>
+                    <td>{containerSummary.join(", ")}</td>
                   </tr>
                 </tbody>
               </>

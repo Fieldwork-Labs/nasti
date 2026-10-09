@@ -4,8 +4,8 @@ import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parseWkbPoint } from "@nasti/common/utils"
 import { ScoutingNote } from "@nasti/common/types"
-import { SpeciesListItem } from "@/routes/_private/species"
-import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
+import { SpeciesListItem } from "@/components/species/SpeciesListItem"
+import { PencilIcon, ShoppingBag, TrashIcon, XIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
@@ -30,6 +30,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@nasti/ui/carousel"
+import { AudioTab } from "@/components/common/AudioTab"
+import { useScoutingNoteAudio } from "@/hooks/useEntityAudio"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 
@@ -60,6 +62,34 @@ const PhotosTab = ({
     </div>
   )
 }
+
+const EditButtons = ({
+  openUpdateModal,
+  openDeleteModal,
+}: {
+  openUpdateModal: () => void
+  openDeleteModal: () => void
+}) => (
+  <span className="inline-flex space-x-2">
+    <Button
+      size={"icon"}
+      onClick={openUpdateModal}
+      title="Edit Scouting Note"
+      variant={"ghost"}
+    >
+      <PencilIcon className="h-4 w-4" />
+    </Button>
+    <Button
+      size={"icon"}
+      onClick={openDeleteModal}
+      title="Delete Scouting Note"
+      className="dark:text-primary-foreground cursor-pointer bg-transparent text-black"
+      variant={"destructive"}
+    >
+      <TrashIcon className="h-4 w-4" />
+    </Button>
+  </span>
+)
 
 export const ScoutingNoteDetailModal = ({
   scoutingNote,
@@ -120,6 +150,8 @@ export const ScoutingNoteDetailModal = ({
     [setModalImage, photos],
   )
 
+  const { data: audio } = useScoutingNoteAudio(scoutingNote?.id)
+
   const { data: people } = usePeople()
   const creator = people?.find(
     (person) => person.id === scoutingNote?.created_by,
@@ -129,27 +161,6 @@ export const ScoutingNoteDetailModal = ({
     scoutingNote?.person_ids?.includes(person.id),
   )
 
-  const EditButtons = () => (
-    <span className="inline-flex space-x-2">
-      <Button
-        size={"icon"}
-        onClick={openUpdateModal}
-        title="Edit ScoutingNote"
-        className="bg-transparent"
-      >
-        <PencilIcon className="h-4 w-4 text-white" />
-      </Button>
-      <Button
-        size={"icon"}
-        onClick={openDeleteModal}
-        title="Delete ScoutingNote"
-        className="bg-transparent"
-        variant={"destructive"}
-      >
-        <TrashIcon className="h-4 w-4" />
-      </Button>
-    </span>
-  )
   if (!scoutingNote) return null
 
   return (
@@ -157,10 +168,18 @@ export const ScoutingNoteDetailModal = ({
       <Modal
         open={open}
         onOpenChange={onClose}
+        className="max-h-[90vh] overflow-y-auto"
         title={
           <div className="flex justify-between">
             <span>Scouting Note</span>
-            {isAdmin && <EditButtons />}
+            <Button
+              size={"icon"}
+              onClick={onClose}
+              title="Close"
+              variant={"ghost"}
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
           </div>
         }
       >
@@ -180,10 +199,14 @@ export const ScoutingNoteDetailModal = ({
             </div>
           )}
           <Tabs defaultValue="details">
-            <TabsList className="bg-secondary-background grid w-full grid-cols-2">
+            <TabsList className="bg-secondary-background grid w-full auto-cols-fr grid-flow-col">
               <TabsTrigger value="details">Details</TabsTrigger>
-              {photos?.length && photos.length > 0 && (
+              {coordinates && <TabsTrigger value="map">Map</TabsTrigger>}
+              {photos && photos.length > 0 && (
                 <TabsTrigger value="photos">Photos</TabsTrigger>
+              )}
+              {audio && audio.length > 0 && (
+                <TabsTrigger value="audio">Audio</TabsTrigger>
               )}
             </TabsList>
             <TabsContent value="details">
@@ -289,31 +312,30 @@ export const ScoutingNoteDetailModal = ({
                     </div>
                   </div>
                 )}
-                {/* Map */}
-                {coordinates && (
-                  <div className="h-[300px] w-full">
-                    <Map
-                      mapLib={mapboxgl as never}
-                      mapboxAccessToken={
-                        import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
-                      }
-                      mapStyle="mapbox://styles/mapbox/satellite-v9"
-                      {...viewState}
-                      onMove={(evt) => setViewState(evt.viewState)}
-                      style={{ width: "100%", height: "100%" }}
-                    >
-                      <Marker
-                        longitude={coordinates.longitude}
-                        latitude={coordinates.latitude}
-                      >
-                        <div className="rounded-full bg-white/50 p-2">
-                          <ShoppingBag className="text-primary h-5 w-5" />
-                        </div>
-                      </Marker>
-                    </Map>
-                  </div>
-                )}
               </div>
+            </TabsContent>
+            <TabsContent value="map">
+              {coordinates && (
+                <div className="h-[350px] w-full">
+                  <Map
+                    mapLib={mapboxgl as never}
+                    mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+                    mapStyle="mapbox://styles/mapbox/satellite-v9"
+                    {...viewState}
+                    onMove={(evt) => setViewState(evt.viewState)}
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <Marker
+                      longitude={coordinates.longitude}
+                      latitude={coordinates.latitude}
+                    >
+                      <div className="rounded-full bg-white/50 p-2">
+                        <ShoppingBag className="text-primary h-5 w-5" />
+                      </div>
+                    </Marker>
+                  </Map>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="photos">
               <PhotosTab
@@ -321,11 +343,19 @@ export const ScoutingNoteDetailModal = ({
                 onClickPhoto={handleClickPhoto}
               />
             </TabsContent>
+            <TabsContent value="audio">
+              <AudioTab audio={audio ?? []} />
+            </TabsContent>
           </Tabs>
         </div>
-        <div className="flex justify-end">
-          <Button onClick={onClose}>Close</Button>
-        </div>
+        {isAdmin && (
+          <div className="flex justify-end">
+            <EditButtons
+              openUpdateModal={openUpdateModal}
+              openDeleteModal={openDeleteModal}
+            />
+          </div>
+        )}
       </Modal>
       {isOpenUpdateModal && (
         <UpdateScoutingNoteWizardModal

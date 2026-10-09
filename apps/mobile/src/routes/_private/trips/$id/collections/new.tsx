@@ -11,7 +11,9 @@ import { useCallback, useRef, useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
 import { useGeoLocation } from "@/contexts/location"
 import { useCollectionCreate } from "@/hooks/useCollectionCreate"
+import { saveCollectionContainers } from "@/hooks/useContainers"
 
+import { CollectionContainersField } from "@/components/collection/CollectionContainersField"
 import { SpeciesSelectInput } from "@/components/collection/SpeciesSelectInput"
 import { Input } from "@nasti/ui/input"
 import { Label } from "@nasti/ui/label"
@@ -68,8 +70,14 @@ const schema = z
     phenology_start: z.number().min(-100).max(100).nullable(),
     phenology_peak: z.number().min(-100).max(100).nullable(),
     phenology_end: z.number().min(-100).max(100).nullable(),
-    amount_units: z.string().nullable(),
-    amount_quantity: stringToNumber,
+    containers: z
+      .array(
+        z.object({
+          container_id: z.string().uuid("Select a container"),
+          amount: stringToNumber,
+        }),
+      )
+      .default([]),
     duration: z.string().nullable(),
     material_type: z
       .array(z.enum(MATERIAL_TYPES))
@@ -103,8 +111,7 @@ const defaultValues = {
   phenology_start: null,
   phenology_peak: null,
   phenology_end: null,
-  amount_units: "",
-  amount_quantity: null,
+  containers: [],
   duration: null,
   material_type: ["seed" as const],
   person_ids: [],
@@ -185,8 +192,9 @@ function AddCollection() {
             (personId) => personId !== currentUserPerson.id,
           )
         : data.person_ids
+      const { containers, ...collectionData } = data
       const newCollection: NewCollection = {
-        ...data,
+        ...collectionData,
         person_ids,
         id: collectionIdRef.current,
         created_by: user.id,
@@ -198,6 +206,7 @@ function AddCollection() {
         trip_id: tripId,
       }
       await createCollection(newCollection)
+      await saveCollectionContainers(collectionIdRef.current, containers)
       await Promise.all(
         photos.map((photo) =>
           createPhotoMutation.mutateAsync(photo, { onError: console.error }),
@@ -368,53 +377,16 @@ function AddCollection() {
               </div>
             )}
           </div>
-          <div>
-            <Label className="flex items-center gap-2">
-              <span>Amount</span>
-            </Label>
-            <div className="flex w-full gap-2">
-              <div className="w-full">
-                <Label htmlFor="amount_quantity" className="text-sm">
-                  Quantity
-                </Label>
-                <Input
-                  autoComplete="off"
-                  {...register("amount_quantity")}
-                  className={cn(
-                    "w-full",
-                    errors.amount_quantity ? "border-amber-600" : "",
-                  )}
-                  id="amount_quantity"
-                  name="amount_quantity"
-                />
-                {errors.amount_quantity && (
-                  <div className="mt-1 text-sm text-amber-600">
-                    {errors.amount_quantity.message}
-                  </div>
-                )}
-              </div>
-              <div className="w-full">
-                <Label htmlFor="amount_units" className="text-sm">
-                  Units
-                </Label>
-                <Input
-                  autoComplete="off"
-                  {...register("amount_units")}
-                  className={cn(
-                    "w-full",
-                    errors.amount_units ? "border-amber-600" : "",
-                  )}
-                  id="amount_units"
-                  name="amount_units"
-                />
-                {errors.amount_units && (
-                  <div className="mt-1 text-sm text-amber-600">
-                    {errors.amount_units.message}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <Controller
+            control={control}
+            name="containers"
+            render={({ field }) => (
+              <CollectionContainersField
+                value={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
           <ExtraFieldsAccordion>
             <Controller
               control={control}

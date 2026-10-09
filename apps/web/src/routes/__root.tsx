@@ -1,4 +1,3 @@
-import logo from "@/assets/logo.png"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { useTheme } from "@/contexts/theme"
 import { supabase } from "@nasti/common/supabase"
@@ -13,6 +12,7 @@ import {
   DropdownMenuLabel,
 } from "@nasti/ui/dropdown-menu"
 import { Session } from "@supabase/supabase-js"
+import type { OrgPermission, Role } from "@nasti/common/types"
 import { QueryClientProvider } from "@tanstack/react-query"
 import {
   createRootRouteWithContext,
@@ -106,7 +106,9 @@ const UserMenu = () => {
 }
 
 const RootComponent = () => {
-  const { getSession, session, organisation } = useUserStore()
+  const { getSession, session, organisation, hasPermission } = useUserStore()
+  const canSeeCollections = hasPermission("collections")
+  const canSeeInventory = hasPermission("inventory")
 
   useEffect(() => {
     // Listen for auth state changes
@@ -128,18 +130,25 @@ const RootComponent = () => {
             <div className="flex h-16 justify-between align-middle">
               <div className="flex items-center gap-4 align-middle">
                 <Link to="/" className="flex shrink-0 items-center">
-                  {organisation?.name ? (
-                    <span className="text-3xl font-semibold">
-                      {organisation.name}
-                    </span>
+                  {session ? (
+                    <span className="text-3xl">{organisation?.name}</span>
                   ) : (
-                    <img src={logo} alt="Seed Log Logo" width={200} />
+                    <span className="text-4xl">Seed Scout</span>
                   )}
                 </Link>
                 {session && (
-                  <Link to="/trips" className="text-lead">
-                    My Trips
-                  </Link>
+                  <>
+                    {canSeeCollections && (
+                      <Link to="/trips" className="text-lead">
+                        Trips
+                      </Link>
+                    )}
+                    {canSeeInventory && (
+                      <Link to="/inventory" className="text-lead">
+                        Inventory
+                      </Link>
+                    )}
+                  </>
                 )}
               </div>
               {/* Right side - User Menu */}
@@ -180,6 +189,8 @@ export const Route = createRootRouteWithContext<{
   getSession: () => Promise<Session | null>
   getUser: () => Promise<AuthDetails | null>
   orgId: string | null
+  role: Role | null
+  permissions: OrgPermission[]
 }>()({
   component: RootComponent,
 })

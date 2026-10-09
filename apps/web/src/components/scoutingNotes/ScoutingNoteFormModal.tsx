@@ -168,6 +168,7 @@ export const UpdateScoutingNoteWizardModal = ({
       stage={stage}
       setStage={setStage}
       instance={instance}
+      tripId={instance.trip_id ?? undefined}
       close={close}
     >
       <AlertDialog open={open} onOpenChange={(isOpen) => !isOpen && close()}>
@@ -204,6 +205,16 @@ export const UpdateScoutingNoteFormModal = () => {
       }
     },
     [form.formState.isDirty, setStage, onSubmit],
+  )
+
+  const handleSave = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      // prevent the dialog closing before the save has completed
+      e.preventDefault()
+      await onSubmit()
+      close()
+    },
+    [onSubmit, close],
   )
 
   const goToPhotosText = useMemo(() => {
@@ -247,7 +258,7 @@ export const UpdateScoutingNoteFormModal = () => {
           {isPending && <Spinner />}
         </AlertDialogAction>
         <AlertDialogAction
-          onClick={onSubmit}
+          onClick={handleSave}
           className="w-full"
           disabled={
             isPending || !form.formState.isValid || !form.formState.isDirty
