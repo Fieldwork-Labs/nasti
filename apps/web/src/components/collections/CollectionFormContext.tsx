@@ -24,7 +24,7 @@ import {
   useUpdateCollection,
 } from "../../hooks/useUpdateCollection"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
-import { stringToNumber } from "@nasti/common/utils"
+import { optionalPositiveNumber } from "@nasti/common/utils"
 import { useCollectionContainers } from "@/hooks/useContainers"
 import { Spinner } from "@nasti/ui/spinner"
 import { collectedOnSchema, formatDateInputValue } from "./collectionDate"
@@ -56,7 +56,7 @@ export const schema = z
       .array(
         z.object({
           container_id: z.string().uuid("Select a container"),
-          amount: stringToNumber,
+          amount: optionalPositiveNumber,
         }),
       )
       .default([]),
@@ -100,6 +100,10 @@ const useCollectionForm = ({
 }) => {
   const { organisation, user } = useUserStore()
   const [collection, setCollection] = useState<Collection | undefined>(instance)
+  // A new collection's id is chosen up front so that retrying a save that
+  // failed after the collection row was written updates that row instead of
+  // creating a second collection.
+  const [newCollectionId] = useState(() => crypto.randomUUID())
 
   const defaultValues = useMemo(() => {
     return collection
@@ -173,7 +177,7 @@ const useCollectionForm = ({
         const newCollection: MaybeNewCollectionWithContainers = {
           ...rest,
           containers,
-          id: collection?.id,
+          id: collection?.id ?? newCollectionId,
           created_by: user.id,
           collected_by: user.id,
           location,
@@ -198,7 +202,16 @@ const useCollectionForm = ({
         })
       }
     },
-    [user, organisation, tripId, collection, updateCollection, onSuccess, form],
+    [
+      user,
+      organisation,
+      tripId,
+      collection,
+      newCollectionId,
+      updateCollection,
+      onSuccess,
+      form,
+    ],
   )
 
   const {

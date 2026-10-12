@@ -43,7 +43,7 @@ export const useAssignBagsForTesting = () => {
       // narrowed to the bags named in the request.
       for (const key of [
         ["batches"],
-        ["sub-batches"],
+        ["subBatches"],
         ["assignments"],
         ["batch-assignment"],
         ["batch-storage"],

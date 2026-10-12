@@ -65,11 +65,13 @@ const upsertCollection = async ({
   containers,
   ...updatedItem
 }: MaybeNewCollectionWithContainers) => {
-  const queryBase = supabase.from("collection").upsert(updatedItem)
-
-  const query = updatedItem.id ? queryBase.eq("id", updatedItem.id) : queryBase
-
-  const { data, error } = await query.select("*").single()
+  // Resolved on the primary key, so a retried create updates the row the
+  // failed attempt wrote.
+  const { data, error } = await supabase
+    .from("collection")
+    .upsert(updatedItem)
+    .select("*")
+    .single()
 
   if (error) throw new Error(error.message)
   if (!data) throw new Error("No data returned from collection upsert")
@@ -110,7 +112,9 @@ export const useUpdateCollection = () => {
         queryClient.setQueryData<Collection[]>(queryKey, (oldData) => {
           if (!oldData || oldData.length === 0) return [updatedItem]
 
-          if (variables.id) {
+          // A new collection arrives with its id already chosen, so whether it
+          // is new is read from the cache rather than from the variables.
+          if (oldData.some((item) => item.id === updatedItem.id)) {
             return oldData.map((item) =>
               item.id === updatedItem.id ? updatedItem : item,
             )

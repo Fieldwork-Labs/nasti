@@ -26,6 +26,23 @@ export type SubBatchWithStorage = ActiveSubBatchWithContainer & {
   } | null
 }
 
+// Everything that shows where a batch's bags are stored. The bag list reads
+// current storage under its own key, keyed by bag ids rather than the batch,
+// so refetching the bag list alone keeps showing the old location.
+export const invalidateSubBatchStorage = (batchId: string) => {
+  for (const queryKey of [
+    ["subBatches", batchId],
+    ["subBatches", "storage"],
+    ["subBatches", "currentStorage", batchId],
+    ["subBatches", "storageHistory", batchId],
+    ["batches", "detail", batchId],
+    ["batches", "byFilter"],
+    ["storageLocations"],
+  ]) {
+    queryClient.invalidateQueries({ queryKey })
+  }
+}
+
 // Query: Get sub-batches for a batch
 export const useSubBatches = (batchId: string) => {
   const { data, ...rest } = useQuery({

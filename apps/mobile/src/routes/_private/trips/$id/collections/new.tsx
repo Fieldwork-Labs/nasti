@@ -34,7 +34,7 @@ import { UploadPhotoVariables, usePhotosMutate } from "@/hooks/usePhotosMutate"
 import { PhotosForm } from "@/components/common/PhotosForm"
 import { AudiosForm } from "@/components/common/AudiosForm"
 import { UploadAudioVariables, useAudiosMutate } from "@/hooks/useAudiosMutate"
-import { stringToNumber } from "@nasti/common/utils"
+import { optionalPositiveNumber } from "@nasti/common/utils"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
@@ -74,7 +74,7 @@ const schema = z
       .array(
         z.object({
           container_id: z.string().uuid("Select a container"),
-          amount: stringToNumber,
+          amount: optionalPositiveNumber,
         }),
       )
       .default([]),

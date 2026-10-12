@@ -79,10 +79,14 @@ const qualityTestSchema = z.object({
 
 type QualityTestFormData = z.infer<typeof qualityTestSchema>
 
+// `weightLocked`: the seed a recorded test consumed is fixed, so its replicate
+// weights, and how many replicates there are, cannot change on edit.
 const SeedCounts = ({
   fieldArray,
+  weightLocked,
 }: {
   fieldArray: UseFieldArrayReturn<QualityTestFormData>
+  weightLocked: boolean
 }) => {
   const { register, formState, watch } = useFormContext<QualityTestFormData>()
   const { fields, remove } = fieldArray
@@ -101,7 +105,7 @@ const SeedCounts = ({
     <div key={field.id} className="rounded-lg border p-2">
       <div className="mb-1 flex items-center justify-between">
         <span className="text-sm font-medium">Replicate {index + 1}</span>
-        {fields.length > 1 && (
+        {fields.length > 1 && !weightLocked && (
           <Button
             type="button"
             variant="ghost"
@@ -123,6 +127,7 @@ const SeedCounts = ({
             step="0.001"
             min="0"
             placeholder="0.000"
+            readOnly={weightLocked}
             {...register(`repeats.${index}.weight_grams`)}
           />
           {formState.errors.repeats?.[index]?.weight_grams && (
@@ -365,6 +370,7 @@ export const QualityTestForm = ({
                   variant="outline"
                   role="combobox"
                   className="w-full justify-between"
+                  disabled={isEditing}
                 >
                   {testTypeOptions.find(
                     (t) => t.value === form.watch("test_type"),
@@ -520,7 +526,7 @@ export const QualityTestForm = ({
               variant="outline"
               size="sm"
               onClick={addReplicate}
-              disabled={fieldArray.fields.length >= 5}
+              disabled={isEditing || fieldArray.fields.length >= 5}
               className="cursor-pointer"
             >
               <Plus className="mr-1 h-4 w-4" />
@@ -528,7 +534,13 @@ export const QualityTestForm = ({
             </Button>
           </div>
 
-          <SeedCounts fieldArray={fieldArray} />
+          <SeedCounts fieldArray={fieldArray} weightLocked={isEditing} />
+          {isEditing && (
+            <p className="text-muted-foreground text-xs">
+              The test type and replicate weights record the seed this test
+              used, so they cannot be changed.
+            </p>
+          )}
 
           {form.formState.errors.repeats && (
             <p className="text-sm text-red-600">

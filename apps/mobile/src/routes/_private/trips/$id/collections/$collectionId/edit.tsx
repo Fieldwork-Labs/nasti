@@ -35,7 +35,7 @@ import * as z from "zod"
 import { PhotosForm, PhotoChanges } from "@/components/common/PhotosForm"
 import { AudiosForm, AudioChanges } from "@/components/common/AudiosForm"
 import { useAudiosMutate } from "@/hooks/useAudiosMutate"
-import { stringToNumber } from "@nasti/common/utils"
+import { optionalPositiveNumber, stringToNumber } from "@nasti/common/utils"
 import { PersonMultiSelectField } from "@/components/common/PersonMultiSelectField"
 import { DurationPickerField } from "@/components/common/DurationPickerField"
 import { useCurrentUserPerson } from "@/hooks/useCurrentUserPerson"
@@ -63,7 +63,7 @@ const collectionFields = z.object({
     .array(
       z.object({
         container_id: z.string().uuid("Select a container"),
-        amount: stringToNumber,
+        amount: optionalPositiveNumber,
       }),
     )
     .default([]),

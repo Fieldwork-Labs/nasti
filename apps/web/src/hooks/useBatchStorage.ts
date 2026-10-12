@@ -8,6 +8,7 @@ import {
   CurrentBatchStorage,
 } from "@nasti/common/types"
 import useUserStore from "@/store/userStore"
+import { invalidateSubBatchStorage } from "@/hooks/useSubBatches"
 
 // Extended types for storage with related data
 export type StorageLocationWithBatches = StorageLocation & {
@@ -30,7 +31,7 @@ export type BatchStorageWithLocation = BatchStorage & {
   location: StorageLocation
 }
 
-// Query: Get detailed view of a storage location
+// Query: Get all storage locations for the user's organisation, active first
 export const useStorageLocations = () => {
   return useQuery({
     queryKey: ["storageLocations", "list"],
@@ -330,24 +331,7 @@ export const useMoveBatchToStorage = () => {
       return data
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "currentStorage", variables.batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "storageHistory", variables.batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", variables.batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", variables.batchId],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ["storageLocations"],
-      })
+      invalidateSubBatchStorage(variables.batchId)
     },
   })
 }
@@ -378,18 +362,7 @@ export const useCreateStorageRecord = () => {
       return data as BatchStorage
     },
     onSuccess: (_, variables) => {
-      // Invalidate related caches
-      queryClient.invalidateQueries({
-        queryKey: ["storageLocations"],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "storageHistory", variables.batchId],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "currentStorage", variables.batchId],
-      })
+      invalidateSubBatchStorage(variables.batchId)
     },
   })
 }
@@ -414,18 +387,7 @@ export const useUpdateStorageRecord = () => {
       return data as BatchStorage
     },
     onSuccess: (updatedStorage) => {
-      // Invalidate related caches
-      queryClient.invalidateQueries({
-        queryKey: ["storageLocations"],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "storageHistory", updatedStorage.sub_batch_id],
-      })
-
-      queryClient.invalidateQueries({
-        queryKey: ["subBatches", "currentStorage", updatedStorage.sub_batch_id],
-      })
+      invalidateSubBatchStorage(updatedStorage.batch_id)
     },
   })
 }
