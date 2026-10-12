@@ -2189,24 +2189,26 @@ select lives_ok(
   'Testing can return the assigned parent bag'
 );
 
+-- The split child still carries the assignment's seed, so returning the
+-- parent alone must not close the assignment.
 select is(
   (
     select outcome
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
   ),
-  'returned'::text,
-  'a returned assignment records the returned outcome'
+  null::text,
+  'returning the parent leaves the assignment without an outcome while a child is retained'
 );
 
-select isnt(
+select is(
   (
     select closed_at
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
   ),
-  null,
-  'a returned assignment records closed_at'
+  null::timestamptz,
+  'returning the parent leaves the assignment open while a child is retained'
 );
 
 -- The returned bag and the batch's custody history are read as General from
@@ -2257,23 +2259,30 @@ select set_config(
   true
 );
 
-select lives_ok(
+-- d3...03 was merged with d3...04 into a Testing-held bag earlier, so the
+-- assigned bag itself is empty and its seed sits in the merged bag. Returning
+-- by assignment must not close the assignment while Testing still holds that
+-- seed; the merged bag is returned through fn_return_held_bag_from_testing.
+select throws_ok(
   $$
     select public.fn_return_bag_from_testing(
       (select id from public.batch_testing_assignment where sub_batch_id = 'd3000000-0000-0000-0000-000000000003')
     )
   $$,
-  'returning one assignment succeeds while another parent bag remains active'
+  '55000',
+  null,
+  'returning an assignment whose bag was merged away is rejected'
 );
 
 select is(
   (
-    select outcome
+    select count(*)
     from public.batch_testing_assignment
     where sub_batch_id = 'd3000000-0000-0000-0000-000000000003'
+      and closed_at is null
   ),
-  'returned'::text,
-  'the first multi-bag assignment is closed as returned'
+  1::bigint,
+  'the merged-away assignment stays open while Testing holds its seed'
 );
 
 select is(
@@ -2284,7 +2293,7 @@ select is(
       and closed_at is null
   ),
   1::bigint,
-  'returning one bag leaves the other assignment active'
+  'the rejected return leaves the other merged assignment active'
 );
 
 -- Custody-relative weight views must describe different physical holdings to

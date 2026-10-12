@@ -12,10 +12,7 @@
 // several assignments. A laboratory that wants to keep part of the seed splits
 // the bag first and returns the rest.
 //
-// `assignment_id` is still accepted, through fn_return_bag_from_testing, so a
-// client deployed before this change keeps working. It returns only the bag
-// the assignment named. The deployed path keeps its old name so existing
-// clients keep resolving.
+// The function keeps its old name so existing clients keep resolving.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -79,7 +76,6 @@ Deno.serve((r) =>
 
       let body: {
         sub_batch_id?: string
-        assignment_id?: string
       }
 
       try {
@@ -88,44 +84,31 @@ Deno.serve((r) =>
         return returnErrorResponse("Request body must be valid JSON", 400)
       }
 
-      const { sub_batch_id, assignment_id } = body
+      const { sub_batch_id } = body
 
-      const bySubBatch = typeof sub_batch_id === "string" && sub_batch_id !== ""
-
-      if (
-        !bySubBatch &&
-        (typeof assignment_id !== "string" || assignment_id === "")
-      ) {
+      if (typeof sub_batch_id !== "string" || sub_batch_id === "") {
         return returnErrorResponse("Missing required field: sub_batch_id", 400)
       }
 
-      const rpcName = bySubBatch
-        ? "fn_return_held_bag_from_testing"
-        : "fn_return_bag_from_testing"
-
-      const { data, error } = bySubBatch
-        ? await supabaseClient.rpc("fn_return_held_bag_from_testing", {
-            p_sub_batch_id: sub_batch_id,
-          })
-        : await supabaseClient.rpc("fn_return_bag_from_testing", {
-            p_assignment_id: assignment_id,
-          })
+      const { data, error } = await supabaseClient.rpc(
+        "fn_return_held_bag_from_testing",
+        { p_sub_batch_id: sub_batch_id },
+      )
 
       if (error) {
         const status = STATUS_BY_PG_CODE[error.code ?? ""]
         if (!status) {
-          console.error(`${rpcName} failed`, error)
+          console.error("fn_return_held_bag_from_testing failed", error)
           return returnErrorResponse("Internal server error", 500)
         }
         return returnErrorResponse(error.message, status)
       }
 
       return new Response(
-        JSON.stringify(
-          bySubBatch
-            ? { message: "Bag returned successfully", assignments: data }
-            : { message: "Bag returned successfully", assignment: data },
-        ),
+        JSON.stringify({
+          message: "Bag returned successfully",
+          assignments: data,
+        }),
         {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
