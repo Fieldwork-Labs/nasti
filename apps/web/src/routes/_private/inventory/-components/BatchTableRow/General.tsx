@@ -1,16 +1,9 @@
 import { Button } from "@nasti/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@nasti/ui/tooltip"
 import { cn } from "@nasti/ui/utils"
 import {
   Combine,
   Minus,
   Plus,
-  SendIcon,
   X,
   BrushCleaning,
   Microscope,
@@ -51,7 +44,6 @@ interface BatchTableRowProps extends BaseBatchTableRowProps {
   ) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onCombine?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
 
   combineMode?: CombineMode
 }
@@ -108,12 +100,10 @@ interface NormalModeActionsProps {
   batch: BatchWithCurrentLocationAndSpecies
   mergeDisabled: boolean
   canDelete: boolean
-  hasActiveAssignment: boolean
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onMerge?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onCombine?: (batch: BatchWithCurrentLocationAndSpecies) => void
-  onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onDelete?: (batchId: string) => void
   onOpenQualityTest?: () => void
 }
@@ -122,10 +112,8 @@ const NormalModeActions = ({
   batch,
   mergeDisabled,
   canDelete,
-  hasActiveAssignment,
   onClean,
   onCombine,
-  onAssignForTesting,
   onDelete,
   onOpenQualityTest,
 }: NormalModeActionsProps) => (
@@ -166,33 +154,6 @@ const NormalModeActions = ({
       </Button>
     )}
 
-    {onAssignForTesting && (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={mergeDisabled || hasActiveAssignment}
-              onClick={() => onAssignForTesting(batch)}
-              title={
-                hasActiveAssignment
-                  ? "Some bags are already out for testing"
-                  : "Send bags for testing"
-              }
-            >
-              <SendIcon className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          {hasActiveAssignment && (
-            <TooltipContent>
-              Some bags of this batch are already out for testing
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
-    )}
-
     <BatchDeleteButton
       batchId={batch.id}
       canDelete={canDelete}
@@ -213,7 +174,6 @@ export const BatchTableRow = ({
   onSplit,
   onClean,
   onCombine,
-  onAssignForTesting,
   onSubBatchStorageMove,
   className,
   combineMode,
@@ -272,7 +232,6 @@ export const BatchTableRow = ({
           batch={batch}
           mergeDisabled={mergeDisabled}
           canDelete={canDelete}
-          hasActiveAssignment={hasActiveAssignment}
           onClean={onClean}
           // a combined batch (no collection of its own) is cleaned, not
           // combined again
@@ -286,8 +245,6 @@ export const BatchTableRow = ({
         batch={batch}
         mergeDisabled={mergeDisabled}
         canDelete={canDelete}
-        hasActiveAssignment={hasActiveAssignment}
-        onAssignForTesting={onAssignForTesting}
         onDelete={onDelete}
       />
     )
