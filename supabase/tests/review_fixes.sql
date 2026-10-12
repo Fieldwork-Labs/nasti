@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(16);
 
 -- Regressions for the inventory branch review: direct bag writes are
 -- authorised against the parent batch, a test's consumed weight is fixed once
@@ -158,6 +158,31 @@ select throws_ok(
   '22023',
   null,
   'an edit cannot turn a destructive test into an X-Ray'
+);
+
+-- Switching to germination would otherwise lift the quality-only guard for
+-- the weight edit, and a second update could switch the type back.
+select throws_ok(
+  $$
+    update public.tests
+    set type = 'germination',
+        result = jsonb_set(result, '{repeats,0,weight_grams}', '20')
+    where id = (select id from review_test)
+  $$,
+  '22023',
+  null,
+  'an edit cannot change weights by leaving the quality type'
+);
+
+select throws_ok(
+  $$
+    update public.tests
+    set type = 'germination'
+    where id = (select id from review_test)
+  $$,
+  '22023',
+  null,
+  'a test''s type cannot be changed'
 );
 
 select lives_ok(
