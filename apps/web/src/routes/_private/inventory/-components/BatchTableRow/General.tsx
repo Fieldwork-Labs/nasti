@@ -18,7 +18,6 @@ import {
 import { useEffect, useState } from "react"
 import { queryClient } from "@nasti/common/utils"
 
-import { Badge } from "@nasti/ui/badge"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import {
@@ -43,14 +42,6 @@ interface CombineMode {
   onCancelCombine: () => void
 }
 
-interface AssignmentMode {
-  isActive: boolean
-  isSelected: boolean
-  onAddToAssignment: () => void
-  onRemoveFromAssignment: () => void
-  onCancelAssignment: () => void
-}
-
 interface BatchTableRowProps extends BaseBatchTableRowProps {
   batch: BatchWithCurrentLocationAndSpecies
   onEdit?: (batch: BatchWithCurrentLocationAndSpecies) => void
@@ -63,67 +54,11 @@ interface BatchTableRowProps extends BaseBatchTableRowProps {
   onAssignForTesting?: (batch: BatchWithCurrentLocationAndSpecies) => void
 
   combineMode?: CombineMode
-  assignmentMode?: AssignmentMode
 }
 
 // =============================================================================
 // Action Button Components
 // =============================================================================
-
-interface AssignmentModeActionsProps {
-  assignmentMode: AssignmentMode
-  hasActiveAssignment: boolean
-}
-
-const AssignmentModeActions = ({
-  assignmentMode,
-  hasActiveAssignment,
-}: AssignmentModeActionsProps) => {
-  if (assignmentMode.isSelected) {
-    return (
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          onClick={assignmentMode.onRemoveFromAssignment}
-          className="border-green-500 bg-green-100 text-green-700"
-        >
-          <Minus className="mr-1 h-4 w-4" />
-          <span className="text-xs">Remove</span>
-        </Button>
-        <Button
-          variant="outline"
-          onClick={assignmentMode.onCancelAssignment}
-          className="border-destructive/50 text-destructive hover:bg-destructive/50"
-        >
-          <X className="mr-1 h-4 w-4" />
-          <span className="text-xs">Cancel</span>
-        </Button>
-      </div>
-    )
-  }
-
-  if (hasActiveAssignment) {
-    return (
-      <Badge
-        variant="outline"
-        className="border-blue-500 bg-blue-50 text-xs text-blue-700"
-      >
-        Bags out
-      </Badge>
-    )
-  }
-
-  return (
-    <Button
-      variant="outline"
-      onClick={assignmentMode.onAddToAssignment}
-      className="border-blue-500/20 text-blue-700 hover:bg-blue-50"
-    >
-      <Plus className="mr-1 h-4 w-4" />
-      <span className="text-xs">Add to Assignment</span>
-    </Button>
-  )
-}
 
 interface MergeModeActionsProps {
   combineMode: CombineMode
@@ -282,7 +217,6 @@ export const BatchTableRow = ({
   onSubBatchStorageMove,
   className,
   combineMode,
-  assignmentMode,
 }: BatchTableRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [qualityTestModalSubBatchId, setQualityTestModalSubBatchId] = useState<
@@ -303,12 +237,12 @@ export const BatchTableRow = ({
     setIsExpanded(!isExpanded)
   }
 
-  // Collapse row when entering merge or assignment mode
+  // Collapse row when entering merge mode
   useEffect(() => {
-    if (combineMode?.isActive || assignmentMode?.isActive) {
+    if (combineMode?.isActive) {
       setIsExpanded(false)
     }
-  }, [combineMode?.isActive, assignmentMode?.isActive])
+  }, [combineMode?.isActive])
 
   const mergeDisabled = Boolean(combineMode && !combineMode.canCombine)
   // "Some of this batch is out at a laboratory" — no longer "the batch is out",
@@ -323,20 +257,10 @@ export const BatchTableRow = ({
     mergeDisabled &&
       "bg-muted-foreground/20 text-primary-foreground/40 border-transparent",
     combineMode?.isInitiating && "bg-accent/40 border-accent/60",
-    assignmentMode?.isSelected && "border-green-300 bg-green-50",
   )
 
   // Determine which action buttons to show
   const renderActionButtons = () => {
-    if (assignmentMode?.isActive) {
-      return (
-        <AssignmentModeActions
-          assignmentMode={assignmentMode}
-          hasActiveAssignment={hasActiveAssignment}
-        />
-      )
-    }
-
     if (combineMode?.canCombine && combineMode?.isActive) {
       return <MergeModeActions combineMode={combineMode} />
     }

@@ -22,7 +22,7 @@ import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
 
 import { useSubBatches, useSplitSubBatch } from "@/hooks/useSubBatches"
-import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveStorageLocations } from "@/hooks/useBatchStorage"
 import { useActiveContainers } from "@/hooks/useContainers"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 

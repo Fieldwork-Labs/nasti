@@ -18,7 +18,7 @@ import {
   type BatchCleaningWithOutputs,
   useBagAndStoreCleaningOutputs,
 } from "@/hooks/useCleanBatch"
-import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveStorageLocations } from "@/hooks/useBatchStorage"
 
 const NO_LOCATION = "__none__"
 

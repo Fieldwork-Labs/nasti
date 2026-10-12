@@ -23,7 +23,7 @@ import {
   type SubBatchWithStorage,
   useMergeSubBatches,
 } from "@/hooks/useSubBatches"
-import { useActiveStorageLocations } from "@/hooks/useStorageLocations"
+import { useActiveStorageLocations } from "@/hooks/useBatchStorage"
 
 const NO_CONTAINER = "__none__"
 const NO_LOCATION = "__none__"
