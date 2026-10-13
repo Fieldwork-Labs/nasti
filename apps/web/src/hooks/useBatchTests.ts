@@ -166,38 +166,6 @@ export const useAddTest = () => {
   })
 }
 
-// Mutation: Delete test
-export const useDeleteTest = () => {
-  return useMutation<Test, Error, string>({
-    mutationFn: async (testId) => {
-      const { data, error } = await supabase
-        .from("tests")
-        .delete()
-        .eq("id", testId)
-        .select()
-        .single()
-
-      if (error) throw new Error(error.message)
-      return data as Test
-    },
-    onSuccess: (deletedTest) => {
-      // Remove from tests cache
-      queryClient.setQueryData<Test[]>(
-        ["batches", "tests", deletedTest.batch_id],
-        (oldData) => {
-          if (!oldData) return []
-          return oldData.filter((test) => test.id !== deletedTest.id)
-        },
-      )
-
-      // Invalidate batch detail cache
-      queryClient.invalidateQueries({
-        queryKey: ["batches", "detail", deletedTest.batch_id],
-      })
-    },
-  })
-}
-
 // ============================================================================
 // QUALITY TEST SPECIFIC HOOKS
 // ============================================================================
@@ -427,41 +395,41 @@ export const useUpdateQualityTest = () => {
 }
 
 // Mutation: Delete quality test
+//
+// A recorded test's type and replicate weights are fixed, so a test entered
+// wrongly is deleted and recorded again. The RPC hides the test and gives the
+// seed it consumed back to its bag.
 export const useDeleteQualityTest = () => {
-  return useMutation<QualityTest, Error, string>({
-    mutationFn: async (testId) => {
-      const { data, error } = await supabase
-        .from("tests")
-        .delete()
-        .eq("id", testId)
-        .select()
-        .single()
+  return useMutation<void, Error, QualityTest>({
+    mutationFn: async (test) => {
+      // TODO: regenerate types with `supabase gen types` after migration
+      const { error } = await (supabase.rpc as CallableFunction)(
+        "fn_delete_quality_test",
+        { p_test_id: test.id },
+      )
 
-      if (error) throw new Error(error.message)
-      return data as unknown as QualityTest
+      if (error) throw new Error((error as { message: string }).message)
     },
-    onSuccess: (deletedTest) => {
-      // Remove from quality tests cache
+    onSuccess: (_, deletedTest) => {
       queryClient.setQueryData<QualityTest[]>(
         ["batches", "qualityTests", deletedTest.batch_id],
-        (oldData) => {
-          if (!oldData) return []
-          return oldData.filter((test) => test.id !== deletedTest.id)
-        },
+        (oldData) => oldData?.filter((test) => test.id !== deletedTest.id),
       )
 
-      // Remove from all tests cache
       queryClient.setQueryData<Test[]>(
         ["batches", "tests", deletedTest.batch_id],
-        (oldData) => {
-          if (!oldData) return []
-          return oldData.filter((test) => test.id !== deletedTest.id)
-        },
+        (oldData) => oldData?.filter((test) => test.id !== deletedTest.id),
       )
 
-      // Invalidate batch detail cache
+      queryClient.invalidateQueries({ queryKey: TESTING_TEST_HISTORY_KEY })
+
       queryClient.invalidateQueries({
         queryKey: ["batches", "detail", deletedTest.batch_id],
+      })
+
+      // The restored seed changes the bag's weight
+      queryClient.invalidateQueries({
+        queryKey: ["subBatches", deletedTest.batch_id],
       })
     },
   })

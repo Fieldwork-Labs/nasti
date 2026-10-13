@@ -30,9 +30,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@nasti/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@nasti/ui/alert-dialog"
 
 import {
   useCreateQualityTest,
+  useDeleteQualityTest,
   useUpdateQualityTest,
 } from "@/hooks/useBatchTests"
 import { useSubBatches } from "@/hooks/useSubBatches"
@@ -219,6 +231,8 @@ export const QualityTestForm = ({
     useCreateQualityTest()
   const { mutateAsync: updateTest, isPending: isUpdating } =
     useUpdateQualityTest()
+  const { mutateAsync: deleteTest, isPending: isDeleting } =
+    useDeleteQualityTest()
   const [testTypeOpen, setTestTypeOpen] = useState(false)
 
   const { data: subBatches, isLoading: subBatchesLoading } =
@@ -235,7 +249,7 @@ export const QualityTestForm = ({
     return null
   }, [selectedSubBatchId, subBatches])
 
-  const isPending = isCreating || isUpdating
+  const isPending = isCreating || isUpdating || isDeleting
   const isEditing = Boolean(existingTest)
 
   // Form setup with default values
@@ -300,6 +314,25 @@ export const QualityTestForm = ({
       console.error("Failed to save quality test:", error)
       toast({
         description: `Failed to ${isEditing ? "update" : "record"} quality test`,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const onDelete = async () => {
+    if (!existingTest) return
+
+    try {
+      await deleteTest(existingTest)
+      toast({ description: "Quality test deleted" })
+      onSuccess?.()
+    } catch (error) {
+      console.error("Failed to delete quality test:", error)
+      toast({
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to delete quality test",
         variant: "destructive",
       })
     }
@@ -538,7 +571,8 @@ export const QualityTestForm = ({
           {isEditing && (
             <p className="text-muted-foreground text-xs">
               The test type and replicate weights record the seed this test
-              used, so they cannot be changed.
+              used, so they cannot be changed. If they are wrong, delete the
+              test and record it again.
             </p>
           )}
 
@@ -569,6 +603,39 @@ export const QualityTestForm = ({
 
         {/* Form Actions */}
         <div className="flex justify-end gap-3 pt-4">
+          {isEditing && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending}
+                  className="mr-auto cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Delete Test
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Quality Test</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    The test will be removed and any seed it used will be added
+                    back to its bag. Record it again if it was entered wrongly.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           {onCancel && (
             <Button
               type="button"
