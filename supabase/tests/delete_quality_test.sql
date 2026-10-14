@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(19);
+select plan(23);
 
 -- A quality test recorded with the wrong type or weights is deleted and
 -- recorded again. Deleting it restores the seed it consumed through a
@@ -247,6 +247,71 @@ select throws_ok(
   null,
   'a test cannot be deleted once its bag has been merged away'
 );
+
+-- Repointing the test at a bag the caller still holds would pass the checks
+-- against that bag while the seed went back to the merged-away one.
+
+select throws_ok(
+  $$
+    update public.tests
+    set sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
+    where id = (select id from deleted_test where key = 'merged')
+  $$,
+  '42501',
+  null,
+  'a caller cannot move a test to another bag'
+);
+
+reset role;
+
+select throws_ok(
+  $$
+    update public.tests
+    set sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
+    where id = (select id from deleted_test where key = 'merged')
+  $$,
+  '22023',
+  null,
+  'a test''s bag is fixed even for privileged updates'
+);
+
+-- A test repointed before its bag was fixed.
+alter table public.tests disable trigger tests_bag_immutable;
+
+update public.tests
+set sub_batch_id = 'd3000000-0000-0000-0000-000000000001'
+where id = (select id from deleted_test where key = 'merged');
+
+alter table public.tests enable trigger tests_bag_immutable;
+
+set local role authenticated;
+
+select throws_ok(
+  $$
+    select public.fn_delete_quality_test(
+      (select id from deleted_test where key = 'merged')
+    )
+  $$,
+  '55000',
+  null,
+  'a repointed test cannot be deleted to restore seed to its original bag'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)
+    from public.batch_weight_adjustments correction
+    inner join public.batch_weight_adjustments consumption
+      on consumption.id = correction.corrects_adjustment_id
+    where consumption.test_id = (select id from deleted_test where key = 'merged')
+  ),
+  0::bigint,
+  'no seed is restored to the merged-away bag'
+);
+
+set local role authenticated;
 
 -- Laboratory tests -----------------------------------------------------------
 
