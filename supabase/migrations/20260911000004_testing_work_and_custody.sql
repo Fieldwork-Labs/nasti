@@ -562,6 +562,33 @@ AS $function$
 $function$
 ;
 
+-- A test's consumption adjustment is written once, when the test is created,
+-- and not reconciled on edit. A test's type is therefore fixed once recorded,
+-- and a quality test's replicate weights may not change the seed it consumed:
+-- either would leave inventory and the recorded result disagreeing.
+CREATE OR REPLACE FUNCTION public.fn_guard_quality_test_consumed_weight()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+BEGIN
+  IF NEW.type IS DISTINCT FROM OLD.type THEN
+    RAISE EXCEPTION 'A test''s type cannot be changed once recorded'
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF NEW.type = 'quality'
+     AND public.fn_quality_test_consumed_weight(NEW.result)
+       IS DISTINCT FROM public.fn_quality_test_consumed_weight(OLD.result) THEN
+    RAISE EXCEPTION 'The seed a test consumed cannot be changed: keep its type and replicate weights'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.fn_create_quality_test(p_batch_id uuid, p_sub_batch_id uuid, p_result jsonb, p_performed_by_organisation_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql

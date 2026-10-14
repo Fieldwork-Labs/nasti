@@ -2,7 +2,7 @@
 -- Deleting a quality test
 --
 -- A recorded test's type and replicate weights are fixed (see
--- 20261012000001_test_type_immutable.sql), so a test entered with the wrong
+-- fn_guard_quality_test_consumed_weight), so a test entered with the wrong
 -- type or weights has to be deleted and recorded again. A destructive test
 -- cannot simply be removed: its test_consumption adjustment references it,
 -- and re-recording it would deduct the seed a second time.
@@ -18,6 +18,10 @@
 -- - it was merged or cleaned into other bags afterwards;
 -- - the caller's organisation no longer holds it;
 -- - the test used up a bag at a laboratory, which closed its assignment.
+--
+-- Those checks are made against the test's bag, so a test's batch and bag are
+-- fixed once recorded, and deletion refuses a test whose consumption was taken
+-- from any other bag. Nothing in the app moves a test between bags.
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE public.tests
@@ -34,15 +38,37 @@ DROP POLICY IF EXISTS "tests_permission_delete" ON public.tests;
 REVOKE UPDATE ON public.tests FROM authenticated;
 GRANT UPDATE (
   id,
-  batch_id,
   type,
   result,
   tested_at,
   tested_by,
   statistics,
-  performed_by_organisation_id,
-  sub_batch_id
+  performed_by_organisation_id
 ) ON public.tests TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.fn_guard_test_bag_immutable()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+BEGIN
+  IF NEW.batch_id IS DISTINCT FROM OLD.batch_id
+     OR NEW.sub_batch_id IS DISTINCT FROM OLD.sub_batch_id THEN
+    RAISE EXCEPTION 'A test''s batch and bag cannot be changed once recorded'
+      USING ERRCODE = '22023';
+  END IF;
+
+  RETURN NEW;
+END;
+$function$
+;
+
+CREATE TRIGGER tests_bag_immutable
+  BEFORE UPDATE OF batch_id, sub_batch_id ON public.tests
+  FOR EACH ROW
+  EXECUTE FUNCTION public.fn_guard_test_bag_immutable();
+
+REVOKE ALL ON FUNCTION public.fn_guard_test_bag_immutable() FROM PUBLIC, anon;
 
 CREATE POLICY "tests_hide_deleted"
   ON public.tests
@@ -104,6 +130,19 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Quality test not found'
       USING ERRCODE = 'P0002';
+  END IF;
+
+  -- The checks below are against the test's bag, so the seed must have come
+  -- from that bag.
+  IF EXISTS (
+    SELECT 1
+    FROM public.batch_weight_adjustments consumption
+    WHERE consumption.test_id = p_test_id
+      AND consumption.kind = 'test_consumption'
+      AND consumption.sub_batch_id IS DISTINCT FROM v_test.sub_batch_id
+  ) THEN
+    RAISE EXCEPTION 'This test''s seed was taken from a different bag, so it cannot be restored'
+      USING ERRCODE = '55000';
   END IF;
 
   IF v_held_by_org_id IS DISTINCT FROM v_caller_org_id THEN

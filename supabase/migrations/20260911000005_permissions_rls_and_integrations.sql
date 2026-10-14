@@ -2364,7 +2364,7 @@ create policy "sub_batches_insert"
   as permissive
   for insert
   to authenticated
-with check ((held_by_org_id = ( SELECT public.get_user_organisation_id() AS get_user_organisation_id)));
+with check (((held_by_org_id = ( SELECT public.get_user_organisation_id() AS get_user_organisation_id)) AND public.is_batch_owner(batch_id)));
 
 create policy "sub_batches_permission_delete"
   on "public"."sub_batches"
@@ -2646,6 +2646,8 @@ CREATE TRIGGER sub_batches_permission_guard BEFORE INSERT OR DELETE OR UPDATE ON
 
 CREATE TRIGGER sub_batches_storage_container_relationship BEFORE INSERT OR UPDATE OF container_id, batch_id ON public.sub_batches FOR EACH ROW EXECUTE FUNCTION public.validate_sub_batch_storage_container();
 
+CREATE TRIGGER tests_consumed_weight_immutable BEFORE UPDATE OF type, result ON public.tests FOR EACH ROW EXECUTE FUNCTION public.fn_guard_quality_test_consumed_weight();
+
 CREATE TRIGGER tests_permission_guard BEFORE INSERT OR DELETE OR UPDATE ON public.tests FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_org_permission('inventory');
 
 CREATE TRIGGER trigger_update_quality_test_statistics AFTER INSERT OR UPDATE OF result ON public.tests FOR EACH ROW EXECUTE FUNCTION public.update_quality_test_statistics();
@@ -2763,6 +2765,7 @@ REVOKE ALL ON FUNCTION public.fn_remove_storage_location(uuid) FROM PUBLIC, anon
 REVOKE ALL ON FUNCTION public.fn_set_sub_batch_storage(uuid, uuid, timestamp with time zone, text) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.fn_update_batch_cleaning(uuid, interval, text, text, text, text, uuid[]) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.prevent_container_purpose_change() FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.fn_guard_quality_test_consumed_weight() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.validate_active_storage_location() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.validate_sub_batch_storage_container() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.fn_resolve_testing_assignments_for_sub_batch(uuid) FROM PUBLIC, anon;
@@ -2774,8 +2777,9 @@ REVOKE ALL ON FUNCTION public.auth_org_role() FROM PUBLIC, anon;
 --
 -- Table-wide UPDATE is revoked above. Restore the columns a member may edit
 -- directly; custody, holder and lineage columns stay writable only through the
--- RPCs.
-GRANT UPDATE (id, batch_id, weight_grams, notes, created_at, container_id)
+-- RPCs. batch_id is left out: reparenting a bag would move seed into a batch
+-- the caller was never authorised for.
+GRANT UPDATE (id, weight_grams, notes, created_at, container_id)
   ON public.sub_batches TO authenticated;
 
 -- Tables created later must not be readable by anon either.
