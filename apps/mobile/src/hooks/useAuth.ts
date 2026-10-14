@@ -6,6 +6,8 @@ import {
 } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
 import { isAuthRetryableFetchError } from "@supabase/supabase-js"
+import { hasOrgPermission } from "@nasti/common/permissions"
+import type { OrgPermission } from "@nasti/common/types"
 import {
   type AuthState,
   allowExplicitLogin,
@@ -123,12 +125,20 @@ export const useAuth = ({
     meta: { persisted: false },
   })
 
+  const role = authState.claims?.role ?? null
+  const permissions = authState.claims?.permissions ?? []
+
   return {
     session: authState.session,
     mode: authState.mode,
     requiresSignIn: authState.reauthRequired,
     user: authState.user,
-    role: authState.claims?.role ?? null,
+    role,
+    permissions,
+    // Sessions issued before member permissions shipped carry no permissions
+    // claim; the database applies the same fallback until the token refreshes.
+    hasPermission: (permission: OrgPermission) =>
+      hasOrgPermission(role, permissions, permission),
     organisation: authState.claims?.organisation ?? null,
     login,
     logout,

@@ -55,21 +55,13 @@ const InvitationAcceptPage = () => {
     async (data: FormData) => {
       if (!invitation) throw new Error("Invitation not found")
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept_invitation`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: invitation.id, token, ...data }),
-        },
-      )
+      const { error } = await supabase.functions.invoke("accept_invitation", {
+        body: { id: invitation.id, token, ...data },
+      })
 
-      if (response.ok) {
+      if (!error) {
         navigate({ to: "/trips" })
       } else {
-        const { error } = await response.json()
         setError("root", {
           message: `Unable to accept invitation: ${error}`,
         })

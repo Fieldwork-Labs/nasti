@@ -1,4 +1,3 @@
-import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { useOrganisationForm } from "@/hooks/useOrganisationForm"
 import { useUpdateOrganisation } from "@/hooks/useUpdateOrganisation"
 import useUserStore from "@/store/userStore"
@@ -13,7 +12,6 @@ export const Route = createFileRoute("/_private/settings/organisation-details")(
 )
 
 function OrganisationFormPage() {
-  useAdminOnly()
   const { organisation } = useUserStore()
   const navigate = useNavigate({
     from: "/settings/organisation-details",

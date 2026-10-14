@@ -6,7 +6,9 @@
   "type": "module",
   "main": "index.ts",
   "files": [
+    "authClaims.ts",
     "authStorage.ts",
+    "permissions.ts",
     "supabase.ts",
     "supabaseClient.ts",
     "types/index.ts",

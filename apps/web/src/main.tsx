@@ -27,6 +27,8 @@ const router = createRouter({
     getSession: () => Promise.resolve(null),
     orgId: null,
     getUser: () => Promise.resolve(null),
+    role: null,
+    permissions: [],
   },
 })
 
@@ -35,6 +37,7 @@ Sentry.init({
   sendDefaultPii: true,
   integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
   transport: Sentry.makeBrowserOfflineTransport(Sentry.makeFetchTransport),
+  enabled: import.meta.env.VITE_IS_PROD,
 })
 
 // Register the router instance for type safety
@@ -45,12 +48,20 @@ declare module "@tanstack/react-router" {
 }
 
 const App = () => {
-  const { session, getSession, organisation, getUser } = useUserStore()
+  const { session, getSession, organisation, getUser, role, permissions } =
+    useUserStore()
   return (
     <ThemeProvider>
       <RouterProvider
         router={router}
-        context={{ session, getSession, orgId: organisation?.id, getUser }}
+        context={{
+          session,
+          getSession,
+          orgId: organisation?.id,
+          getUser,
+          role,
+          permissions,
+        }}
       />
     </ThemeProvider>
   )

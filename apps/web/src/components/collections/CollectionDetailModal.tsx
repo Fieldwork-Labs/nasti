@@ -3,9 +3,8 @@ import { Modal } from "@nasti/ui/modal"
 import Map, { Marker } from "react-map-gl"
 import mapboxgl from "mapbox-gl"
 import { parseWkbPoint } from "@nasti/common/utils"
-import { Collection } from "@nasti/common/types"
-import { SpeciesListItem } from "@/routes/_private/species"
-import { PencilIcon, ShoppingBag, TrashIcon } from "lucide-react"
+import { SpeciesListItem } from "@/components/species/SpeciesListItem"
+import { PencilIcon, ShoppingBag, TrashIcon, XIcon } from "lucide-react"
 import { usePeople } from "@/hooks/usePeople"
 import { Button } from "@nasti/ui/button"
 import { Badge } from "@nasti/ui/badge"
@@ -30,9 +29,13 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@nasti/ui/carousel"
+import { AudioTab } from "@/components/common/AudioTab"
+import { useCollectionAudio } from "@/hooks/useEntityAudio"
 import { PhenologyRangeDisplay } from "@nasti/ui/phenologyRangeDisplay"
 import { usePersons } from "@/hooks/usePersons"
 import { formatDuration } from "@/lib/duration"
+import { useCollection } from "@/hooks/useCollection"
+import { useCollectionContainers } from "@/hooks/useContainers"
 import { MATERIAL_TYPE_LABELS, toMaterialTypes } from "@nasti/common/types"
 
 const PhotosTab = ({
@@ -92,16 +95,17 @@ const EditButtons = ({
 )
 
 export const CollectionDetailModal = ({
-  collection,
+  id,
   open,
   onClose,
 }: {
-  collection?: Collection
+  id: string
   open: boolean
   onClose: () => void
 }) => {
   const { isAdmin } = useUserStore()
   const { pathname } = useLocation()
+  const { data: collection } = useCollection(id)
   // Parse location coordinates
   const coordinates = useMemo(() => {
     if (!collection?.location) return null
@@ -150,6 +154,8 @@ export const CollectionDetailModal = ({
     [setModalImage, photos],
   )
 
+  const { data: audio } = useCollectionAudio(collection?.id)
+
   const { data: people } = usePeople()
   const creator = people?.find((person) => person.id === collection?.created_by)
   const { data: persons } = usePersons()
@@ -159,6 +165,19 @@ export const CollectionDetailModal = ({
   const formattedDuration = formatDuration(collection?.duration)
   const materialTypes = toMaterialTypes(collection?.material_type)
 
+  const { data: collectionContainers } = useCollectionContainers(collection?.id)
+  const containerSummary = useMemo(
+    () =>
+      [...(collectionContainers ?? [])]
+        .sort((a, b) => a.container.name.localeCompare(b.container.name))
+        .map(({ id, amount, container }) => ({
+          id,
+          label:
+            amount === null ? container.name : `${amount} × ${container.name}`,
+        })),
+    [collectionContainers],
+  )
+
   if (!collection) return null
 
   return (
@@ -166,15 +185,18 @@ export const CollectionDetailModal = ({
       <Modal
         open={open}
         onOpenChange={onClose}
+        className="max-h-[90vh] overflow-y-auto"
         title={
           <div className="flex justify-between">
             <span>Collection</span>
-            {isAdmin && (
-              <EditButtons
-                openUpdateModal={openUpdateModal}
-                openDeleteModal={openDeleteModal}
-              />
-            )}
+            <Button
+              size={"icon"}
+              onClick={onClose}
+              title="Close"
+              variant={"ghost"}
+            >
+              <XIcon className="h-4 w-4" />
+            </Button>
           </div>
         }
       >
@@ -195,10 +217,14 @@ export const CollectionDetailModal = ({
             </div>
           )}
           <Tabs defaultValue="details">
-            <TabsList className="bg-secondary-background grid w-full grid-cols-2">
+            <TabsList className="bg-secondary-background grid w-full auto-cols-fr grid-flow-col">
               <TabsTrigger value="details">Details</TabsTrigger>
-              {photos?.length && photos.length > 0 && (
+              {coordinates && <TabsTrigger value="map">Map</TabsTrigger>}
+              {photos && photos.length > 0 && (
                 <TabsTrigger value="photos">Photos</TabsTrigger>
+              )}
+              {audio && audio.length > 0 && (
+                <TabsTrigger value="audio">Audio</TabsTrigger>
               )}
             </TabsList>
             <TabsContent value="details">
@@ -280,6 +306,18 @@ export const CollectionDetailModal = ({
                     </div>
                   </div>
                 )}
+                {containerSummary.length > 0 && (
+                  <div>
+                    <div className="text-lead mb-1">Containers</div>
+                    <div className="flex flex-wrap gap-2">
+                      {containerSummary.map(({ id, label }) => (
+                        <Badge key={id} variant="secondary">
+                          {label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {collection.phenology_start !== null && (
                   <div className="space-y-2">
                     <span className="text-muted-foreground h-min text-left align-middle font-medium">
@@ -329,31 +367,30 @@ export const CollectionDetailModal = ({
                     </div>
                   </div>
                 )}
-                {/* Map */}
-                {coordinates && (
-                  <div className="h-[300px] w-full">
-                    <Map
-                      mapLib={mapboxgl as never}
-                      mapboxAccessToken={
-                        import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
-                      }
-                      mapStyle="mapbox://styles/mapbox/satellite-v9"
-                      {...viewState}
-                      onMove={(evt) => setViewState(evt.viewState)}
-                      style={{ width: "100%", height: "100%" }}
-                    >
-                      <Marker
-                        longitude={coordinates.longitude}
-                        latitude={coordinates.latitude}
-                      >
-                        <div className="rounded-full bg-white/50 p-2">
-                          <ShoppingBag className="text-primary h-5 w-5" />
-                        </div>
-                      </Marker>
-                    </Map>
-                  </div>
-                )}
               </div>
+            </TabsContent>
+            <TabsContent value="map">
+              {coordinates && (
+                <div className="h-[350px] w-full">
+                  <Map
+                    mapLib={mapboxgl as never}
+                    mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+                    mapStyle="mapbox://styles/mapbox/satellite-v9"
+                    {...viewState}
+                    onMove={(evt) => setViewState(evt.viewState)}
+                    style={{ width: "100%", height: "100%" }}
+                  >
+                    <Marker
+                      longitude={coordinates.longitude}
+                      latitude={coordinates.latitude}
+                    >
+                      <div className="rounded-full bg-white/50 p-2">
+                        <ShoppingBag className="text-primary h-5 w-5" />
+                      </div>
+                    </Marker>
+                  </Map>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="photos">
               <PhotosTab
@@ -361,11 +398,19 @@ export const CollectionDetailModal = ({
                 onClickPhoto={handleClickPhoto}
               />
             </TabsContent>
+            <TabsContent value="audio">
+              <AudioTab audio={audio ?? []} />
+            </TabsContent>
           </Tabs>
         </div>
-        <div className="flex justify-end">
-          <Button onClick={onClose}>Close</Button>
-        </div>
+        {isAdmin && (
+          <div className="flex justify-end">
+            <EditButtons
+              openUpdateModal={openUpdateModal}
+              openDeleteModal={openDeleteModal}
+            />
+          </div>
+        )}
       </Modal>
       {isOpenUpdateModal && (
         <UpdateCollectionWizardModal

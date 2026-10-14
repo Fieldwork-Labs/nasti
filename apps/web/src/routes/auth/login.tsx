@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { useNavigate, Link } from "@tanstack/react-router"
+import { useNavigate, Link, useSearch } from "@tanstack/react-router"
 import { supabase } from "@nasti/common/supabase"
 import useUserStore from "@/store/userStore"
+import { getLoginRedirect } from "@/lib/loginRedirect"
 import { useForm } from "react-hook-form"
 
 import { Button } from "@nasti/ui/button"
@@ -18,6 +19,10 @@ type FormData = {
 
 const LoginForm = () => {
   const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as { redirect?: string }
+  const loginRedirect = getLoginRedirect(search.redirect)
+  const loginRedirectLabel =
+    loginRedirect === "/trips" ? "Go to Trips" : "Continue"
   const { getUser, setSession, session } = useUserStore()
   // prevent flash of "already logged in" state after submitting
   const hasSubmitted = useRef(false)
@@ -50,12 +55,12 @@ const LoginForm = () => {
       } else {
         await getUser()
         setSession(data.session)
-        navigate({ to: "/trips" })
+        navigate({ to: loginRedirect })
         toast({ description: "Logged in successfully!" })
       }
       return true
     },
-    [setSession, getUser, navigate, toast],
+    [setSession, getUser, navigate, toast, loginRedirect],
   )
 
   return (
@@ -65,8 +70,8 @@ const LoginForm = () => {
           <h2 className="mb-6 text-2xl font-bold text-gray-700 dark:text-gray-300">
             You're already logged in
           </h2>
-          <Link className="underline" to="/trips">
-            Go to Trips
+          <Link className="underline" to={loginRedirect}>
+            {loginRedirectLabel}
           </Link>
         </div>
       ) : (

@@ -9,12 +9,11 @@ import { ArrowLeftIcon, PlusIcon, RefreshCwIcon, TrashIcon } from "lucide-react"
 import { cn } from "@nasti/ui/utils"
 import { ButtonLink } from "@nasti/ui/button-link"
 import { Modal } from "@nasti/ui/modal"
-import { useAdminOnly } from "@/hooks/useAdminOnly"
 import { Invitation } from "@nasti/common/types"
+import { PermissionBadges } from "@/components/common/PermissionBadges"
 import { Spinner } from "@nasti/ui/spinner"
 
 const InvitationsList = () => {
-  useAdminOnly()
   const { organisation, session } = useUserStore()
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -145,6 +144,8 @@ const InvitationsList = () => {
               <tr>
                 <th className="px-4 py-2 text-left">Name</th>
                 <th className="px-4 py-2 text-left">Email</th>
+                <th className="px-4 py-2 text-left">Role</th>
+                <th className="px-4 py-2 text-left">Access</th>
                 <th className="px-4 py-2 text-left">Created</th>
                 <th className="px-4 py-2 text-left">Expires</th>
                 <th className="px-4 py-2 text-left">Accepted</th>
@@ -156,6 +157,13 @@ const InvitationsList = () => {
                 <tr key={invitation.id} className="border-t">
                   <td className="px-4 py-2">{invitation.name}</td>
                   <td className="px-4 py-2">{invitation.email}</td>
+                  <td className="px-4 py-2">{invitation.role}</td>
+                  <td className="px-4 py-2">
+                    <PermissionBadges
+                      role={invitation.role}
+                      permissions={invitation.permissions}
+                    />
+                  </td>
                   <td className="px-4 py-2">
                     {new Date(invitation.created_at).toLocaleDateString()}
                   </td>

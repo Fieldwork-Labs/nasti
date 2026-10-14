@@ -18,6 +18,7 @@ export type ModalProps = {
   allowSubmit?: boolean
   title?: string | React.ReactNode
   isPending?: boolean
+  className?: string
 }
 
 export const Modal = ({
@@ -28,6 +29,7 @@ export const Modal = ({
   allowSubmit = true,
   isPending = false,
   title,
+  className,
   children,
 }: ModalProps & { children: React.ReactNode }) => {
   // memoise the title so that if the data is deleted, the modal
@@ -36,7 +38,7 @@ export const Modal = ({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className={className}>
         <AlertDialogHeader>
           {memoisedTitle && (
             <AlertDialogTitle>{memoisedTitle}</AlertDialogTitle>

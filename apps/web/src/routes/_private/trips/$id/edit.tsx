@@ -6,7 +6,7 @@ import {
 import { queryClient } from "@nasti/common/utils"
 import { Trip } from "@nasti/common/types"
 
-import { useAdminOnly } from "@/hooks/useAdminOnly"
+import { requireAdmin } from "@/utils/permissions"
 
 import { useTripForm } from "@/components/trips/forms/TripDetailsForm"
 import { useNavigate } from "@tanstack/react-router"
@@ -18,7 +18,6 @@ import { useCallback } from "react"
 import { getTripsQueryOptions } from "@nasti/common/hooks"
 
 const TripFormEdit = () => {
-  useAdminOnly()
   const { instance } = useLoaderData({ from: "/_private/trips/$id/edit" })
 
   const navigate = useNavigate()
@@ -92,6 +91,9 @@ const TripFormEdit = () => {
 }
 
 export const Route = createFileRoute("/_private/trips/$id/edit")({
+  beforeLoad: ({ context }) => {
+    requireAdmin(context)
+  },
   loader: async ({ params }) => {
     const { id } = params
 

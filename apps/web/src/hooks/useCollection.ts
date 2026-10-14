@@ -45,9 +45,10 @@ export const getCollection = async (id: string) => {
   return data as Collection
 }
 
-export const useCollection = (id: string) => {
+export const useCollection = (id: string | null | undefined) => {
   return useQuery({
     queryKey: ["collections", "detail", id],
-    queryFn: () => getCollection(id),
+    queryFn: () => getCollection(id as string),
+    enabled: Boolean(id),
   })
 }

@@ -13,23 +13,83 @@ export type MaybeNewCollection = Omit<
   code?: string
 }
 
-const upsertCollection = async (updatedItem: MaybeNewCollection) => {
-  const queryBase = supabase.from("collection").upsert(updatedItem)
+export type CollectionContainerInput = {
+  container_id: string
+  amount: number | null
+}
 
-  const query = updatedItem.id ? queryBase.eq("id", updatedItem.id) : queryBase
+export type MaybeNewCollectionWithContainers = MaybeNewCollection & {
+  containers: CollectionContainerInput[]
+}
 
-  const { data, error } = await query.select("*").single()
+// The join rows are edited as a whole set in the form, so bring the stored set
+// in line with it: drop the containers that were removed, upsert the rest.
+const syncCollectionContainers = async (
+  collectionId: string,
+  containers: CollectionContainerInput[],
+) => {
+  const { data: existing, error: existingError } = await supabase
+    .from("collection_containers")
+    .select("id, container_id")
+    .eq("collection_id", collectionId)
+
+  if (existingError) throw new Error(existingError.message)
+
+  const kept = new Set(containers.map(({ container_id }) => container_id))
+  const removedIds = (existing ?? [])
+    .filter((row) => !kept.has(row.container_id))
+    .map((row) => row.id)
+
+  if (removedIds.length > 0) {
+    const { error } = await supabase
+      .from("collection_containers")
+      .delete()
+      .in("id", removedIds)
+    if (error) throw new Error(error.message)
+  }
+
+  if (containers.length > 0) {
+    const { error } = await supabase.from("collection_containers").upsert(
+      containers.map(({ container_id, amount }) => ({
+        collection_id: collectionId,
+        container_id,
+        amount,
+      })),
+      { onConflict: "collection_id,container_id" },
+    )
+    if (error) throw new Error(error.message)
+  }
+}
+
+const upsertCollection = async ({
+  containers,
+  ...updatedItem
+}: MaybeNewCollectionWithContainers) => {
+  // Resolved on the primary key, so a retried create updates the row the
+  // failed attempt wrote.
+  const { data, error } = await supabase
+    .from("collection")
+    .upsert(updatedItem)
+    .select("*")
+    .single()
 
   if (error) throw new Error(error.message)
   if (!data) throw new Error("No data returned from collection upsert")
+
+  await syncCollectionContainers(data.id, containers)
 
   return data as Collection
 }
 
 export const useUpdateCollection = () => {
-  return useMutation<Collection, unknown, MaybeNewCollection>({
+  return useMutation<Collection, unknown, MaybeNewCollectionWithContainers>({
     mutationFn: (updatedItem) => upsertCollection(updatedItem),
     onSuccess: (updatedItem, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["collections", "containers", updatedItem.id],
+      })
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
+
       // Update the individual item cache
       queryClient.setQueryData(
         ["collections", "detail", updatedItem.id],
@@ -52,7 +112,9 @@ export const useUpdateCollection = () => {
         queryClient.setQueryData<Collection[]>(queryKey, (oldData) => {
           if (!oldData || oldData.length === 0) return [updatedItem]
 
-          if (variables.id) {
+          // A new collection arrives with its id already chosen, so whether it
+          // is new is read from the cache rather than from the variables.
+          if (oldData.some((item) => item.id === updatedItem.id)) {
             return oldData.map((item) =>
               item.id === updatedItem.id ? updatedItem : item,
             )
@@ -80,6 +142,8 @@ export const useDeleteCollection = () => {
   return useMutation<Collection, unknown, string>({
     mutationFn: (id) => deleteCollection(id),
     onSuccess: (deletedObject) => {
+      queryClient.invalidateQueries({ queryKey: ["containers"] })
+
       // Get all existing queries for trip Collections
       const tripQueries = queryClient.getQueriesData({
         queryKey: ["collections", "byTrip", deletedObject.trip_id],
