@@ -28,73 +28,73 @@ VALUES (
   ARRAY['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
 );
 
-drop policy "Allow authenticated users to delete their own collections or ad" on "public"."collection";
+drop policy if exists "Allow authenticated users to delete their own collections or ad" on "public"."collection";
 
-drop policy "Allow authenticated users to insert collections for their organ" on "public"."collection";
+drop policy if exists "Allow authenticated users to insert collections for their organ" on "public"."collection";
 
-drop policy "Allow authenticated users to select collections for their organ" on "public"."collection";
+drop policy if exists "Allow authenticated users to select collections for their organ" on "public"."collection";
 
-drop policy "Allow authenticated users to update their own collections or ad" on "public"."collection";
+drop policy if exists "Allow authenticated users to update their own collections or ad" on "public"."collection";
 
-drop policy "collection_rls" on "public"."collection";
+drop policy if exists "collection_rls" on "public"."collection";
 
-drop policy "Allow authenticated users to delete their own collection photos" on "public"."collection_photo";
+drop policy if exists "Allow authenticated users to delete their own collection photos" on "public"."collection_photo";
 
-drop policy "Allow authenticated users to insert collection photos" on "public"."collection_photo";
+drop policy if exists "Allow authenticated users to insert collection photos" on "public"."collection_photo";
 
-drop policy "Allow authenticated users to select their collection photos" on "public"."collection_photo";
+drop policy if exists "Allow authenticated users to select their collection photos" on "public"."collection_photo";
 
-drop policy "Allow authenticated users to update their own collection photos" on "public"."collection_photo";
+drop policy if exists "Allow authenticated users to update their own collection photos" on "public"."collection_photo";
 
-drop policy "collection_photo_rls" on "public"."collection_photo";
+drop policy if exists "collection_photo_rls" on "public"."collection_photo";
 
-drop policy "Deny all write operations on ibra_regions" on "public"."ibra_regions";
+drop policy if exists "Deny all write operations on ibra_regions" on "public"."ibra_regions";
 
-drop policy "invitation_rls" on "public"."invitation";
+drop policy if exists "invitation_rls" on "public"."invitation";
 
-drop policy "org_user_rls" on "public"."org_user";
+drop policy if exists "org_user_rls" on "public"."org_user";
 
-drop policy "organisation_rls" on "public"."organisation";
+drop policy if exists "organisation_rls" on "public"."organisation";
 
-drop policy "Allow authenticated users to delete their own scouting_notess o" on "public"."scouting_notes";
+drop policy if exists "Allow authenticated users to delete their own scouting_notess o" on "public"."scouting_notes";
 
-drop policy "Allow authenticated users to insert scouting_notess for their o" on "public"."scouting_notes";
+drop policy if exists "Allow authenticated users to insert scouting_notess for their o" on "public"."scouting_notes";
 
-drop policy "Allow authenticated users to select scouting_notess for their o" on "public"."scouting_notes";
+drop policy if exists "Allow authenticated users to select scouting_notess for their o" on "public"."scouting_notes";
 
-drop policy "Allow authenticated users to update their own scouting_notess o" on "public"."scouting_notes";
+drop policy if exists "Allow authenticated users to update their own scouting_notess o" on "public"."scouting_notes";
 
-drop policy "Allow authenticated users to delete their own scouting_notes ph" on "public"."scouting_notes_photos";
+drop policy if exists "Allow authenticated users to delete their own scouting_notes ph" on "public"."scouting_notes_photos";
 
-drop policy "Allow authenticated users to insert scouting_notes photos" on "public"."scouting_notes_photos";
+drop policy if exists "Allow authenticated users to insert scouting_notes photos" on "public"."scouting_notes_photos";
 
-drop policy "Allow authenticated users to select their scouting_notes photos" on "public"."scouting_notes_photos";
+drop policy if exists "Allow authenticated users to select their scouting_notes photos" on "public"."scouting_notes_photos";
 
-drop policy "Allow authenticated users to update their own scouting_notes ph" on "public"."scouting_notes_photos";
+drop policy if exists "Allow authenticated users to update their own scouting_notes ph" on "public"."scouting_notes_photos";
 
-drop policy "Allow authenticated users to delete species for their organisat" on "public"."species";
+drop policy if exists "Allow authenticated users to delete species for their organisat" on "public"."species";
 
-drop policy "Allow authenticated users to insert species for their organisat" on "public"."species";
+drop policy if exists "Allow authenticated users to insert species for their organisat" on "public"."species";
 
-drop policy "Allow authenticated users to select species for their organisat" on "public"."species";
+drop policy if exists "Allow authenticated users to select species for their organisat" on "public"."species";
 
-drop policy "Allow authenticated users to update species for their organisat" on "public"."species";
+drop policy if exists "Allow authenticated users to update species for their organisat" on "public"."species";
 
-drop policy "species_rls" on "public"."species";
+drop policy if exists "species_rls" on "public"."species";
 
-drop policy "Allow authenticated users to delete species photos for their or" on "public"."species_photo";
+drop policy if exists "Allow authenticated users to delete species photos for their or" on "public"."species_photo";
 
-drop policy "Allow authenticated users to insert species photos for their or" on "public"."species_photo";
+drop policy if exists "Allow authenticated users to insert species photos for their or" on "public"."species_photo";
 
-drop policy "Allow authenticated users to select species photos for their or" on "public"."species_photo";
+drop policy if exists "Allow authenticated users to select species photos for their or" on "public"."species_photo";
 
-drop policy "Allow authenticated users to update species photos for their or" on "public"."species_photo";
+drop policy if exists "Allow authenticated users to update species photos for their or" on "public"."species_photo";
 
-drop policy "trip_rls" on "public"."trip";
+drop policy if exists "trip_rls" on "public"."trip";
 
-drop policy "trip_member_rls" on "public"."trip_member";
+drop policy if exists "trip_member_rls" on "public"."trip_member";
 
-drop policy "trip_species_rls" on "public"."trip_species";
+drop policy if exists "trip_species_rls" on "public"."trip_species";
 
 revoke select on table "public"."collection" from "anon";
 
