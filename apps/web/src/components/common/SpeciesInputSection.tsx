@@ -77,6 +77,17 @@ export const SpeciesInputSection = <T extends SpeciesFormValues>({
       </div>
     )
 
+  const switchToSpecies = () => setShowSpeciesInput(true)
+  const switchToSpecimenName = () => {
+    // A known species and a specimen name are alternatives: require the name.
+    setValue("species_id", null, { shouldDirty: true })
+    setValue("species_uncertain", true, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+    setShowSpeciesInput(false)
+  }
+
   return (
     <div className="space-y-2">
       {showSpeciesInput && (
@@ -103,6 +114,18 @@ export const SpeciesInputSection = <T extends SpeciesFormValues>({
           error={errors.field_name}
         />
       )}
+
+      <Button
+        type="button"
+        variant="link"
+        size="sm"
+        className="h-auto p-0"
+        onClick={showSpeciesInput ? switchToSpecimenName : switchToSpecies}
+      >
+        {showSpeciesInput
+          ? "Enter specimen name instead"
+          : "Select species instead"}
+      </Button>
 
       <Controller
         control={control}

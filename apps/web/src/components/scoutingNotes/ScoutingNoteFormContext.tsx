@@ -13,6 +13,7 @@ import { z } from "zod"
 
 import { useUpdateScoutingNote } from "@/hooks/useUpdateScoutingNote"
 import useUserStore from "@/store/userStore"
+import { useCollectorPersonId } from "@/hooks/useCollectorPersonId"
 import { parseWkbPoint } from "@nasti/common/utils"
 import { useDataItemLocationMap } from "../common/useDataItemLocationMap"
 
@@ -84,6 +85,10 @@ const useScoutingNoteForm = ({
   const [scoutingNote, setScoutingNote] = useState<ScoutingNote | undefined>(
     instance,
   )
+  // The creator is recorded in created_by, so is never kept in person_ids.
+  const collectorPersonId = useCollectorPersonId(
+    scoutingNote?.created_by ?? user?.id,
+  )
 
   const defaultValues = useMemo(() => {
     return scoutingNote
@@ -149,6 +154,7 @@ const useScoutingNoteForm = ({
       const location = `POINT(${longitude} ${latitude})`
       const newNote = {
         ...rest,
+        person_ids: rest.person_ids.filter((id) => id !== collectorPersonId),
         id: scoutingNote?.id,
         created_by: scoutingNote?.created_by ?? user.id,
         location,
@@ -168,6 +174,7 @@ const useScoutingNoteForm = ({
       organisation,
       tripId,
       scoutingNote,
+      collectorPersonId,
       updateScoutingNote,
       onSuccess,
       form,

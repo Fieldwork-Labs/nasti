@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 
+import { useCollectorPersonId } from "@/hooks/useCollectorPersonId"
 import { usePersons } from "@/hooks/usePersons"
 import { Label } from "@nasti/ui/label"
 import { MultiSelect, Option } from "@nasti/ui/multi-select"
@@ -20,14 +21,7 @@ export const CollectorsField = ({
 }) => {
   const { data: persons } = usePersons()
 
-  const collectorPersonId = useMemo(
-    () =>
-      persons?.find(
-        (person) =>
-          person.source_type === "user" && person.user_id === collectorUserId,
-      )?.id,
-    [persons, collectorUserId],
-  )
+  const collectorPersonId = useCollectorPersonId(collectorUserId)
 
   const displayedValue = useMemo(
     () =>

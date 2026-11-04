@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import useUserStore from "@/store/userStore"
+import { useCollectorPersonId } from "@/hooks/useCollectorPersonId"
 
 import { parseWkbPoint } from "@nasti/common/utils"
 import {
@@ -104,6 +105,10 @@ const useCollectionForm = ({
   // failed after the collection row was written updates that row instead of
   // creating a second collection.
   const [newCollectionId] = useState(() => crypto.randomUUID())
+  // The collector is recorded in collected_by, so is never kept in person_ids.
+  const collectorPersonId = useCollectorPersonId(
+    collection?.collected_by ?? user?.id,
+  )
 
   const defaultValues = useMemo(() => {
     return collection
@@ -176,6 +181,7 @@ const useCollectionForm = ({
         const location = `POINT(${longitude} ${latitude})`
         const newCollection: MaybeNewCollectionWithContainers = {
           ...rest,
+          person_ids: rest.person_ids.filter((id) => id !== collectorPersonId),
           containers,
           id: collection?.id ?? newCollectionId,
           created_by: user.id,
@@ -208,6 +214,7 @@ const useCollectionForm = ({
       tripId,
       collection,
       newCollectionId,
+      collectorPersonId,
       updateCollection,
       onSuccess,
       form,
