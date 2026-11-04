@@ -179,7 +179,7 @@ const useCollectionForm = ({
           containers,
           id: collection?.id ?? newCollectionId,
           created_by: user.id,
-          collected_by: user.id,
+          collected_by: collection?.collected_by ?? user.id,
           location,
           organisation_id: organisation.id,
           trip_id,

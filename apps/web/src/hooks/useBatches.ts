@@ -233,6 +233,28 @@ export const useCombinedSources = (batchId: string | undefined) => {
   })
 }
 
+// Query: the collections a batch with no collection of its own descends from.
+// A combined batch, what cleaning it produces, and anything split, merged or
+// mixed from either all trace back through the lineage view to the original
+// collections, so the sources stay visible after the batch has been processed.
+export const useBatchSourceCollectionIds = (batchId: string | undefined) => {
+  return useQuery({
+    queryKey: ["batches", "sourceCollections", batchId],
+    enabled: Boolean(batchId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("batch_lineage_to_collections")
+        .select("collection_id")
+        .eq("batch_id", batchId!)
+
+      if (error) throw new Error(error.message)
+      return data
+        .map(({ collection_id }) => collection_id)
+        .filter((id): id is string => Boolean(id))
+    },
+  })
+}
+
 export const useBatchHistory = (batchId: string) => {
   return useQuery({
     queryKey: ["batches", "history", batchId],

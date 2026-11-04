@@ -2,18 +2,9 @@ import { InfoIcon } from "lucide-react"
 import { Controller } from "react-hook-form"
 
 import { Checkbox } from "@nasti/ui/checkbox"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@nasti/ui/select"
 import { SpeciesSearchCombobox } from "../species/SpeciesSearchCombobox"
 import { CollectionContainersInput } from "./CollectionContainersInput"
 
-import { usePeople } from "@/hooks/usePeople"
 import { usePersons } from "@/hooks/usePersons"
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
@@ -26,7 +17,7 @@ import {
   CollectionFormProps,
   useCollectionFormContext,
 } from "./CollectionFormContext"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import useUserStore from "@/store/userStore"
 import { MATERIAL_TYPE_OPTIONS } from "@nasti/common/types"
 import { DurationInput } from "./DurationInput"
@@ -50,15 +41,40 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
 
   const speciesValue = watch("species_id")
 
-  const { data: people } = usePeople()
   const { data: persons } = usePersons()
   const selectedPersonIds = watch("person_ids")
+
+  // The collector is always listed first and can't be removed. They aren't
+  // stored in person_ids: collected_by already records them.
+  const collectorUserId = collection?.collected_by ?? user?.id
+  const collectorPersonId = useMemo(
+    () =>
+      persons?.find(
+        (person) =>
+          person.source_type === "user" && person.user_id === collectorUserId,
+      )?.id,
+    [persons, collectorUserId],
+  )
+  const collectorValue = useMemo(
+    () =>
+      collectorPersonId
+        ? [
+            collectorPersonId,
+            ...(selectedPersonIds ?? []).filter(
+              (personId) => personId !== collectorPersonId,
+            ),
+          ]
+        : (selectedPersonIds ?? []),
+    [collectorPersonId, selectedPersonIds],
+  )
   const personOptions: Option[] = useMemo(
     () =>
       persons
         ?.filter(
           (person) =>
-            person.is_active || selectedPersonIds?.includes(person.id),
+            person.is_active ||
+            collectorValue.includes(person.id) ||
+            person.id === collectorPersonId,
         )
         .map((person) => ({
           value: person.id,
@@ -66,7 +82,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
             ? `${person.display_name} (${person.job_role})`
             : person.display_name,
         })) ?? [],
-    [persons, selectedPersonIds],
+    [persons, collectorValue, collectorPersonId],
   )
 
   // This form unmounts while the location map is open, so derive the initial
@@ -79,19 +95,6 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
       return null
     },
   )
-
-  useEffect(() => {
-    if (collection || selectedPersonIds?.length || !user?.id || !persons) return
-    const currentPerson = persons.find(
-      (person) => person.source_type === "user" && person.user_id === user.id,
-    )
-    if (currentPerson) {
-      setValue("person_ids", [currentPerson.id], {
-        shouldDirty: false,
-        shouldValidate: true,
-      })
-    }
-  }, [collection, persons, selectedPersonIds?.length, setValue, user?.id])
 
   return (
     <div className="space-y-6">
@@ -206,47 +209,20 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
       />
 
       <div className="space-y-2">
-        <Label>Main collector</Label>
-        <Controller
-          control={control}
-          name="collected_by"
-          render={({ field }) => (
-            <Select
-              onValueChange={field.onChange}
-              value={field.value ?? undefined}
-            >
-              <SelectTrigger
-                className="w-full max-w-48"
-                value={field.value ?? undefined}
-                onBlur={field.onBlur}
-              >
-                <SelectValue placeholder="Select a person" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {people?.map((person) => (
-                    <SelectItem key={person.id} value={person.id}>
-                      {person.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Other collectors</Label>
+        <Label>Collectors</Label>
         <Controller
           control={control}
           name="person_ids"
           render={({ field }) => (
             <MultiSelect
               options={personOptions}
-              onValueChange={field.onChange}
-              value={field.value}
-              defaultValue={field.value}
+              onValueChange={(next) =>
+                field.onChange(
+                  next.filter((personId) => personId !== collectorPersonId),
+                )
+              }
+              value={collectorValue}
+              defaultValue={collectorValue}
               placeholder="Select people"
             />
           )}

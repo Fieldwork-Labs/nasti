@@ -38,7 +38,7 @@ import {
   useBatchDetail,
   useBatchHistory,
   useCanDeleteBatch,
-  useCombinedSources,
+  useBatchSourceCollectionIds,
 } from "@/hooks/useBatches"
 import { useBatchTests } from "@/hooks/useBatchTests"
 import useUserStore from "@/store/userStore"
@@ -480,25 +480,20 @@ const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {
 }
 
 /**
- * The collections a combined batch was pooled from. An unprocessed batch with
- * no collection of its own is a combined one; anything else without a
- * collection (what cleaning a combined batch produces) has no sources to show.
+ * The collections a batch with no collection of its own was made from: a
+ * combined batch, or anything cleaned, split or merged from one.
  */
 const CombinedSources = ({ batch }: { batch: BatchType }) => {
-  const isUnprocessed = batch.weight_grams === null
-  const { data: sources } = useCombinedSources(
-    isUnprocessed ? batch.id : undefined,
-  )
-  const collectionIds = (sources ?? [])
-    .map((source) => source.collection_id)
-    .filter((id): id is string => Boolean(id))
+  const { data: collectionIds } = useBatchSourceCollectionIds(batch.id)
 
-  if (collectionIds.length === 0) return null
+  if (!collectionIds || collectionIds.length === 0) return null
 
   return (
     <div className="flex flex-col gap-2">
       <span className="font-semibold">
-        Combined from {collectionIds.length} collections
+        {collectionIds.length === 1
+          ? "Collection"
+          : `Combined from ${collectionIds.length} collections`}
       </span>
       <div className="lg:max-w-1/2 flex flex-col gap-2">
         {collectionIds.map((id) => (
