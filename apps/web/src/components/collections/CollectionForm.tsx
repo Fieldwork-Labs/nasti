@@ -69,7 +69,16 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
     [persons, selectedPersonIds],
   )
 
-  const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(null)
+  // This form unmounts while the location map is open, so derive the initial
+  // choice from the form values rather than resetting to the chooser buttons.
+  const [showSpeciesInput, setShowSpeciesInput] = useState<boolean | null>(
+    () => {
+      const { species_id, field_name, species_uncertain } = form.getValues()
+      if (species_id) return true
+      if (field_name?.trim() || species_uncertain) return false
+      return null
+    },
+  )
 
   useEffect(() => {
     if (collection || selectedPersonIds?.length || !user?.id || !persons) return
@@ -197,7 +206,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
       />
 
       <div className="space-y-2">
-        <Label>Collector</Label>
+        <Label>Main collector</Label>
         <Controller
           control={control}
           name="collected_by"
@@ -228,7 +237,7 @@ export const CollectionForm = ({ form, tripId }: CollectionFormProps) => {
       </div>
 
       <div className="space-y-2">
-        <Label>People present</Label>
+        <Label>Other collectors</Label>
         <Controller
           control={control}
           name="person_ids"
