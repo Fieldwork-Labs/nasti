@@ -150,7 +150,7 @@ const useScoutingNoteForm = ({
       const newNote = {
         ...rest,
         id: scoutingNote?.id,
-        created_by: user.id,
+        created_by: scoutingNote?.created_by ?? user.id,
         location,
         organisation_id: organisation.id,
         trip_id,
