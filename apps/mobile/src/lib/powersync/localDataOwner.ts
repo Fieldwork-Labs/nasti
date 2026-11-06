@@ -136,6 +136,18 @@ const PENDING_LOCAL_WORK_SQL = `SELECT
   AS pendingCount`
 
 /**
+ * How much work exists only on this device: queued uploads, unfinished media,
+ * failures and delete retries. While this is above zero, logout keeps the
+ * device locked to the current owner.
+ */
+export async function countPendingLocalWork(): Promise<number> {
+  const [row] = await powerSyncDb.getAll<{ pendingCount: number }>(
+    PENDING_LOCAL_WORK_SQL,
+  )
+  return row?.pendingCount ?? 0
+}
+
+/**
  * How long logout waits for PowerSync to disconnect, which can stall behind an
  * in-flight upload. Past this, logout goes ahead with the device still locked.
  */

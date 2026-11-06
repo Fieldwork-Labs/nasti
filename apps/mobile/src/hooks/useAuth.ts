@@ -7,7 +7,10 @@ import {
 import { supabase } from "@nasti/common/supabase"
 import { isAuthRetryableFetchError } from "@supabase/supabase-js"
 import { hasOrgPermission } from "@nasti/common/permissions"
-import { releaseLocalDataIfSynced } from "@/lib/powersync/localDataOwner"
+import {
+  countPendingLocalWork,
+  releaseLocalDataIfSynced,
+} from "@/lib/powersync/localDataOwner"
 import { powerSyncQueryClient } from "@/lib/powersync/query"
 import { PERSIST_KEY } from "@/lib/queryClient"
 import type { OrgPermission } from "@nasti/common/types"
@@ -188,6 +191,14 @@ export const useAuth = ({
     organisation: authState.claims?.organisation ?? null,
     login,
     logout,
+    /**
+     * Unsynced work that logging out would leave behind: what is queued or
+     * failed in the local database, plus one for any save still in flight
+     * (e.g. a photo being written before its row is queued). Logout keeps the
+     * device locked while this is above zero.
+     */
+    countUnsyncedWork: async () =>
+      (await countPendingLocalWork()) + (hasPendingWrites(queryClient) ? 1 : 0),
     isLoggedIn: authState.isLoggedIn,
   }
 }

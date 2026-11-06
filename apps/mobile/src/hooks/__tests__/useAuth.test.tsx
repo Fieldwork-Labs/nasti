@@ -30,12 +30,16 @@ import {
   withSessionPersistenceGate,
 } from "@nasti/common/supabaseClient"
 import { authStateQueryKey, useAuth } from "../useAuth"
-import { releaseLocalDataIfSynced } from "@/lib/powersync/localDataOwner"
+import {
+  countPendingLocalWork,
+  releaseLocalDataIfSynced,
+} from "@/lib/powersync/localDataOwner"
 import { powerSyncQueryClient } from "@/lib/powersync/query"
 import { PERSIST_KEY } from "@/lib/queryClient"
 
 vi.mock("@/lib/powersync/localDataOwner", () => ({
   releaseLocalDataIfSynced: vi.fn(async () => false),
+  countPendingLocalWork: vi.fn(async () => 0),
 }))
 vi.mock("@/platform", () => ({
   authStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
@@ -359,6 +363,22 @@ describe("explicit logout", () => {
     powerSyncQueryClient.setQueryData(["trip", "details"], { id: "trip-of-a" })
     window.localStorage.setItem(PERSIST_KEY, "cache-of-a")
   }
+
+  it("counts a save still in flight as unsynced work", async () => {
+    seedLogin()
+    vi.mocked(countPendingLocalWork).mockResolvedValue(2)
+    const { result } = renderHook(() => useAuth(), { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.user?.id).toBe(session.user.id))
+
+    await expect(result.current.countUnsyncedWork()).resolves.toBe(2)
+
+    let finishSave!: () => void
+    void client.getMutationCache().build(client, {
+      mutationFn: () => new Promise<void>((resolve) => { finishSave = resolve }),
+    }).execute(undefined)
+    await expect(result.current.countUnsyncedWork()).resolves.toBe(3)
+    finishSave()
+  })
 
   it("evicts the outgoing account's caches when the device is released", async () => {
     seedLogin()

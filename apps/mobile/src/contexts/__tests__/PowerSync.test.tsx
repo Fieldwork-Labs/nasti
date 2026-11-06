@@ -40,6 +40,9 @@ vi.mock("@/lib/powersync/localDataOwner", () => ({
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ organisation: { id: "org-1" }, user: { id: "user-1" }, mode: auth.mode, logout: { mutate: vi.fn(), isPending: false } }),
 }))
+vi.mock("../LocalDataLockedScreen", () => ({
+  LocalDataLockedScreen: () => <p>Local data is locked for this account.</p>,
+}))
 vi.mock("@/hooks/useAppIsActive", () => ({ useAppIsActive: () => activity.active }))
 
 import { PowerSyncProvider } from "../PowerSync"
