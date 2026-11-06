@@ -217,7 +217,7 @@ export const QualityTestStats = ({
       <span className="text-sm">
         TSW{" "}
         <span className="font-mono font-bold">
-          {statistics.tpsu.toFixed(3)}g
+          {(statistics.tpsu * 1000).toFixed(3)}g
         </span>
       </span>
     </div>
@@ -303,7 +303,10 @@ export const LatestQualityStatistics = ({
     <div className="grid grid-cols-6 gap-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">
-          TSW <span className="font-bold">{statistics.tpsu.toFixed(3)}g</span>
+          TSW{" "}
+          <span className="font-bold">
+            {(statistics.tpsu * 1000).toFixed(3)}g
+          </span>
         </span>
       </div>
       <div className="flex items-center gap-2">
