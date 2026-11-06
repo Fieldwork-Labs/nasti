@@ -5,13 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*", // Allow any origin
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS", // Allowed methods
-  "Access-Control-Allow-Headers": "Content-Type, Authorization", // Allowed headers
-  "Access-Control-Max-Age": "86400", // Cache preflight response for 1 day
-}
+import { corsHeaders } from "../_shared/cors.ts"
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests

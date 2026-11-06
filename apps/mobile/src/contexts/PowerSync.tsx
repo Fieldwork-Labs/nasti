@@ -5,8 +5,9 @@ import { SupabaseConnector } from "@/lib/powersync/connector"
 import { useAppIsActive } from "@/hooks/useAppIsActive"
 import { mediaAttachmentQueue } from "@/lib/powersync/attachments"
 import { rowDeleteRetryQueue } from "@/lib/powersync/deleteRetryQueue"
-import { claimUnownedLocalData, resolveLocalDataAccess, type LocalDataAccess } from "@/lib/powersync/localDataOwner"
+import { resolveLocalDataAccess, type LocalDataAccess } from "@/lib/powersync/localDataOwner"
 import { useAuth } from "@/hooks/useAuth"
+import { LocalDataLockedScreen } from "./LocalDataLockedScreen"
 
 const PowerSyncSyncEnabledContext = createContext(false)
 
@@ -59,7 +60,7 @@ export function PowerSyncProvider({
   const connectedRef = useRef(false)
   const connectionAttemptRef = useRef(0)
   const runtimeActiveRef = useRef(false)
-  const { organisation, user, mode, logout } = useAuth()
+  const { organisation, user, mode } = useAuth()
   const organisationId = organisation?.id ?? undefined
   const isAppActive = useAppIsActive()
   const [ownerAccess, setOwnerAccess] = useState<LocalDataAccess | null>(null)
@@ -139,40 +140,30 @@ export function PowerSyncProvider({
     }
   }, [shouldRunSync, organisationId, user?.id])
 
+  // Ownership is still being checked. Keep local data hidden, but don't show
+  // the lock screen: on most logins the check passes a moment later.
+  const isCheckingOwner = isLoggedIn && ownerAccess === null && !ownerCheckFailed
+  if (isCheckingOwner) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading local data"
+        className="flex min-h-screen items-center justify-center"
+      >
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent opacity-50" />
+      </div>
+    )
+  }
+
   if (isLoggedIn && !hasLocalDataAccess) {
     return (
-      <div role="alert" className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="font-medium">Local data is locked for this account.</p>
-        <p className="max-w-md text-sm text-muted-foreground">
-          {ownerCheckFailed
-            ? "This device could not confirm which account owns its saved sync data. Try again after reconnecting the app."
-            : ownerAccess?.ownerId
-              ? "Sign in with the account that owns this device’s saved data. Local records and queued work stay private to that account."
-              : "This device has saved sync data with no confirmed account owner. Sign in as its previous owner or recover the local data before using another account."}
-        </p>
-        {ownerCheckFailed && (
-          <button type="button" onClick={() => setOwnerCheckAttempt((attempt) => attempt + 1)}>
-            Try again
-          </button>
-        )}
-        {ownerAccess?.canClaim && mode === "live" && user?.id && (
-          <button
-            type="button"
-            onClick={() => {
-              const confirmed = window.confirm(
-                "This device has saved data with no verified owner. Claim it only if you are signed in as the person who created or queued that data. Other accounts must not claim it.",
-              )
-              if (!confirmed) return
-              void claimUnownedLocalData(user.id).then(setOwnerAccess).catch(() => setOwnerCheckFailed(true))
-            }}
-          >
-            I’m signed in as the previous owner
-          </button>
-        )}
-        <button type="button" onClick={() => logout.mutate()} disabled={logout.isPending}>
-          {logout.isPending ? "Logging out…" : "Log out"}
-        </button>
-      </div>
+      <LocalDataLockedScreen
+        ownerAccess={ownerAccess}
+        ownerCheckFailed={ownerCheckFailed}
+        onRetry={() => setOwnerCheckAttempt((attempt) => attempt + 1)}
+        onClaimed={setOwnerAccess}
+        onClaimFailed={() => setOwnerCheckFailed(true)}
+      />
     )
   }
 

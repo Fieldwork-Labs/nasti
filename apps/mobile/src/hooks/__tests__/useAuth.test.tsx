@@ -30,7 +30,17 @@ import {
   withSessionPersistenceGate,
 } from "@nasti/common/supabaseClient"
 import { authStateQueryKey, useAuth } from "../useAuth"
+import {
+  countPendingLocalWork,
+  releaseLocalDataIfSynced,
+} from "@/lib/powersync/localDataOwner"
+import { powerSyncQueryClient } from "@/lib/powersync/query"
+import { PERSIST_KEY } from "@/lib/queryClient"
 
+vi.mock("@/lib/powersync/localDataOwner", () => ({
+  releaseLocalDataIfSynced: vi.fn(async () => false),
+  countPendingLocalWork: vi.fn(async () => 0),
+}))
 vi.mock("@/platform", () => ({
   authStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
 }))
@@ -348,16 +358,79 @@ describe("explicit logout", () => {
     stored.set(SUPABASE_AUTH_STORAGE_KEY, JSON.stringify(session))
   }
 
+  const seedAccountCaches = () => {
+    client.setQueryData(["people", "list"], [{ id: "person-of-a" }])
+    powerSyncQueryClient.setQueryData(["trip", "details"], { id: "trip-of-a" })
+    window.localStorage.setItem(PERSIST_KEY, "cache-of-a")
+  }
+
+  it("counts a save still in flight as unsynced work", async () => {
+    seedLogin()
+    vi.mocked(countPendingLocalWork).mockResolvedValue(2)
+    const { result } = renderHook(() => useAuth(), { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.user?.id).toBe(session.user.id))
+
+    await expect(result.current.countUnsyncedWork()).resolves.toBe(2)
+
+    let finishSave!: () => void
+    void client.getMutationCache().build(client, {
+      mutationFn: () => new Promise<void>((resolve) => { finishSave = resolve }),
+    }).execute(undefined)
+    await expect(result.current.countUnsyncedWork()).resolves.toBe(3)
+    finishSave()
+  })
+
+  it("evicts the outgoing account's caches when the device is released", async () => {
+    seedLogin()
+    seedAccountCaches()
+    vi.mocked(releaseLocalDataIfSynced).mockResolvedValueOnce(true)
+    const { result } = renderHook(() => useAuth(), { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.user?.id).toBe(session.user.id))
+
+    await act(() => result.current.logout.mutateAsync())
+
+    expect(client.getQueryData(["people", "list"])).toBeUndefined()
+    expect(powerSyncQueryClient.getQueryData(["trip", "details"])).toBeUndefined()
+    expect(window.localStorage.getItem(PERSIST_KEY)).toBeNull()
+    expect(client.getQueryData(authStateQueryKey)).toMatchObject({
+      mode: "logged_out",
+      isLoggedIn: false,
+    })
+  })
+
+  it("keeps caches while the device stays locked to the outgoing account", async () => {
+    seedLogin()
+    seedAccountCaches()
+    vi.mocked(releaseLocalDataIfSynced).mockResolvedValueOnce(false)
+    const { result } = renderHook(() => useAuth(), { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.user?.id).toBe(session.user.id))
+
+    await act(() => result.current.logout.mutateAsync())
+
+    // The lock screen keeps the next account away from these.
+    expect(client.getQueryData(["people", "list"])).toEqual([{ id: "person-of-a" }])
+    powerSyncQueryClient.clear()
+    window.localStorage.removeItem(PERSIST_KEY)
+  })
+
   it("works offline and verifies credentials are removed before navigation", async () => {
     seedLogin()
     onlineManager.setOnline(false)
     vi.mocked(supabase.auth.signOut).mockResolvedValue({
       error: new AuthRetryableFetchError("offline", 0),
     })
+    vi.mocked(releaseLocalDataIfSynced).mockImplementationOnce(async (options) => {
+      // Runs once the outgoing identity is gone, so its owner hint can go too.
+      expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
+      // The logout mutation itself is not a pending write.
+      expect(options?.hasPendingWrites?.()).toBe(false)
+      return false
+    })
     const navigate = vi.fn(async () => {
       expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
       expect(stored.has(SUPABASE_AUTH_STORAGE_KEY)).toBe(false)
       expect(isExplicitLogoutInProgress()).toBe(true)
+      expect(releaseLocalDataIfSynced).toHaveBeenCalledOnce()
     })
     const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
       wrapper: providerWrapper,

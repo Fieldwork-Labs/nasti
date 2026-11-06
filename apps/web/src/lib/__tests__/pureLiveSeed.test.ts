@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   estimatePureLiveSeedCount,
+  estimatePureSeedCount,
+  pureLiveSeedsPerGram,
   readPureLiveSeedStatistics,
 } from "../pureLiveSeed"
 
@@ -89,5 +91,44 @@ describe("readPureLiveSeedStatistics", () => {
   it("is null for a non-object", () => {
     expect(readPureLiveSeedStatistics("statistics")).toBe(null)
     expect(readPureLiveSeedStatistics(42)).toBe(null)
+  })
+})
+
+describe("estimatePureSeedCount", () => {
+  // 0.005g per seed, 95% pure by weight: a 100g bag is 19,000 pure seeds.
+  const pureStats = { tpsu: 0.005, psu: 0.95 }
+
+  it("divides the bag by mean seed weight and takes the pure fraction", () => {
+    expect(estimatePureSeedCount(100, pureStats)).toBe(19000)
+  })
+
+  it("is null when untested or the weight is unknown", () => {
+    expect(estimatePureSeedCount(100, null)).toBe(null)
+    expect(estimatePureSeedCount(null, pureStats)).toBe(null)
+  })
+
+  it("is null for an unusable mean seed weight", () => {
+    expect(estimatePureSeedCount(100, { tpsu: 0, psu: 0.95 })).toBe(null)
+  })
+
+  it("is zero for an empty bag", () => {
+    expect(estimatePureSeedCount(0, pureStats)).toBe(0)
+  })
+})
+
+describe("pureLiveSeedsPerGram", () => {
+  it("is the live fraction over mean seed weight", () => {
+    // 200 seeds per gram, 90% pure live
+    expect(pureLiveSeedsPerGram(stats)).toBeCloseTo(180)
+  })
+
+  it("keeps fractions for large seeds", () => {
+    expect(pureLiveSeedsPerGram({ tpsu: 0.4, pls: 0.5 })).toBeCloseTo(1.25)
+  })
+
+  it("is null when untested or the test is unusable", () => {
+    expect(pureLiveSeedsPerGram(null)).toBe(null)
+    expect(pureLiveSeedsPerGram({ tpsu: 0, pls: 0.9 })).toBe(null)
+    expect(pureLiveSeedsPerGram({ tpsu: 0.005, pls: NaN })).toBe(null)
   })
 })
