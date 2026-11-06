@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   estimatePureLiveSeedCount,
   estimatePureSeedCount,
+  pureLiveSeedsPerGram,
   readPureLiveSeedStatistics,
 } from "../pureLiveSeed"
 
@@ -112,5 +113,22 @@ describe("estimatePureSeedCount", () => {
 
   it("is zero for an empty bag", () => {
     expect(estimatePureSeedCount(0, pureStats)).toBe(0)
+  })
+})
+
+describe("pureLiveSeedsPerGram", () => {
+  it("is the live fraction over mean seed weight", () => {
+    // 200 seeds per gram, 90% pure live
+    expect(pureLiveSeedsPerGram(stats)).toBeCloseTo(180)
+  })
+
+  it("keeps fractions for large seeds", () => {
+    expect(pureLiveSeedsPerGram({ tpsu: 0.4, pls: 0.5 })).toBeCloseTo(1.25)
+  })
+
+  it("is null when untested or the test is unusable", () => {
+    expect(pureLiveSeedsPerGram(null)).toBe(null)
+    expect(pureLiveSeedsPerGram({ tpsu: 0, pls: 0.9 })).toBe(null)
+    expect(pureLiveSeedsPerGram({ tpsu: 0.005, pls: NaN })).toBe(null)
   })
 })

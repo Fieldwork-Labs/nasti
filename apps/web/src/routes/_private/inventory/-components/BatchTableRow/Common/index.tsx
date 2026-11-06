@@ -58,6 +58,7 @@ import { useSubBatches } from "@/hooks/useSubBatches"
 import {
   estimatePureLiveSeedCount,
   estimatePureSeedCount,
+  pureLiveSeedsPerGram,
 } from "@/lib/pureLiveSeed"
 
 // =============================================================================
@@ -324,6 +325,16 @@ export const LatestQualityStatistics = ({
           PLS{" "}
           <span className="font-bold">
             {(statistics.pls * 100).toFixed(2)}%
+          </span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm" title="Pure live seeds per gram">
+          PLS/g{" "}
+          <span className="font-bold">
+            {pureLiveSeedsPerGram(statistics)?.toLocaleString(undefined, {
+              maximumFractionDigits: 1,
+            }) ?? "–"}
           </span>
         </span>
       </div>

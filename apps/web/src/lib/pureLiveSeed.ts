@@ -36,6 +36,21 @@ export const estimatePureLiveSeedCount = (
 ): number | null =>
   estimateSeedCount(weightGrams, statistics?.tpsu, statistics?.pls)
 
+/**
+ * Pure live seeds per gram of seed as weighed: the live fraction over the mean
+ * weight of one seed. Unlike the counts it is not rounded, since large-seeded
+ * species can have only a few live seeds per gram.
+ */
+export const pureLiveSeedsPerGram = (
+  statistics: PureLiveSeedStatistics | null | undefined,
+): number | null => {
+  if (!statistics) return null
+  const { tpsu, pls } = statistics
+  if (!Number.isFinite(tpsu) || tpsu <= 0) return null
+  if (!Number.isFinite(pls) || pls < 0) return null
+  return pls / tpsu
+}
+
 export type PureSeedStatistics = {
   /** Mean weight of a single seed, in grams. */
   tpsu: number
