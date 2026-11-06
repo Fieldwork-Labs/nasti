@@ -121,3 +121,46 @@ export function resolveLocalDataAccess(userId: string): Promise<LocalDataAccess>
 export function claimUnownedLocalData(userId: string): Promise<LocalDataAccess> {
   return claimOwner(userId, { explicitlyClaimUnknownData: true })
 }
+
+// Work that exists only on this device. Synced rows are not counted: the
+// server holds them, so dropping the local copy loses nothing.
+const PENDING_LOCAL_WORK_SQL = `SELECT
+  (SELECT COUNT(*) FROM sync_failures)
+  + (SELECT COUNT(*) FROM row_delete_retry_jobs)
+  + (SELECT COUNT(*) FROM media_upload_failures)
+  + (SELECT COUNT(*) FROM media_upload_jobs WHERE status NOT IN ('uploaded', 'complete'))
+  AS pendingCount`
+
+/**
+ * Called on logout. When the outgoing account has nothing left that exists
+ * only on this device, clear the local database so the next account to sign
+ * in starts empty and becomes the owner, instead of finding the device locked
+ * to the previous account. Anything unsynced keeps the lock in place, so it can
+ * only be recovered by the account that created it.
+ *
+ * Returns whether the data was released. Never throws: if anything goes
+ * wrong, the lock stays, which is the safe outcome.
+ */
+export async function releaseLocalDataIfSynced(): Promise<boolean> {
+  try {
+    // Stop syncing first so no upload completes or starts mid-check.
+    await powerSyncDb.disconnect()
+    const [uploadQueue, pendingRows] = await Promise.all([
+      powerSyncDb.getUploadQueueStats(),
+      powerSyncDb.getAll<{ pendingCount: number }>(PENDING_LOCAL_WORK_SQL),
+    ])
+    if (uploadQueue.count > 0 || (pendingRows[0]?.pendingCount ?? 0) > 0) {
+      return false
+    }
+
+    // Clears synced and local-only tables, including local_data_owner.
+    await powerSyncDb.disconnectAndClear()
+    // The owner markers described data that no longer exists on the device.
+    await authStorage.removeItem(OWNER_KEY)
+    await authStorage.removeItem(OFFLINE_DATA_OWNER_HINT_KEY)
+    return true
+  } catch {
+    console.error("[PowerSync] Failed to release local data on logout")
+    return false
+  }
+}

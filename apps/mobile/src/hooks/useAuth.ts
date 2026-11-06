@@ -7,6 +7,7 @@ import {
 import { supabase } from "@nasti/common/supabase"
 import { isAuthRetryableFetchError } from "@supabase/supabase-js"
 import { hasOrgPermission } from "@nasti/common/permissions"
+import { releaseLocalDataIfSynced } from "@/lib/powersync/localDataOwner"
 import type { OrgPermission } from "@nasti/common/types"
 import {
   type AuthState,
@@ -108,6 +109,8 @@ export const useAuth = ({
           )
         }
         await deletePersistedSupabaseSession()
+        // After the snapshot is gone, so its owner hint can be cleared too.
+        await releaseLocalDataIfSynced()
         await onLogout?.()
       } finally {
         finishExplicitLogout()

@@ -8,7 +8,14 @@ type TestDb = {
   close: () => Promise<void>
 }
 
-const { storage, state } = vi.hoisted(() => ({
+const { storage, state, appTablesForMock } = vi.hoisted(() => ({
+  appTablesForMock: [
+    "trip", "trip_member", "species", "trip_species", "collection",
+    "collection_photo", "collection_audio", "scouting_notes",
+    "scouting_notes_photos", "scouting_notes_audio", "species_photo", "person",
+    "sync_failures", "row_delete_retry_jobs", "media_upload_jobs",
+    "media_upload_failures", "media_migrations",
+  ],
   storage: new Map<string, string>(),
   state: {
     db: null as null | TestDb,
@@ -28,6 +35,13 @@ vi.mock("@/lib/powersync/db", () => ({
   powerSyncDb: {
     getAll: <T>(sql: string, parameters?: (string | number | null)[]) => state.db!.getAll<T>(sql, parameters),
     getUploadQueueStats: async () => ({ count: state.uploadQueueCount }),
+    disconnect: async () => undefined,
+    disconnectAndClear: async () => {
+      for (const table of [...appTablesForMock, "local_data_owner"]) {
+        await state.db!.execute(`DELETE FROM ${table}`)
+      }
+      state.uploadQueueCount = 0
+    },
     writeTransaction: (callback: (transaction: { execute: (sql: string, parameters?: (string | number | null)[]) => Promise<unknown>; getAll: <T>(sql: string, parameters?: (string | number | null)[]) => Promise<T[]> }) => Promise<void>) => {
       const result = state.transactionTail.then(() => state.db!.writeTransaction(callback))
       state.transactionTail = result.catch(() => undefined)
@@ -36,7 +50,11 @@ vi.mock("@/lib/powersync/db", () => ({
   },
 }))
 
-import { resolveLocalDataAccess, claimUnownedLocalData } from "../localDataOwner"
+import {
+  resolveLocalDataAccess,
+  claimUnownedLocalData,
+  releaseLocalDataIfSynced,
+} from "../localDataOwner"
 import {
   OFFLINE_ACCESS_MS,
   OFFLINE_AUTH_KEY,
@@ -50,13 +68,7 @@ import {
   writeOfflineAuthSnapshot,
 } from "@/lib/offlineAuth"
 
-const appTables = [
-  "trip", "trip_member", "species", "trip_species", "collection",
-  "collection_photo", "collection_audio", "scouting_notes",
-  "scouting_notes_photos", "scouting_notes_audio", "species_photo", "person",
-  "sync_failures", "row_delete_retry_jobs", "media_upload_jobs",
-  "media_upload_failures", "media_migrations",
-]
+const appTables = appTablesForMock
 
 function snapshotFor(userId: string, now: number) {
   const session = {
@@ -97,7 +109,11 @@ describe("local PowerSync database ownership", () => {
     const db = await createRealSqliteHarness({ initialize: false }) as unknown as TestDb
     state.db = db
     for (const table of appTables) {
-      await db.execute(`CREATE TABLE ${table} (id TEXT PRIMARY KEY)`)
+      await db.execute(
+        table === "media_upload_jobs"
+          ? `CREATE TABLE ${table} (id TEXT PRIMARY KEY, status TEXT)`
+          : `CREATE TABLE ${table} (id TEXT PRIMARY KEY)`,
+      )
     }
     await db.execute(`CREATE TABLE local_data_owner (
       id TEXT PRIMARY KEY,
@@ -259,5 +275,67 @@ describe("local PowerSync database ownership", () => {
 
     expect(results.filter((result) => result.status === "allowed")).toHaveLength(1)
     expect(results.filter((result) => result.status === "mismatch")).toHaveLength(1)
+  })
+
+  describe("releasing on logout", () => {
+    const signInAsAThenLogOut = async () => {
+      storage.set(OFFLINE_AUTH_KEY, JSON.stringify(snapshotFor("user-a", Date.now())))
+      storage.delete(OFFLINE_DATA_OWNER_HINT_KEY)
+      await expect(resolveLocalDataAccess("user-a")).resolves.toMatchObject({ status: "allowed" })
+      await state.db!.execute("INSERT INTO trip (id) VALUES (?)", ["trip-a"])
+      await deleteOfflineAuthSnapshot()
+    }
+
+    it("hands a fully synced device to the next account", async () => {
+      await signInAsAThenLogOut()
+
+      await expect(releaseLocalDataIfSynced()).resolves.toBe(true)
+      await expect(state.db!.getAll("SELECT id FROM trip")).resolves.toEqual([])
+      expect(storage.has(OFFLINE_DATA_OWNER_HINT_KEY)).toBe(false)
+      expect(storage.has("nasti-powersync-owner-v1")).toBe(false)
+
+      await writeOfflineAuthSnapshot(snapshotFor("user-b", Date.now() + 1_000))
+      await expect(resolveLocalDataAccess("user-b")).resolves.toEqual({
+        status: "allowed",
+        ownerId: "user-b",
+        canClaim: false,
+      })
+    })
+
+    it("treats finished media uploads as synced", async () => {
+      await signInAsAThenLogOut()
+      await state.db!.execute(
+        "INSERT INTO media_upload_jobs (id, status) VALUES ('done', 'complete'), ('up', 'uploaded')",
+      )
+
+      await expect(releaseLocalDataIfSynced()).resolves.toBe(true)
+    })
+
+    it.each([
+      ["queued CRUD uploads", async () => { state.uploadQueueCount = 1 }],
+      ["a pending media upload", async () => {
+        await state.db!.execute("INSERT INTO media_upload_jobs (id, status) VALUES ('m', 'pending')")
+      }],
+      ["a sync failure", async () => {
+        await state.db!.execute("INSERT INTO sync_failures (id) VALUES ('f')")
+      }],
+      ["a media upload failure", async () => {
+        await state.db!.execute("INSERT INTO media_upload_failures (id) VALUES ('f')")
+      }],
+      ["a delete retry job", async () => {
+        await state.db!.execute("INSERT INTO row_delete_retry_jobs (id) VALUES ('d')")
+      }],
+    ])("keeps the device locked to A while it holds %s", async (_label, addPendingWork) => {
+      await signInAsAThenLogOut()
+      await addPendingWork()
+
+      await expect(releaseLocalDataIfSynced()).resolves.toBe(false)
+      await expect(state.db!.getAll("SELECT id FROM trip")).resolves.toEqual([{ id: "trip-a" }])
+      await expect(resolveLocalDataAccess("user-b")).resolves.toEqual({
+        status: "mismatch",
+        ownerId: "user-a",
+        canClaim: false,
+      })
+    })
   })
 })

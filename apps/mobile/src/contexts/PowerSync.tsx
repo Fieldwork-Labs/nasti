@@ -139,6 +139,21 @@ export function PowerSyncProvider({
     }
   }, [shouldRunSync, organisationId, user?.id])
 
+  // Ownership is still being checked. Keep local data hidden, but don't show
+  // the lock screen: on most logins the check passes a moment later.
+  const isCheckingOwner = isLoggedIn && ownerAccess === null && !ownerCheckFailed
+  if (isCheckingOwner) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading local data"
+        className="flex min-h-screen items-center justify-center"
+      >
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent opacity-50" />
+      </div>
+    )
+  }
+
   if (isLoggedIn && !hasLocalDataAccess) {
     return (
       <div role="alert" className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">

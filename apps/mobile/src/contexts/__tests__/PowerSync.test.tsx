@@ -1,7 +1,7 @@
 import { act, render, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { connectMock, disconnectMock, startQueueMock, stopQueueMock, activity, auth, owner, streamMock } = vi.hoisted(() => ({
+const { connectMock, disconnectMock, startQueueMock, stopQueueMock, activity, auth, owner, streamMock, ownerCheck } = vi.hoisted(() => ({
   connectMock: vi.fn(),
   disconnectMock: vi.fn(),
   startQueueMock: vi.fn(),
@@ -10,6 +10,7 @@ const { connectMock, disconnectMock, startQueueMock, stopQueueMock, activity, au
   auth: { mode: "live" },
   owner: { status: "allowed", ownerId: "user-1" },
   streamMock: vi.fn(),
+  ownerCheck: { gate: Promise.resolve() as Promise<void> },
 }))
 
 vi.mock("@powersync/react", () => ({
@@ -31,7 +32,10 @@ vi.mock("@/lib/powersync/deleteRetryQueue", () => ({
   rowDeleteRetryQueue: { start: startQueueMock, stop: stopQueueMock },
 }))
 vi.mock("@/lib/powersync/localDataOwner", () => ({
-  resolveLocalDataAccess: vi.fn(async () => ({ ...owner })),
+  resolveLocalDataAccess: vi.fn(async () => {
+    await ownerCheck.gate
+    return { ...owner }
+  }),
 }))
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ organisation: { id: "org-1" }, user: { id: "user-1" }, mode: auth.mode, logout: { mutate: vi.fn(), isPending: false } }),
@@ -47,6 +51,7 @@ describe("PowerSyncProvider media runtime", () => {
     auth.mode = "live"
     owner.status = "allowed"
     owner.ownerId = "user-1"
+    ownerCheck.gate = Promise.resolve()
     connectMock.mockResolvedValue(undefined)
     disconnectMock.mockResolvedValue(undefined)
   })
@@ -128,6 +133,25 @@ describe("PowerSyncProvider media runtime", () => {
     expect(streamMock).not.toHaveBeenCalled()
     expect(connectMock).not.toHaveBeenCalled()
     expect(startQueueMock).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it("shows a loading state, not the lock screen, while ownership is being checked", async () => {
+    let finishCheck!: () => void
+    ownerCheck.gate = new Promise<void>((resolve) => {
+      finishCheck = resolve
+    })
+    const view = render(<PowerSyncProvider isLoggedIn><p>Private local data</p></PowerSyncProvider>)
+
+    expect(view.getByRole("status")).toBeDefined()
+    expect(view.queryByText("Local data is locked for this account.")).toBeNull()
+    expect(view.queryByText("Private local data")).toBeNull()
+
+    await act(async () => {
+      finishCheck()
+    })
+    expect(await view.findByText("Private local data")).toBeDefined()
+    expect(view.queryByRole("status")).toBeNull()
     view.unmount()
   })
 })

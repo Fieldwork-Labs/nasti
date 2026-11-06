@@ -30,7 +30,11 @@ import {
   withSessionPersistenceGate,
 } from "@nasti/common/supabaseClient"
 import { authStateQueryKey, useAuth } from "../useAuth"
+import { releaseLocalDataIfSynced } from "@/lib/powersync/localDataOwner"
 
+vi.mock("@/lib/powersync/localDataOwner", () => ({
+  releaseLocalDataIfSynced: vi.fn(async () => false),
+}))
 vi.mock("@/platform", () => ({
   authStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
 }))
@@ -354,10 +358,16 @@ describe("explicit logout", () => {
     vi.mocked(supabase.auth.signOut).mockResolvedValue({
       error: new AuthRetryableFetchError("offline", 0),
     })
+    vi.mocked(releaseLocalDataIfSynced).mockImplementationOnce(async () => {
+      // Runs once the outgoing identity is gone, so its owner hint can go too.
+      expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
+      return false
+    })
     const navigate = vi.fn(async () => {
       expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
       expect(stored.has(SUPABASE_AUTH_STORAGE_KEY)).toBe(false)
       expect(isExplicitLogoutInProgress()).toBe(true)
+      expect(releaseLocalDataIfSynced).toHaveBeenCalledOnce()
     })
     const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
       wrapper: providerWrapper,
