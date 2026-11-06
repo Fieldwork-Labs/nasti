@@ -33,19 +33,41 @@ export type PureLiveSeedStatistics = {
 export const estimatePureLiveSeedCount = (
   weightGrams: number | null | undefined,
   statistics: PureLiveSeedStatistics | null | undefined,
+): number | null =>
+  estimateSeedCount(weightGrams, statistics?.tpsu, statistics?.pls)
+
+export type PureSeedStatistics = {
+  /** Mean weight of a single seed, in grams. */
+  tpsu: number
+  /** Pure seed fraction by weight, between 0 and 1. */
+  psu: number
+}
+
+/**
+ * Estimated pure seed count for a bag of the given weight: the same as
+ * {@link estimatePureLiveSeedCount}, but counting all pure seed, live or not.
+ */
+export const estimatePureSeedCount = (
+  weightGrams: number | null | undefined,
+  statistics: PureSeedStatistics | null | undefined,
+): number | null =>
+  estimateSeedCount(weightGrams, statistics?.tpsu, statistics?.psu)
+
+const estimateSeedCount = (
+  weightGrams: number | null | undefined,
+  tpsu: number | undefined,
+  fraction: number | undefined,
 ): number | null => {
   if (weightGrams === null || weightGrams === undefined) return null
-  if (!statistics) return null
-
-  const { tpsu, pls } = statistics
+  if (tpsu === undefined || fraction === undefined) return null
 
   // A zero or negative mean seed weight would divide the bag into infinitely
   // many seeds. It means the test is unusable, not that the bag is enormous.
   if (!Number.isFinite(tpsu) || tpsu <= 0) return null
-  if (!Number.isFinite(pls) || pls < 0) return null
+  if (!Number.isFinite(fraction) || fraction < 0) return null
   if (!Number.isFinite(weightGrams) || weightGrams <= 0) return 0
 
-  return Math.round((weightGrams / tpsu) * pls)
+  return Math.round((weightGrams / tpsu) * fraction)
 }
 
 /**
