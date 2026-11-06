@@ -1,5 +1,6 @@
 import { authStorage } from "@/platform"
 import { powerSyncDb } from "@/lib/powersync/db"
+import { TIMED_OUT, withTimeout } from "@/lib/withTimeout"
 import {
   getRetainedOfflineAuthIdentity,
   OFFLINE_DATA_OWNER_HINT_KEY,
@@ -123,13 +124,31 @@ export function claimUnownedLocalData(userId: string): Promise<LocalDataAccess> 
 }
 
 // Work that exists only on this device. Synced rows are not counted: the
-// server holds them, so dropping the local copy loses nothing.
+// server holds them, so dropping the local copy loses nothing. ps_crud is
+// PowerSync's upload queue, read here rather than via getUploadQueueStats so
+// the count is taken inside the same transaction as the clear.
 const PENDING_LOCAL_WORK_SQL = `SELECT
-  (SELECT COUNT(*) FROM sync_failures)
+  (SELECT COUNT(*) FROM ps_crud)
+  + (SELECT COUNT(*) FROM sync_failures)
   + (SELECT COUNT(*) FROM row_delete_retry_jobs)
   + (SELECT COUNT(*) FROM media_upload_failures)
   + (SELECT COUNT(*) FROM media_upload_jobs WHERE status NOT IN ('uploaded', 'complete'))
   AS pendingCount`
+
+/**
+ * How long logout waits for PowerSync to disconnect, which can stall behind an
+ * in-flight upload. Past this, logout goes ahead with the device still locked.
+ */
+export const RELEASE_TIMEOUT_MS = 5_000
+
+type ReleaseOptions = {
+  /**
+   * Whether the app still has a write in flight that has not reached SQLite
+   * yet, such as a photo being encoded before its row is queued. Checked
+   * inside the clearing transaction.
+   */
+  hasPendingWrites?: () => boolean
+}
 
 /**
  * Called on logout. When the outgoing account has nothing left that exists
@@ -138,29 +157,59 @@ const PENDING_LOCAL_WORK_SQL = `SELECT
  * to the previous account. Anything unsynced keeps the lock in place, so it can
  * only be recovered by the account that created it.
  *
- * Returns whether the data was released. Never throws: if anything goes
- * wrong, the lock stays, which is the safe outcome.
+ * Returns true exactly when the clear committed, so the caller can evict the
+ * account's caches. Never throws. If disconnecting takes longer than
+ * {@link RELEASE_TIMEOUT_MS}, nothing is cleared and the lock stays.
  */
-export async function releaseLocalDataIfSynced(): Promise<boolean> {
+export async function releaseLocalDataIfSynced({
+  hasPendingWrites,
+}: ReleaseOptions = {}): Promise<boolean> {
   try {
-    // Stop syncing first so no upload completes or starts mid-check.
-    await powerSyncDb.disconnect()
-    const [uploadQueue, pendingRows] = await Promise.all([
-      powerSyncDb.getUploadQueueStats(),
-      powerSyncDb.getAll<{ pendingCount: number }>(PENDING_LOCAL_WORK_SQL),
-    ])
-    if (uploadQueue.count > 0 || (pendingRows[0]?.pendingCount ?? 0) > 0) {
+    // Stop syncing so no download lands and no upload starts mid-release.
+    // Only this step is bounded: the steps after it either have not started
+    // (nothing cleared) or must be allowed to finish and be reported, so a
+    // committed clear is never mistaken for a kept lock.
+    const disconnected = await withTimeout(
+      powerSyncDb.disconnect().then(() => true),
+      RELEASE_TIMEOUT_MS,
+    )
+    if (disconnected === TIMED_OUT) {
+      console.error("[PowerSync] Timed out disconnecting on logout; local data kept")
       return false
     }
-
-    // Clears synced and local-only tables, including local_data_owner.
-    await powerSyncDb.disconnectAndClear()
-    // The owner markers described data that no longer exists on the device.
-    await authStorage.removeItem(OWNER_KEY)
-    await authStorage.removeItem(OFFLINE_DATA_OWNER_HINT_KEY)
-    return true
   } catch {
+    console.error("[PowerSync] Failed to disconnect on logout; local data kept")
+    return false
+  }
+
+  let released = false
+  try {
+    // Local writes also go through write transactions, so checking and
+    // clearing in one leaves no gap for a write to land between them unseen.
+    await powerSyncDb.writeTransaction(async (transaction) => {
+      if (hasPendingWrites?.()) return
+      const [row] = await transaction.getAll<{ pendingCount: number }>(
+        PENDING_LOCAL_WORK_SQL,
+      )
+      if ((row?.pendingCount ?? 0) > 0) return
+
+      // What disconnectAndClear() runs, with clearLocal: synced and
+      // local-only tables, including local_data_owner.
+      await transaction.execute("SELECT powersync_clear(1)")
+      released = true
+    })
+  } catch {
+    // A failed transaction rolled back, so nothing was cleared.
     console.error("[PowerSync] Failed to release local data on logout")
     return false
   }
+  if (!released) return false
+
+  // The SQLite owner row is already gone, which is what decides ownership, so
+  // these markers are tidy-up only. Don't hold logout or the result on them.
+  void Promise.allSettled([
+    authStorage.removeItem(OWNER_KEY),
+    authStorage.removeItem(OFFLINE_DATA_OWNER_HINT_KEY),
+  ])
+  return true
 }

@@ -21,6 +21,7 @@ const { storage, state, appTablesForMock } = vi.hoisted(() => ({
     db: null as null | TestDb,
     transactionTail: Promise.resolve() as Promise<unknown>,
     uploadQueueCount: 0,
+    disconnect: (async () => undefined) as () => Promise<void>,
   },
 }))
 
@@ -34,26 +35,35 @@ vi.mock("@/platform", () => ({
 vi.mock("@/lib/powersync/db", () => ({
   powerSyncDb: {
     getAll: <T>(sql: string, parameters?: (string | number | null)[]) => state.db!.getAll<T>(sql, parameters),
-    getUploadQueueStats: async () => ({ count: state.uploadQueueCount }),
-    disconnect: async () => undefined,
-    disconnectAndClear: async () => {
-      for (const table of [...appTablesForMock, "local_data_owner"]) {
-        await state.db!.execute(`DELETE FROM ${table}`)
-      }
-      state.uploadQueueCount = 0
+    getUploadQueueStats: async () => {
+      const [row] = await state.db!.getAll<{ count: number }>("SELECT COUNT(*) AS count FROM ps_crud")
+      return { count: row.count + state.uploadQueueCount }
     },
+    disconnect: () => state.disconnect(),
     writeTransaction: (callback: (transaction: { execute: (sql: string, parameters?: (string | number | null)[]) => Promise<unknown>; getAll: <T>(sql: string, parameters?: (string | number | null)[]) => Promise<T[]> }) => Promise<void>) => {
-      const result = state.transactionTail.then(() => state.db!.writeTransaction(callback))
+      // The harness has no PowerSync extension, so emulate powersync_clear(1):
+      // empty every synced and local-only table, and the upload queue.
+      const result = state.transactionTail.then(() => state.db!.writeTransaction((transaction) => callback({
+        getAll: transaction.getAll,
+        execute: async (sql, parameters) => {
+          if (!sql.includes("powersync_clear")) return transaction.execute(sql, parameters)
+          for (const table of [...appTablesForMock, "local_data_owner", "ps_crud"]) {
+            await transaction.execute(`DELETE FROM ${table}`)
+          }
+        },
+      })))
       state.transactionTail = result.catch(() => undefined)
       return result
     },
   },
 }))
 
+import { powerSyncDb } from "@/lib/powersync/db"
 import {
   resolveLocalDataAccess,
   claimUnownedLocalData,
   releaseLocalDataIfSynced,
+  RELEASE_TIMEOUT_MS,
 } from "../localDataOwner"
 import {
   OFFLINE_ACCESS_MS,
@@ -105,6 +115,7 @@ describe("local PowerSync database ownership", () => {
     }))
     storage.set(OFFLINE_DATA_OWNER_HINT_KEY, UNKNOWN_DATA_OWNER_HINT)
     state.uploadQueueCount = 0
+    state.disconnect = async () => undefined
     state.transactionTail = Promise.resolve()
     const db = await createRealSqliteHarness({ initialize: false }) as unknown as TestDb
     state.db = db
@@ -115,6 +126,7 @@ describe("local PowerSync database ownership", () => {
           : `CREATE TABLE ${table} (id TEXT PRIMARY KEY)`,
       )
     }
+    await db.execute("CREATE TABLE ps_crud (id INTEGER PRIMARY KEY, data TEXT)")
     await db.execute(`CREATE TABLE local_data_owner (
       id TEXT PRIMARY KEY,
       owner_id TEXT NOT NULL,
@@ -291,6 +303,7 @@ describe("local PowerSync database ownership", () => {
 
       await expect(releaseLocalDataIfSynced()).resolves.toBe(true)
       await expect(state.db!.getAll("SELECT id FROM trip")).resolves.toEqual([])
+      await new Promise((resolve) => setTimeout(resolve, 0))
       expect(storage.has(OFFLINE_DATA_OWNER_HINT_KEY)).toBe(false)
       expect(storage.has("nasti-powersync-owner-v1")).toBe(false)
 
@@ -312,7 +325,9 @@ describe("local PowerSync database ownership", () => {
     })
 
     it.each([
-      ["queued CRUD uploads", async () => { state.uploadQueueCount = 1 }],
+      ["queued CRUD uploads", async () => {
+        await state.db!.execute("INSERT INTO ps_crud (data) VALUES ('{}')")
+      }],
       ["a pending media upload", async () => {
         await state.db!.execute("INSERT INTO media_upload_jobs (id, status) VALUES ('m', 'pending')")
       }],
@@ -336,6 +351,71 @@ describe("local PowerSync database ownership", () => {
         ownerId: "user-a",
         canClaim: false,
       })
+    })
+
+    it("keeps the device locked while an app write is still in flight", async () => {
+      await signInAsAThenLogOut()
+
+      await expect(releaseLocalDataIfSynced({ hasPendingWrites: () => true })).resolves.toBe(false)
+      await expect(state.db!.getAll("SELECT id FROM trip")).resolves.toEqual([{ id: "trip-a" }])
+    })
+
+    it("never wipes a write that lands while the release is running", async () => {
+      await signInAsAThenLogOut()
+      let finishDisconnect!: () => void
+      state.disconnect = () => new Promise<void>((resolve) => {
+        finishDisconnect = resolve
+      })
+
+      const release = releaseLocalDataIfSynced()
+      // A queued media record written while the release waits on disconnect.
+      const write = powerSyncDb.writeTransaction(async (transaction) => {
+        await transaction.execute("INSERT INTO media_upload_jobs (id, status) VALUES ('late', 'pending')")
+      })
+      finishDisconnect()
+      await Promise.all([release, write])
+
+      // Whichever runs first, the pending job survives: either it was seen and
+      // the lock kept, or it was written after the clear.
+      await expect(state.db!.getAll("SELECT id FROM media_upload_jobs")).resolves.toEqual([{ id: "late" }])
+    })
+
+    it("gives up and keeps the lock when disconnecting hangs", async () => {
+      await signInAsAThenLogOut()
+      let finishDisconnect!: () => void
+      state.disconnect = () => new Promise<void>((resolve) => {
+        finishDisconnect = resolve
+      })
+      const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined)
+      vi.useFakeTimers()
+      try {
+        const release = releaseLocalDataIfSynced()
+        await vi.advanceTimersByTimeAsync(RELEASE_TIMEOUT_MS)
+        await expect(release).resolves.toBe(false)
+      } finally {
+        vi.useRealTimers()
+        errorLog.mockRestore()
+      }
+
+      // A disconnect that finally returns must not clear anything afterwards.
+      finishDisconnect()
+      await state.transactionTail
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await state.transactionTail
+      await expect(state.db!.getAll("SELECT id FROM trip")).resolves.toEqual([{ id: "trip-a" }])
+      await expect(resolveLocalDataAccess("user-b")).resolves.toMatchObject({
+        status: "mismatch",
+        ownerId: "user-a",
+      })
+    })
+
+    it("reports a committed clear even when tidying up storage is slow", async () => {
+      await signInAsAThenLogOut()
+      const { authStorage } = await import("@/platform")
+      vi.mocked(authStorage.removeItem).mockImplementationOnce(() => new Promise(() => undefined))
+
+      await expect(releaseLocalDataIfSynced()).resolves.toBe(true)
+      await expect(state.db!.getAll("SELECT owner_id FROM local_data_owner")).resolves.toEqual([])
     })
   })
 })
