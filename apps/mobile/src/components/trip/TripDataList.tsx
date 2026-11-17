@@ -245,7 +245,7 @@ export const TripDataList = ({ id }: { id: string }) => {
   const [searchValue, setSearchValue] = useState("")
   const { data: trip } = useTripDetails({ tripId: id })
   const { data: species } = useSpeciesList()
-  const { data: peopleResponse } = useOrgMembers()
+  const { data: people } = useOrgMembers()
   const { collectionPhotosMap, scoutingNotePhotosMap } = useTripPhotoMaps({
     tripId: id,
   })
@@ -265,15 +265,14 @@ export const TripDataList = ({ id }: { id: string }) => {
   }, [species])
 
   const peopleMap = useMemo(() => {
-    const people = peopleResponse?.data ?? []
-    return people.reduce(
+    return (people ?? []).reduce(
       (acc, person) => {
         acc[person.id] = person
         return acc
       },
       {} as Record<string, OrganisationUser>,
     )
-  }, [peopleResponse?.data])
+  }, [people])
 
   const searchableData = useMemo(() => {
     const collections = trip?.collections ?? []
