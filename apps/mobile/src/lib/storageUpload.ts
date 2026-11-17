@@ -1,6 +1,7 @@
 import { Upload, type HttpStack } from "tus-js-client"
 import { createNastiSupabaseClientForToken } from "@nasti/common/supabase"
 import type { RequestCredentials } from "./auth/liveSession"
+import { fetchWithTimeout } from "./fetchWithTimeout"
 import { sanitizeUploadError } from "./powersync/attachmentErrors"
 import { TIMED_OUT, withTimeout } from "./withTimeout"
 
@@ -116,7 +117,9 @@ export async function storageObjectExists(
   path: string,
   credentials: RequestCredentials,
 ): Promise<boolean> {
-  const client = createNastiSupabaseClientForToken(credentials.accessToken)
+  const client = createNastiSupabaseClientForToken(credentials.accessToken, {
+    fetch: fetchWithTimeout,
+  })
   const result = await withTimeout(client.storage.from(bucket).exists(path), STORAGE_LOOKUP_TIMEOUT_MS)
   if (result === TIMED_OUT) throw new Error("Storage lookup timed out")
   if (!result.error) return result.data
@@ -129,7 +132,9 @@ export async function deleteFromStorage(
   path: string,
   credentials: RequestCredentials,
 ): Promise<void> {
-  const client = createNastiSupabaseClientForToken(credentials.accessToken)
+  const client = createNastiSupabaseClientForToken(credentials.accessToken, {
+    fetch: fetchWithTimeout,
+  })
   const result = await withTimeout(client.storage.from(bucket).remove([path]), STORAGE_DELETE_TIMEOUT_MS)
   if (result === TIMED_OUT) throw new Error("Storage deletion timed out")
   const { error } = result

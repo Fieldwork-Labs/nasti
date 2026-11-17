@@ -45,6 +45,8 @@ export const withSessionPersistenceGate = (
 
 export const createNastiSupabaseClient = (options?: {
   authStorage?: SupportedStorage
+  /** Transport override, e.g. the mobile app's timeout-enforcing fetch. */
+  fetch?: typeof fetch
 }) =>
   createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
@@ -53,6 +55,7 @@ export const createNastiSupabaseClient = (options?: {
         ? withSessionPersistenceGate(options.authStorage)
         : createIdbAuthStorage(),
     },
+    ...(options?.fetch ? { global: { fetch: options.fetch } } : {}),
   })
 
 /** Creates a client whose every request uses this caller-supplied token. */
