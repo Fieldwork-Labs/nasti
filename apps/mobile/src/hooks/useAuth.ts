@@ -27,6 +27,7 @@ import {
   writeOfflineAuthSnapshot,
 } from "@/lib/offlineAuth"
 import { withTimeout } from "@/lib/withTimeout"
+import { purgeOrgMembersCache } from "@/lib/queryClient"
 
 export {
   getAuthStateFromSession,
@@ -99,6 +100,11 @@ export const useAuth = ({
       setAuthState(queryClient, loggedOutAuthState)
       try {
         await deleteOfflineAuthSnapshot()
+        // The roster names and emails this account's organisation members, so
+        // it must be gone from storage before logout completes, not on the
+        // next throttled cache write. Only explicit logout purges it: a
+        // library SIGNED_OUT keeps offline access, and with it the roster.
+        purgeOrgMembersCache(queryClient)
         // Both scopes can contact the server. Neither may block local logout.
         for (const scope of ["global", "local"] as const) {
           await withTimeout(

@@ -30,6 +30,8 @@ import {
   withSessionPersistenceGate,
 } from "@nasti/common/supabaseClient"
 import { authStateQueryKey, useAuth } from "../useAuth"
+import { orgMembersQueryKey } from "@/lib/orgMembers"
+import { PERSIST_KEY } from "@/lib/queryClient"
 
 vi.mock("@/platform", () => ({
   authStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
@@ -376,6 +378,42 @@ describe("explicit logout", () => {
     expect(await getAuthStateWithOfflineFallback()).toMatchObject({
       mode: "logged_out",
     })
+  })
+
+  it("removes the org roster from memory and the persisted cache before navigation", async () => {
+    seedLogin()
+    const rosterKey = orgMembersQueryKey(session.user.id)
+    client.setQueryData(rosterKey, [{ id: "member-1", name: "Someone" }])
+    window.localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({ clientState: { queries: [{ queryKey: rosterKey }] } }),
+    )
+    const navigate = vi.fn(async () => {
+      expect(client.getQueryData(rosterKey)).toBeUndefined()
+      expect(window.localStorage.getItem(PERSIST_KEY)).not.toContain(
+        "member-1",
+      )
+      expect(window.localStorage.getItem(PERSIST_KEY)).not.toContain(
+        '"people"',
+      )
+    })
+    const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
+      wrapper,
+    })
+    await waitFor(() => expect(result.current.mode).toBe("offline"))
+    await act(() => result.current.logout.mutateAsync())
+    expect(navigate).toHaveBeenCalledOnce()
+  })
+
+  it("keeps the org roster after an auth-library SIGNED_OUT", async () => {
+    seedLogin()
+    const rosterKey = orgMembersQueryKey(session.user.id)
+    const { result } = renderHook(useAuth, { wrapper: providerWrapper })
+    await waitFor(() => expect(result.current?.mode).toBe("offline"))
+    client.setQueryData(rosterKey, [{ id: "member-1" }])
+    emit("SIGNED_OUT", null)
+    await waitFor(() => expect(result.current.requiresSignIn).toBe(true))
+    expect(client.getQueryData(rosterKey)).toEqual([{ id: "member-1" }])
   })
 
   it("completes local removal when global sign-out rejects", async () => {
