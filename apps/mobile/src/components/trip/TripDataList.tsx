@@ -17,7 +17,8 @@ import {
 } from "@nasti/ui/dropdown-menu"
 import { cn } from "@nasti/ui/utils"
 
-import type { OrganisationUser, Species } from "@nasti/common/types"
+import type { Species } from "@nasti/common/types"
+import type { OrgMember } from "@/lib/orgMembers"
 import { Button } from "@nasti/ui/button"
 import {
   Binoculars,
@@ -81,7 +82,7 @@ const scoutingNoteConfig: EntityListItemConfig = {
 interface EntityListItemProps<TEntity extends DisplayableEntity> {
   entity: TEntity
   species?: Species | null
-  person?: OrganisationUser | null
+  person?: OrgMember | null
   config: EntityListItemConfig
   isPending?: boolean
   isMutating?: boolean
@@ -199,7 +200,7 @@ export const CollectionListItem = ({
 }: {
   collection: CollectionWithSpecies
   species?: Species | null
-  person?: OrganisationUser | null
+  person?: OrgMember | null
   speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }) => {
   return (
@@ -221,7 +222,7 @@ export const ScoutingNoteListItem = ({
 }: {
   scoutingNote: ScoutingNoteWithSpecies
   species?: Species | null
-  person?: OrganisationUser | null
+  person?: OrgMember | null
   speciesPhotosMap?: Parameters<typeof useSpeciesDisplayImage>[1]
 }) => {
   return (
@@ -270,7 +271,7 @@ export const TripDataList = ({ id }: { id: string }) => {
         acc[person.id] = person
         return acc
       },
-      {} as Record<string, OrganisationUser>,
+      {} as Record<string, OrgMember>,
     )
   }, [people])
 

@@ -20,11 +20,8 @@ function getGitSha() {
   }
 }
 
-// Unique per build. Used as the TanStack Query persist `buster` so a new
-// deploy auto-discards a stale persisted cache (which can otherwise hold
-// data in an old shape and crash the app on hydrate). Cloudflare Workers
-// sets WORKERS_CI_COMMIT_SHA in the build env; locally we read the git
-// sha directly so HMR reloads don't bust the cache on every save.
+// Build identifier shown in the app and used for Sentry releases. Cloudflare
+// Workers supplies the commit SHA in CI. Local builds read it from Git.
 const buildId =
   process.env.WORKERS_CI_COMMIT_SHA?.slice(0, 7) ??
   getGitSha() ??

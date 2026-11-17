@@ -1,7 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { useIsRestoring, useQueryClient } from "@tanstack/react-query"
+import { useMutationState, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@nasti/common/supabase"
-import { authStateQueryKey, setAuthState } from "@/hooks/useAuth"
+import {
+  authStateQueryKey,
+  logoutMutationKey,
+  setAuthState,
+  useLogout,
+} from "@/hooks/useAuth"
+import { getOrgMembersCache } from "@/lib/orgMembersCache"
 import {
   areAuthSessionEventsAllowed,
   type AuthState,
@@ -22,11 +28,16 @@ import {
 /** One subscription owns auth events, regardless of the number of useAuth consumers. */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient()
-  const isRestoring = useIsRestoring()
   const [ready, setReady] = useState(false)
+  const latestLogout = useMutationState({
+    filters: { mutationKey: logoutMutationKey, exact: true },
+    select: (mutation) => mutation.state,
+  }).at(-1)
+  const retryLogout = useLogout()
+  const logoutError = latestLogout?.error
 
   useEffect(() => {
-    if (isRestoring) return
+    const stopRosterCache = getOrgMembersCache(queryClient).start()
     let disposed = false
     let eventVersion = 0
     let expiryTimer: ReturnType<typeof setTimeout> | undefined
@@ -155,20 +166,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
     return () => {
       disposed = true
+      stopRosterCache()
       subscription.unsubscribe()
       unsubscribeQuery()
       clearTimeout(expiryTimer)
     }
-  }, [isRestoring, queryClient])
+  }, [queryClient])
 
-  // Old persisted query caches are not an authority for local access.
-  return ready && !isRestoring ? (
+  if (logoutError || retryLogout.isPending) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
+        {logoutError && <p role="alert">{logoutError.message}</p>}
+        <button
+          type="button"
+          className="rounded-md border px-4 py-2"
+          disabled={retryLogout.isPending}
+          onClick={() => retryLogout.mutate()}
+        >
+          {retryLogout.isPending ? "Logging out…" : "Retry logout"}
+        </button>
+      </div>
+    )
+  }
+
+  return ready ? (
     children
   ) : (
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-screen items-center justify-center text-sm text-muted-foreground"
+      className="text-muted-foreground flex min-h-screen items-center justify-center text-sm"
     >
       Restoring your session…
     </div>

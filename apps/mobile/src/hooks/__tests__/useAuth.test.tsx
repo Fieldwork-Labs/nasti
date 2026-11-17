@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react"
 import {
   onlineManager,
   QueryClient,
@@ -31,7 +31,9 @@ import {
 } from "@nasti/common/supabaseClient"
 import { authStateQueryKey, useAuth } from "../useAuth"
 import { orgMembersQueryKey } from "@/lib/orgMembers"
-import { PERSIST_KEY } from "@/lib/queryClient"
+import { LEGACY_QUERY_CACHE_KEY as PERSIST_KEY, ROSTER_DB } from "@/lib/orgMembersStorage"
+import { deleteDB, openDB } from "idb"
+import { getOrgMembersCache } from "@/lib/orgMembersCache"
 
 vi.mock("@/platform", () => ({
   authStorage: { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() },
@@ -93,8 +95,10 @@ const emit = (event: AuthChangeEvent, value: Session | null) =>
     callbacks.forEach((callback) => callback(event, value))
   })
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.resetAllMocks()
+  window.localStorage.clear()
+  await deleteDB(ROSTER_DB)
   beginExplicitLogout()
   finishExplicitLogout()
   allowExplicitLogin()
@@ -390,12 +394,10 @@ describe("explicit logout", () => {
     )
     const navigate = vi.fn(async () => {
       expect(client.getQueryData(rosterKey)).toBeUndefined()
-      expect(window.localStorage.getItem(PERSIST_KEY)).not.toContain(
-        "member-1",
-      )
-      expect(window.localStorage.getItem(PERSIST_KEY)).not.toContain(
-        '"people"',
-      )
+      expect(window.localStorage.getItem(PERSIST_KEY)).toBeNull()
+      const db = await openDB(ROSTER_DB, 1)
+      expect(await db.getAllKeys("rosters")).toEqual([])
+      db.close()
     })
     const { result } = renderHook(() => useAuth({ onLogout: navigate }), {
       wrapper,
@@ -479,6 +481,37 @@ describe("explicit logout", () => {
     expect(supabase.auth.signOut).not.toHaveBeenCalled()
     expect(stored.has(OFFLINE_AUTH_KEY)).toBe(true)
     expect(isExplicitLogoutInProgress()).toBe(false)
+  })
+
+  it("shows a roster deletion error and allows retry after the initiating screen unmounts", async () => {
+    seedLogin()
+    const onLogout = vi.fn(async () => undefined)
+    const AccountScreen = () => {
+      const { isLoggedIn, logout } = useAuth({ onLogout })
+      return isLoggedIn
+        ? <button onClick={() => logout.mutate()}>Sign out</button>
+        : <p>Signed out</p>
+    }
+    render(providerWrapper({ children: <AccountScreen /> }))
+    const button = await screen.findByRole("button", { name: "Sign out" })
+    await waitFor(() => expect(getOrgMembersCache(client).isReady(session.user.id)).toBe(true))
+    const clear = IDBObjectStore.prototype.clear
+    const abort = vi.spyOn(IDBObjectStore.prototype, "clear").mockImplementationOnce(function (this: IDBObjectStore) {
+      const request = clear.call(this)
+      request.addEventListener("success", () => this.transaction.abort())
+      return request
+    })
+    fireEvent.click(button)
+    expect((await screen.findByRole("alert")).textContent).toContain("Unable to remove the saved collector roster")
+    expect(onLogout).not.toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull()
+    expect(stored.has(OFFLINE_AUTH_KEY)).toBe(false)
+    expect(stored.has(SUPABASE_AUTH_STORAGE_KEY)).toBe(false)
+
+    abort.mockRestore()
+    fireEvent.click(screen.getByRole("button", { name: "Retry logout" }))
+    await screen.findByText("Signed out")
+    expect(screen.queryByRole("alert")).toBeNull()
   })
 
   it("bounds both stalled sign-out attempts and still removes local credentials", async () => {

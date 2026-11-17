@@ -27,7 +27,7 @@ import {
   writeOfflineAuthSnapshot,
 } from "@/lib/offlineAuth"
 import { withTimeout } from "@/lib/withTimeout"
-import { purgeOrgMembersCache } from "@/lib/queryClient"
+import { getOrgMembersCache } from "@/lib/orgMembersCache"
 
 export {
   getAuthStateFromSession,
@@ -35,13 +35,14 @@ export {
 } from "@/lib/offlineAuth"
 
 export const authStateQueryKey = ["auth", "state"] as const
+export const logoutMutationKey = ["auth", "logout"] as const
 
 export const setAuthState = (queryClient: QueryClient, state: AuthState) => {
   // A stale bootstrap must not overwrite a newer subscription event/logout.
   void queryClient.cancelQueries({ queryKey: authStateQueryKey, exact: true })
-  queryClient.setQueryDefaults(authStateQueryKey, {
-    meta: { persisted: false },
-  })
+  getOrgMembersCache(queryClient).setAccount(
+    state.isLoggedIn ? state.user?.id : undefined,
+  )
   queryClient.setQueryData(authStateQueryKey, state)
   queryClient.removeQueries({ queryKey: ["auth", "user"], exact: true })
   queryClient.removeQueries({ queryKey: ["auth", "organisation"], exact: true })
@@ -49,10 +50,49 @@ export const setAuthState = (queryClient: QueryClient, state: AuthState) => {
   queryClient.removeQueries({ queryKey: ["auth", "loggedIn"], exact: true })
 }
 
+export const useLogout = (onLogout?: () => Promise<void>) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationKey: logoutMutationKey,
+    // A failed cleanup must stay retryable after the initiating screen unmounts.
+    gcTime: Infinity,
+    mutationFn: async () => {
+      beginExplicitLogout()
+      setAuthState(queryClient, loggedOutAuthState)
+      // Block and revoke the roster immediately. Still remove saved login
+      // credentials if roster storage fails, so a reload cannot restore it.
+      const purge = getOrgMembersCache(queryClient)
+        .purge()
+        .catch((error: Error) => error)
+      try {
+        await deleteOfflineAuthSnapshot()
+        // Both scopes can contact the server. Neither may block local logout.
+        for (const scope of ["global", "local"] as const) {
+          await withTimeout(
+            Promise.resolve()
+              .then(() => supabase.auth.signOut({ scope }))
+              .catch(() => null),
+          )
+        }
+        await deletePersistedSupabaseSession()
+        const purgeError = await purge
+        if (purgeError) throw purgeError
+        await onLogout?.()
+      } finally {
+        await purge
+        finishExplicitLogout()
+      }
+    },
+    networkMode: "always",
+    retry: false,
+  })
+}
+
 export const useAuth = ({
   onLogout,
 }: { onLogout?: () => Promise<void> } = {}) => {
   const queryClient = useQueryClient()
+  const rosterCache = getOrgMembersCache(queryClient)
   const login = useMutation({
     mutationFn: async ({
       email,
@@ -64,6 +104,9 @@ export const useAuth = ({
       if (isExplicitLogoutInProgress())
         throw new Error("Please wait for logout to finish")
       const revision = getAuthRevision()
+      const rosterGate = await rosterCache.readGate()
+      if (revision !== getAuthRevision())
+        throw new Error("Please sign in again after logout finishes")
       prepareExplicitLogin()
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -74,7 +117,7 @@ export const useAuth = ({
           throw new Error("Unable to connect to server")
         else throw error
       }
-      return { ...data, revision }
+      return { ...data, revision, rosterGate }
     },
     networkMode: "online",
     retry: false,
@@ -82,6 +125,7 @@ export const useAuth = ({
     onSuccess: async (data) => {
       if (isExplicitLogoutInProgress() || data.revision !== getAuthRevision())
         return
+      if (data.session) rosterCache.authorize(data.rosterGate)
       allowExplicitLogin()
       setAuthState(queryClient, getAuthStateFromSession(data.session))
       if (data.session) {
@@ -94,41 +138,13 @@ export const useAuth = ({
     },
   })
 
-  const logout = useMutation({
-    mutationFn: async () => {
-      beginExplicitLogout()
-      setAuthState(queryClient, loggedOutAuthState)
-      try {
-        await deleteOfflineAuthSnapshot()
-        // The roster names and emails this account's organisation members, so
-        // it must be gone from storage before logout completes, not on the
-        // next throttled cache write. Only explicit logout purges it: a
-        // library SIGNED_OUT keeps offline access, and with it the roster.
-        purgeOrgMembersCache(queryClient)
-        // Both scopes can contact the server. Neither may block local logout.
-        for (const scope of ["global", "local"] as const) {
-          await withTimeout(
-            Promise.resolve()
-              .then(() => supabase.auth.signOut({ scope }))
-              .catch(() => null),
-          )
-        }
-        await deletePersistedSupabaseSession()
-        await onLogout?.()
-      } finally {
-        finishExplicitLogout()
-      }
-    },
-    networkMode: "always",
-    retry: false,
-  })
+  const logout = useLogout(onLogout)
 
   const { data: authState = loggedOutAuthState } = useQuery({
     queryKey: authStateQueryKey,
     queryFn: getAuthStateWithOfflineFallback,
     networkMode: "always",
     staleTime: Infinity,
-    meta: { persisted: false },
   })
 
   const role = authState.claims?.role ?? null

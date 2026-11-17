@@ -6,7 +6,7 @@ import "./style.css"
 import { RouterProvider, createRouter } from "@tanstack/react-router"
 import { routeTree } from "./routeTree.gen"
 import { ThemeProvider } from "./contexts/theme"
-import { NastiPersistQueryClientProvider } from "./lib/queryClient"
+import { NastiQueryClientProvider } from "./lib/queryClient"
 import { useAuth } from "./hooks/useAuth"
 import { SwStatusProvider } from "@/contexts/swStatus"
 import { PowerSyncProvider } from "./contexts/PowerSync"
@@ -69,11 +69,11 @@ if (!rootElement.innerHTML) {
   const root = createRoot(rootElement)
   root.render(
     <StrictMode>
-      <NastiPersistQueryClientProvider>
+      <NastiQueryClientProvider>
         <AuthProvider>
           <App />
         </AuthProvider>
-      </NastiPersistQueryClientProvider>
+      </NastiQueryClientProvider>
     </StrictMode>,
   )
 }

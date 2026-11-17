@@ -136,18 +136,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.0.12
         version: 4.0.12(vite@6.2.1)
-      '@tanstack/query-async-storage-persister':
-        specifier: ^5.100.14
-        version: 5.100.14
-      '@tanstack/query-sync-storage-persister':
-        specifier: ^5.100.14
-        version: 5.100.14
       '@tanstack/react-query':
         specifier: ^5.100.14
         version: 5.100.14(react@19.2.7)
-      '@tanstack/react-query-persist-client':
-        specifier: ^5.100.14
-        version: 5.100.14(@tanstack/react-query@5.100.14)(react@19.2.7)
       '@tanstack/react-router':
         specifier: ^1.64.0
         version: 1.112.17(react-dom@19.2.7)(react@19.2.7)
@@ -6311,13 +6302,6 @@ packages:
     resolution: {integrity: sha512-+EPOvUtnA3PnIBF2oUhggdy7UrVimLZd1SpULhV1UiesNgKtmLjArO7ZdGPrRq7pRXhc8V0ZAWTI9vfplhZfeA==}
     engines: {node: '>=12'}
 
-  /@tanstack/query-async-storage-persister@5.100.14:
-    resolution: {integrity: sha512-otwoi4OsYoECIZBqDZ/crzyJFDXvzwCMg+T/Z+mforv9/GTqkYShddaItNC7SkFRq9VMIO3R3T71rfZfmb0NOA==}
-    dependencies:
-      '@tanstack/query-core': 5.100.14
-      '@tanstack/query-persist-client-core': 5.100.14
-    dev: false
-
   /@tanstack/query-core@5.100.14:
     resolution: {integrity: sha512-5X41dGpxgeaHISCRW2oYwcSycZeULZzAunaudXT9ov1KOTj9xwt0CH6hbwqP1/z74ZWF7rYFnDpyYH07XFcZew==}
 
@@ -6325,13 +6309,6 @@ packages:
     resolution: {integrity: sha512-mn60cqoQO/xB6aHxp/hxlSj5mcdcTO4tjj4SXSz5MKzkaMZnvcEGySz3+cGQOT8McREN56fL41L0eR//v5RwNw==}
     dependencies:
       '@tanstack/query-core': 5.100.14
-
-  /@tanstack/query-sync-storage-persister@5.100.14:
-    resolution: {integrity: sha512-sDsiVjLJqslUdqIANGvRyB4hYpAooYj5R1fe2EzKfrSY7XufSe+AFBvirLgX/nL2uS1JeP4XeyUuG3TM0bAN9w==}
-    dependencies:
-      '@tanstack/query-core': 5.100.14
-      '@tanstack/query-persist-client-core': 5.100.14
-    dev: false
 
   /@tanstack/react-query-persist-client@5.100.14(@tanstack/react-query@5.100.14)(react@19.2.7):
     resolution: {integrity: sha512-lQSnbJva85o7jGcJiIDrA8s3VGGx9zaBCgAljm0H1QcScU2iaDYnPuRLg/xI0k0dC45pgg9RTvpgJx5iVHRsjA==}
