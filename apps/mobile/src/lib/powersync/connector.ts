@@ -46,7 +46,20 @@ const TABLE_UPLOAD_PRIORITY: Record<string, number> = {
 }
 
 const DEPENDENCY_ERROR_CODES = new Set(["23503"])
-const PERMANENT_ERROR_CODES = new Set(["PGRST204", "PGRST205", "42703", "42804", "42883"])
+/**
+ * Not a PostgreSQL code: set by the connector when a PATCH matched zero
+ * rows, which PostgREST reports as success (see rowNotFoundError).
+ */
+const ROW_NOT_FOUND_CODE = "NASTI_ROW_NOT_FOUND"
+const ROW_NOT_FOUND_MESSAGE = "Record not found or not editable"
+const PERMANENT_ERROR_CODES = new Set([
+  "PGRST204",
+  "PGRST205",
+  "42703",
+  "42804",
+  "42883",
+  ROW_NOT_FOUND_CODE,
+])
 const MAX_NON_TRANSIENT_RETRIES = 3
 const NON_TRANSIENT_RETRY_DELAY_MS = 2000
 const DEPENDENCY_RETRY_STORAGE_PREFIX = "nasti-powersync-dependency-retries-v1:"
@@ -112,8 +125,32 @@ function isPermanentErrorCode(code: string | null): boolean {
 
 function classifyPgCode(code: string | undefined): string {
   if (!code) return "internal"
+  if (code === ROW_NOT_FOUND_CODE) return "validation"
   if (code.startsWith("23") || code.startsWith("42")) return "validation"
   return "internal"
+}
+
+/**
+ * A denial that only counts as a rejection of the rows if the token the
+ * request carried is still live. RLS filtering a PATCH's row out is a
+ * denial too, and a revoked session can cause it.
+ */
+function isRowDenialCode(code: string | null): boolean {
+  return code === "42501" || code === ROW_NOT_FOUND_CODE
+}
+
+/**
+ * The error thrown for a PATCH the server accepted but that matched zero
+ * rows: RLS filtered the row out, or it isn't on the server (for example,
+ * its create was parked). Completing would drop the edit without notice,
+ * and the next sync would quietly revert it locally.
+ */
+function rowNotFoundError(table: string, id: string) {
+  return {
+    code: ROW_NOT_FOUND_CODE,
+    message: ROW_NOT_FOUND_MESSAGE,
+    details: `The update to ${table} ${id} matched no rows on the server: the record doesn't exist there, or you don't have permission to edit it.`,
+  }
 }
 
 async function safeComplete(transaction: CrudTransaction): Promise<boolean> {
@@ -138,8 +175,17 @@ async function saveFailedTransaction(
   const missingColumn = message?.match(
     /Could not find the '([a-z_][a-z0-9_]*)' column of '([a-z_][a-z0-9_]*)' in the schema cache/i,
   )
+  // Server messages aren't stored, but the connector's own row-not-found
+  // message and details are safe to keep and say what went wrong.
+  const rowNotFound = pgCode === ROW_NOT_FOUND_CODE
   const errorInfo = JSON.stringify({
     code: pgCode,
+    ...(rowNotFound
+      ? {
+          message: errorField(error, "message"),
+          details: errorField(error, "details"),
+        }
+      : {}),
     ...(missingColumn
       ? { column: missingColumn[1], table: missingColumn[2] }
       : {}),
@@ -287,6 +333,13 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     setQueueAuthBlocked("rows", false)
     const client = this.clientFor(credentials)
     let unconfirmedRlsDenial = false
+    // Every request in this call carries the same token, so ask the auth
+    // server about it at most once, however many denials the call meets.
+    let tokenConfirmation: Promise<boolean> | undefined
+    const confirmToken = () => {
+      tokenConfirmation ??= liveUploadCredentials.confirm(credentials)
+      return tokenConfirmation
+    }
 
     try {
       const permanentFailures: Array<{ op: CrudTransaction["crud"][number]; error: unknown }> = []
@@ -313,11 +366,16 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
           }
           case UpdateType.PATCH: {
             const data = prepareForSupabase(op.table, op.opData ?? {})
-            const { error } = await client
+            // An UPDATE that changed nothing queues a PATCH with no columns.
+            // There is nothing to send, and it would match zero rows.
+            if (Object.keys(data).length === 0) break
+            const { error, count } = await client
               .from(table)
-              .update(data as never)
+              .update(data as never, { count: "exact" })
               .eq("id" as never, id)
             if (error) throw error
+            // PostgREST reports success when an UPDATE matches zero rows.
+            if (count === 0) throw rowNotFoundError(op.table, id)
             break
           }
           case UpdateType.DELETE: {
@@ -342,8 +400,8 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
         }
         } catch (error) {
           const code = errorField(error, "code")
-          if (code === "42501") {
-            if (!await liveUploadCredentials.confirm(credentials)) {
+          if (isRowDenialCode(code)) {
+            if (!await confirmToken()) {
               unconfirmedRlsDenial = true
               throw error
             }
@@ -377,8 +435,8 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     } catch (error) {
       const pgCode = errorField(error, "code")
 
-      if (pgCode === "42501") {
-        const confirmed = !unconfirmedRlsDenial && await liveUploadCredentials.confirm(credentials)
+      if (isRowDenialCode(pgCode)) {
+        const confirmed = !unconfirmedRlsDenial && await confirmToken()
         if (!confirmed) {
           setQueueAuthBlocked("rows", true)
           recordDiagnostic(transaction, error, "retry_unconfirmed_rls_denial", 0)

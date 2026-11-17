@@ -136,7 +136,7 @@ describe("PowerSync row upload connector", () => {
     expect(createTokenClientMock).toHaveBeenCalledWith(TOKEN)
     expect(tokenClientFromMock).toHaveBeenCalledTimes(3)
     expect(upsertMock).toHaveBeenCalledWith({ id: "put-1", name: "value" })
-    expect(updateMock).toHaveBeenCalledWith({ name: "updated" })
+    expect(updateMock).toHaveBeenCalledWith({ name: "updated" }, { count: "exact" })
     expect(deleteMock).toHaveBeenCalledOnce()
     expect(deleteMock).toHaveBeenCalledWith({ count: "exact" })
     expect(confirmMediaRowDeleteMock).toHaveBeenCalledWith("collection_photo", "delete-1", database)
@@ -296,7 +296,7 @@ describe("PowerSync row upload connector", () => {
 
     expect(database.writeTransaction).toHaveBeenCalledOnce()
     expect(database.execute).toHaveBeenCalledOnce()
-    expect(updateMock).toHaveBeenCalledWith({ name: "value" })
+    expect(updateMock).toHaveBeenCalledWith({ name: "value" }, { count: "exact" })
     expect(transaction.complete).toHaveBeenCalledOnce()
   })
 
@@ -529,6 +529,102 @@ describe("PowerSync row upload connector", () => {
     expect(upsertMock).toHaveBeenCalledTimes(2)
     expect(upsertMock).toHaveBeenNthCalledWith(1, { id: "same-put", name: "value" })
     expect(upsertMock).toHaveBeenNthCalledWith(2, { id: "same-put", name: "value" })
+    expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("sends a normal PATCH with an exact count and completes when it matches its row", async () => {
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("collection", "patch-ok", UpdateType.PATCH, { name: "updated" }),
+    ])
+    const { database } = makeDatabase([transaction])
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(updateMock).toHaveBeenCalledWith({ name: "updated" }, { count: "exact" })
+    expect(eqMock).toHaveBeenCalledWith("id", "patch-ok")
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(database.execute).not.toHaveBeenCalled()
+    expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("parks a PATCH that matched no rows when the token is confirmed", async () => {
+    eqMock.mockResolvedValueOnce({ error: null, count: 0 })
+    confirmMock.mockResolvedValue(true)
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("collection", "patch-gone", UpdateType.PATCH, { name: "edited offline" }),
+    ])
+    const { database, savedRows } = makeDatabase([transaction])
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(confirmMock).toHaveBeenCalledWith({ accessToken: TOKEN })
+    expect(savedRows).toHaveLength(1)
+    const [failureId, targetTable, entityId, opType, opData, errorInfo, , classification, retryCount] =
+      savedRows[0] ?? []
+    expect(failureId).toBe(`sync-failure:${transaction.crud[0]?.clientId}`)
+    expect([targetTable, entityId, opType]).toEqual(["collection", "patch-gone", UpdateType.PATCH])
+    expect(JSON.parse(opData as string)).toEqual({ name: "edited offline" })
+    const info = JSON.parse(errorInfo as string) as Record<string, string>
+    expect(info.code).toBe("NASTI_ROW_NOT_FOUND")
+    expect(info.message).toBe("Record not found or not editable")
+    expect(info.details).toContain("collection patch-gone")
+    expect(classification).toBe("validation")
+    expect(retryCount).toBe(0)
+    expect(transaction.complete).toHaveBeenCalledOnce()
+    expect(Object.keys(localStorage).some((key) => key.includes("dependency-retries"))).toBe(false)
+  })
+
+  it("keeps a zero-row PATCH queued when the token can't be confirmed", async () => {
+    eqMock.mockResolvedValueOnce({ error: null, count: 0 })
+    confirmMock.mockResolvedValue(false)
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("collection", "patch-unconfirmed", UpdateType.PATCH, { name: "x" }),
+    ])
+    const { database } = makeDatabase([transaction])
+
+    await expect(new SupabaseConnector().uploadData(database as never)).rejects.toThrow()
+
+    expect(confirmMock).toHaveBeenCalledOnce()
+    expect(database.execute).not.toHaveBeenCalled()
+    expect(transaction.complete).not.toHaveBeenCalled()
+  })
+
+  it("confirms the token once per upload however many denials it meets", async () => {
+    eqMock
+      .mockResolvedValueOnce({ error: null, count: 0 })
+      .mockResolvedValueOnce({ error: null, count: 0 })
+    upsertMock.mockResolvedValueOnce({ error: rowError("42501") })
+    confirmMock.mockResolvedValue(true)
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("species", "denied-put", UpdateType.PUT),
+      makeOp("collection", "gone-1", UpdateType.PATCH, { name: "a" }),
+      makeOp("collection", "gone-2", UpdateType.PATCH, { name: "b" }),
+    ])
+    const { database, savedRows } = makeDatabase([transaction])
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(confirmMock).toHaveBeenCalledOnce()
+    expect(savedRows.map((row) => row[2])).toEqual(["denied-put", "gone-1", "gone-2"])
+    expect(transaction.complete).toHaveBeenCalledOnce()
+  })
+
+  it("skips a PATCH with no columns instead of parking it as not found", async () => {
+    const SupabaseConnector = await connectorClass()
+    const transaction = makeTransaction([
+      makeOp("collection", "patch-empty", UpdateType.PATCH, {}),
+    ])
+    const { database } = makeDatabase([transaction])
+
+    await new SupabaseConnector().uploadData(database as never)
+
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(confirmMock).not.toHaveBeenCalled()
+    expect(database.execute).not.toHaveBeenCalled()
     expect(transaction.complete).toHaveBeenCalledOnce()
   })
 
