@@ -5,6 +5,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { AuthMiddleware } from "../_shared/jwt/default.ts"
+import {
+  frontendUrl,
+  getOrgAdminEmails,
+  sendEmail,
+} from "../_shared/mailgun.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,6 +135,7 @@ Deno.serve((r) =>
         .select("id")
         .eq("requesting_org_id", orgUser.organisation_id)
         .eq("provider_org_id", provider_org_id)
+        .eq("kind", "testing")
         .maybeSingle()
 
       if (existingLink) {
@@ -149,6 +155,7 @@ Deno.serve((r) =>
         .select("id")
         .eq("requesting_org_id", orgUser.organisation_id)
         .eq("provider_org_id", provider_org_id)
+        .eq("kind", "testing")
         .is("accepted_at", null)
         .maybeSingle()
 
@@ -170,6 +177,7 @@ Deno.serve((r) =>
         .insert({
           requesting_org_id: orgUser.organisation_id,
           provider_org_id,
+          kind: "testing",
           created_by: userData.user.id,
         })
         .select()
@@ -187,57 +195,29 @@ Deno.serve((r) =>
         )
       }
 
-      // Get admin users from testing organisation for email notification
-      const { data: testingOrgAdmins, error: adminsError } =
-        await supabaseClient
-          .from("org_user")
-          .select("user_id, users:user_id(email)")
-          .eq("organisation_id", provider_org_id)
-          .eq("role", "Admin")
-
-      if (!adminsError && testingOrgAdmins && testingOrgAdmins.length > 0) {
-        // Send email notification to testing org admins
-        const mailgunDomain = Deno.env.get("MAILGUN_DOMAIN")
-        const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY")
-
-        if (mailgunDomain && mailgunApiKey) {
-          const emailBody = `
+      // Notify the testing organisation's admins (best effort)
+      const adminEmails = await getOrgAdminEmails(
+        supabaseClient,
+        provider_org_id,
+      )
+      const emailBody = `
           <html>
             <body>
               <h2>New Link Request</h2>
               <p><strong>${org.name}</strong> has requested to link with your testing organisation.</p>
               <p>Accepting lets them send you bags of seed for testing.</p>
               <p>Please log in to NASTI to accept or reject this request.</p>
-              <p><a href="${Deno.env.get("FRONTEND_URL")}/settings/testing-orgs">View Link Request</a></p>
+              <p><a href="${frontendUrl("/settings/testing-orgs")}">View Link Request</a></p>
               <p>Regards,<br/>NASTI Team</p>
             </body>
           </html>
         `
-
-          // Send to all admins
-          for (const admin of testingOrgAdmins) {
-            const adminEmail = (admin.users as unknown as { email: string })
-              ?.email
-            if (adminEmail) {
-              await fetch(
-                `https://api.eu.mailgun.net/v3/${mailgunDomain}/messages`,
-                {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                  },
-                  body: new URLSearchParams({
-                    from: `NASTI <no-reply@${mailgunDomain}>`,
-                    to: adminEmail,
-                    subject: "New Link Request from Organisation",
-                    html: emailBody,
-                  }),
-                },
-              )
-            }
-          }
-        }
+      for (const adminEmail of adminEmails) {
+        await sendEmail({
+          to: adminEmail,
+          subject: "New Link Request from Organisation",
+          html: emailBody,
+        })
       }
 
       return new Response(

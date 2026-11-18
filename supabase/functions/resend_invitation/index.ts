@@ -6,6 +6,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { AuthMiddleware } from "../_shared/jwt/default.ts"
+import { sendEmail } from "../_shared/mailgun.ts"
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -78,9 +79,6 @@ Deno.serve((r) =>
     }
 
     // Send the invitation email via Mailgun
-    const mailgunDomain = Deno.env.get("MAILGUN_DOMAIN")
-    const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY")
-
     const invitationLink = `${Deno.env.get("FRONTEND_URL")}/invitations/accept?token=${newToken}`
 
     const emailBody = `
@@ -95,25 +93,13 @@ Deno.serve((r) =>
     </html>
   `
 
-    const mailgunResponse = await fetch(
-      `https://api.eu.mailgun.net/v3/${mailgunDomain}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          from: `NASTI <no-reply@${mailgunDomain}>`,
-          to: invitation.email,
-          subject: "You're Invited to Join NASTI",
-          html: emailBody,
-        }),
-      },
-    )
+    const emailSent = await sendEmail({
+      to: invitation.email,
+      subject: "You're Invited to Join NASTI",
+      html: emailBody,
+    })
 
-    if (!mailgunResponse.ok) {
-      console.error("Mailgun error:", await mailgunResponse.text())
+    if (!emailSent) {
       return new Response("Failed to send invitation email", {
         status: 500,
       })

@@ -76,6 +76,7 @@ Deno.serve((req) =>
         .from("organisation_link_request")
         .select("*")
         .eq("id", request_id)
+        .eq("kind", "testing")
         .single()
 
       if (fetchError || !linkRequest) {
@@ -137,6 +138,7 @@ Deno.serve((req) =>
         .insert({
           requesting_org_id: linkRequest.requesting_org_id,
           provider_org_id: linkRequest.provider_org_id,
+          kind: "testing",
           created_by: user.id,
         })
         .select()
@@ -162,6 +164,7 @@ Deno.serve((req) =>
           accepted_by: user.id,
         })
         .eq("id", request_id)
+        .eq("kind", "testing")
 
       if (updateError) {
         // If we fail to update the request, we should delete the link we just created
