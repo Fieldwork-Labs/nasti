@@ -985,8 +985,10 @@ BEGIN
     RAISE EXCEPTION 'Cannot merge a batch with an active testing assignment';
   END IF;
 
-  -- Validate that all batches share the same collection_id
-  SELECT COUNT(DISTINCT collection_id) = 1
+  -- Validate that all batches share the same collection_id. COUNT(DISTINCT)
+  -- ignores NULLs, so a collectionless (received or combined) batch must be
+  -- rejected explicitly or it could merge into a collection-backed one.
+  SELECT COUNT(DISTINCT collection_id) = 1 AND bool_and(collection_id IS NOT NULL)
   INTO v_same
   FROM batches
   WHERE id = ANY (p_source_batch_ids);
@@ -1112,6 +1114,18 @@ BEGIN
       AND bta.closed_at IS NULL
   ) THEN
     RAISE EXCEPTION 'Cannot mix a batch with an active testing assignment';
+  END IF;
+
+  -- The species and IBRA checks below inner-join collection, which silently
+  -- drops a collectionless (received or combined) batch from both counts.
+  -- Reject those batches up front so they can't be consumed by a mix.
+  IF EXISTS (
+    SELECT 1
+    FROM batches
+    WHERE id = ANY (p_source_batch_ids)
+      AND collection_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Only batches derived from a collection can be mixed';
   END IF;
 
   -- Validate all batches have the same species
