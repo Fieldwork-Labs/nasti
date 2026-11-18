@@ -304,11 +304,15 @@ select throws_ok(
   'an existing sub-batch cannot be moved to another organisation container'
 );
 
+-- Clients no longer update batch_storage directly (the write goes through a
+-- bag-first RPC), so the location check is exercised through that RPC.
 select throws_ok(
   $$
-    update public.batch_storage
-    set location_id = 'a4000000-0000-0000-0000-000000000002'
-    where id = 'a6000000-0000-0000-0000-000000000001'
+    select public.fn_update_batch_storage_record(
+      'a6000000-0000-0000-0000-000000000001',
+      'a4000000-0000-0000-0000-000000000002',
+      null
+    )
   $$,
   '23514',
   'Storage location belongs to another organisation',

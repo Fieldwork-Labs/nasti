@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(17);
+select plan(18);
 
 select has_table(
   'public',
@@ -17,10 +17,22 @@ select results_eq(
     where schemaname = 'public'
       and tablename = 'batch_storage'
       and permissive = 'PERMISSIVE'
-      and cmd in ('SELECT', 'INSERT', 'UPDATE')
+      and cmd in ('SELECT', 'INSERT')
   $$,
-  array[3],
-  'batch_storage has select, insert, and update policies'
+  array[2],
+  'batch_storage has select and insert policies'
+);
+
+select results_eq(
+  $$
+    select count(*)::integer
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'batch_storage'
+      and cmd = 'UPDATE'
+  $$,
+  array[0],
+  'batch_storage has no update policy: clients update through fn_update_batch_storage_record'
 );
 
 select results_eq(
