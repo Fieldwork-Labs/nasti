@@ -55,6 +55,11 @@ import {
 import { cn } from "@nasti/ui/utils"
 import { SubBatchesTable } from "./SubBatches"
 import { useSubBatches } from "@/hooks/useSubBatches"
+import {
+  estimatePureLiveSeedCount,
+  estimatePureSeedCount,
+  pureLiveSeedsPerGram,
+} from "@/lib/pureLiveSeed"
 
 // =============================================================================
 // Types
@@ -217,7 +222,7 @@ export const QualityTestStats = ({
       <span className="text-sm">
         TSW{" "}
         <span className="font-mono font-bold">
-          {statistics.tpsu.toFixed(3)}g
+          {(statistics.tpsu * 1000).toFixed(3)}g
         </span>
       </span>
     </div>
@@ -291,10 +296,16 @@ export const BatchSubBatchCountField = ({
  */
 export const LatestQualityStatistics = ({
   statistics,
+  currentWeight,
 }: {
   statistics: NonNullable<
     BatchWithCurrentLocationAndSpecies["latest_quality_statistics"]
   >
+  /**
+   * The counts are worked out from this rather than the test's stored
+   * psuCount/plsCount, which used the batch's weight when it was tested.
+   */
+  currentWeight: number | null | undefined
 }) => (
   <div className="space-y-2 border-t pt-2">
     <div className="text-muted-foreground text-xs">
@@ -303,7 +314,10 @@ export const LatestQualityStatistics = ({
     <div className="grid grid-cols-6 gap-2">
       <div className="flex items-center gap-2">
         <span className="text-sm">
-          TSW <span className="font-bold">{statistics.tpsu.toFixed(3)}g</span>
+          TSW{" "}
+          <span className="font-bold">
+            {(statistics.tpsu * 1000).toFixed(3)}g
+          </span>
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -315,13 +329,35 @@ export const LatestQualityStatistics = ({
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-sm">
-          PSU Number <span className="font-bold">{statistics.psuCount}</span>
+        <span className="text-sm" title="Pure live seeds per gram">
+          PLS/g{" "}
+          <span className="font-bold">
+            {pureLiveSeedsPerGram(statistics)?.toLocaleString(undefined, {
+              maximumFractionDigits: 1,
+            }) ?? "–"}
+          </span>
         </span>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm">
-          PLS Number<span className="font-bold"> {statistics.plsCount}</span>
+          PSU Number{" "}
+          <span className="font-bold">
+            {estimatePureSeedCount(
+              currentWeight,
+              statistics,
+            )?.toLocaleString() ?? "–"}
+          </span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm">
+          PLS Number{" "}
+          <span className="font-bold">
+            {estimatePureLiveSeedCount(
+              currentWeight,
+              statistics,
+            )?.toLocaleString() ?? "–"}
+          </span>
         </span>
       </div>
     </div>
@@ -453,9 +489,13 @@ export const BatchExpandedDetails = ({
         onStorageMove={onSubBatchStorageMove}
         onSubBatchSplit={onSubBatchSplit}
         onSubBatchQualityTest={onSubBatchQualityTest}
+        qualityStatistics={batch.latest_quality_statistics}
       />
       {batch.latest_quality_statistics && (
-        <LatestQualityStatistics statistics={batch.latest_quality_statistics} />
+        <LatestQualityStatistics
+          statistics={batch.latest_quality_statistics}
+          currentWeight={batch.weights?.current_weight}
+        />
       )}
       <BatchTestHistory batch={batch} />
     </div>
@@ -581,17 +621,35 @@ const BatchDetailsContent = ({
 /**
  * Weight cell with current and original weights
  */
-export const WeightCell = ({ batch }: { batch: BatchType }) => (
-  <div className="flex flex-col items-end gap-0.5">
-    <span className="text-sm font-medium">{batch.weights?.current_weight}</span>
-    {batch.weights &&
-      batch.weights.current_weight !== batch.weights.original_weight && (
-        <span className="text-muted-foreground text-xs">
-          of {batch.weights.original_weight}
+export const WeightCell = ({ batch }: { batch: BatchType }) => {
+  // From the current weight, not the test's stored plsCount, which was
+  // computed against the batch's weight when the test was recorded.
+  const plsCount = estimatePureLiveSeedCount(
+    batch.weights?.current_weight,
+    batch.latest_quality_statistics,
+  )
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className="text-sm font-medium">
+        {batch.weights?.current_weight}
+      </span>
+      {batch.weights &&
+        batch.weights.current_weight !== batch.weights.original_weight && (
+          <span className="text-muted-foreground text-xs">
+            of {batch.weights.original_weight}
+          </span>
+        )}
+      {plsCount !== null && (
+        <span
+          className="text-muted-foreground font-mono text-xs"
+          title="Estimated pure live seed, from the latest quality test"
+        >
+          PLS {plsCount.toLocaleString()}
         </span>
       )}
-  </div>
-)
+    </div>
+  )
+}
 
 /**
  * Created date cell

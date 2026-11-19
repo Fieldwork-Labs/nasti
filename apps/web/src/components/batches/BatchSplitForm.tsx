@@ -29,13 +29,14 @@ import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 const NO_LOCATION = "__none__"
 const NO_CONTAINER = "__none__"
 
+const roundGrams = (grams: number) => Math.round(grams * 1e6) / 1e6
+
 const outputSchema = z.object({
   weight_grams: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
     z
       .number({ invalid_type_error: "Weight is required" })
-      .int()
-      .min(1, "Weight must be at least 1 gram"),
+      .positive("Weight must be greater than 0"),
   ),
   notes: z.string().optional(),
   container_id: z.string().optional(),
@@ -92,12 +93,13 @@ export const BatchSplitForm = ({
   })
 
   const outputs = form.watch("outputs")
-  const totalSplitWeight = outputs.reduce(
-    (sum, o) => sum + (Number(o.weight_grams) || 0),
-    0,
+  // Round away float error so 0.1 + 0.2 reads as 0.3 and compares correctly
+  // against the source weight.
+  const totalSplitWeight = roundGrams(
+    outputs.reduce((sum, o) => sum + (Number(o.weight_grams) || 0), 0),
   )
   const sourceWeight = selectedSubBatch?.current_weight ?? 0
-  const remainingWeight = sourceWeight - totalSplitWeight
+  const remainingWeight = roundGrams(sourceWeight - totalSplitWeight)
   const allWeightsValid = outputs.every((o) => Number(o.weight_grams) > 0)
   const isValidSplit =
     allWeightsValid && totalSplitWeight > 0 && totalSplitWeight <= sourceWeight
@@ -186,8 +188,10 @@ export const BatchSplitForm = ({
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
-                          min="1"
-                          max={sourceWeight - 1}
+                          inputMode="decimal"
+                          step="any"
+                          min="0"
+                          max={sourceWeight}
                           placeholder="grams"
                           {...form.register(`outputs.${index}.weight_grams`)}
                           className="flex-1"

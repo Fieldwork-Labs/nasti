@@ -16,6 +16,15 @@ import useBagFlightStore from "@/components/inventory/bagFlight"
 import { useSubBatches } from "@/hooks/useSubBatches"
 import useBagBasketStore from "@/store/bagBasketStore"
 import { cn } from "@nasti/ui/utils"
+import {
+  estimatePureLiveSeedCount,
+  estimatePureSeedCount,
+  type PureLiveSeedStatistics,
+  type PureSeedStatistics,
+} from "@/lib/pureLiveSeed"
+
+/** The batch's latest test ratios, applied to each bag's own weight. */
+export type BagSeedStatistics = PureLiveSeedStatistics & PureSeedStatistics
 
 /**
  * Displays sub-batches for a batch with merge capability and per-sub-batch storage moves
@@ -27,6 +36,7 @@ export const SubBatchesTable = ({
   onStorageMove,
   onSubBatchSplit,
   onSubBatchQualityTest,
+  qualityStatistics,
 }: {
   batchId: string
   /** Carried into the basket so it can label a bag without another query. */
@@ -36,6 +46,8 @@ export const SubBatchesTable = ({
   onStorageMove?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
+  /** Null or absent when the batch has not been tested. */
+  qualityStatistics?: BagSeedStatistics | null
 }) => {
   const { data: subBatches, isLoading } = useSubBatches(batchId)
   const isSelecting = useBagBasketStore((state) => state.isSelecting)
@@ -126,6 +138,7 @@ export const SubBatchesTable = ({
             onSubBatchQualityTest={onSubBatchQualityTest}
             onSubBatchSplit={onSubBatchSplit}
             onStorageMove={onStorageMove}
+            qualityStatistics={qualityStatistics ?? null}
           />
         ))}
       </div>
@@ -157,6 +170,7 @@ type SubBatchesTableRowProps = {
   onSubBatchQualityTest?: (subBatchId: string) => void
   onSubBatchSplit?: (subBatchId: string) => void
   onStorageMove?: (subBatchId: string) => void
+  qualityStatistics: BagSeedStatistics | null
 }
 
 const SubBatchesTableRow = ({
@@ -171,11 +185,15 @@ const SubBatchesTableRow = ({
   onSubBatchQualityTest,
   onSubBatchSplit,
   onStorageMove,
+  qualityStatistics,
 }: SubBatchesTableRowProps) => {
   const toggleBag = useBagBasketStore((state) => state.toggleBag)
   const isInBasket = useBagBasketStore((state) => state.bags.has(sb.id))
   const launchFlight = useBagFlightStore((state) => state.launch)
   const rowRef = useRef<HTMLDivElement>(null)
+  const weight = Number(sb.current_weight ?? 0)
+  const plsCount = estimatePureLiveSeedCount(weight, qualityStatistics)
+  const psuCount = estimatePureSeedCount(weight, qualityStatistics)
 
   // A bag already out at a laboratory cannot be sent again, and one with no
   // seed left has nothing to send.
@@ -244,6 +262,14 @@ const SubBatchesTableRow = ({
           />
         )}
         <span className="font-mono font-medium">{sb.current_weight}g</span>
+        {plsCount !== null && psuCount !== null && (
+          <span
+            className="text-muted-foreground font-mono"
+            title="Estimated from the batch's latest quality test and this bag's weight"
+          >
+            PLS {plsCount.toLocaleString()} · PSU {psuCount.toLocaleString()}
+          </span>
+        )}
         {sb.container && (
           <span className="text-muted-foreground flex items-center gap-1">
             <Box className="h-3 w-3" />
