@@ -514,6 +514,10 @@ export type Database = {
           outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
+          work_closed_at: string | null
+          work_closed_by: string | null
+          work_status: string | null
+          work_status_note: string | null
         }
         Insert: {
           assigned_at?: string
@@ -526,6 +530,10 @@ export type Database = {
           outbound_transfer_item_id: string
           outcome?: string | null
           sub_batch_id: string
+          work_closed_at?: string | null
+          work_closed_by?: string | null
+          work_status?: string | null
+          work_status_note?: string | null
         }
         Update: {
           assigned_at?: string
@@ -538,6 +546,10 @@ export type Database = {
           outbound_transfer_item_id?: string
           outcome?: string | null
           sub_batch_id?: string
+          work_closed_at?: string | null
+          work_closed_by?: string | null
+          work_status?: string | null
+          work_status_note?: string | null
         }
         Relationships: [
           {
@@ -595,6 +607,77 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seed_transfer_item"
             referencedColumns: ["id", "sub_batch_id", "batch_id"]
+          },
+        ]
+      }
+      batch_testing_assignment_return_item: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          transfer_item_id: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          transfer_item_id: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          transfer_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_testing_assignment_return_item_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "batch_testing_assignment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_testing_assignment_return_item_transfer_item_id_fkey"
+            columns: ["transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_testing_assignment_status_audit: {
+        Row: {
+          actor_id: string
+          assignment_id: string
+          id: string
+          new_work_status: string
+          note: string | null
+          old_work_status: string | null
+          recorded_at: string
+        }
+        Insert: {
+          actor_id: string
+          assignment_id: string
+          id?: string
+          new_work_status: string
+          note?: string | null
+          old_work_status?: string | null
+          recorded_at?: string
+        }
+        Update: {
+          actor_id?: string
+          assignment_id?: string
+          id?: string
+          new_work_status?: string
+          note?: string | null
+          old_work_status?: string | null
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_testing_assignment_status_audit_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "batch_testing_assignment"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -691,6 +774,10 @@ export type Database = {
           id: string
           notes: string | null
           organisation_id: string
+          received_transfer_item_id: string | null
+          source_collection_code: string | null
+          source_collection_year: number | null
+          source_ibra_code: string | null
           species_id: string | null
           weight_grams: number | null
         }
@@ -701,6 +788,10 @@ export type Database = {
           id?: string
           notes?: string | null
           organisation_id: string
+          received_transfer_item_id?: string | null
+          source_collection_code?: string | null
+          source_collection_year?: number | null
+          source_ibra_code?: string | null
           species_id?: string | null
           weight_grams?: number | null
         }
@@ -711,6 +802,10 @@ export type Database = {
           id?: string
           notes?: string | null
           organisation_id?: string
+          received_transfer_item_id?: string | null
+          source_collection_code?: string | null
+          source_collection_year?: number | null
+          source_ibra_code?: string | null
           species_id?: string | null
           weight_grams?: number | null
         }
@@ -734,6 +829,13 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_received_transfer_item_id_fkey"
+            columns: ["received_transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
             referencedColumns: ["id"]
           },
           {
@@ -1130,6 +1232,7 @@ export type Database = {
       }
       organisation: {
         Row: {
+          accepts_transfers: boolean
           contact_address: string | null
           contact_email: string | null
           contact_name: string | null
@@ -1141,6 +1244,7 @@ export type Database = {
           owner_id: string
         }
         Insert: {
+          accepts_transfers?: boolean
           contact_address?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -1152,6 +1256,7 @@ export type Database = {
           owner_id: string
         }
         Update: {
+          accepts_transfers?: boolean
           contact_address?: string | null
           contact_email?: string | null
           contact_name?: string | null
@@ -1169,6 +1274,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          kind: Database["public"]["Enums"]["organisation_link_kind"]
           provider_org_id: string
           requesting_org_id: string
         }
@@ -1176,6 +1282,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          kind?: Database["public"]["Enums"]["organisation_link_kind"]
           provider_org_id: string
           requesting_org_id: string
         }
@@ -1183,6 +1290,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          kind?: Database["public"]["Enums"]["organisation_link_kind"]
           provider_org_id?: string
           requesting_org_id?: string
         }
@@ -1207,27 +1315,39 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
+          cancelled_at: string | null
           created_at: string
           created_by: string
+          declined_at: string | null
+          declined_by: string | null
           id: string
+          kind: Database["public"]["Enums"]["organisation_link_kind"]
           provider_org_id: string
           requesting_org_id: string
         }
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
+          cancelled_at?: string | null
           created_at?: string
           created_by: string
+          declined_at?: string | null
+          declined_by?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["organisation_link_kind"]
           provider_org_id: string
           requesting_org_id: string
         }
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
+          cancelled_at?: string | null
           created_at?: string
           created_by?: string
+          declined_at?: string | null
+          declined_by?: string | null
           id?: string
+          kind?: Database["public"]["Enums"]["organisation_link_kind"]
           provider_org_id?: string
           requesting_org_id?: string
         }
@@ -1244,6 +1364,289 @@ export type Database = {
             columns: ["requesting_org_id"]
             isOneToOne: false
             referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ownership_transfer: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          link_request_id: string | null
+          notes: string | null
+          recipient_org_id: string
+          request_fingerprint: Json
+          request_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          sender_org_id: string
+          status: string
+          transfer_event_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          link_request_id?: string | null
+          notes?: string | null
+          recipient_org_id: string
+          request_fingerprint: Json
+          request_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_org_id: string
+          status?: string
+          transfer_event_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          link_request_id?: string | null
+          notes?: string | null
+          recipient_org_id?: string
+          request_fingerprint?: Json
+          request_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sender_org_id?: string
+          status?: string
+          transfer_event_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfer_link_request_id_fkey"
+            columns: ["link_request_id"]
+            isOneToOne: false
+            referencedRelation: "organisation_link_request"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_recipient_org_id_fkey"
+            columns: ["recipient_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_sender_org_id_fkey"
+            columns: ["sender_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_transfer_event_id_fkey"
+            columns: ["transfer_event_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_event"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ownership_transfer_item: {
+        Row: {
+          created_at: string
+          id: string
+          received_batch_id: string | null
+          received_sub_batch_id: string | null
+          seed_transfer_item_id: string | null
+          sub_batch_id: string
+          transfer_id: string
+          weight_grams: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          received_batch_id?: string | null
+          received_sub_batch_id?: string | null
+          seed_transfer_item_id?: string | null
+          sub_batch_id: string
+          transfer_id: string
+          weight_grams: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          received_batch_id?: string | null
+          received_sub_batch_id?: string | null
+          seed_transfer_item_id?: string | null
+          sub_batch_id?: string
+          transfer_id?: string
+          weight_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfer_item_received_batch_id_fkey"
+            columns: ["received_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_received_batch_id_fkey"
+            columns: ["received_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_received_batch_id_fkey"
+            columns: ["received_batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_received_sub_batch_id_fkey"
+            columns: ["received_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_received_sub_batch_id_fkey"
+            columns: ["received_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_received_sub_batch_id_fkey"
+            columns: ["received_sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_seed_transfer_item_id_fkey"
+            columns: ["seed_transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "seed_transfer_item"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: false
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_item_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "ownership_transfer"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ownership_transfer_storage_snapshot: {
+        Row: {
+          created_at: string
+          duration: string
+          ended_at: string
+          hop: number
+          id: string
+          ownership_transfer_item_id: string
+          started_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration: string
+          ended_at: string
+          hop: number
+          id?: string
+          ownership_transfer_item_id: string
+          started_at: string
+        }
+        Update: {
+          created_at?: string
+          duration?: string
+          ended_at?: string
+          hop?: number
+          id?: string
+          ownership_transfer_item_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfer_storage_snap_ownership_transfer_item_id_fkey"
+            columns: ["ownership_transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "ownership_transfer_item"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ownership_transfer_test_snapshot: {
+        Row: {
+          created_at: string
+          hop: number
+          id: string
+          ownership_transfer_item_id: string
+          performed_by_organisation_id: string | null
+          quality_test_type: string | null
+          result: Json | null
+          source_test_id: string
+          statistics: Json | null
+          tested_at: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          hop: number
+          id?: string
+          ownership_transfer_item_id: string
+          performed_by_organisation_id?: string | null
+          quality_test_type?: string | null
+          result?: Json | null
+          source_test_id: string
+          statistics?: Json | null
+          tested_at?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          hop?: number
+          id?: string
+          ownership_transfer_item_id?: string
+          performed_by_organisation_id?: string | null
+          quality_test_type?: string | null
+          result?: Json | null
+          source_test_id?: string
+          statistics?: Json | null
+          tested_at?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_transfer_test_snaps_performed_by_organisation_id_fkey"
+            columns: ["performed_by_organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ownership_transfer_test_snapsho_ownership_transfer_item_id_fkey"
+            columns: ["ownership_transfer_item_id"]
+            isOneToOne: false
+            referencedRelation: "ownership_transfer_item"
             referencedColumns: ["id"]
           },
         ]
@@ -1837,6 +2240,53 @@ export type Database = {
           },
         ]
       }
+      sub_batch_reservation: {
+        Row: {
+          created_at: string
+          sub_batch_id: string
+          transfer_id: string
+        }
+        Insert: {
+          created_at?: string
+          sub_batch_id: string
+          transfer_id: string
+        }
+        Update: {
+          created_at?: string
+          sub_batch_id?: string
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_batch_reservation_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: true
+            referencedRelation: "active_sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_reservation_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: true
+            referencedRelation: "sub_batch_current_weight"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_reservation_sub_batch_id_fkey"
+            columns: ["sub_batch_id"]
+            isOneToOne: true
+            referencedRelation: "sub_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_batch_reservation_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "ownership_transfer"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sub_batches: {
         Row: {
           batch_id: string
@@ -1906,6 +2356,8 @@ export type Database = {
       tests: {
         Row: {
           batch_id: string
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           performed_by_organisation_id: string | null
           result: Json | null
@@ -1917,6 +2369,8 @@ export type Database = {
         }
         Insert: {
           batch_id: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           performed_by_organisation_id?: string | null
           result?: Json | null
@@ -1928,6 +2382,8 @@ export type Database = {
         }
         Update: {
           batch_id?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           performed_by_organisation_id?: string | null
           result?: Json | null
@@ -2644,6 +3100,14 @@ export type Database = {
             }
             Returns: string
           }
+      assert_bag_not_reserved: {
+        Args: { p_sub_batch_id: string }
+        Returns: undefined
+      }
+      assert_batch_bags_not_reserved: {
+        Args: { p_batch_ids: string[] }
+        Returns: undefined
+      }
       assert_same_custodian: {
         Args: { p_batch_ids: string[] }
         Returns: string
@@ -2722,6 +3186,10 @@ export type Database = {
           outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
+          work_closed_at: string | null
+          work_closed_by: string | null
+          work_status: string | null
+          work_status_note: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -2737,6 +3205,10 @@ export type Database = {
       fn_bag_cleaning_outputs_unclassified: {
         Args: { p_bags: Json; p_cleaning_id: string }
         Returns: string[]
+      }
+      fn_cancel_ownership_transfer: {
+        Args: { p_transfer_id: string }
+        Returns: Json
       }
       fn_clean_batch: {
         Args: {
@@ -2780,9 +3252,21 @@ export type Database = {
         }
         Returns: string
       }
+      fn_close_spent_testing_assignments: {
+        Args: { p_assignment_ids: string[]; p_outcome: string }
+        Returns: undefined
+      }
+      fn_close_storage_for_transfer: {
+        Args: { p_at: string; p_note: string; p_sub_batch_id: string }
+        Returns: undefined
+      }
       fn_combine_batches: {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
+      }
+      fn_complete_ownership_transfer: {
+        Args: { p_transfer_id: string }
+        Returns: undefined
       }
       fn_create_quality_test: {
         Args: {
@@ -2802,6 +3286,19 @@ export type Database = {
         }
         Returns: string
       }
+      fn_create_quality_test_without_work_completion: {
+        Args: {
+          p_batch_id: string
+          p_performed_by_organisation_id: string
+          p_result: Json
+          p_sub_batch_id: string
+        }
+        Returns: string
+      }
+      fn_delete_quality_test: {
+        Args: { p_test_id: string }
+        Returns: undefined
+      }
       fn_get_container_usage: {
         Args: never
         Returns: {
@@ -2809,6 +3306,11 @@ export type Database = {
           container_id: string
           storage_sub_batch_count: number
         }[]
+      }
+      fn_list_transfer_link_requests: { Args: never; Returns: Json }
+      fn_lock_batch_bags_for_consumption: {
+        Args: { p_batch_ids: string[] }
+        Returns: undefined
       }
       fn_merge_batches: {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
@@ -2836,6 +3338,31 @@ export type Database = {
         Args: { p_notes?: string; p_source_batch_ids: string[] }
         Returns: string
       }
+      fn_quality_test_consumed_weight: {
+        Args: { p_result: Json }
+        Returns: number
+      }
+      fn_received_batch_provenance: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
+      fn_received_batch_sources: {
+        Args: never
+        Returns: {
+          batch_id: string
+          received_at: string
+          sender_org_name: string
+        }[]
+      }
+      fn_received_batch_storage_history: {
+        Args: { p_batch_id: string }
+        Returns: {
+          duration: string
+          ended_at: string
+          hop: number
+          started_at: string
+        }[]
+      }
       fn_remove_storage_location: {
         Args: { p_location_id: string }
         Returns: string
@@ -2845,6 +3372,10 @@ export type Database = {
         Returns: {
           assignment_id: string
         }[]
+      }
+      fn_respond_transfer_link_request: {
+        Args: { p_accept: boolean; p_request_id: string }
+        Returns: Json
       }
       fn_return_bag_from_testing: {
         Args: { p_assignment_id: string }
@@ -2859,6 +3390,10 @@ export type Database = {
           outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
+          work_closed_at: string | null
+          work_closed_by: string | null
+          work_status: string | null
+          work_status_note: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2866,6 +3401,36 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fn_return_bags_from_testing: {
+        Args: {
+          p_is_final?: boolean
+          p_items: Json
+          p_variance_reason?: string
+          p_work_status?: string
+          p_work_status_note?: string
+        }
+        Returns: {
+          returned_sub_batch_id: string
+          returned_weight_grams: number
+          source_sub_batch_id: string
+          transfer_event_id: string
+          transfer_item_id: string
+        }[]
+      }
+      fn_return_bags_from_testing_without_final_variance: {
+        Args: {
+          p_items: Json
+          p_work_status?: string
+          p_work_status_note?: string
+        }
+        Returns: {
+          returned_sub_batch_id: string
+          returned_weight_grams: number
+          source_sub_batch_id: string
+          transfer_event_id: string
+          transfer_item_id: string
+        }[]
       }
       fn_return_held_bag_from_testing: {
         Args: { p_sub_batch_id: string }
@@ -2880,6 +3445,10 @@ export type Database = {
           outbound_transfer_item_id: string
           outcome: string | null
           sub_batch_id: string
+          work_closed_at: string | null
+          work_closed_by: string | null
+          work_status: string | null
+          work_status_note: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -2888,6 +3457,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      fn_send_bags_for_transfer: {
+        Args: {
+          p_bags: Json
+          p_notes: string
+          p_recipient_org_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      fn_set_accepts_transfers: { Args: { p_accepts: boolean }; Returns: Json }
       fn_set_sub_batch_storage: {
         Args: {
           p_effective_at?: string
@@ -2912,6 +3491,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fn_set_testing_assignment_work_status: {
+        Args: {
+          p_assignment_id: string
+          p_note?: string
+          p_work_status: string
+        }
+        Returns: {
+          assigned_at: string
+          assigned_by_org_id: string
+          assigned_to_org_id: string
+          batch_id: string
+          closed_at: string | null
+          completed_at: string | null
+          id: string
+          outbound_transfer_item_id: string
+          outcome: string | null
+          sub_batch_id: string
+          work_closed_at: string | null
+          work_closed_by: string | null
+          work_status: string | null
+          work_status_note: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "batch_testing_assignment"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       fn_split_batch: {
         Args: {
           p_notes?: string
@@ -2927,6 +3535,18 @@ export type Database = {
       fn_split_sub_batch_without_lineage: {
         Args: { p_outputs: Json; p_sub_batch_id: string }
         Returns: string[]
+      }
+      fn_sub_batch_reservations: {
+        Args: never
+        Returns: {
+          recipient_org_name: string
+          sub_batch_id: string
+          transfer_id: string
+        }[]
+      }
+      fn_testing_assignment_has_held_seed: {
+        Args: { p_assignment_id: string }
+        Returns: boolean
       }
       fn_testing_held_bag_tests: {
         Args: never
@@ -2959,6 +3579,72 @@ export type Database = {
           tested_by: string
         }[]
       }
+      fn_transfer_authorise_received_batch: {
+        Args: { p_batch_id: string }
+        Returns: string[]
+      }
+      fn_transfer_bag_problem: {
+        Args: {
+          p_expected_weight?: number
+          p_sender_org_id: string
+          p_sub_batch_id: string
+          p_transfer_id?: string
+        }
+        Returns: {
+          code: string
+          message: string
+        }[]
+      }
+      fn_transfer_directory: {
+        Args: never
+        Returns: {
+          has_pending_request: boolean
+          id: string
+          is_linked: boolean
+          name: string
+        }[]
+      }
+      fn_transfer_lock_pair: {
+        Args: { p_recipient_org_id: string; p_sender_org_id: string }
+        Returns: undefined
+      }
+      fn_transfer_numeric_or_null: { Args: { p_value: Json }; Returns: number }
+      fn_transfer_project_result: {
+        Args: { p_result: Json; p_type: string }
+        Returns: Json
+      }
+      fn_transfer_project_statistics: {
+        Args: { p_statistics: Json }
+        Returns: Json
+      }
+      fn_transfer_quality_test_type: {
+        Args: { p_result: Json; p_type: string }
+        Returns: string
+      }
+      fn_transfer_resolve_caller: {
+        Args: { p_level?: string }
+        Returns: string
+      }
+      fn_transfer_send_result: {
+        Args: {
+          p_link_request_created: boolean
+          p_replayed: boolean
+          p_transfer_id: string
+        }
+        Returns: Json
+      }
+      fn_transfer_source_facts: {
+        Args: { p_batch_id: string }
+        Returns: {
+          collection_code: string
+          collection_year: number
+          ibra_code: string
+          species_ala_guid: string
+          species_id: string
+          species_indigenous_name: string
+          species_name: string
+        }[]
+      }
       fn_update_batch_cleaning: {
         Args: {
           p_cleaning_id: string
@@ -2970,6 +3656,25 @@ export type Database = {
           p_worker_ids?: string[]
         }
         Returns: string
+      }
+      fn_update_batch_storage_record: {
+        Args: { p_location_id?: string; p_notes?: string; p_storage_id: string }
+        Returns: {
+          batch_id: string
+          created_at: string
+          id: string
+          location_id: string
+          moved_out_at: string | null
+          notes: string | null
+          stored_at: string | null
+          sub_batch_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "batch_storage"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       generate_collection_code: {
         Args: {
@@ -3299,6 +4004,7 @@ export type Database = {
         Args: { curlopt: string; value: string }
         Returns: boolean
       }
+      is_bag_reserved: { Args: { p_sub_batch_id: string }; Returns: boolean }
       is_batch_custodian_or_past: {
         Args: { auth_uid: string; batch_id: string }
         Returns: boolean
@@ -3995,16 +4701,23 @@ export type Database = {
         | "merge"
         | "cleaning"
         | "correction"
+        | "transfer_out"
       container_purpose: "collection" | "storage"
       org_permission: "collections" | "inventory"
       org_user_types: "Member" | "Admin"
+      organisation_link_kind: "testing" | "transfer"
       person_source_type: "user" | "personnel"
       seed_transfer_event_kind:
         | "testing_dispatch"
         | "return"
         | "reversal"
         | "correction"
-      sub_batch_lineage_operation_kind: "split" | "merge" | "cleaning"
+        | "ownership_transfer"
+      sub_batch_lineage_operation_kind:
+        | "split"
+        | "merge"
+        | "cleaning"
+        | "transfer"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -4166,18 +4879,27 @@ export const Constants = {
         "merge",
         "cleaning",
         "correction",
+        "transfer_out",
       ],
       container_purpose: ["collection", "storage"],
       org_permission: ["collections", "inventory"],
       org_user_types: ["Member", "Admin"],
+      organisation_link_kind: ["testing", "transfer"],
       person_source_type: ["user", "personnel"],
       seed_transfer_event_kind: [
         "testing_dispatch",
         "return",
         "reversal",
         "correction",
+        "ownership_transfer",
       ],
-      sub_batch_lineage_operation_kind: ["split", "merge", "cleaning"],
+      sub_batch_lineage_operation_kind: [
+        "split",
+        "merge",
+        "cleaning",
+        "transfer",
+      ],
     },
   },
 } as const
+
