@@ -33,11 +33,13 @@ import { Route as PrivateSettingsIndexImport } from "./routes/_private/settings/
 import { Route as PrivatePeopleIndexImport } from "./routes/_private/people/index"
 import { Route as PrivateInvitationsIndexImport } from "./routes/_private/invitations/index"
 import { Route as PrivateInventoryIndexImport } from "./routes/_private/inventory/index"
+import { Route as PrivateSettingsTransferPartnersImport } from "./routes/_private/settings/transfer-partners"
 import { Route as PrivateSettingsTestingOrgsImport } from "./routes/_private/settings/testing-orgs"
 import { Route as PrivateSettingsStorageLocationsImport } from "./routes/_private/settings/storage-locations"
 import { Route as PrivateSettingsOrganisationDetailsImport } from "./routes/_private/settings/organisation-details"
 import { Route as PrivateSettingsContainersImport } from "./routes/_private/settings/containers"
 import { Route as PrivateInvitationsNewImport } from "./routes/_private/invitations/new"
+import { Route as PrivateInventoryTransferImport } from "./routes/_private/inventory/transfer"
 import { Route as PrivateInventorySendForTestingImport } from "./routes/_private/inventory/send-for-testing"
 import { Route as PrivateTripsIdIndexImport } from "./routes/_private/trips/$id/index"
 import { Route as PrivateSpeciesIdIndexImport } from "./routes/_private/species/$id/index"
@@ -176,6 +178,13 @@ const PrivateInventoryIndexRoute = PrivateInventoryIndexImport.update({
   getParentRoute: () => PrivateInventoryRoute,
 } as any)
 
+const PrivateSettingsTransferPartnersRoute =
+  PrivateSettingsTransferPartnersImport.update({
+    id: "/transfer-partners",
+    path: "/transfer-partners",
+    getParentRoute: () => PrivateSettingsRoute,
+  } as any)
+
 const PrivateSettingsTestingOrgsRoute = PrivateSettingsTestingOrgsImport.update(
   {
     id: "/testing-orgs",
@@ -208,6 +217,12 @@ const PrivateInvitationsNewRoute = PrivateInvitationsNewImport.update({
   id: "/new",
   path: "/new",
   getParentRoute: () => PrivateInvitationsRoute,
+} as any)
+
+const PrivateInventoryTransferRoute = PrivateInventoryTransferImport.update({
+  id: "/transfer",
+  path: "/transfer",
+  getParentRoute: () => PrivateInventoryRoute,
 } as any)
 
 const PrivateInventorySendForTestingRoute =
@@ -358,6 +373,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof PrivateInventorySendForTestingImport
       parentRoute: typeof PrivateInventoryImport
     }
+    "/_private/inventory/transfer": {
+      id: "/_private/inventory/transfer"
+      path: "/transfer"
+      fullPath: "/inventory/transfer"
+      preLoaderRoute: typeof PrivateInventoryTransferImport
+      parentRoute: typeof PrivateInventoryImport
+    }
     "/_private/invitations/new": {
       id: "/_private/invitations/new"
       path: "/new"
@@ -391,6 +413,13 @@ declare module "@tanstack/react-router" {
       path: "/testing-orgs"
       fullPath: "/settings/testing-orgs"
       preLoaderRoute: typeof PrivateSettingsTestingOrgsImport
+      parentRoute: typeof PrivateSettingsImport
+    }
+    "/_private/settings/transfer-partners": {
+      id: "/_private/settings/transfer-partners"
+      path: "/transfer-partners"
+      fullPath: "/settings/transfer-partners"
+      preLoaderRoute: typeof PrivateSettingsTransferPartnersImport
       parentRoute: typeof PrivateSettingsImport
     }
     "/_private/inventory/": {
@@ -463,11 +492,13 @@ declare module "@tanstack/react-router" {
 
 interface PrivateInventoryRouteChildren {
   PrivateInventorySendForTestingRoute: typeof PrivateInventorySendForTestingRoute
+  PrivateInventoryTransferRoute: typeof PrivateInventoryTransferRoute
   PrivateInventoryIndexRoute: typeof PrivateInventoryIndexRoute
 }
 
 const PrivateInventoryRouteChildren: PrivateInventoryRouteChildren = {
   PrivateInventorySendForTestingRoute: PrivateInventorySendForTestingRoute,
+  PrivateInventoryTransferRoute: PrivateInventoryTransferRoute,
   PrivateInventoryIndexRoute: PrivateInventoryIndexRoute,
 }
 
@@ -504,6 +535,7 @@ interface PrivateSettingsRouteChildren {
   PrivateSettingsOrganisationDetailsRoute: typeof PrivateSettingsOrganisationDetailsRoute
   PrivateSettingsStorageLocationsRoute: typeof PrivateSettingsStorageLocationsRoute
   PrivateSettingsTestingOrgsRoute: typeof PrivateSettingsTestingOrgsRoute
+  PrivateSettingsTransferPartnersRoute: typeof PrivateSettingsTransferPartnersRoute
   PrivateSettingsIndexRoute: typeof PrivateSettingsIndexRoute
 }
 
@@ -513,6 +545,7 @@ const PrivateSettingsRouteChildren: PrivateSettingsRouteChildren = {
     PrivateSettingsOrganisationDetailsRoute,
   PrivateSettingsStorageLocationsRoute: PrivateSettingsStorageLocationsRoute,
   PrivateSettingsTestingOrgsRoute: PrivateSettingsTestingOrgsRoute,
+  PrivateSettingsTransferPartnersRoute: PrivateSettingsTransferPartnersRoute,
   PrivateSettingsIndexRoute: PrivateSettingsIndexRoute,
 }
 
@@ -591,11 +624,13 @@ export interface FileRoutesByFullPath {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/inventory/send-for-testing": typeof PrivateInventorySendForTestingRoute
+  "/inventory/transfer": typeof PrivateInventoryTransferRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/settings/containers": typeof PrivateSettingsContainersRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
+  "/settings/transfer-partners": typeof PrivateSettingsTransferPartnersRoute
   "/inventory/": typeof PrivateInventoryIndexRoute
   "/invitations/": typeof PrivateInvitationsIndexRoute
   "/people/": typeof PrivatePeopleIndexRoute
@@ -619,11 +654,13 @@ export interface FileRoutesByTo {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/inventory/send-for-testing": typeof PrivateInventorySendForTestingRoute
+  "/inventory/transfer": typeof PrivateInventoryTransferRoute
   "/invitations/new": typeof PrivateInvitationsNewRoute
   "/settings/containers": typeof PrivateSettingsContainersRoute
   "/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
+  "/settings/transfer-partners": typeof PrivateSettingsTransferPartnersRoute
   "/inventory": typeof PrivateInventoryIndexRoute
   "/invitations": typeof PrivateInvitationsIndexRoute
   "/people": typeof PrivatePeopleIndexRoute
@@ -654,11 +691,13 @@ export interface FileRoutesById {
   "/auth/set-password": typeof AuthSetPasswordRoute
   "/invitations/accept": typeof InvitationsAcceptRoute
   "/_private/inventory/send-for-testing": typeof PrivateInventorySendForTestingRoute
+  "/_private/inventory/transfer": typeof PrivateInventoryTransferRoute
   "/_private/invitations/new": typeof PrivateInvitationsNewRoute
   "/_private/settings/containers": typeof PrivateSettingsContainersRoute
   "/_private/settings/organisation-details": typeof PrivateSettingsOrganisationDetailsRoute
   "/_private/settings/storage-locations": typeof PrivateSettingsStorageLocationsRoute
   "/_private/settings/testing-orgs": typeof PrivateSettingsTestingOrgsRoute
+  "/_private/settings/transfer-partners": typeof PrivateSettingsTransferPartnersRoute
   "/_private/inventory/": typeof PrivateInventoryIndexRoute
   "/_private/invitations/": typeof PrivateInvitationsIndexRoute
   "/_private/people/": typeof PrivatePeopleIndexRoute
@@ -690,11 +729,13 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/inventory/send-for-testing"
+    | "/inventory/transfer"
     | "/invitations/new"
     | "/settings/containers"
     | "/settings/organisation-details"
     | "/settings/storage-locations"
     | "/settings/testing-orgs"
+    | "/settings/transfer-partners"
     | "/inventory/"
     | "/invitations/"
     | "/people/"
@@ -717,11 +758,13 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/inventory/send-for-testing"
+    | "/inventory/transfer"
     | "/invitations/new"
     | "/settings/containers"
     | "/settings/organisation-details"
     | "/settings/storage-locations"
     | "/settings/testing-orgs"
+    | "/settings/transfer-partners"
     | "/inventory"
     | "/invitations"
     | "/people"
@@ -750,11 +793,13 @@ export interface FileRouteTypes {
     | "/auth/set-password"
     | "/invitations/accept"
     | "/_private/inventory/send-for-testing"
+    | "/_private/inventory/transfer"
     | "/_private/invitations/new"
     | "/_private/settings/containers"
     | "/_private/settings/organisation-details"
     | "/_private/settings/storage-locations"
     | "/_private/settings/testing-orgs"
+    | "/_private/settings/transfer-partners"
     | "/_private/inventory/"
     | "/_private/invitations/"
     | "/_private/people/"
@@ -832,6 +877,7 @@ export const routeTree = rootRoute
       "parent": "/_private",
       "children": [
         "/_private/inventory/send-for-testing",
+        "/_private/inventory/transfer",
         "/_private/inventory/"
       ]
     },
@@ -862,6 +908,7 @@ export const routeTree = rootRoute
         "/_private/settings/organisation-details",
         "/_private/settings/storage-locations",
         "/_private/settings/testing-orgs",
+        "/_private/settings/transfer-partners",
         "/_private/settings/"
       ]
     },
@@ -907,6 +954,10 @@ export const routeTree = rootRoute
       "filePath": "_private/inventory/send-for-testing.tsx",
       "parent": "/_private/inventory"
     },
+    "/_private/inventory/transfer": {
+      "filePath": "_private/inventory/transfer.tsx",
+      "parent": "/_private/inventory"
+    },
     "/_private/invitations/new": {
       "filePath": "_private/invitations/new.tsx",
       "parent": "/_private/invitations"
@@ -925,6 +976,10 @@ export const routeTree = rootRoute
     },
     "/_private/settings/testing-orgs": {
       "filePath": "_private/settings/testing-orgs.tsx",
+      "parent": "/_private/settings"
+    },
+    "/_private/settings/transfer-partners": {
+      "filePath": "_private/settings/transfer-partners.tsx",
       "parent": "/_private/settings"
     },
     "/_private/inventory/": {

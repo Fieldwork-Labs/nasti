@@ -69,7 +69,7 @@ export const BagBasket = () => {
               <div className="min-w-0 flex-1">
                 {bags.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
-                    Pick the bags you want to send for testing.
+                    Pick the bags you want to send.
                   </p>
                 ) : (
                   <>
@@ -122,13 +122,21 @@ export const BagBasket = () => {
                   Cancel
                 </Button>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={bags.length === 0}
+                  onClick={() => navigate({ to: "/inventory/transfer" })}
+                >
+                  Transfer…
+                </Button>
+                <Button
                   size="sm"
                   disabled={bags.length === 0}
                   onClick={() =>
                     navigate({ to: "/inventory/send-for-testing" })
                   }
                 >
-                  Review
+                  Send for testing
                 </Button>
               </div>
             </div>

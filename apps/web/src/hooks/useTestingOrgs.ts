@@ -44,6 +44,7 @@ export const useOrganisationLinks = () => {
         `,
         )
         .eq("requesting_org_id", organisation.id)
+        .eq("kind", "testing")
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -76,6 +77,7 @@ export const useOrganisationLinkRequests = () => {
         `,
         )
         .eq("requesting_org_id", organisation.id)
+        .eq("kind", "testing")
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -190,6 +192,7 @@ export const useIncomingLinkRequests = () => {
         `,
         )
         .eq("provider_org_id", organisation.id)
+        .eq("kind", "testing")
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)
@@ -222,6 +225,7 @@ export const useTestingOrgAcceptedLinks = () => {
         `,
         )
         .eq("provider_org_id", organisation.id)
+        .eq("kind", "testing")
         .order("created_at", { ascending: false })
 
       if (error) throw new Error(error.message)

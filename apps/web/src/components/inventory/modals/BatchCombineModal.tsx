@@ -16,6 +16,8 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import { useCollectionsContainers } from "@/hooks/useContainers"
+import { RECEIVED_SEED_MIX_COMBINE_MESSAGE } from "@/components/transfers/TransferBadges"
+import { useReceivedSeedBatchIds } from "@/hooks/useTransfers"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useCombineBatches } from "@/hooks/useCombineBatches"
 import {
@@ -57,6 +59,11 @@ export const BatchCombineModal = ({
     isError: containersFailed,
   } = useCollectionsContainers(collectionIds)
   const combinedContainers = totalContainerAmounts(collectionContainers)
+
+  const { data: receivedSeedIds } = useReceivedSeedBatchIds()
+  const hasReceivedSeed = selectedBatches.some((batch) =>
+    receivedSeedIds?.has(batch.id),
+  )
 
   const hasProcessedBatch = selectedBatches.some(
     (batch) => batch.weight_grams !== null,
@@ -118,6 +125,14 @@ export const BatchCombineModal = ({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {hasReceivedSeed && (
+            <div className="border-destructive bg-destructive/10 rounded-lg border p-4">
+              <p className="text-destructive text-sm font-semibold">
+                {RECEIVED_SEED_MIX_COMBINE_MESSAGE}
+              </p>
+            </div>
+          )}
+
           {/* Species Validation Warning */}
           {!hasMatchingSpecies && (
             <div className="border-destructive bg-destructive/10 rounded-lg border p-4">
@@ -253,6 +268,7 @@ export const BatchCombineModal = ({
                 isSubmitting ||
                 !hasMatchingSpecies ||
                 hasProcessedBatch ||
+                hasReceivedSeed ||
                 selectedBatches.length < 2
               }
               className="min-w-[120px]"

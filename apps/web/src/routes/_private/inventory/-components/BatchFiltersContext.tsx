@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useTestingOrgAssignments"
 import type { InventoryStatusFilter } from "@/lib/testingAssignments"
 import { BatchStatus } from "@/components/inventory/BatchInventoryFilters"
+import type { InventoryView } from "@/components/transfers/InventoryViewTabs"
 import useUserStore from "@/store/userStore"
 import { queryClient } from "@nasti/common/utils"
 import { getRouteApi } from "@tanstack/react-router"
@@ -32,6 +33,12 @@ interface BatchFiltersContextValue {
    * second of them.
    */
   assignedBags: AssignedBag[]
+  /**
+   * Testing organisations switch between the bags assigned to them and the
+   * batches they own. General organisations are always on "owned".
+   */
+  view: InventoryView
+  setView: (view: InventoryView) => void
   isLoading: boolean
   error: Error | null
   handleSort: (field: SortField) => void
@@ -79,6 +86,13 @@ export const BatchFiltersProvider = ({
   const navigate = Route.useNavigate()
 
   // Extract filters from URL search params
+  const { organisation } = useUserStore()
+  const isTestingOrg = Boolean(organisation?.is_testing_provider)
+  const view: InventoryView = isTestingOrg
+    ? (searchParams.view ?? "assigned")
+    : "owned"
+  const isOwnedView = view === "owned"
+
   const filters = useMemo(
     () => ({
       status: searchParams.status,
@@ -96,7 +110,11 @@ export const BatchFiltersProvider = ({
 
   const batchFilter = useMemo(
     () => ({
-      status: filters.status,
+      // An assignment status can reach the Owned view from a stale URL.
+      status:
+        filters.status === "pending" || filters.status === "completed"
+          ? undefined
+          : filters.status,
       speciesId: filters.speciesId || undefined,
       locationId: filters.locationId || undefined,
       search: filters.search ?? "",
@@ -109,9 +127,6 @@ export const BatchFiltersProvider = ({
   // General organisations browse their own inventory; Testing organisations
   // see exactly what has been assigned to them and not returned. Only one of
   // the two queries runs.
-  const { organisation } = useUserStore()
-  const isTestingOrg = organisation?.is_testing_provider
-
   const assignmentFilter = useMemo(
     () => ({
       // The route validates a union of both pages' search schemas, so a
@@ -131,16 +146,16 @@ export const BatchFiltersProvider = ({
   )
 
   const generalBatches = useBatchesByFilter(batchFilter, {
-    enabled: !isTestingOrg,
+    enabled: isOwnedView,
   })
   const assignedBags = useAssignedBagsByFilter(assignmentFilter, {
-    enabled: isTestingOrg,
+    enabled: !isOwnedView,
   })
 
   // The two organisation types no longer look at the same thing: General sees
   // batches, Testing sees the bags it was sent. Only the loading and error
   // state is shared.
-  const activeQuery = isTestingOrg ? assignedBags : generalBatches
+  const activeQuery = isOwnedView ? generalBatches : assignedBags
 
   // Update URL search parameters
   const updateSearchParams = useCallback(
@@ -165,6 +180,18 @@ export const BatchFiltersProvider = ({
     queryClient.invalidateQueries({ queryKey: ["subBatches"] })
     queryClient.invalidateQueries({ queryKey: ["batch-assignment"] })
   }, [batchFilter])
+
+  // Switching view drops the status filter: the two views use different ones.
+  const setView = useCallback(
+    (nextView: InventoryView) => {
+      navigate({
+        from: "/inventory",
+        search: { ...searchParams, view: nextView, status: undefined },
+        replace: true,
+      })
+    },
+    [searchParams, navigate],
+  )
 
   // Handle sorting
   const handleSort = useCallback(
@@ -211,8 +238,10 @@ export const BatchFiltersProvider = ({
 
   const value = useMemo(
     () => ({
-      data: isTestingOrg ? undefined : generalBatches.data,
-      assignedBags: assignedBags.data ?? [],
+      data: isOwnedView ? generalBatches.data : undefined,
+      assignedBags: isOwnedView ? [] : (assignedBags.data ?? []),
+      view,
+      setView,
       isLoading: activeQuery.isLoading,
       error: activeQuery.error,
       handleSort,
@@ -223,7 +252,9 @@ export const BatchFiltersProvider = ({
       invalidateBatchesCacheByFilter,
     }),
     [
-      isTestingOrg,
+      isOwnedView,
+      view,
+      setView,
       generalBatches.data,
       assignedBags.data,
       activeQuery.isLoading,

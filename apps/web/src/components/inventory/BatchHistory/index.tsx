@@ -1,7 +1,13 @@
 import { useBatchHistory, useBatchSplit } from "@/hooks/useBatches"
 import { useCollection } from "@/hooks/useCollection"
+import {
+  useBatchTransferEvents,
+  useTransferDirectory,
+  type BatchTransferEvent,
+} from "@/hooks/useTransfers"
 import { Badge } from "@nasti/ui/badge"
 import { CalendarIcon } from "lucide-react"
+import { useMemo } from "react"
 import { isMaterialType, MATERIAL_TYPE_LABELS } from "@nasti/common/types"
 
 type BaseHistoryEvent = {
@@ -157,18 +163,74 @@ const EventComponentSwitch = ({ event }: { event: HistoryEvent }) => {
   }
 }
 
+const TransferEventComponent = ({
+  event,
+  recipientName,
+}: {
+  event: BatchTransferEvent
+  recipientName: string
+}) => (
+  <div className="flex items-center space-x-2">
+    <CalendarIcon className="h-4 w-4" />
+    <div className="text-sm">
+      {new Date(event.effective_at).toLocaleDateString()}
+    </div>
+    <Badge variant={"outline"}>Transfer</Badge>
+    <div className="text-sm">
+      Transferred{" "}
+      <span className="font-mono font-semibold">{event.weight_grams} g</span> to{" "}
+      <span className="font-semibold">{recipientName}</span>
+    </div>
+  </div>
+)
+
+/**
+ * Ownership transfers out of this batch. Renders nothing when there are none.
+ * The sender can't read the recipient's organisation row, so the name comes
+ * from the transfer directory; an organisation that has since left the
+ * directory shows as "another organisation".
+ */
+export const BatchTransferHistory = ({ batchId }: { batchId: string }) => {
+  const { data: events } = useBatchTransferEvents(batchId)
+  const { data: directory } = useTransferDirectory()
+  const names = useMemo(
+    () => new Map((directory ?? []).map((org) => [org.id, org.name])),
+    [directory],
+  )
+
+  if (!events || events.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
+      <span className="text-sm">Transfers</span>
+      {events.map((event) => (
+        <TransferEventComponent
+          key={event.id}
+          event={event}
+          recipientName={
+            names.get(event.recipient_org_id) ?? "another organisation"
+          }
+        />
+      ))}
+    </div>
+  )
+}
+
 export const BatchHistory = ({ batchId }: { batchId: string }) => {
   const { data: event, isLoading } = useBatchHistory(batchId)
 
   return (
-    <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
-      <span className="text-sm">Batch Creation Event</span>
-      {isLoading && (
-        <div className="animate-pulse space-y-2">
-          <div className="h-4 w-1/4 rounded bg-gray-200"></div>
-        </div>
-      )}
-      {event && <EventComponentSwitch event={event as HistoryEvent} />}
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 rounded-sm border border-gray-400 p-2">
+        <span className="text-sm">Batch Creation Event</span>
+        {isLoading && (
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 w-1/4 rounded bg-gray-200"></div>
+          </div>
+        )}
+        {event && <EventComponentSwitch event={event as HistoryEvent} />}
+      </div>
+      <BatchTransferHistory batchId={batchId} />
     </div>
   )
 }

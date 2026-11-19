@@ -15,6 +15,7 @@ type OrgFields = [
   "contact_email",
   "contact_name",
   "contact_phone",
+  "accepts_transfers",
 ]
 
 type OrgData = Pick<Organisation, OrgFields[number]>
@@ -84,7 +85,8 @@ const useUserStore = create<UserState>((set, get) => ({
             "contact_address",
             "contact_email",
             "contact_name",
-            "contact_phone"
+            "contact_phone",
+            "accepts_transfers"
           )`,
         )
         .eq("user_id", user.id)

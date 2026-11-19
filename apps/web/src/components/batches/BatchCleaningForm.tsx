@@ -11,10 +11,18 @@ import { Checkbox } from "@nasti/ui/checkbox"
 import { useToast } from "@nasti/ui/hooks"
 import { cn } from "@nasti/ui/utils"
 import { MultiSelect, type Option } from "@nasti/ui/multi-select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nasti/ui/select"
 
 import {
   type BatchCleaningWithOutputs,
   useCleanBatch,
+  useCleanSubBatch,
   useUpdateBatchCleaning,
 } from "@/hooks/useCleanBatch"
 import {
@@ -39,6 +47,7 @@ import {
 } from "@nasti/common/types"
 import { TaxonName } from "@nasti/common"
 import { usePersons } from "@/hooks/usePersons"
+import { useSubBatches } from "@/hooks/useSubBatches"
 import useUserStore from "@/store/userStore"
 import { DurationInput } from "@/components/collections/DurationInput"
 
@@ -144,6 +153,8 @@ const BatchCleaningFields = ({
   const { toast } = useToast()
   const { mutateAsync: cleanBatchMutation, isPending: isCreating } =
     useCleanBatch()
+  const { mutateAsync: cleanSubBatchMutation, isPending: isCleaningBag } =
+    useCleanSubBatch()
   const { mutateAsync: updateBatchCleaning, isPending: isUpdating } =
     useUpdateBatchCleaning()
   const { uploadPhotosAsync, isUploading } = useUploadBatchCleaningPhotos()
@@ -158,7 +169,19 @@ const BatchCleaningFields = ({
   const { data: combinedSources } = useCombinedSources(
     batch.collection_id === null ? batch.id : undefined,
   )
-  const isPending = isCreating || isUpdating
+  const isPending = isCreating || isCleaningBag || isUpdating
+  // `fn_clean_batch` only accepts a batch with no bags. A batch that has bags
+  // (seed received from another organisation always does) is cleaned through
+  // its bag instead, which consumes the whole bag. Editing an existing
+  // cleaning record never touches the input, so it skips the lookup.
+  const { data: bags, isLoading: bagsLoading } = useSubBatches(
+    isEditing ? "" : batch.id,
+  )
+  const [selectedBagId, setSelectedBagId] = useState<string | null>(null)
+  const cleansBag = !isEditing && Boolean(bags?.length)
+  const bagToClean =
+    bags?.find((bag) => bag.id === selectedBagId) ??
+    (bags?.length === 1 ? bags[0] : undefined)
   // LQ is collapsed by default once cleaned — most cleaning runs don't produce
   // a low quality output, so it's opt-in rather than always on screen.
   const [showLqOutput, setShowLqOutput] = useState(
@@ -326,6 +349,20 @@ const BatchCleaningFields = ({
           cleaningId: instance.id,
           ...cleaningDetails,
         })
+      } else if (cleansBag) {
+        if (!bagToClean?.id) {
+          toast({
+            description: "Select the bag to clean",
+            variant: "destructive",
+          })
+          return
+        }
+        cleaningId = await cleanSubBatchMutation({
+          subBatchId: bagToClean.id,
+          isCleaned: data.is_cleaned,
+          outputs,
+          ...cleaningDetails,
+        })
       } else {
         cleaningId = await cleanBatchMutation({
           inputBatchId: batch.id,
@@ -340,9 +377,14 @@ const BatchCleaningFields = ({
         error,
       )
       toast({
-        description: isEditing
-          ? "Failed to update cleaning record"
-          : "Failed to clean batch",
+        // A bag can be refused for a reason the user can act on (reserved for
+        // a transfer, out for testing), so show it rather than a generic line.
+        description:
+          cleansBag && error instanceof Error
+            ? error.message
+            : isEditing
+              ? "Failed to update cleaning record"
+              : "Failed to clean batch",
         variant: "destructive",
       })
       return
@@ -415,6 +457,30 @@ const BatchCleaningFields = ({
             <span className="font-medium">Containers:</span>
             <BatchContainerBadges batch={batch} />
           </div>
+          {cleansBag && bags && bags.length > 1 && (
+            <div className="space-y-1 pt-2">
+              <Label>Bag to clean</Label>
+              <Select
+                value={bagToClean?.id ?? undefined}
+                onValueChange={setSelectedBagId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select bag" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bags.map((bag, index) => (
+                    <SelectItem key={bag.id} value={bag.id ?? ""}>
+                      Bag {index + 1} ({bag.current_weight}g)
+                      {bag.notes ? ` — ${bag.notes}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {cleansBag && bags?.length === 1 && (
+            <p>Cleaning uses the whole bag ({bags[0].current_weight}g).</p>
+          )}
         </div>
       </div>
 
@@ -677,7 +743,13 @@ const BatchCleaningFields = ({
         )}
         <Button
           type="submit"
-          disabled={isPending || isUploading || isDeleting}
+          disabled={
+            isPending ||
+            isUploading ||
+            isDeleting ||
+            (!isEditing && bagsLoading) ||
+            (cleansBag && !bagToClean)
+          }
           className="min-w-[120px] cursor-pointer"
         >
           {(isPending || isUploading || isDeleting) && (

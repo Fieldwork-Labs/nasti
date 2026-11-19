@@ -21,7 +21,7 @@ const batchFormSchema = z.object({
 type BatchFormData = z.infer<typeof batchFormSchema>
 
 type BatchFormProps = {
-  batch: Batch // Required - this form only updates existing batches
+  batch: Pick<Batch, "id" | "notes"> // Required - this form only updates existing batches
   onSuccess?: () => void
   onCancel?: () => void
   className?: string

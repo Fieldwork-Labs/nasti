@@ -12,6 +12,11 @@ import { useEffect, useState } from "react"
 import { queryClient } from "@nasti/common/utils"
 
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
+import {
+  RECEIVED_SEED_MIX_COMBINE_MESSAGE,
+  ReceivedBatchBadge,
+  useIsReceivedSeed,
+} from "@/components/transfers/TransferBadges"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import {
   BatchDeleteButton,
@@ -99,6 +104,7 @@ const MergeModeActions = ({ combineMode }: MergeModeActionsProps) => {
 interface NormalModeActionsProps {
   batch: BatchWithCurrentLocationAndSpecies
   mergeDisabled: boolean
+  isReceivedSeed?: boolean
   canDelete: boolean
   onSplit?: (batch: BatchWithCurrentLocationAndSpecies) => void
   onClean?: (batch: BatchWithCurrentLocationAndSpecies) => void
@@ -111,6 +117,7 @@ interface NormalModeActionsProps {
 const NormalModeActions = ({
   batch,
   mergeDisabled,
+  isReceivedSeed,
   canDelete,
   onClean,
   onCombine,
@@ -130,13 +137,13 @@ const NormalModeActions = ({
       </Button>
     )}
 
-    {onCombine && (
+    {(onCombine || isReceivedSeed) && (
       <Button
         variant="ghost"
         size="sm"
-        disabled={mergeDisabled}
-        onClick={() => onCombine(batch)}
-        title="Combine"
+        disabled={mergeDisabled || isReceivedSeed}
+        onClick={() => onCombine?.(batch)}
+        title={isReceivedSeed ? RECEIVED_SEED_MIX_COMBINE_MESSAGE : "Combine"}
       >
         <Combine className="h-4 w-4" />
       </Button>
@@ -186,6 +193,7 @@ export const BatchTableRow = ({
   const { canDelete, activeAssignments, detailLoading } = useBatchRowData(
     batch.id,
   )
+  const isReceivedSeed = useIsReceivedSeed(batch.id)
 
   // Opening a row refetches its tests, so refresh the list too: the row's
   // latest quality statistics come from the list, and a test recorded
@@ -231,6 +239,7 @@ export const BatchTableRow = ({
         <NormalModeActions
           batch={batch}
           mergeDisabled={mergeDisabled}
+          isReceivedSeed={isReceivedSeed}
           canDelete={canDelete}
           onClean={onClean}
           // a combined batch (no collection of its own) is cleaned, not
@@ -244,6 +253,7 @@ export const BatchTableRow = ({
       <NormalModeActions
         batch={batch}
         mergeDisabled={mergeDisabled}
+        isReceivedSeed={isReceivedSeed}
         canDelete={canDelete}
         onDelete={onDelete}
       />
@@ -251,9 +261,16 @@ export const BatchTableRow = ({
   }
 
   // Determine status badge
-  const statusBadge = hasActiveAssignment ? (
-    <GeneralOrgAssignmentBadge assignments={[...activeAssignments.values()]} />
-  ) : null
+  const statusBadge = (
+    <>
+      <ReceivedBatchBadge batchId={batch.id} />
+      {hasActiveAssignment && (
+        <GeneralOrgAssignmentBadge
+          assignments={[...activeAssignments.values()]}
+        />
+      )}
+    </>
+  )
 
   const handleSubBatchSplit = (subBatchId: string) => {
     onSplit?.(batch, subBatchId)

@@ -168,7 +168,10 @@ export const invalidateBatchesByFilterCache = (batchFilter: BatchFilter) => {
   })
 }
 
-// Query: Get batch details with full custody history
+// Query: Get batch details with full custody history. The tests join is a
+// plain one, so a batch with no tests (a freshly received one) still loads and
+// `latest_quality_statistics` is just an empty list. A received batch also has
+// no collection, so nothing here may assume `collection_id` is set.
 export const useBatchDetail = (batchId: string) => {
   return useQuery({
     queryKey: ["batches", "detail", batchId],
@@ -190,7 +193,7 @@ export const useBatchDetail = (batchId: string) => {
             *,
             location:storage_locations(name, description)
           ),
-          latest_quality_statistics:tests!inner(
+          latest_quality_statistics:tests(
             id,
             statistics
           )
@@ -263,7 +266,7 @@ export const useBatchHistory = (batchId: string) => {
         .from("batch_lineage")
         .select(`*`)
         .eq("batch_id", batchId)
-        .single()
+        .maybeSingle()
 
       if (error) throw new Error(error.message)
       return data

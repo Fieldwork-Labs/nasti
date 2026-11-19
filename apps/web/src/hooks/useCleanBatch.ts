@@ -33,6 +33,10 @@ type CleanBatchParams = {
   outputs: CleaningOutput[]
 }
 
+type CleanSubBatchParams = Omit<CleanBatchParams, "inputBatchId"> & {
+  subBatchId: string
+}
+
 type UpdateBatchCleaningParams = Omit<
   CleanBatchParams,
   "inputBatchId" | "isCleaned" | "outputs"
@@ -105,6 +109,53 @@ export const useCleanBatch = () => {
       queryClient.invalidateQueries({
         queryKey: ["batchCleaning"],
       })
+    },
+  })
+}
+
+/**
+ * Cleans one bag of a batch that already has bags, such as seed received from
+ * another organisation. `fn_clean_batch` refuses a batch with bags, so those go
+ * through the bag-level `fn_clean_sub_batch`. It takes the same outputs and
+ * returns a cleaning id, so the bagging step that follows is unchanged.
+ */
+export const useCleanSubBatch = () => {
+  return useMutation<string, Error, CleanSubBatchParams>({
+    mutationFn: async ({
+      subBatchId,
+      materialType,
+      materialNotes,
+      isCleaned,
+      cleaningNotes,
+      workerIds,
+      duration,
+      outputs,
+    }) => {
+      const { data, error } = await supabase.rpc("fn_clean_sub_batch", {
+        p_sub_batch_id: subBatchId,
+        p_duration: duration,
+        p_material_type: materialType,
+        p_material_notes: materialNotes,
+        p_is_cleaned: isCleaned,
+        p_cleaning_notes: cleaningNotes,
+        p_worker_ids: workerIds,
+        p_outputs: outputs,
+      })
+
+      if (error) throw new Error(error.message)
+      return data
+    },
+    onSuccess: () => {
+      for (const queryKey of [
+        ["batches"],
+        ["subBatches"],
+        ["batchCleaning"],
+        ["batch-storage"],
+        ["containers"],
+        ["transfers"],
+      ]) {
+        queryClient.invalidateQueries({ queryKey })
+      }
     },
   })
 }

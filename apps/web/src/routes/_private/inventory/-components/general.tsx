@@ -25,6 +25,9 @@ import { useMeasure, useWindowSize } from "@uidotdev/usehooks"
 import { useOrganisationLinks } from "@/hooks/useTestingOrgs"
 import useBagBasketStore from "@/store/bagBasketStore"
 import { useBatchFiltersContext, type SortField } from "./BatchFiltersContext"
+import { InventoryViewTabs } from "@/components/transfers/InventoryViewTabs"
+import useUserStore from "@/store/userStore"
+import { useReceivedSeedBatchIds } from "@/hooks/useTransfers"
 import { CompleteCombineButton } from "@/components/inventory/CompleteCombineButton"
 
 // Define search schema for URL parameters
@@ -36,6 +39,7 @@ export const inventorySearchSchemaGeneral = z.object({
   search: z.string().optional(),
   sort: z.enum(["created_at", "species_id", "organisation_id"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  view: z.enum(["assigned", "owned"]).optional(),
 })
 
 const MotionCard = motion.create(Card)
@@ -90,7 +94,13 @@ export function InventoryPageGeneral() {
     handleSort,
     sortField,
     sortDirection,
+    view,
+    setView,
   } = useBatchFiltersContext()
+  const isTestingProvider = Boolean(
+    useUserStore((state) => state.organisation?.is_testing_provider),
+  )
+  const { data: receivedSeedIds } = useReceivedSeedBatchIds()
 
   const selectedBatchesForCombine = combineState
     ? batches.filter((batch) =>
@@ -205,6 +215,7 @@ export function InventoryPageGeneral() {
     const canCombine =
       batch.weight_grams === null &&
       batch.collection_id !== null &&
+      !receivedSeedIds?.has(batch.id) &&
       speciesId !== undefined &&
       speciesId === combineState.initiatingBatch.species?.id
 
@@ -224,6 +235,9 @@ export function InventoryPageGeneral() {
       <BagBasket />
       <div className="space-y-6">
         {/* Header */}
+        {isTestingProvider && (
+          <InventoryViewTabs view={view} onChange={setView} />
+        )}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Batch Inventory</h1>

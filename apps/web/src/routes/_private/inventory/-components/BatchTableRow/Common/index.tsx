@@ -28,6 +28,8 @@ import { useState, type ReactNode } from "react"
 import { CollectionListItemWithModal } from "@/components/collections/CollectionListItem"
 import { BatchContainerBadges } from "@/components/inventory/BatchContainerBadges"
 import { BatchCleaningPhotos } from "@/components/batches/BatchCleaningPhotos"
+import { BatchTransferHistory } from "@/components/inventory/BatchHistory"
+import { BatchProvenance } from "@/components/transfers/BatchProvenance"
 import { QualityTestModal } from "@/components/tests/QualityTestModal"
 import {
   useActiveAssignmentsForBatch,
@@ -41,6 +43,7 @@ import {
   useBatchSourceCollectionIds,
 } from "@/hooks/useBatches"
 import { useBatchTests } from "@/hooks/useBatchTests"
+import { useReceivedBatchSources } from "@/hooks/useTransfers"
 import useUserStore from "@/store/userStore"
 import { TaxonName } from "@nasti/common"
 import type { QualityTest } from "@nasti/common/types"
@@ -458,8 +461,23 @@ export const BatchExpandedDetails = ({
         <LatestQualityStatistics statistics={batch.latest_quality_statistics} />
       )}
       <BatchTestHistory batch={batch} />
+      <ReceivedBatchProvenance batchId={batch.id} />
+      <BatchTransferHistory batchId={batch.id} />
     </div>
   )
+}
+
+/**
+ * Provenance only exists for the batch a transfer created. The provenance
+ * function refuses any other batch (including the cleaned output of received
+ * seed, which starts a fresh history), so ask it only for a batch the caller
+ * received.
+ */
+const ReceivedBatchProvenance = ({ batchId }: { batchId: string }) => {
+  const { data: receivedSources } = useReceivedBatchSources()
+
+  if (!receivedSources?.has(batchId)) return null
+  return <BatchProvenance batchId={batchId} />
 }
 
 const BatchCollectionDetails = ({ batch }: { batch: BatchType }) => {

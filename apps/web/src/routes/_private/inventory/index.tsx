@@ -10,13 +10,19 @@ import {
   InventoryPageTesting,
   inventorySearchSchemaTesting,
 } from "./-components/testing"
-import { BatchFiltersProvider } from "./-components/BatchFiltersContext"
+import {
+  BatchFiltersProvider,
+  useBatchFiltersContext,
+} from "./-components/BatchFiltersContext"
 
 // Define search schema for URL parameters
 
 const RouteDecider = () => {
   const { organisation } = useUserStore()
-  if (organisation?.is_testing_provider) {
+  const { view } = useBatchFiltersContext()
+  // Testing organisations see their assigned bags by default; the Owned view
+  // is the general inventory (received batches, their own collections).
+  if (organisation?.is_testing_provider && view === "assigned") {
     return <InventoryPageTesting />
   }
   return <InventoryPageGeneral />

@@ -15,6 +15,8 @@ export type BasketBag = {
   containerName: string | null
   /** Weight when it was added, for the basket summary only. */
   weightGrams: number
+  /** A bag reserved for a pending transfer can never enter the basket. */
+  isReserved?: boolean
 }
 
 type BagBasketState = {
@@ -43,6 +45,8 @@ const useBagBasketStore = create<BagBasketState>((set) => ({
       const bags = new Map(state.bags)
       if (bags.has(bag.subBatchId)) {
         bags.delete(bag.subBatchId)
+      } else if (bag.isReserved) {
+        return state
       } else {
         bags.set(bag.subBatchId, bag)
       }
