@@ -6,6 +6,7 @@ import { motion } from "motion/react"
 import { useState } from "react"
 import { z } from "zod"
 
+import { InventoryViewTabs } from "@/components/transfers/InventoryViewTabs"
 import { SubBatchMergeModal } from "@/components/batches/SubBatchMergeModal"
 import { BatchInventoryFilters } from "@/components/inventory/BatchInventoryFilters"
 import { useSubBatches } from "@/hooks/useSubBatches"
@@ -22,6 +23,7 @@ export const inventorySearchSchemaTesting = z.object({
   search: z.string().optional(),
   sort: z.enum(["created_at", "species_id", "organisation_id"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  view: z.enum(["assigned", "owned"]).optional(),
 })
 
 type MergeSelection = {
@@ -69,6 +71,8 @@ export function InventoryPageTesting() {
     handleSort,
     sortField,
     sortDirection,
+    view,
+    setView,
   } = useBatchFiltersContext()
 
   const [mergeSelection, setMergeSelection] = useState<MergeSelection | null>(
@@ -118,6 +122,7 @@ export function InventoryPageTesting() {
   return (
     <div className="container mx-auto p-6">
       <div className="space-y-6">
+        <InventoryViewTabs view={view} onChange={setView} />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

@@ -1,6 +1,7 @@
 import { useOrganisationForm } from "@/hooks/useOrganisationForm"
 import { useUpdateOrganisation } from "@/hooks/useUpdateOrganisation"
 import useUserStore from "@/store/userStore"
+import { AcceptTransfersSetting } from "@/components/transfers/AcceptTransfersSetting"
 import { Button } from "@nasti/ui/button"
 import { FormField } from "@nasti/ui/formField"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/_private/settings/organisation-details")(
 )
 
 function OrganisationFormPage() {
-  const { organisation } = useUserStore()
+  const { organisation, isAdmin } = useUserStore()
   const navigate = useNavigate({
     from: "/settings/organisation-details",
   })
@@ -46,6 +47,7 @@ function OrganisationFormPage() {
       <div>
         <h4 className="mb-2 text-xl font-bold">Edit Organisation Details</h4>
       </div>
+      {isAdmin && <AcceptTransfersSetting />}
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <FormField
           label="Organisation Name"

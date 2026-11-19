@@ -15,6 +15,11 @@ import type { SubBatchWithStorage } from "@/hooks/useSubBatches"
 import useBagFlightStore from "@/components/inventory/bagFlight"
 import { useSubBatches } from "@/hooks/useSubBatches"
 import useBagBasketStore from "@/store/bagBasketStore"
+import {
+  ReservedForTransferBadge,
+  reservedTitle,
+} from "@/components/transfers/TransferBadges"
+import { useSubBatchReservations } from "@/hooks/useTransfers"
 import { cn } from "@nasti/ui/utils"
 
 /**
@@ -39,11 +44,14 @@ export const SubBatchesTable = ({
 }) => {
   const { data: subBatches, isLoading } = useSubBatches(batchId)
   const isSelecting = useBagBasketStore((state) => state.isSelecting)
+  const { data: reservations } = useSubBatchReservations()
   const [selectedForMerge, setSelectedForMerge] = useState<string[]>([])
   const [isMerging, setIsMerging] = useState(false)
   const [showMergeModal, setShowMergeModal] = useState(false)
 
   const toggleMergeSelect = (id: string) => {
+    // A reserved bag cannot be merged until its transfer is cancelled.
+    if (reservations?.has(id)) return
     setSelectedForMerge((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
     )
@@ -121,6 +129,7 @@ export const SubBatchesTable = ({
             isMerging={isMerging}
             isSelecting={isSelecting}
             isAlreadyAssigned={Boolean(assignedBagIds?.has(sb.id))}
+            reservedFor={reservations?.get(sb.id)?.recipient_org_name}
             selectedForMerge={selectedForMerge}
             toggleMergeSelect={toggleMergeSelect}
             onSubBatchQualityTest={onSubBatchQualityTest}
@@ -152,6 +161,8 @@ type SubBatchesTableRowProps = {
   isMerging: boolean
   isSelecting: boolean
   isAlreadyAssigned: boolean
+  /** Recipient organisation when the bag is reserved for a pending transfer. */
+  reservedFor?: string
   selectedForMerge: string[]
   toggleMergeSelect: (id: string) => void
   onSubBatchQualityTest?: (subBatchId: string) => void
@@ -166,12 +177,15 @@ const SubBatchesTableRow = ({
   isMerging,
   isSelecting,
   isAlreadyAssigned,
+  reservedFor,
   selectedForMerge,
   toggleMergeSelect,
   onSubBatchQualityTest,
   onSubBatchSplit,
   onStorageMove,
 }: SubBatchesTableRowProps) => {
+  const isReserved = reservedFor !== undefined
+  const reservedReason = isReserved ? reservedTitle(reservedFor) : undefined
   const toggleBag = useBagBasketStore((state) => state.toggleBag)
   const isInBasket = useBagBasketStore((state) => state.bags.has(sb.id))
   const launchFlight = useBagFlightStore((state) => state.launch)
@@ -180,12 +194,16 @@ const SubBatchesTableRow = ({
   // A bag already out at a laboratory cannot be sent again, and one with no
   // seed left has nothing to send.
   const isSelectable =
-    isSelecting && !isAlreadyAssigned && (sb.current_weight ?? 0) > 0
+    isSelecting &&
+    !isAlreadyAssigned &&
+    !isReserved &&
+    (sb.current_weight ?? 0) > 0
 
   const addToBasket = () => {
     // Only the add flies. Removing already has an obvious signal — the row
     // deselects and the chip leaves the basket — and animating both directions
     // would make repeated picking noisy.
+    if (isReserved) return
     if (!isInBasket && rowRef.current) {
       launchFlight(
         rowRef.current.getBoundingClientRect(),
@@ -199,6 +217,7 @@ const SubBatchesTableRow = ({
       batchCode,
       containerName: sb.container?.name ?? null,
       weightGrams: Number(sb.current_weight ?? 0),
+      isReserved,
     })
   }
 
@@ -211,13 +230,15 @@ const SubBatchesTableRow = ({
         // A CSS transition rather than a keyframe: selection is reversible, and
         // this has to be interruptible when someone picks and unpicks quickly.
         "transition-[background-color,border-color,opacity,scale] duration-150 ease-out",
-        isMerging && "hover:bg-muted/50 cursor-pointer",
+        isMerging && !isReserved && "hover:bg-muted/50 cursor-pointer",
+        isMerging && isReserved && "opacity-50",
         selectedForMerge.includes(sb.id) &&
           "bg-primary/10 border-primary border",
         isSelectable && "hover:bg-muted/50 cursor-pointer active:scale-[0.96]",
         isInBasket && "bg-primary/10 border-primary border",
         isSelecting && !isSelectable && "opacity-50",
       )}
+      title={reservedReason}
       onClick={() => {
         if (isMerging) toggleMergeSelect(sb.id)
         else if (isSelectable) addToBasket()
@@ -228,6 +249,7 @@ const SubBatchesTableRow = ({
           <input
             type="checkbox"
             checked={selectedForMerge.includes(sb.id)}
+            disabled={isReserved}
             onChange={() => toggleMergeSelect(sb.id)}
             onClick={(event) => event.stopPropagation()}
             className="h-3 w-3"
@@ -257,6 +279,9 @@ const SubBatchesTableRow = ({
           </span>
         )}
         {sb.notes && <span className="text-muted-foreground">{sb.notes}</span>}
+        {isReserved && (
+          <ReservedForTransferBadge recipientOrgName={reservedFor} />
+        )}
         {isSelecting && isAlreadyAssigned && (
           <span className="text-muted-foreground flex items-center gap-1">
             <ShoppingBasket className="h-3 w-3" />
@@ -271,11 +296,12 @@ const SubBatchesTableRow = ({
               variant="ghost"
               size="sm"
               className="h-5 w-5 cursor-pointer p-0"
+              disabled={isReserved}
               onClick={(e) => {
                 e.stopPropagation()
                 onSubBatchQualityTest?.(sb.id)
               }}
-              title="Quality Test"
+              title={reservedReason ?? "Quality Test"}
             >
               <Microscope className="h-4 w-5" />
             </Button>
@@ -285,11 +311,12 @@ const SubBatchesTableRow = ({
               variant="ghost"
               size="sm"
               className="h-5 w-5 cursor-pointer p-0"
+              disabled={isReserved}
               onClick={(e) => {
                 e.stopPropagation()
                 onSubBatchSplit?.(sb.id)
               }}
-              title="Split"
+              title={reservedReason ?? "Split"}
             >
               <Split className="h-4 w-5" />
             </Button>
@@ -299,11 +326,12 @@ const SubBatchesTableRow = ({
               variant="ghost"
               size="sm"
               className="h-5 w-5 cursor-pointer p-0"
+              disabled={isReserved}
               onClick={(e) => {
                 e.stopPropagation()
                 onStorageMove(sb.id)
               }}
-              title="Move to storage"
+              title={reservedReason ?? "Move to storage"}
             >
               <Boxes className="h-4 w-5" />
             </Button>

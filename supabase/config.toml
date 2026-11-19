@@ -232,7 +232,13 @@ verify_jwt = false
 [functions.resend_invitation]
 verify_jwt = false
 
+[functions.respond_transfer_link_request]
+verify_jwt = false
+
 [functions.return_batch_from_testing]
+verify_jwt = false
+
+[functions.send_bags_for_transfer]
 verify_jwt = false
 
 [functions.send_invitation]

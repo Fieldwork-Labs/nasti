@@ -24,6 +24,7 @@ import {
   useMergeSubBatches,
 } from "@/hooks/useSubBatches"
 import { useActiveStorageLocations } from "@/hooks/useBatchStorage"
+import { useSubBatchReservations } from "@/hooks/useTransfers"
 
 const NO_CONTAINER = "__none__"
 const NO_LOCATION = "__none__"
@@ -51,6 +52,10 @@ export const SubBatchMergeModal = ({
 }: SubBatchMergeModalProps) => {
   const { toast } = useToast()
   const mergeSubBatches = useMergeSubBatches()
+  const { data: reservations } = useSubBatchReservations()
+  const reservedBags = subBatches.filter((subBatch) =>
+    reservations?.has(subBatch.id),
+  )
   const {
     data: containers = [],
     isLoading: containersLoading,
@@ -125,7 +130,10 @@ export const SubBatchMergeModal = ({
   const isLoading = containersLoading
   const hasCatalogueError = containersFailed
   const cannotSubmit =
-    isLoading || hasCatalogueError || mergeSubBatches.isPending
+    isLoading ||
+    hasCatalogueError ||
+    mergeSubBatches.isPending ||
+    reservedBags.length > 0
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -171,6 +179,15 @@ export const SubBatchMergeModal = ({
             {formatWeight(totalWeight)} g) into one new stored bag.
           </p>
 
+          {reservedBags.length > 0 && (
+            <p className="text-destructive text-sm">
+              {reservedBags.length === 1
+                ? "One of these bags is"
+                : "Some of these bags are"}{" "}
+              reserved for a transfer and can't be merged. Cancel the transfer
+              first.
+            </p>
+          )}
           {containersFailed && (
             <p className="text-destructive text-sm">
               Failed to load storage containers

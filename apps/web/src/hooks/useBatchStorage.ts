@@ -317,6 +317,17 @@ type MoveBatchToStorageParams = {
   effectiveAt: string
 }
 
+// A storage change on a bag reserved for a pending transfer is refused. The
+// database raises "Bag is reserved for a pending transfer" (55000); say what to
+// do about it rather than showing the raw error.
+export const RESERVED_STORAGE_MESSAGE =
+  "This bag is reserved for a pending transfer, so its storage can't be changed. Cancel the transfer first."
+
+const storageErrorMessage = (error: { message: string }) =>
+  error.message.includes("reserved for a pending transfer")
+    ? RESERVED_STORAGE_MESSAGE
+    : error.message
+
 export const useMoveBatchToStorage = () => {
   return useMutation<BatchStorage, Error, MoveBatchToStorageParams>({
     mutationFn: async ({ subBatchId, locationId, notes, effectiveAt }) => {
@@ -327,7 +338,7 @@ export const useMoveBatchToStorage = () => {
         p_notes: notes,
       })
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(storageErrorMessage(error))
       return data
     },
     onSuccess: (_, variables) => {
@@ -358,7 +369,7 @@ export const useCreateStorageRecord = () => {
         .select()
         .single()
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(storageErrorMessage(error))
       return data as BatchStorage
     },
     onSuccess: (_, variables) => {
@@ -376,14 +387,20 @@ type UpdateStorageRecordParams = {
 export const useUpdateStorageRecord = () => {
   return useMutation<BatchStorage, Error, UpdateStorageRecordParams>({
     mutationFn: async ({ storageId, locationId, notes }) => {
-      const { data, error } = await supabase
-        .from("batch_storage")
-        .update({ notes, location_id: locationId })
-        .eq("id", storageId)
-        .select()
-        .single()
+      // The RPC locks the bag before the storage row. A NULL argument leaves
+      // a field unchanged, so notes can only be cleared with an empty string.
+      const { data, error } = await supabase.rpc(
+        "fn_update_batch_storage_record",
+        {
+          p_storage_id: storageId,
+          p_location_id: locationId,
+          p_notes: notes,
+        },
+      )
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        throw new Error(storageErrorMessage(error))
+      }
       return data as BatchStorage
     },
     onSuccess: (updatedStorage) => {

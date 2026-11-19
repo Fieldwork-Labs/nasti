@@ -1016,13 +1016,19 @@ select throws_ok(
   'an owner cannot directly store a Testing-held bag'
 );
 
-select lives_ok(
+-- Direct client updates of batch_storage are gone; the edit goes through a
+-- bag-first RPC, which refuses anyone who does not hold the bag.
+select throws_ok(
   $$
-    update public.batch_storage
-    set notes = 'Owner attempted storage edit'
-    where id = 'd6000000-0000-0000-0000-000000000099'
+    select public.fn_update_batch_storage_record(
+      'd6000000-0000-0000-0000-000000000099',
+      null,
+      'Owner attempted storage edit'
+    )
   $$,
-  'an owner cannot directly update Testing-held storage'
+  '42501',
+  null,
+  'an owner cannot update Testing-held storage'
 );
 
 select is(

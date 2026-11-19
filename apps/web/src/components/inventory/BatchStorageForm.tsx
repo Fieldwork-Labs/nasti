@@ -43,7 +43,7 @@ const schema = z.object({
 })
 
 type BatchStorageFormProps = {
-  batch: Batch
+  batch: Pick<Batch, "id">
   /** Pre-select a specific sub-batch for storage move */
   subBatchId: string
   onSuccess?: () => void

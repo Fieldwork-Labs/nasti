@@ -15,6 +15,8 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
+import { RECEIVED_SEED_MIX_COMBINE_MESSAGE } from "@/components/transfers/TransferBadges"
+import { useReceivedSeedBatchIds } from "@/hooks/useTransfers"
 import type { BatchWithCurrentLocationAndSpecies } from "@/hooks/useBatches"
 import { useMergeBatches } from "@/hooks/useBatches"
 
@@ -40,6 +42,11 @@ export const BatchMergeModal = ({
   const { toast } = useToast()
   const mergeBatchesMutation = useMergeBatches()
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data: receivedSeedIds } = useReceivedSeedBatchIds()
+  const hasReceivedSeed = selectedBatches.some((batch) =>
+    receivedSeedIds?.has(batch.id),
+  )
 
   // Calculate aggregate data
   const totalWeight = selectedBatches.reduce(
@@ -102,6 +109,14 @@ export const BatchMergeModal = ({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {hasReceivedSeed && (
+            <div className="border-destructive bg-destructive/10 rounded-lg border p-4">
+              <p className="text-destructive text-sm font-semibold">
+                {RECEIVED_SEED_MIX_COMBINE_MESSAGE}
+              </p>
+            </div>
+          )}
+
           {/* Code Validation Warning */}
           {!hasMatchingCodes && (
             <div className="border-destructive bg-destructive/10 rounded-lg border p-4">
@@ -191,7 +206,7 @@ export const BatchMergeModal = ({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !hasMatchingCodes}
+              disabled={isSubmitting || !hasMatchingCodes || hasReceivedSeed}
               className="min-w-[120px]"
             >
               {isSubmitting && (

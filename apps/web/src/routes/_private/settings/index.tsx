@@ -1,4 +1,5 @@
 import { useIncomingLinkRequests } from "@/hooks/useTestingOrgs"
+import { useTransferLinkRequests } from "@/hooks/useTransfers"
 import useUserStore from "@/store/userStore"
 import { Button } from "@nasti/ui/button"
 import { Card } from "@nasti/ui/card"
@@ -9,6 +10,7 @@ import {
   Leaf,
   LucideProps,
   MapPin,
+  Send,
   Settings,
   SettingsIcon,
   Users,
@@ -73,6 +75,7 @@ function SettingsDashboard() {
     },
   ]
   const { data } = useIncomingLinkRequests()
+  const { data: transferData } = useTransferLinkRequests()
 
   if (isTestingProvider) {
     settingsCards.push({
@@ -92,6 +95,15 @@ function SettingsDashboard() {
       color: "bg-teal-500",
     })
   }
+
+  settingsCards.push({
+    title: "Transfer partners",
+    description: "Manage incoming requests, pending transfers and partners",
+    icon: Send,
+    href: "/settings/transfer-partners",
+    color: "bg-indigo-500",
+    notifications: transferData?.incoming_request_count,
+  })
 
   return (
     <div>
@@ -119,7 +131,7 @@ function SettingsDashboard() {
                     <div className={`rounded-lg p-3 ${card.color} text-white`}>
                       <IconComponent className="h-6 w-6" />
                     </div>
-                    {card.notifications && (
+                    {Boolean(card.notifications) && (
                       <div className="flex">
                         <span className="size-6 rounded-full bg-red-500 text-center text-sm text-white">
                           {card.notifications}
