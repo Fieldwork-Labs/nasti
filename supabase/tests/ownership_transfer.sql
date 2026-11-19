@@ -299,15 +299,15 @@ select ok(
   'clients hold no UPDATE privilege on batch_storage'
 );
 
-select results_eq(
-  $$
-    select e.enumlabel::text
+select is(
+  array(
+    select e.enumlabel::text collate "C"
     from pg_enum e
     inner join pg_type t on t.oid = e.enumtypid
     where t.typname = 'organisation_link_kind'
     order by e.enumsortorder
-  $$,
-  array['testing', 'transfer'],
+  ),
+  array['testing', 'transfer']::text[],
   'links come in testing and transfer kinds'
 );
 
