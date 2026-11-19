@@ -155,13 +155,13 @@ const edgeErrorMessage = async (error: unknown, fallback: string) => {
     if (context instanceof Response) {
       try {
         const body: unknown = await context.clone().json()
-        if (
-          body &&
-          typeof body === "object" &&
-          "error" in body &&
-          typeof body.error === "string"
-        ) {
-          return body.error
+        // Our functions answer `{ error }`; the gateway and runtime answer
+        // `{ msg }` or `{ message }` (e.g. a rejected JWT).
+        if (body && typeof body === "object") {
+          for (const key of ["error", "msg", "message"] as const) {
+            const value: unknown = (body as Record<string, unknown>)[key]
+            if (typeof value === "string" && value) return value
+          }
         }
       } catch {
         // Not JSON; fall through.

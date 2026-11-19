@@ -16,7 +16,12 @@ import useBagBasketStore, { useBasketBags } from "@/store/bagBasketStore"
  * that tells you what mode you are in, and an element that only appears once
  * you succeed at something is no help when you cannot work out how to.
  */
-export const BagBasket = () => {
+export const BagBasket = ({
+  canSendForTesting,
+}: {
+  // Sending for testing needs a linked testing organisation; transfer doesn't.
+  canSendForTesting: boolean
+}) => {
   const navigate = useNavigate()
   const isSelecting = useBagBasketStore((state) => state.isSelecting)
   const cancelSelection = useBagBasketStore((state) => state.cancelSelection)
@@ -129,15 +134,17 @@ export const BagBasket = () => {
                 >
                   Transfer…
                 </Button>
-                <Button
-                  size="sm"
-                  disabled={bags.length === 0}
-                  onClick={() =>
-                    navigate({ to: "/inventory/send-for-testing" })
-                  }
-                >
-                  Send for testing
-                </Button>
+                {canSendForTesting && (
+                  <Button
+                    size="sm"
+                    disabled={bags.length === 0}
+                    onClick={() =>
+                      navigate({ to: "/inventory/send-for-testing" })
+                    }
+                  >
+                    Send for testing
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>

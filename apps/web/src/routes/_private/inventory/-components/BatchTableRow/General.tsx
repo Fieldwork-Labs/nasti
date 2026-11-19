@@ -233,8 +233,11 @@ export const BatchTableRow = ({
       return <MergeModeActions combineMode={combineMode} />
     }
 
+    // Received seed always carries a weight, but it arrives uncleaned and is
+    // cleaned bag-first (fn_clean_sub_batch), like an origin batch.
     const isOriginBatch = batch.weight_grams === null
-    if (isOriginBatch) {
+    const isUncleanedReceivedSeed = isReceivedSeed && !batch.is_cleaned
+    if (isOriginBatch || isUncleanedReceivedSeed) {
       return (
         <NormalModeActions
           batch={batch}

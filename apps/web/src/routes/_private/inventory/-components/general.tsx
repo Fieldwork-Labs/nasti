@@ -232,7 +232,7 @@ export function InventoryPageGeneral() {
 
   return (
     <div className="container mx-auto p-6">
-      <BagBasket />
+      <BagBasket canSendForTesting={hasTestingOrgLinks} />
       <div className="space-y-6">
         {/* Header */}
         {isTestingProvider && (
@@ -245,10 +245,10 @@ export function InventoryPageGeneral() {
               Manage and track your seed batches
             </p>
           </div>
-          {hasTestingOrgLinks && !isSelecting && (
+          {!isSelecting && (
             <Button onClick={enterSelection}>
               <ShoppingBasket className="mr-2 h-4 w-4" />
-              Send bags for testing
+              {hasTestingOrgLinks ? "Send or transfer bags" : "Transfer bags"}
             </Button>
           )}
         </div>
