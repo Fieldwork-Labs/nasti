@@ -136,7 +136,8 @@ function FailureRow({ failure, onRetry, onDismiss }: { failure: SyncFailure; onR
 
 function rowMessage(failure: Extract<SyncFailure, { failureKind: "row" }>): string {
   try {
-    const code = (JSON.parse(failure.error_info ?? "{}") as { code?: unknown }).code
+    const { code, message } = JSON.parse(failure.error_info ?? "{}") as { code?: unknown; message?: unknown }
+    if (typeof message === "string" && message) return `${message}.`
     return typeof code === "string" ? `Server rejected this change (${code}).` : "This change needs attention."
   } catch {
     return "This change needs attention."
