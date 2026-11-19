@@ -271,6 +271,12 @@ export const TransferPartners = () => {
               </EmptyState>
             ) : (
               <ul className="flex flex-col gap-1 text-sm">
+                {organisation?.accepts_transfers === false && (
+                  <li className="text-amber-600">
+                    Paused while you are not accepting transfers. Turning
+                    transfers back on restores these partners.
+                  </li>
+                )}
                 {data.incoming_links.map((link) => (
                   <li key={link.sender_org_name}>
                     {link.sender_org_name}{" "}
