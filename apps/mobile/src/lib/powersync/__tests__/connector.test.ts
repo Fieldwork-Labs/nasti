@@ -133,7 +133,9 @@ describe("PowerSync row upload connector", () => {
     await new SupabaseConnector().uploadData(database as never)
 
     expect(acquireMock).toHaveBeenCalledOnce()
-    expect(createTokenClientMock).toHaveBeenCalledWith(TOKEN)
+    expect(createTokenClientMock).toHaveBeenCalledWith(TOKEN, {
+      fetch: (await import("../../fetchWithTimeout")).fetchWithTimeout,
+    })
     expect(tokenClientFromMock).toHaveBeenCalledTimes(3)
     expect(upsertMock).toHaveBeenCalledWith({ id: "put-1", name: "value" })
     expect(updateMock).toHaveBeenCalledWith({ name: "updated" })

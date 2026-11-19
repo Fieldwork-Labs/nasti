@@ -13,6 +13,7 @@ import {
   type RequestCredentials,
 } from "../auth/liveSession"
 import { setQueueAuthBlocked } from "./queueAuthState"
+import { fetchWithTimeout } from "../fetchWithTimeout"
 
 type TableName = keyof Database["public"]["Tables"]
 
@@ -54,6 +55,11 @@ const dependencyRetryCounts = new Map<string, number>()
 
 type TokenClient = ReturnType<typeof createNastiSupabaseClientForToken>
 type TokenClientFactory = (accessToken: string) => TokenClient
+
+// Each row request runs inside PowerSync's CRUD lock; a stalled request must
+// time out (as a retryable network error) rather than hold the lock forever.
+const createTimeoutTokenClient: TokenClientFactory = (accessToken) =>
+  createNastiSupabaseClientForToken(accessToken, { fetch: fetchWithTimeout })
 
 function prepareForSupabase(
   table: string,
@@ -244,7 +250,7 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
 
   constructor(
     private readonly tokenClientFactory: TokenClientFactory =
-      createNastiSupabaseClientForToken,
+      createTimeoutTokenClient,
   ) {}
 
   private clientFor(credentials: RequestCredentials): TokenClient {

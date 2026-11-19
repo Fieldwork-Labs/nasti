@@ -68,7 +68,9 @@ describe("storageUpload", () => {
       error: Object.assign(new Error("private response"), { statusCode: "404" }),
     })
     await expect(deleteFromStorage("collection-photos", "a.jpg", { accessToken: "fresh-token" })).resolves.toBeUndefined()
-    expect(clientForTokenMock).toHaveBeenCalledWith("fresh-token")
+    expect(clientForTokenMock).toHaveBeenCalledWith("fresh-token", {
+      fetch: (await import("../fetchWithTimeout")).fetchWithTimeout,
+    })
     expect(removeObjectMock).toHaveBeenCalledWith(["a.jpg"])
   })
 
